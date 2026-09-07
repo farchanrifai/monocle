@@ -108,6 +108,15 @@ final class AppModel {
         draft = ExpenseDraft(expense: expense); draft.id = UUID(); draft.editing = false
         draft.createdAt = .now; draft.date = .now; draft.source = "repeat"; showEntry = true
     }
+    func saveCategory(_ category: ExpenseCategory) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.saveCategory(category)
+    }
+    func deleteCategory(_ category: ExpenseCategory) throws {
+        guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true else { throw CategoryError.inUse }
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.deleteCategory(category.id)
+    }
     func saveSettings(_ proposed: PrototypeSettings) throws {
         guard proposed.budget > 0, (1...31).contains(proposed.startDay) else { throw EntryError.invalidAmount }
         try requireState().saveSettings(proposed); settings = proposed

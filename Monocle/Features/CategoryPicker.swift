@@ -6,6 +6,7 @@ struct CategoryStrip: View {
     let selectedID: UUID?
     let select: (UUID) -> Void
     let expand: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -31,10 +32,8 @@ struct CategoryStrip: View {
                     }
                     .scrollIndicators(.hidden)
                     .accessibilityIdentifier("categoryStrip")
-                    .onChange(of: selectedID) { _, id in
-                        if let id { reader.scrollTo(id, anchor: .center) }
-                    }
                     .onAppear { if let selectedID { reader.scrollTo(selectedID, anchor: .center) } }
+                    .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: selectedID)
                 }
                 Button(action: expand) {
                     Image(systemName: "square.grid.2x2").frame(width: 24, height: 28)
@@ -57,32 +56,38 @@ struct CategoryPicker: View {
 
     var body: some View {
         NavigationStack {
-            List(filtered) { category in
-                Button {
-                    select(category.id)
-                    dismiss()
-                } label: {
-                    HStack(spacing: 14) {
-                        CategoryMark(symbol: category.symbol)
-                        Text(category.name).font(.body).foregroundStyle(.primary)
-                        Spacer()
-                        if selectedID == category.id {
-                            Image(systemName: "checkmark").foregroundStyle(MC.red).accessibilityHidden(true)
-                        }
-                    }.padding(.vertical, 5).contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityIdentifier("picker-category-\(category.name)")
-                    .accessibilityAddTraits(selectedID == category.id ? .isSelected : [])
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
+                    ForEach(filtered) { category in
+                        Button {
+                            select(category.id)
+                            dismiss()
+                        } label: {
+                            VStack(spacing: 12) {
+                                Image(systemName: category.symbol).font(.title2)
+                                Text(category.name).font(.subheadline.weight(.medium)).multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity).frame(minHeight: 100)
+                            .padding(8)
+                            .foregroundStyle(selectedID == category.id ? .white : Color.primary)
+                            .background(selectedID == category.id ? MC.ink : MC.surface, in: .rect(cornerRadius: 20))
+                            .overlay(alignment: .topTrailing) {
+                                if selectedID == category.id { Image(systemName: "checkmark.circle.fill").foregroundStyle(MC.red).padding(8) }
+                            }
+                        }.buttonStyle(PressFeedbackStyle())
+                            .accessibilityIdentifier("picker-category-\(category.name)")
+                            .accessibilityAddTraits(selectedID == category.id ? .isSelected : [])
+                    }
+                }.padding(20)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .background(MC.paper)
             .scrollEdgeEffectStyle(.soft, for: .all)
             .overlay { if filtered.isEmpty { ContentUnavailableView.search(text: search) } }
-            .searchable(text: $search, prompt: "Find a category")
+            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find a category")
             .navigationTitle("Categories").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(.regularMaterial)
     }
 }

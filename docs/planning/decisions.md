@@ -69,3 +69,11 @@ These are architecture choices, not claims of implemented or tested capabilities
 | Subscription offering, name availability, and public-release policies | Public launch planning |
 
 None of these prevent the entry prototype. Do not mistake unresolved implementation details for previously confirmed product choices.
+
+## Capture refinement — 2026-09-08
+
+- User requested system number separators. Display and strict text parsing now use the current locale; currency remains IDR and storage stays exact integer minor units.
+- User requested side-by-side bottom islands: Recents/Budgets/Bills in a glass capsule, separated from a dark glass + circle. This replaces the vertically stacked Add Expense button and tab bar.
+- Category taps preserve strip position and animate selection. All categories uses a searchable grid with a consistent page background.
+- Custom category editor brought forward: create, rename, curated icon selection and protected deletion. Referenced categories keep history; archive and keyword editing remain future work.
+- User will continue with GPT-5.6 Terra. Detailed committed roadmap and local two-section HANDOFF are the continuation contract; no new task/model change was requested.

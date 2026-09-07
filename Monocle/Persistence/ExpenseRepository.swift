@@ -80,6 +80,26 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
+    func saveCategory(_ category: ExpenseCategory) throws {
+        let category = try category.validated(against: categories())
+        do {
+            guard let book = try find("Book", id: Self.bookID) else { throw EntryError.corruptStore }
+            let row = try find("CategoryRecord", id: category.id) ?? NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
+            row.setValue(category.id, forKey: "id")
+            row.setValue(category.name, forKey: "name")
+            row.setValue(category.symbol, forKey: "symbol")
+            row.setValue(book, forKey: "book")
+            try context.save()
+        } catch { context.rollback(); throw error }
+    }
+
+    func deleteCategory(_ id: UUID) throws {
+        guard try !expenses().contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
+        do {
+            if let row = try find("CategoryRecord", id: id) { context.delete(row); try context.save() }
+        } catch { context.rollback(); throw error }
+    }
+
     func delete(_ id: UUID) throws {
         do {
             if let row = try find("ExpenseRecord", id: id) { context.delete(row); try context.save() }

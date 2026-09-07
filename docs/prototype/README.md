@@ -1,4 +1,4 @@
-# monocle — prototype 0.1.1, build 3
+# monocle — prototype 0.1.2, build 4
 
 Updated: 2026-09-08
 
@@ -9,8 +9,10 @@ Updated: 2026-09-08
 - Type `Coffee 28k`: amount and category update as you type. Review and Record.
 - Edit an entry by tapping it; touch and hold to repeat or delete. Undo restores the last deleted entry.
 - Interrupt the app with an unfinished draft, then reopen and continue. Explicit Close or swipe-down asks Discard/Keep editing; discarding frees entry for another transaction.
-- Browse a compact horizontal category row, or open All categories for a searchable native sheet.
-- Home uses a small native Settings control and floating bottom controls with the list visible behind them. The keypad adapts to available height; press/amount animations and haptics provide brief feedback.
+- Browse a compact horizontal category row without tap-triggered recentering, or open All categories for a searchable grid.
+- In Settings → Categories, create a category, rename it or choose an icon. Swipe to delete unused categories; saved references, draft and Undo are protected.
+- Amount separators follow the system locale, including text input. Currency remains IDR; entry still uses whole rupiah.
+- Home uses a small native Settings control, a three-destination glass capsule, and a separate dark glass + circle on the same bottom row. The keypad adapts to available height; press/amount animations and haptics provide brief feedback.
 - Explore a sample budget and start-day preview.
 - Choose automatic or pending recording for the sample bill, with an independent reminder preference.
 
@@ -22,7 +24,7 @@ Records use a versioned Core Data model, with book, category, expense, and alloc
 
 Sample records are created once with stable identifiers. Clearing a book does not reseed it. Edits and retries retain the transaction ID. Draft and prototype-setting files are saved atomically. Data lives under the app's Application Support `monocle-prototype` folder, separate from the eventual personal book. Automated UI tests use distinct stores.
 
-Full backup/restore, app locking, category/rule editing, scheduled occurrences, CSV import/export, and production budget history remain unimplemented. No sync/cloud entitlements are enabled. Use test purchases in this version.
+Full backup/restore, app locking, category archiving/rule editing, scheduled occurrences, CSV import/export, and production budget history remain unimplemented. No sync/cloud entitlements are enabled. Use test purchases in this version.
 
 ## Current Shortcuts
 
@@ -37,15 +39,25 @@ The simulator build and Release arm64 iPhone build succeeded. The device package
 
 Six domain/storage tests pass: exact parsing/rejections, ambiguous text categories, split/date validation, month-end and leap-year boundaries, disk-store reopen/upsert/invalid-save preservation, and draft encoding.
 
-Six additional foundation tests cover shared text commands, identity-preserving retries, failed writes/discard/settings, post-commit publication without a second read, old JSON encoding, and corrupt-file preservation. All 20 tests pass (12 unit/storage and 8 UI). Result: `build/FoundationTests-20260908.xcresult`.
+Six foundation tests cover shared text commands, identity-preserving retries, failed writes/discard/settings, post-commit publication without a second read, old JSON encoding, and corrupt-file preservation. The previous foundation baseline passed 20 tests. Result: `build/FoundationTests-20260908.xcresult`.
+
+Current validation adds locale correctness, category name/icon validation, rename/history protection, and an end-to-end custom-category/relaunch/no-scroll-jump UI check. All 24 tests pass (15 unit/storage and 9 UI) on the iPhone 15 Pro simulator. Result: `build/Refinement012FinalTests.xcresult`. The Release arm64 build succeeds without compiler warnings. Current light screenshots were inspected. The first navigation run exposed an overlapping native tab bar; visibility is now set in each tab and regression-tested.
 
 The previous 0.1.1 UI pass validated eight flows on the iPhone 15 Pro simulator: interruption recovery, text interpretation/mode switching, invalid save, budget/bill preferences, keypad layout with 18 categories, Close/Keep editing/Discard, swipe discard, and replacing a recovered draft to edit another transaction. Results: `build/Final011Tests.xcresult`. The larger-text keypad/category test also passed in `build/LargeType011Tests.xcresult`. The final Home accessibility label fix compiles and is covered by the current normal-size suite; a further large-type visual check remains.
 
 The user reports working functions and snappy navigation on their SideStore-installed iPhone 15 Pro. Real-device haptic feel, signed Shortcut behaviour, refresh, and update preservation still require phone checks. VoiceOver and Reduce Motion have not received a complete manual audit.
 
-The foundation now separates dependency assembly, shared expense commands, Core Data, atomic local files, and presentation state. The compiled bundle identity, database model, storage folder, and draft/settings encoding remain unchanged. See [architecture](../planning/architecture.md) for implemented boundaries and remaining work.
+The foundation now separates dependency assembly, shared expense commands, Core Data, atomic local files, and presentation state. The compiled bundle identity, database model, storage folder, and draft/settings encoding remain unchanged. See [roadmap and Terra continuation instructions](../planning/roadmap.md) and [architecture](../planning/architecture.md) for implemented boundaries and remaining work.
 
-## Current screens (0.1.1)
+## Current screens (0.1.2)
+
+![Two-island navigation](screenshots/recents-012-light.png)
+
+![Entry](screenshots/entry-012-light.png)
+
+![Category grid](screenshots/categories-012-light.png)
+
+## Previous screens (0.1.1)
 
 ![Recents](screenshots/recents-011-light.png)
 
@@ -65,9 +77,9 @@ The foundation now separates dependency assembly, shared expense commands, Core 
 
 ## Device package
 
-Local deliverable: `build/deliverables/monocle-prototype-0.1.1-build-3.ipa` (excluded from Git). Release build 3, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build 1 and build 2 artifacts are preserved.
+Local deliverable: `build/deliverables/monocle-prototype-0.1.2-build-4.ipa` (excluded from Git). Release build 4, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build artifacts are preserved.
 
-SHA-256: `1e8e35240a439791d9b2b424ff3f7781c1134db0e89c1e36f78a762cb2173f7f`.
+SHA-256: `be83e025315ebe1c38cec0583e1908188bf7cb38111f05531e7bb7996f8acf01`.
 
 ## iPhone / SideStore checkpoint
 
@@ -81,4 +93,4 @@ The user confirmed the original installation works on iPhone 15 Pro. The updated
 
 ## Next implementation checkpoint
 
-Collect feedback on the native flow. Then finish reliable capture and recovery: full backup/restore, app lock, category editing, split UI, structured Shortcut parameters, and old-store/update fixtures. Only mark daily use ready when those checks and the user's phone review pass. Budget history, real bills, and CSV follow the agreed implementation plan; they remain in v1 scope.
+Collect feedback on the native flow. Then finish reliable capture and recovery: full backup/restore, app lock, category archiving/rules, split UI, structured Shortcut parameters, and old-store/update fixtures. Only mark daily use ready when those checks and the user's phone review pass. Budget history, real bills, and CSV follow the agreed implementation plan; they remain in v1 scope.

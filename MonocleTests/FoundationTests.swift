@@ -104,6 +104,8 @@ private final class TestExpenseStore: ExpenseStore {
         values.removeAll { $0.id == expense.id }
         values.append(expense)
     }
+    func saveCategory(_ category: ExpenseCategory) throws { throw CategoryError.invalidName }
+    func deleteCategory(_ id: UUID) throws { throw CategoryError.inUse }
     func delete(_ id: UUID) throws {
         if failWrites { throw EntryError.corruptStore }
         values.removeAll { $0.id == id }

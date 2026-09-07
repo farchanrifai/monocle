@@ -5,6 +5,7 @@ final class MonocleUITests: XCTestCase {
     func testKeypadDraftSurvivesInterruptionAndRecords() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 10))
         app.buttons["addExpense"].tap()
@@ -20,6 +21,7 @@ final class MonocleUITests: XCTestCase {
     func testTextEntryAndModeSwitchKeepParsedFields() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["addExpense"].tap()
         app.segmentedControls["entryMode"].buttons["Text"].tap()
@@ -37,6 +39,7 @@ final class MonocleUITests: XCTestCase {
     func testInvalidEntryShowsErrorWithoutDismissingDraft() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["addExpense"].tap()
         app.buttons["key-2"].tap(); app.buttons["key-8"].tap(); app.buttons["key-000"].tap()
@@ -51,12 +54,13 @@ final class MonocleUITests: XCTestCase {
     func testBudgetAndBillReviewScreensAndSavedReminderChoice() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        app.tabBars.buttons["Budgets"].tap()
+        app.buttons["tab-Budgets"].tap()
         XCTAssertTrue(app.staticTexts["Where it went"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
-        app.tabBars.buttons["Bills"].tap()
+        app.buttons["tab-Bills"].tap()
         XCTAssertTrue(app.buttons["Configure sample bill"].waitForExistence(timeout: 5))
         app.buttons["Configure sample bill"].tap()
         let reminder = app.switches["Remind me"]
@@ -67,7 +71,7 @@ final class MonocleUITests: XCTestCase {
         bill.name = "bill-settings"; bill.lifetime = .keepAlways; add(bill)
         app.buttons["Save"].tap()
         app.terminate(); app.launch()
-        app.tabBars.buttons["Bills"].tap()
+        app.buttons["tab-Bills"].tap()
         app.buttons["Configure sample bill"].tap()
         XCTAssertEqual(app.switches["Remind me"].value as? String, "0")
     }
@@ -76,8 +80,10 @@ final class MonocleUITests: XCTestCase {
     func testKeypadFitsAndManyCategoriesStayCompact() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launchEnvironment["MONOCLE_MANY_CATEGORIES"] = "1"
         app.launch()
+        XCTAssertFalse(app.tabBars.firstMatch.exists, "Native bar must not overlap the two custom islands")
         let home = XCTAttachment(screenshot: app.screenshot())
         home.name = "home-011"; home.lifetime = .keepAlways; add(home)
         app.buttons["addExpense"].tap()
@@ -108,6 +114,7 @@ final class MonocleUITests: XCTestCase {
     func testCloseConfirmsDiscardAndDoesNotBlockEditing() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["addExpense"].tap()
         app.buttons["key-2"].tap(); app.buttons["key-8"].tap(); app.buttons["key-000"].tap()
@@ -132,6 +139,7 @@ final class MonocleUITests: XCTestCase {
     func testSwipeDownAlsoConfirmsDiscard() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["addExpense"].tap()
         app.buttons["key-5"].tap()
@@ -141,12 +149,14 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Discard"].waitForExistence(timeout: 5))
         app.buttons["Discard"].tap()
         app.buttons["addExpense"].tap()
+        XCTAssertTrue(app.staticTexts["amountDisplay"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["amountDisplay"].label, "Amount Rp0")
     }
     @MainActor
     func testRecoveredDraftCanBeDiscardedToOpenAnotherTransaction() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["addExpense"].tap(); app.buttons["key-5"].tap()
         app.terminate(); app.launch()
@@ -155,6 +165,34 @@ final class MonocleUITests: XCTestCase {
         app.buttons["Discard and continue"].tap()
         XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
+    }
+
+    @MainActor
+    func testCategoryEditorPersistsAndSelectionDoesNotJump() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        app.buttons["homeSettings"].tap()
+        app.buttons["manageCategories"].tap()
+        app.buttons["newCategory"].tap()
+        app.textFields["categoryName"].tap()
+        app.textFields["categoryName"].typeText("Pets")
+        app.buttons["saveCategory"].tap()
+        XCTAssertTrue(app.buttons["edit-category-Pets"].waitForExistence(timeout: 5))
+        app.terminate(); app.launch()
+        app.buttons["addExpense"].tap()
+        let category = app.buttons["category-Food & Drink"]
+        let before = category.frame.minX
+        category.tap()
+        XCTAssertEqual(category.frame.minX, before, accuracy: 1, "Selection must not recenter the strip")
+        app.buttons["allCategories"].tap()
+        app.searchFields.firstMatch.tap()
+        app.searchFields.firstMatch.typeText("Pets")
+        app.buttons["picker-category-Pets"].tap()
+        app.buttons["key-5"].tap(); app.buttons["key-000"].tap()
+        app.buttons["recordExpense"].tap()
+        XCTAssertTrue(app.buttons["expense-"].firstMatch.waitForExistence(timeout: 5))
     }
 
 }

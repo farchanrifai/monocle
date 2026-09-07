@@ -62,14 +62,21 @@ enum EntryError: LocalizedError {
 
 enum Money {
     static let maximum: Int64 = 9_000_000_000_000_000
-    static func parse(_ input: String) throws -> Int64 {
+    static func parse(_ input: String, locale: Locale = .autoupdatingCurrent) throws -> Int64 {
         var value = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if value.hasPrefix("rp") { value = String(value.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
         let thousands = value.hasSuffix("k")
         if thousands { value.removeLast() }
-        let pattern = thousands ? #"^\d+(?:[.,]\d{1,3})?$"# : #"^(?:\d+|\d{1,3}(?:\.\d{3})+)$"#
+        let decimalSeparator = locale.decimalSeparator ?? "."
+        let groupingSeparator = locale.groupingSeparator ?? ","
+        let decimalPattern = NSRegularExpression.escapedPattern(for: decimalSeparator)
+        let groupingPattern = NSRegularExpression.escapedPattern(for: groupingSeparator)
+        // Validate strictly before normalization; NumberFormatter alone accepts malformed grouping.
+        let pattern = thousands ? "^[0-9]+(?:" + decimalPattern + "[0-9]{1,3})?$"
+            : "^(?:[0-9]+|[0-9]{1,3}(?:" + groupingPattern + "[0-9]{3})+)(?:" + decimalPattern + "0{1,2})?$"
         guard value.range(of: pattern, options: .regularExpression) != nil else { throw EntryError.invalidAmount }
-        value = thousands ? value.replacingOccurrences(of: ",", with: ".") : value.replacingOccurrences(of: ".", with: "")
+        if !thousands { value = value.replacingOccurrences(of: groupingSeparator, with: "") }
+        value = value.replacingOccurrences(of: decimalSeparator, with: ".")
         guard var decimal = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else { throw EntryError.invalidAmount }
         if thousands { decimal *= 1000 }
         var rounded = Decimal()
@@ -79,9 +86,9 @@ enum Money {
     }
 
     static func digits(_ amount: Int64) -> String { String(amount / 100) }
-    static func format(_ amount: Int64, currency: Bool = true) -> String {
+    static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent) -> String {
         let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "id_ID")
+        formatter.locale = locale
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = amount % 100 == 0 ? 0 : 2
         let number = NSDecimalNumber(decimal: Decimal(amount) / 100)

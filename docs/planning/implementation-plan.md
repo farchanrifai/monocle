@@ -2,6 +2,8 @@
 
 Updated: 2026-09-08
 
+Detailed milestone statuses, exit gates and next-session instructions: [roadmap](roadmap.md).
+
 ## 0. Planning baseline — completed
 
 Product scope, capture direction, privacy choice, budgets, bill modes, future shared books, and iCloud acceptance recorded. Xcode 26.6 is available. The planning baseline is committed in local Git.

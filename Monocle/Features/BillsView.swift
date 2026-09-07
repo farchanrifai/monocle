@@ -18,7 +18,7 @@ struct BillsView: View {
                                 Text("Due on the 15th").font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        Text("Rp350.000").font(.system(size: 32, weight: .medium, design: .monospaced)).tracking(-1)
+                        Text(Money.format(35_000_000)).font(.system(size: 32, weight: .medium, design: .monospaced)).tracking(-1)
                         Divider()
                         Label(model.settings.billAutomatic ? "Record automatically" : "Confirm before recording", systemImage: model.settings.billAutomatic ? "bolt" : "checkmark.circle")
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -45,7 +45,7 @@ struct BillEditor: View {
             Form {
                 Section {
                     LabeledContent("Bill", value: "Home internet")
-                    LabeledContent("Amount", value: "Rp350.000")
+                    LabeledContent("Amount", value: Money.format(35_000_000))
                     LabeledContent("Schedule", value: "Monthly, day 15")
                 }
                 Section {
@@ -83,7 +83,10 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: "Sample book")
                     LabeledContent("Currency", value: "IDR")
-                    LabeledContent("Version", value: "0.1.1 · Prototype")
+                    LabeledContent("Version", value: "0.1.2 · Prototype")
+                }
+                Section {
+                    NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
                 }
                 Section("Try the flow") {
                     Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")
@@ -95,7 +98,7 @@ struct SettingsView: View {
                 Section("Coming next") {
                     Label("Full backup and restoration", systemImage: "externaldrive")
                     Label("Face ID and lock timeout", systemImage: "faceid")
-                    Label("Category editing and split entry", systemImage: "square.grid.2x2")
+                    Label("Split entry", systemImage: "square.grid.2x2")
                     Label("CSV import", systemImage: "tablecells")
                 }.foregroundStyle(.secondary)
             }.navigationTitle("monocle").navigationBarTitleDisplayMode(.inline)

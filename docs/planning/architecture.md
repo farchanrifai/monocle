@@ -33,9 +33,17 @@ flowchart TD
 
 Keep this as one target for now. A future Mac target can share the Application, Domain, and Persistence sources; it will supply its own navigation. Extract a package only when an actual second consumer makes that useful.
 
+## Category and presentation refinements
+
+Category commands use the same ExpenseService/ExpenseStore boundary as expenses. Validation runs both in the service and in the Core Data adapter: trimmed nonempty names (maximum 40 characters), case/diacritic-insensitive duplicate rejection and curated SF Symbols. Stable IDs retain expense references during rename. Deletion checks persisted allocations; presentation additionally protects the active draft and Undo. No schema change is required for create/rename/delete. Archive requires a versioned model change in a later checkpoint.
+
+Number display and strict text parsing use the current system locale, while IDR currency and exact minor-unit storage stay fixed. Fractional entry policy has not expanded. Locale tests explicitly cover US and Indonesian separators.
+
+BottomNavigation supplies two separate glass surfaces while each TabView child hides the native tab bar. This preserves tab view state without overlapping navigation surfaces. Glass uses public SwiftUI APIs; spacing keeps the dark add circle separate from the destination capsule. [Apple custom glass documentation](https://developer.apple.com/documentation/SwiftUI/Applying-Liquid-Glass-to-custom-views)
+
 ## Remaining foundation work
 
-Backup/restore is the next feature, including a versioned portable format, candidate validation, safety backup, recoverable replacement, and old-store fixtures. It must cover all current durable state before real-data use. App lock, category/split editing, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget/bill persistence and sync are later milestones.
+Backup/restore is the next feature, including a versioned portable format, candidate validation, safety backup, recoverable replacement, and old-store fixtures. It must cover all current durable state before real-data use. App lock, category archiving/rules, split editing, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget/bill persistence and sync are later milestones.
 
 The current repository still exposes one fixed sample book. The conceptual multi-book model below is a future design, not implemented multi-book or CloudKit support. Small local saves currently run on the main actor; imports and backup operations will need bounded work/background contexts as their implementation requires. Do not infer finished performance, app locking, or backup safety from this refactor.
 

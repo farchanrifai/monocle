@@ -62,40 +62,7 @@ struct RecentsView: View {
                 }
             }
             .scrollEdgeEffectStyle(.soft, for: .bottom)
-            .safeAreaBar(edge: .bottom) {
-                VStack(spacing: 10) {
-                    if let toast = model.toast {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(MC.red)
-                            Text(toast).font(.subheadline)
-                            Spacer()
-                            if model.undoExpense != nil { Button("Undo") { model.undoDelete() }.font(.subheadline.bold()) }
-                            Button { model.toast = nil; model.undoExpense = nil } label: { Image(systemName: "xmark").frame(width: 32, height: 32) }.accessibilityLabel("Dismiss confirmation")
-                        }.padding(.horizontal, 14).padding(.vertical, 6).glassEffect(in: .rect(cornerRadius: 16))
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                    Button { model.openEntry() } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "plus").font(.title3.weight(.medium))
-                            Text(model.draft.hasContent ? "Continue expense" : "Add expense").font(.headline)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer()
-                            if !dynamicTypeSize.isAccessibilitySize {
-                                Text("IDR").font(.caption.monospaced()).opacity(0.5)
-                            }
-                        }.foregroundStyle(.white).padding(.horizontal, 22).frame(minHeight: 58)
-                            .background(MC.ink, in: Capsule())
-                    }.buttonStyle(PressFeedbackStyle()).accessibilityIdentifier("addExpense")
-                }.padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 8)
 
-            }
-            .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.toast)
-            .task(id: model.toastID) {
-                guard model.toast != nil, model.undoExpense == nil else { return }
-                do { try await Task.sleep(for: .seconds(2.8)) } catch { return }
-                guard !Task.isCancelled else { return }
-                model.toast = nil
-            }
         }
     }
     private var summary: some View {

@@ -1,6 +1,6 @@
 # monocle — planning overview
 
-Updated: 2026-09-07
+Updated: 2026-09-08
 
 ## Purpose
 
@@ -26,6 +26,7 @@ Storage and UI choices are implementation recommendations for the agreed require
 
 ## Read next
 
+- [Milestones and Terra continuation roadmap](roadmap.md): status, completion gates and exact next-session sequence.
 - [Product specification](product-spec.md): behaviour and v1 scope.
 - [Decision log](decisions.md): confirmed choices, proposed defaults, and deferred questions.
 - [Architecture](architecture.md): data boundaries, future sharing, and recovery.
@@ -36,7 +37,7 @@ Storage and UI choices are implementation recommendations for the agreed require
 
 - Project folder was empty before planning; a local Git repository and native app now exist.
 - Local Xcode reports version 26.6, build 17F113.
-- Test phone from the handoff: iPhone 15 Pro. Its OS, signing, SideStore configuration, and app integration have not been checked in this task.
+- Test phone from the handoff: iPhone 15 Pro. The user reports a successful original SideStore installation and snappy navigation. Updated-build preservation, signed Shortcuts and refresh still require phone validation.
 - The user wants to start daily use once UI/UX and reliable recording work, ideally after a few Codex sessions. This is an aspiration, not a delivery guarantee.
 
 ## Next deliverable

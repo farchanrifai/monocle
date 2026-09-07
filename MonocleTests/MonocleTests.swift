@@ -3,14 +3,15 @@ import XCTest
 
 final class MonocleTests: XCTestCase {
     func testMoneyParsingIsExactAndRejectsAmbiguity() throws {
-        XCTAssertEqual(try Money.parse("28k"), 2_800_000)
-        XCTAssertEqual(try Money.parse("28.5k"), 2_850_000)
-        XCTAssertEqual(try Money.parse("28,5k"), 2_850_000)
-        XCTAssertEqual(try Money.parse("Rp28.000"), 2_800_000)
-        for invalid in ["0", "-28000", "28,000", "28.5", "1e6", "coffee", "9999999999999999999", "0.0001k"] {
-            XCTAssertThrowsError(try Money.parse(invalid), invalid)
+        let locale = Locale(identifier: "id_ID")
+        XCTAssertEqual(try Money.parse("28k", locale: locale), 2_800_000)
+        XCTAssertEqual(try Money.parse("28,5k", locale: locale), 2_850_000)
+        XCTAssertEqual(try Money.parse("Rp28.000", locale: locale), 2_800_000)
+        for invalid in ["0", "-28000", "28,500", "28.5", "1e6", "coffee", "9999999999999999999", "0,0001k"] {
+            XCTAssertThrowsError(try Money.parse(invalid, locale: locale), invalid)
         }
     }
+
     func testTextParsingNeverChoosesBetweenConflictingCategories() throws {
         let coffee = try ExpenseParser.parse("Coffee 28k", categories: ExpenseCategory.defaults)
         XCTAssertEqual(coffee.amount, 2_800_000)

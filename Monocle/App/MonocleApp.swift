@@ -17,10 +17,12 @@ struct RootView: View {
                 ContentUnavailableView("Unable to open your book", systemImage: "externaldrive.badge.exclamationmark", description: Text(failure + "\nThe existing store has not been reset."))
             } else {
                 TabView(selection: $model.selectedTab) {
-                    Tab("Recents", systemImage: "list.bullet", value: 0) { RecentsView(model: model) }
-                    Tab("Budgets", systemImage: "chart.bar.xaxis", value: 1) { BudgetsView(model: model) }
-                    Tab("Bills", systemImage: "calendar", value: 2) { BillsView(model: model) }
+                    Tab("Recents", systemImage: "list.bullet", value: 0) { RecentsView(model: model).toolbar(.hidden, for: .tabBar) }
+                    Tab("Budgets", systemImage: "chart.bar.xaxis", value: 1) { BudgetsView(model: model).toolbar(.hidden, for: .tabBar) }
+                    Tab("Bills", systemImage: "calendar", value: 2) { BillsView(model: model).toolbar(.hidden, for: .tabBar) }
                 }
+                .toolbar(.hidden, for: .tabBar)
+                .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
                 .tint(MC.red)
                 .sheet(isPresented: $model.showEntry, onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }

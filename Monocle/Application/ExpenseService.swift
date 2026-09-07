@@ -8,6 +8,8 @@ protocol ExpenseStore {
     func expenses() throws -> [Expense]
     func save(_ expense: Expense) throws
     func delete(_ id: UUID) throws
+    func saveCategory(_ category: ExpenseCategory) throws
+    func deleteCategory(_ id: UUID) throws
 }
 
 /// Shared by screen state and App Intents. Main-actor isolation serializes local commands.
@@ -36,6 +38,20 @@ final class ExpenseService {
         expenses.removeAll { $0.id == expense.id }
         expenses.append(expense)
         expenses.sort { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+    }
+
+    func saveCategory(_ category: ExpenseCategory) throws {
+        let category = try category.validated(against: categories)
+        try store.saveCategory(category)
+        categories.removeAll { $0.id == category.id }
+        categories.append(category)
+        categories.sort { $0.id.uuidString < $1.id.uuidString }
+    }
+
+    func deleteCategory(_ id: UUID) throws {
+        guard !expenses.contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
+        try store.deleteCategory(id)
+        categories.removeAll { $0.id == id }
     }
 
     @discardableResult

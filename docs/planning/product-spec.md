@@ -23,6 +23,7 @@ Manual flow: open app → + → custom amount keypad → category → optional n
 
 Text flow: + → Type an expense → `Coffee 28k` → editable amount/category/note → Record. A direct text Shortcut remains available.
 
+- Amount display and text parsing follow the system number separators; currency is still IDR. Whole-rupiah entry remains the initial policy.
 - Amount and category are required. Note is optional, with suggestions. Date defaults to today and is editable.
 - Switching modes preserves entered values; a parsed preview does not silently overwrite subsequent manual corrections.
 - Preserve unfinished drafts after interruption. Record succeeds only after persistence succeeds.
@@ -46,7 +47,7 @@ Proposed parsing defaults: deterministic local keyword rules, editable by the us
 
 ## Categories
 
-Editable categories. Proposed default: archive used categories instead of deleting historical allocations. Each book owns its categories, allowing later shared books to carry their own labels and rules.
+Editable categories: create, rename and choose an icon. The current implementation permits deletion only while unused; archive is pending. Proposed default: archive used categories instead of deleting historical allocations. Each book owns its categories, allowing later shared books to carry their own labels and rules.
 
 ## Budgets
 
