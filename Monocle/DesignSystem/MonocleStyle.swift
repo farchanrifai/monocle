@@ -25,7 +25,7 @@ struct RecordButton: View {
             HStack { Text(title).font(.headline); Spacer(); Image(systemName: symbol).font(.headline) }
                 .foregroundStyle(.white).padding(.horizontal, 22).frame(minHeight: 56)
                 .background(MC.red, in: RoundedRectangle(cornerRadius: 18))
-        }.buttonStyle(.plain)
+        }.buttonStyle(PressFeedbackStyle())
     }
 }
 
@@ -35,5 +35,16 @@ struct CategoryMark: View {
         Image(systemName: symbol).font(.system(size: 18, weight: .regular))
             .frame(width: 42, height: 42).background(MC.surface, in: RoundedRectangle(cornerRadius: 13))
             .overlay(RoundedRectangle(cornerRadius: 13).stroke(MC.line, lineWidth: 0.5)).accessibilityHidden(true)
+    }
+}
+
+/// Brief, interruptible touch feedback; accessibility preferences remove scaling.
+struct PressFeedbackStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(reduceMotion ? .easeOut(duration: 0.1) : .snappy(duration: 0.2), value: configuration.isPressed)
     }
 }

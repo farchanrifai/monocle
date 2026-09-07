@@ -1,6 +1,6 @@
-# monocle — prototype 01
+# monocle — prototype 0.1.1, build 3
 
-Updated: 2026-09-07
+Updated: 2026-09-08
 
 ## What you can try
 
@@ -8,7 +8,9 @@ Updated: 2026-09-07
 - Add Expense with a custom keypad and one shared draft across keypad/text modes.
 - Type `Coffee 28k`: amount and category update as you type. Review and Record.
 - Edit an entry by tapping it; touch and hold to repeat or delete. Undo restores the last deleted entry.
-- Close the app with an unfinished draft, then reopen and continue.
+- Interrupt the app with an unfinished draft, then reopen and continue. Explicit Close or swipe-down asks Discard/Keep editing; discarding frees entry for another transaction.
+- Browse a compact horizontal category row, or open All categories for a searchable native sheet.
+- Home uses a small native Settings control and floating bottom controls with the list visible behind them. The keypad adapts to available height; press/amount animations and haptics provide brief feedback.
 - Explore a sample budget and start-day preview.
 - Choose automatic or pending recording for the sample bill, with an independent reminder preference.
 
@@ -35,13 +37,23 @@ The simulator build and Release arm64 iPhone build succeeded. The device package
 
 Six domain/storage tests pass: exact parsing/rejections, ambiguous text categories, split/date validation, month-end and leap-year boundaries, disk-store reopen/upsert/invalid-save preservation, and draft encoding.
 
-Three capture UI tests pass: keypad draft recovery across relaunch, automatic text interpretation with mode switching, and validation error feedback without losing the draft. Results: `build/PrototypeTests-2.xcresult`.
+Six additional foundation tests cover shared text commands, identity-preserving retries, failed writes/discard/settings, post-commit publication without a second read, old JSON encoding, and corrupt-file preservation. All 20 tests pass (12 unit/storage and 8 UI). Result: `build/FoundationTests-20260908.xcresult`.
 
-The fourth UI test passes: budget/bill navigation and saved reminder choice across relaunch. Results: `build/SettingsTests-2.xcresult`. Ten tests passed across the two final runs. The first settings run tapped the row instead of the switch; the corrected test targets the switch and asserts its changed value before saving.
+The previous 0.1.1 UI pass validated eight flows on the iPhone 15 Pro simulator: interruption recovery, text interpretation/mode switching, invalid save, budget/bill preferences, keypad layout with 18 categories, Close/Keep editing/Discard, swipe discard, and replacing a recovered draft to edit another transaction. Results: `build/Final011Tests.xcresult`. The larger-text keypad/category test also passed in `build/LargeType011Tests.xcresult`. The final Home accessibility label fix compiles and is covered by the current normal-size suite; a further large-type visual check remains.
 
-The dark-mode Recents, keypad, budget, and bill-settings screens were visually inspected. Light appearance, large accessibility sizes, VoiceOver, Reduce Motion, and real-device haptics remain to be checked. Simulator checks do not establish phone signing, refresh, or update preservation.
+The user reports working functions and snappy navigation on their SideStore-installed iPhone 15 Pro. Real-device haptic feel, signed Shortcut behaviour, refresh, and update preservation still require phone checks. VoiceOver and Reduce Motion have not received a complete manual audit.
 
-## Screens
+The foundation now separates dependency assembly, shared expense commands, Core Data, atomic local files, and presentation state. The compiled bundle identity, database model, storage folder, and draft/settings encoding remain unchanged. See [architecture](../planning/architecture.md) for implemented boundaries and remaining work.
+
+## Current screens (0.1.1)
+
+![Recents](screenshots/recents-011-light.png)
+
+![Add Expense](screenshots/entry-011-light.png)
+
+![All categories](screenshots/categories-011-light.png)
+
+## Earlier visual baseline (0.1.0)
 
 ![Recents](screenshots/recents-dark.png)
 
@@ -53,9 +65,9 @@ The dark-mode Recents, keypad, budget, and bill-settings screens were visually i
 
 ## Device package
 
-Local deliverable: `build/deliverables/monocle-prototype-0.1.0.ipa` (excluded from Git). Release build 1, arm64, iPhone only, minimum iOS 26.0. Package integrity, device family, bundle identity, and App Intent metadata verified. Final device build completed without compiler warnings.
+Local deliverable: `build/deliverables/monocle-prototype-0.1.1-build-3.ipa` (excluded from Git). Release build 3, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build 1 and build 2 artifacts are preserved.
 
-SHA-256: `d1ad7e6573521fea8acb237eaf0f95fd4810a6914dea1be23ea469f6a51dad5f`.
+SHA-256: `1e8e35240a439791d9b2b424ff3f7781c1134db0e89c1e36f78a762cb2173f7f`.
 
 ## iPhone / SideStore checkpoint
 
@@ -65,7 +77,7 @@ SHA-256: `d1ad7e6573521fea8acb237eaf0f95fd4810a6914dea1be23ea469f6a51dad5f`.
 4. Refresh the installation through SideStore and verify records and the draft remain.
 5. On the next build, install over this one without uninstalling and compare the same records and Shortcut behaviour.
 
-The iPhone 15 Pro was visible as paired during development, but this task has not installed or verified a signed build on it. Credentials and provisioning profiles are not part of the repository.
+The user confirmed the original installation works on iPhone 15 Pro. The updated build has not yet been verified on that phone. Install over the existing app using the same SideStore setup; do not uninstall to update. Credentials and provisioning profiles are not part of the repository.
 
 ## Next implementation checkpoint
 

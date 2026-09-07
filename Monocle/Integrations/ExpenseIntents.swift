@@ -11,13 +11,9 @@ struct AddExpenseFromTextIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let model = AppModel.shared
-        guard model.startupError == nil else { throw EntryError.corruptStore }
-        let parsed = try ExpenseParser.parse(text, categories: model.categories)
-        guard let categoryID = parsed.categoryID else { throw EntryError.missingCategory }
-        let expense = Expense(amount: parsed.amount, day: Day.string(.now), note: parsed.note, allocations: [.init(categoryID: categoryID, amount: parsed.amount)], source: "shortcut")
-        try model.save(expense)
-        return .result(dialog: "Recorded \(Money.format(parsed.amount)) in your sample book.")
+        guard let service = AppEnvironment.shared.expenses else { throw EntryError.corruptStore }
+        let expense = try service.record(text: text)
+        return .result(dialog: "Recorded \(Money.format(expense.amount)) in your sample book.")
     }
 }
 

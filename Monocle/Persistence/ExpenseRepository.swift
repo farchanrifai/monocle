@@ -2,7 +2,7 @@ import CoreData
 import Foundation
 
 @MainActor
-final class ExpenseRepository {
+final class ExpenseRepository: ExpenseStore {
     static let bookID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
     let container: NSPersistentContainer
     private var context: NSManagedObjectContext { container.viewContext }
@@ -17,13 +17,13 @@ final class ExpenseRepository {
         context.mergePolicy = NSMergePolicy(merge: .errorMergePolicyType)
     }
 
-    func prepareSampleBook() throws {
+    func prepareSampleBook(categories: [ExpenseCategory] = ExpenseCategory.defaults) throws {
         guard try objects("Book").isEmpty else { return }
         do {
             let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
             book.setValue(Self.bookID, forKey: "id")
             book.setValue("Sample book", forKey: "name")
-            for category in ExpenseCategory.defaults {
+            for category in categories {
                 let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
                 row.setValue(category.id, forKey: "id"); row.setValue(category.name, forKey: "name")
                 row.setValue(category.symbol, forKey: "symbol"); row.setValue(book, forKey: "book")

@@ -26,6 +26,8 @@ Text flow: + → Type an expense → `Coffee 28k` → editable amount/category/n
 - Amount and category are required. Note is optional, with suggestions. Date defaults to today and is editable.
 - Switching modes preserves entered values; a parsed preview does not silently overwrite subsequent manual corrections.
 - Preserve unfinished drafts after interruption. Record succeeds only after persistence succeeds.
+- Deliberately closing or swiping away a changed entry asks **Discard** or **Keep editing**. Discard clears the draft; cancelling preserves it. Unmodified edits close immediately. An interrupted draft must offer a discard-and-continue path when opening another transaction.
+- Categories occupy one horizontally scrolling row. An All categories control opens a searchable, scrolling sheet, keeping the keypad reachable as the category collection grows.
 - Show errors with the draft intact. Guard repeated taps against duplicate saves.
 - Record immediately; confirmation animation and haptics follow the successful save.
 - A split transaction has multiple category allocations whose sum exactly equals its total. Ordinary entry uses one allocation. Splitting stays in an advanced path.

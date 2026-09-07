@@ -60,6 +60,9 @@ final class MonocleTests: XCTestCase {
             var invalid = expense; invalid.amount += 100
             XCTAssertThrowsError(try store.save(invalid))
             XCTAssertEqual(try store.expenses().first?.note, "Morning coffee")
+            for persistentStore in store.container.persistentStoreCoordinator.persistentStores {
+                try store.container.persistentStoreCoordinator.remove(persistentStore)
+            }
         }
         let reopened = try ExpenseRepository(url: url)
         XCTAssertEqual(try reopened.expenses(), [expense])
@@ -67,6 +70,9 @@ final class MonocleTests: XCTestCase {
         XCTAssertTrue(try reopened.expenses().isEmpty)
         try reopened.prepareSampleBook()
         XCTAssertTrue(try reopened.expenses().isEmpty, "An empty book must not trigger reseeding")
+        for persistentStore in reopened.container.persistentStoreCoordinator.persistentStores {
+            try reopened.container.persistentStoreCoordinator.remove(persistentStore)
+        }
     }
     func testDraftSurvivesCodingWithInputModeAndIdentity() throws {
         var draft = ExpenseDraft()

@@ -2,21 +2,13 @@ import SwiftUI
 
 struct RecentsView: View {
     @Bindable var model: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var days: [String] { Array(Set(model.expenses.map(\.day))).sorted(by: >) }
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    HStack(alignment: .center) {
-                        HStack(spacing: 5) {
-                            Text("monocle").font(.system(size: 32, weight: .semibold, design: .rounded)).tracking(-1.5)
-                            Circle().fill(MC.red).frame(width: 6, height: 6).padding(.top, 12)
-                        }
-                        Spacer()
-                        Button { model.showSettings = true } label: {
-                            Image(systemName: "slider.horizontal.3").font(.system(size: 18)).frame(width: 44, height: 44)
-                        }.buttonStyle(.glass).tint(.primary).accessibilityLabel("Settings")
-                    }
                     VStack(alignment: .leading, spacing: 8) {
                         Eyebrow(text: "Personal / sample book")
                         Text("A little more\nclarity, every day.").font(.system(.largeTitle, design: .default, weight: .medium)).tracking(-1.2).fixedSize(horizontal: false, vertical: true)
@@ -56,8 +48,21 @@ struct RecentsView: View {
                 }.padding(.horizontal, 24).padding(.top, 12)
             }
             .background(MC.paper)
-            .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text("monocle").font(.system(size: 28, weight: .semibold, design: .rounded)).tracking(-1.2)
+                        Text(".").font(.system(size: 30, weight: .bold)).foregroundStyle(MC.red)
+                    }.fixedSize(horizontal: true, vertical: false).accessibilityElement(children: .combine)
+                }.sharedBackgroundVisibility(.hidden)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Settings", systemImage: "slider.horizontal.3") { model.showSettings = true }
+                        .labelStyle(.iconOnly).accessibilityIdentifier("homeSettings")
+                }
+            }
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
+            .safeAreaBar(edge: .bottom) {
                 VStack(spacing: 10) {
                     if let toast = model.toast {
                         HStack {
@@ -67,18 +72,29 @@ struct RecentsView: View {
                             if model.undoExpense != nil { Button("Undo") { model.undoDelete() }.font(.subheadline.bold()) }
                             Button { model.toast = nil; model.undoExpense = nil } label: { Image(systemName: "xmark").frame(width: 32, height: 32) }.accessibilityLabel("Dismiss confirmation")
                         }.padding(.horizontal, 14).padding(.vertical, 6).glassEffect(in: .rect(cornerRadius: 16))
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     Button { model.openEntry() } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "plus").font(.title3.weight(.medium))
                             Text(model.draft.hasContent ? "Continue expense" : "Add expense").font(.headline)
+                                .fixedSize(horizontal: false, vertical: true)
                             Spacer()
-                            Text("IDR").font(.caption.monospaced()).opacity(0.5)
-                        }.foregroundStyle(.white).padding(.horizontal, 22).frame(height: 58)
+                            if !dynamicTypeSize.isAccessibilitySize {
+                                Text("IDR").font(.caption.monospaced()).opacity(0.5)
+                            }
+                        }.foregroundStyle(.white).padding(.horizontal, 22).frame(minHeight: 58)
                             .background(MC.ink, in: Capsule())
-                    }.buttonStyle(.plain).accessibilityIdentifier("addExpense")
+                    }.buttonStyle(PressFeedbackStyle()).accessibilityIdentifier("addExpense")
                 }.padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 8)
-                    .background(.regularMaterial)
+
+            }
+            .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.toast)
+            .task(id: model.toastID) {
+                guard model.toast != nil, model.undoExpense == nil else { return }
+                do { try await Task.sleep(for: .seconds(2.8)) } catch { return }
+                guard !Task.isCancelled else { return }
+                model.toast = nil
             }
         }
     }

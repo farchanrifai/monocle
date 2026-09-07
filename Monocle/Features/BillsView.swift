@@ -83,11 +83,11 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: "Sample book")
                     LabeledContent("Currency", value: "IDR")
-                    LabeledContent("Version", value: "0.1 · Prototype")
+                    LabeledContent("Version", value: "0.1.1 · Prototype")
                 }
                 Section("Try the flow") {
                     Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")
-                    Text("Your sample entries and unfinished draft stay on this device between launches.")
+                    Text("Your sample entries stay on this device. Interruptions preserve your draft; leaving a changed entry asks before discarding it.")
                 }
                 Section("Before daily use") {
                     Text("This is an interaction prototype. Full backup/restore, app lock, imports, scheduled bills, and phone update checks are still pending. Use sample purchases here.")

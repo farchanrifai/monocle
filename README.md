@@ -2,7 +2,7 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current stage: native interaction prototype (0.1.0).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
+**Current stage: native interaction prototype (0.1.1, build 3).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)
@@ -26,7 +26,7 @@ The IPA script builds an **unsigned arm64 device app**, packaged for SideStore t
 
 ## Repository
 
-Local branch: `main`. The planning baseline is committed separately from implementation. No remote repository is configured.
+Local branch: `main`. The planning baseline is committed separately from implementation. Remote repository: https://github.com/farchanrifai/monocle.
 
 ## Development continuity
 

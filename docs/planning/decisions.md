@@ -20,6 +20,18 @@ Updated: 2026-09-07
 
 All other confirmed v1 requirements and design direction in the handoff remain in scope.
 
+## Phone review refinements — 2026-09-07
+
+The user installed prototype 0.1.0 through SideStore on iPhone 15 Pro and reported working functions and snappy navigation. Their review sets these refinements for 0.1.1:
+
+- Home's list should remain visible beneath floating bottom controls; Settings should match the small native Budget toolbar control.
+- Entry must adapt to available height and keep all four keypad rows above Record.
+- Categories should consume little vertical space with more than eight items. Chosen design: a horizontal shortcut row plus a searchable native sheet, inspired by the progressive disclosure and soft edges the user likes in Messages.
+- Intentional closing asks to discard unsaved input. Interruption recovery remains, with a clear way to discard a recovered draft and edit another transaction.
+- Brief press/amount animations and selection/success haptics should support the existing responsiveness. Honour Reduce Motion.
+
+These refine prototype interaction; they do not change the agreed storage or sync architecture.
+
 ## Technical direction recommended for these requirements
 
 - Swift + SwiftUI, with focused UIKit adapters if needed.

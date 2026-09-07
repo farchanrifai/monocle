@@ -1,4 +1,5 @@
 .DS_Store
+HANDOFF.md
 .build/
 build/
 DerivedData/

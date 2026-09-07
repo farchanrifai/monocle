@@ -22,7 +22,14 @@ struct RootView: View {
                     Tab("Bills", systemImage: "calendar", value: 2) { BillsView(model: model) }
                 }
                 .tint(MC.red)
-                .sheet(isPresented: $model.showEntry) { EntryView(model: model) }
+                .sheet(isPresented: $model.showEntry, onDismiss: {
+                    if !model.draftNeedsConfirmation { model.discardDraft() }
+                }) { EntryView(model: model) }
+                .sensoryFeedback(.success, trigger: model.saveFeedback)
+                .alert("Discard the unfinished expense?", isPresented: Binding(get: { model.pendingEntry != nil }, set: { if !$0 { model.pendingEntry = nil } })) {
+                    Button("Discard and continue", role: .destructive) { model.discardAndOpenPendingEntry() }
+                    Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
+                } message: { Text("You have an unfinished expense from an interruption. Discard it to open this transaction.") }
                 .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
                 .alert("Check this", isPresented: Binding(get: { model.error != nil && !model.showEntry }, set: { if !$0 { model.error = nil } })) {
                     Button("OK") { model.error = nil }

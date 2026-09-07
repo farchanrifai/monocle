@@ -1,6 +1,6 @@
 # monocle — architecture direction
 
-Updated: 2026-09-07. Design proposal; no implementation has been tested yet.
+Updated: 2026-09-08. Local foundation implemented; future capabilities are identified below.
 
 ## Structure
 
@@ -9,6 +9,35 @@ Use SwiftUI for the iPhone interface. Keep screen state and presentation logic w
 Intended source organisation: App, Features (Recents, Entry, Budgets, Bills, Settings), Domain, Persistence, Integrations, and DesignSystem. Future Mac UI can reuse the domain and data code without reusing the iPhone navigation.
 
 Both views and App Intents call the same expense commands. Confine managed objects to their Core Data contexts; pass stable IDs and value snapshots across boundaries. Serialize writes requiring validation and idempotency; explicit save failures propagate to the caller. Do not report success on an uncommitted in-memory change.
+
+## Implemented dependency boundaries
+
+```mermaid
+flowchart TD
+    Environment[AppEnvironment: composition and startup] --> Model[AppModel: presentation and draft interaction]
+    Environment --> Service[ExpenseService: shared commands and snapshots]
+    Environment --> State[FileLocalStateStore: atomic draft/settings files]
+    Model --> Service
+    Model --> State
+    Intent[App Intents] --> Service
+    Service --> Store[ExpenseStore protocol]
+    Store --> CoreData[ExpenseRepository: local Core Data]
+```
+
+- `AppEnvironment` is the single production composition root. It selects the existing storage directory, loads local files, opens the repository, seeds the sample book when needed, and constructs dependencies. Startup failure produces a blocked screen without overwriting malformed draft/settings files.
+- `ExpenseService` owns observable value snapshots and save/delete/text commands. Both UI and background text intents use this same instance. It publishes only after a successful store write, without a second fallible fetch after commit. Reload publishes a complete snapshot or leaves the previous snapshot intact.
+- `ExpenseStore` is an injectable value-only persistence boundary. `ExpenseRepository` confines managed objects to its main-actor context, validates writes, and rolls back failed changes. Main-actor commands have no suspension points; this provides local serialization, not cross-process/cloud coordination.
+- `FileLocalStateStore` retains the original JSON filenames and encoding. Missing files use defaults; malformed files throw. `LocalStateStore` permits write-failure tests independently of Core Data.
+- `AppModel` owns navigation, the editable draft, settings presentation, and user feedback. It no longer opens databases, selects filesystem paths, seeds records, or encodes files. It is explicitly constructible with test dependencies.
+- `SampleBookSeeder` is isolated from normal expense commands. Stable IDs preserve already-created sample records if first-run setup was interrupted. The existing marker prevents reseeding an emptied sample book.
+
+Keep this as one target for now. A future Mac target can share the Application, Domain, and Persistence sources; it will supply its own navigation. Extract a package only when an actual second consumer makes that useful.
+
+## Remaining foundation work
+
+Backup/restore is the next feature, including a versioned portable format, candidate validation, safety backup, recoverable replacement, and old-store fixtures. It must cover all current durable state before real-data use. App lock, category/split editing, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget/bill persistence and sync are later milestones.
+
+The current repository still exposes one fixed sample book. The conceptual multi-book model below is a future design, not implemented multi-book or CloudKit support. Small local saves currently run on the main actor; imports and backup operations will need bounded work/background contexts as their implementation requires. Do not infer finished performance, app locking, or backup safety from this refactor.
 
 ## Storage and CloudKit path
 

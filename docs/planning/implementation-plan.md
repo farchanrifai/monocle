@@ -1,12 +1,12 @@
 # monocle — implementation plan
 
-Updated: 2026-09-07
+Updated: 2026-09-08
 
 ## 0. Planning baseline — completed
 
 Product scope, capture direction, privacy choice, budgets, bill modes, future shared books, and iCloud acceptance recorded. Xcode 26.6 is available. The planning baseline is committed in local Git.
 
-## 1. Native interaction and delivery proof — prototype built; phone checks pending
+## 1. Native interaction and delivery proof — prototype built and phone UX reviewed; integration checks pending
 
 Build a SwiftUI prototype with sample data: Recents, compact summary, one Add Expense screen with keypad/text modes, category selection, optional note, Record feedback, and draft-preserving mode changes. Include budget-cycle and configurable-bill screens for review. Refine visual direction, one-handed reach, keyboard behaviour, animation, and haptics on the phone.
 
@@ -16,11 +16,13 @@ SideStore documents app refresh and installing updates over an existing app. Tre
 
 Exit evidence: reviewable native flow, user feedback on phone, documented installation route, and a working minimal Shortcut in the installed build. User device interaction may be required; no credentials belong in project files.
 
-Current evidence: native screens and local persistence implemented; capture tests and domain/storage tests pass; simulator and arm64 device builds succeed. See [prototype status](../prototype/README.md) for precise capabilities and pending checks. SideStore-signed installation and user UX review are still required.
+Current evidence: native screens and local persistence implemented; capture tests and domain/storage tests pass; simulator and arm64 device builds succeed. See [prototype status](../prototype/README.md) for precise capabilities and pending checks. The user reports successful SideStore installation and responsive UI on iPhone 15 Pro; their requested layout and discard refinements are implemented. Signed Shortcut behaviour, refresh, and update preservation still require phone verification.
 
-## 2. Reliable capture and recovery — groundwork started
+## 2. Reliable capture and recovery — dependency boundaries implemented
 
 Implement the versioned local store and shared expense command; manual/text capture; categories and splits; draft recovery; edit, repeat, delete/Undo; complete manual backup and restoration; app-lock options; full Add Expense and Add Expense from Text Shortcuts. Preserve one store identity across builds. Clearly label remaining incomplete features.
+
+Foundation checkpoint: production dependency assembly, a shared injectable expense service for UI/Shortcuts, a value-only repository boundary, atomic draft/settings storage, and isolated sample seeding are implemented. Next: full backup/restore and old-store fixtures, then app locking and the remaining capture features.
 
 Daily-use readiness is a separate checkpoint, not a promise that the entire v1 is finished. Before inviting real entries:
 
