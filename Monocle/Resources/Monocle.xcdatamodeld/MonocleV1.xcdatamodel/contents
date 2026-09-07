@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24000" systemVersion="26" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="1">
+    <entity name="Book" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ExpenseRecord" inverseName="book" inverseEntity="ExpenseRecord"/>
+        <relationship name="categories" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="CategoryRecord" inverseName="book" inverseEntity="CategoryRecord"/>
+    </entity>
+    <entity name="CategoryRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="symbol" optional="YES" attributeType="String"/>
+        <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="categories" inverseEntity="Book"/>
+        <relationship name="allocations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AllocationRecord" inverseName="category" inverseEntity="AllocationRecord"/>
+    </entity>
+    <entity name="ExpenseRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="amount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="day" optional="YES" attributeType="String"/>
+        <attribute name="note" optional="YES" attributeType="String"/>
+        <attribute name="source" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="expenses" inverseEntity="Book"/>
+        <relationship name="allocations" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="AllocationRecord" inverseName="expense" inverseEntity="AllocationRecord"/>
+    </entity>
+    <entity name="AllocationRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="amount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="expense" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ExpenseRecord" inverseName="allocations" inverseEntity="ExpenseRecord"/>
+        <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CategoryRecord" inverseName="allocations" inverseEntity="CategoryRecord"/>
+    </entity>
+</model>

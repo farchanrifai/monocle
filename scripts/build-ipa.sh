@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+project_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$project_root"
+mkdir -p build/device build/packages
+xcodebuild build -project Monocle.xcodeproj -scheme Monocle -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO
+package_stage="$(mktemp -d "$project_root/build/packages/stage.XXXXXX")"
+mkdir -p "$package_stage/Payload"
+ditto build/device/Build/Products/Release-iphoneos/Monocle.app "$package_stage/Payload/Monocle.app"
+# An unsigned device build for SideStore to re-sign, not an App Store export.
+version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$package_stage/Payload/Monocle.app/Info.plist")
+build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$package_stage/Payload/Monocle.app/Info.plist")
+output_path="$project_root/build/packages/monocle-$version-build-$build_number-unsigned.ipa"
+if [ -e "$output_path" ]; then
+  output_path="$project_root/build/packages/monocle-$version-build-$build_number-unsigned-$(date +%Y%m%d-%H%M%S).ipa"
+fi
+(cd "$package_stage" && /usr/bin/zip -qr "$output_path" Payload)
+/usr/bin/unzip -t "$output_path"
+printf 'Unsigned IPA: %s\n' "$output_path"

@@ -1,0 +1,634 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		017729CBC6933B915C34CB21 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6486A991712AB436BBFA6A1D /* EntryView.swift */; };
+		1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
+		2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
+		2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 259DC603F39D197686C31B1F /* MonocleTests.swift */; };
+		3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */; };
+		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
+		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
+		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
+		B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82F954B55004100EBACB8D /* AppModel.swift */; };
+		B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D433FF1198DE03E544B102E2 /* BudgetsView.swift */; };
+		B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8205E545FE1B914526921654 /* RecentsView.swift */; };
+		BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */; };
+		C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */; };
+		ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAB59F8D69B863E198985F9 /* BillsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0976FD8FC2FAB92A3E17B806 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0D9692AB4DCFB86AA099BB4B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73AFF616301102E5C5194738;
+			remoteInfo = Monocle;
+		};
+		CC7030469A4307AFFB77414B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0D9692AB4DCFB86AA099BB4B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73AFF616301102E5C5194738;
+			remoteInfo = Monocle;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		259DC603F39D197686C31B1F /* MonocleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleTests.swift; sourceTree = "<group>"; };
+		5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleUITests.swift; sourceTree = "<group>"; };
+		5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV1.xcdatamodel; sourceTree = "<group>"; };
+		6486A991712AB436BBFA6A1D /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
+		65AF43141767E4C3DFD4DBFA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleStyle.swift; sourceTree = "<group>"; };
+		6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseIntents.swift; sourceTree = "<group>"; };
+		8205E545FE1B914526921654 /* RecentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentsView.swift; sourceTree = "<group>"; };
+		849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		87F9018A4325E0300B4CA9C9 /* Monocle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Monocle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleApp.swift; sourceTree = "<group>"; };
+		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
+		BFAB59F8D69B863E198985F9 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
+		D433FF1198DE03E544B102E2 /* BudgetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetsView.swift; sourceTree = "<group>"; };
+		E88A8115A260295093DD9EEA /* MonocleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EC82F954B55004100EBACB8D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseRepository.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		25F581C22AB6C648F383ACB3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				65AF43141767E4C3DFD4DBFA /* Assets.xcassets */,
+				4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		266C43C1059C729360C3ED11 /* Monocle */ = {
+			isa = PBXGroup;
+			children = (
+				974FBCAF323D188C6BB32F94 /* App */,
+				9A0FE0041936D0DFD140C54E /* DesignSystem */,
+				A07D2AE17C967AD64F16123F /* Domain */,
+				BB1F88F75E574DCC0D17D7AE /* Features */,
+				408D30AC2E99AD73FEC1E498 /* Integrations */,
+				3B0E9DB67034274B29F020A5 /* Persistence */,
+				25F581C22AB6C648F383ACB3 /* Resources */,
+			);
+			path = Monocle;
+			sourceTree = "<group>";
+		};
+		3B0E9DB67034274B29F020A5 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		408D30AC2E99AD73FEC1E498 /* Integrations */ = {
+			isa = PBXGroup;
+			children = (
+				6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */,
+			);
+			path = Integrations;
+			sourceTree = "<group>";
+		};
+		42951FFE1DA9092E2EE365A9 = {
+			isa = PBXGroup;
+			children = (
+				266C43C1059C729360C3ED11 /* Monocle */,
+				C1CEA2A82A47AEC4152289B5 /* MonocleTests */,
+				569BAF5F10043B68C9864B54 /* MonocleUITests */,
+				83CFA0EAA244EBAC26DD0857 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		569BAF5F10043B68C9864B54 /* MonocleUITests */ = {
+			isa = PBXGroup;
+			children = (
+				5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */,
+			);
+			path = MonocleUITests;
+			sourceTree = "<group>";
+		};
+		83CFA0EAA244EBAC26DD0857 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				87F9018A4325E0300B4CA9C9 /* Monocle.app */,
+				849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */,
+				E88A8115A260295093DD9EEA /* MonocleUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		974FBCAF323D188C6BB32F94 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				EC82F954B55004100EBACB8D /* AppModel.swift */,
+				9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		9A0FE0041936D0DFD140C54E /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		A07D2AE17C967AD64F16123F /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				AB0C913F4994169E78CFEEF8 /* Expense.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		BB1F88F75E574DCC0D17D7AE /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				BFAB59F8D69B863E198985F9 /* BillsView.swift */,
+				D433FF1198DE03E544B102E2 /* BudgetsView.swift */,
+				6486A991712AB436BBFA6A1D /* EntryView.swift */,
+				8205E545FE1B914526921654 /* RecentsView.swift */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		C1CEA2A82A47AEC4152289B5 /* MonocleTests */ = {
+			isa = PBXGroup;
+			children = (
+				259DC603F39D197686C31B1F /* MonocleTests.swift */,
+			);
+			path = MonocleTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2F7879A1881F652AEF3A2788 /* MonocleUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8C1DD314A5C231B075B9A7E2 /* Build configuration list for PBXNativeTarget "MonocleUITests" */;
+			buildPhases = (
+				46B63D8F5183074545523652 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A0307E6118319250A26002D0 /* PBXTargetDependency */,
+			);
+			name = MonocleUITests;
+			packageProductDependencies = (
+			);
+			productName = MonocleUITests;
+			productReference = E88A8115A260295093DD9EEA /* MonocleUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		73AFF616301102E5C5194738 /* Monocle */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8CC6C624EFFF82674647A938 /* Build configuration list for PBXNativeTarget "Monocle" */;
+			buildPhases = (
+				48095B103BEF19159A412F56 /* Sources */,
+				B30BE6783942427EF800B2EE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Monocle;
+			packageProductDependencies = (
+			);
+			productName = Monocle;
+			productReference = 87F9018A4325E0300B4CA9C9 /* Monocle.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7D7BE9ACD99661B8014A0105 /* MonocleTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8ED522A4E7C3442BEFC572A /* Build configuration list for PBXNativeTarget "MonocleTests" */;
+			buildPhases = (
+				1F7A2907A2A7827400B372DC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				006DC2070910287147DD6E2C /* PBXTargetDependency */,
+			);
+			name = MonocleTests;
+			packageProductDependencies = (
+			);
+			productName = MonocleTests;
+			productReference = 849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0D9692AB4DCFB86AA099BB4B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2F7879A1881F652AEF3A2788 = {
+						DevelopmentTeam = "";
+						TestTargetID = 73AFF616301102E5C5194738;
+					};
+					73AFF616301102E5C5194738 = {
+						DevelopmentTeam = "";
+					};
+					7D7BE9ACD99661B8014A0105 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = 4C6F7A9ACAB492A276F730BF /* Build configuration list for PBXProject "Monocle" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 42951FFE1DA9092E2EE365A9;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 83CFA0EAA244EBAC26DD0857 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				73AFF616301102E5C5194738 /* Monocle */,
+				7D7BE9ACD99661B8014A0105 /* MonocleTests */,
+				2F7879A1881F652AEF3A2788 /* MonocleUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B30BE6783942427EF800B2EE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				916F656B6332220A662DDD1E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1F7A2907A2A7827400B372DC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		46B63D8F5183074545523652 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		48095B103BEF19159A412F56 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */,
+				ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */,
+				B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */,
+				017729CBC6933B915C34CB21 /* EntryView.swift in Sources */,
+				2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */,
+				1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */,
+				BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */,
+				66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */,
+				3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */,
+				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
+				B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		006DC2070910287147DD6E2C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73AFF616301102E5C5194738 /* Monocle */;
+			targetProxy = 0976FD8FC2FAB92A3E17B806 /* PBXContainerItemProxy */;
+		};
+		A0307E6118319250A26002D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73AFF616301102E5C5194738 /* Monocle */;
+			targetProxy = CC7030469A4307AFFB77414B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		272C14201A8D9774BD7565DF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.MonocleUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Monocle;
+			};
+			name = Debug;
+		};
+		4B9FD8E44AB0C519457FFC1C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		5D38E441F09FBBB9DE357D67 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.MonocleTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Monocle.app/Monocle";
+			};
+			name = Release;
+		};
+		954271724905E3A26A3B4421 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = monocle;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your spending records.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.monocle;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		9E95C6B507143E2D1C327372 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		AD9DD3F94FEAED8E6E424CD6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.MonocleTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Monocle.app/Monocle";
+			};
+			name = Debug;
+		};
+		EF1C140E89F6FC5145B83C92 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.MonocleUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Monocle;
+			};
+			name = Release;
+		};
+		F926E5A2DF23E436E38822CC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = monocle;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your spending records.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.monocle;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4C6F7A9ACAB492A276F730BF /* Build configuration list for PBXProject "Monocle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B9FD8E44AB0C519457FFC1C /* Debug */,
+				9E95C6B507143E2D1C327372 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8C1DD314A5C231B075B9A7E2 /* Build configuration list for PBXNativeTarget "MonocleUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				272C14201A8D9774BD7565DF /* Debug */,
+				EF1C140E89F6FC5145B83C92 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8CC6C624EFFF82674647A938 /* Build configuration list for PBXNativeTarget "Monocle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F926E5A2DF23E436E38822CC /* Debug */,
+				954271724905E3A26A3B4421 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D8ED522A4E7C3442BEFC572A /* Build configuration list for PBXNativeTarget "MonocleTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD9DD3F94FEAED8E6E424CD6 /* Debug */,
+				5D38E441F09FBBB9DE357D67 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */,
+			);
+			currentVersion = 5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */;
+			path = Monocle.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
+	};
+	rootObject = 0D9692AB4DCFB86AA099BB4B /* Project object */;
+}

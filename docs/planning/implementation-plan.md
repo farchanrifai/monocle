@@ -4,9 +4,9 @@ Updated: 2026-09-07
 
 ## 0. Planning baseline — completed
 
-Product scope, capture direction, privacy choice, budgets, bill modes, future shared books, and iCloud acceptance recorded. Xcode 26.6 is available. No Swift app or prototype has been created.
+Product scope, capture direction, privacy choice, budgets, bill modes, future shared books, and iCloud acceptance recorded. Xcode 26.6 is available. The planning baseline is committed in local Git.
 
-## 1. Native interaction and delivery proof — next
+## 1. Native interaction and delivery proof — prototype built; phone checks pending
 
 Build a SwiftUI prototype with sample data: Recents, compact summary, one Add Expense screen with keypad/text modes, category selection, optional note, Record feedback, and draft-preserving mode changes. Include budget-cycle and configurable-bill screens for review. Refine visual direction, one-handed reach, keyboard behaviour, animation, and haptics on the phone.
 
@@ -16,7 +16,9 @@ SideStore documents app refresh and installing updates over an existing app. Tre
 
 Exit evidence: reviewable native flow, user feedback on phone, documented installation route, and a working minimal Shortcut in the installed build. User device interaction may be required; no credentials belong in project files.
 
-## 2. Reliable capture and recovery
+Current evidence: native screens and local persistence implemented; capture tests and domain/storage tests pass; simulator and arm64 device builds succeed. See [prototype status](../prototype/README.md) for precise capabilities and pending checks. SideStore-signed installation and user UX review are still required.
+
+## 2. Reliable capture and recovery — groundwork started
 
 Implement the versioned local store and shared expense command; manual/text capture; categories and splits; draft recovery; edit, repeat, delete/Undo; complete manual backup and restoration; app-lock options; full Add Expense and Add Expense from Text Shortcuts. Preserve one store identity across builds. Clearly label remaining incomplete features.
 

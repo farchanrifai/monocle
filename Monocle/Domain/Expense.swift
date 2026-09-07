@@ -1,0 +1,189 @@
+import Foundation
+
+struct ExpenseCategory: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    var name: String
+    var symbol: String
+
+    static let defaults: [Self] = [
+        .init(id: UUID(uuidString: "10000000-0000-0000-0000-000000000001")!, name: "Food & Drink", symbol: "cup.and.saucer"),
+        .init(id: UUID(uuidString: "10000000-0000-0000-0000-000000000002")!, name: "Transport", symbol: "tram"),
+        .init(id: UUID(uuidString: "10000000-0000-0000-0000-000000000003")!, name: "Shopping", symbol: "bag"),
+        .init(id: UUID(uuidString: "10000000-0000-0000-0000-000000000004")!, name: "Home", symbol: "house"),
+        .init(id: UUID(uuidString: "10000000-0000-0000-0000-000000000005")!, name: "Wellbeing", symbol: "heart"),
+        .init(id: UUID(uuidString: "10000000-0000-0000-0000-000000000006")!, name: "Leisure", symbol: "sparkles")
+    ]
+}
+
+struct Allocation: Codable, Equatable, Sendable {
+    var categoryID: UUID
+    var amount: Int64
+}
+
+struct Expense: Identifiable, Codable, Equatable, Sendable {
+    var id: UUID = UUID()
+    var amount: Int64 // IDR minor units: Rp1 = 100 units.
+    var day: String
+    var note: String
+    var allocations: [Allocation]
+    var source: String = "manual"
+    var createdAt: Date = .now
+
+    func validate(categories: [ExpenseCategory]) throws {
+        guard amount > 0, amount <= Money.maximum else { throw EntryError.invalidAmount }
+        guard Day.date(day) != nil else { throw EntryError.invalidDate }
+        guard !allocations.isEmpty else { throw EntryError.missingCategory }
+        var sum: Int64 = 0
+        for allocation in allocations {
+            guard categories.contains(where: { $0.id == allocation.categoryID }), allocation.amount > 0 else {
+                throw EntryError.missingCategory
+            }
+            let addition = sum.addingReportingOverflow(allocation.amount)
+            guard !addition.overflow else { throw EntryError.invalidAmount }
+            sum = addition.partialValue
+        }
+        guard sum == amount else { throw EntryError.splitMismatch }
+    }
+}
+
+enum EntryError: LocalizedError {
+    case invalidAmount, missingCategory, invalidDate, splitMismatch, ambiguousAmount, corruptStore
+    var errorDescription: String? {
+        switch self {
+        case .invalidAmount: "Enter an amount greater than zero, in whole rupiah."
+        case .missingCategory: "Choose a category before recording."
+        case .invalidDate: "Choose a valid expense date."
+        case .splitMismatch: "Your category splits must equal the total."
+        case .ambiguousAmount: "Use one amount, for example Coffee 28k."
+        case .corruptStore: "Some stored records could not be read. Your data has been kept intact."
+        }
+    }
+}
+
+enum Money {
+    static let maximum: Int64 = 9_000_000_000_000_000
+    static func parse(_ input: String) throws -> Int64 {
+        var value = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if value.hasPrefix("rp") { value = String(value.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        let thousands = value.hasSuffix("k")
+        if thousands { value.removeLast() }
+        let pattern = thousands ? #"^\d+(?:[.,]\d{1,3})?$"# : #"^(?:\d+|\d{1,3}(?:\.\d{3})+)$"#
+        guard value.range(of: pattern, options: .regularExpression) != nil else { throw EntryError.invalidAmount }
+        value = thousands ? value.replacingOccurrences(of: ",", with: ".") : value.replacingOccurrences(of: ".", with: "")
+        guard var decimal = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else { throw EntryError.invalidAmount }
+        if thousands { decimal *= 1000 }
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &decimal, 0, .plain)
+        guard rounded == decimal, decimal > 0, decimal <= Decimal(maximum / 100) else { throw EntryError.invalidAmount }
+        return NSDecimalNumber(decimal: decimal * 100).int64Value
+    }
+
+    static func digits(_ amount: Int64) -> String { String(amount / 100) }
+    static func format(_ amount: Int64, currency: Bool = true) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "id_ID")
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = amount % 100 == 0 ? 0 : 2
+        let number = NSDecimalNumber(decimal: Decimal(amount) / 100)
+        return (currency ? "Rp" : "") + (formatter.string(from: number) ?? number.stringValue)
+    }
+}
+
+enum Day {
+    static func string(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 2000, parts.month ?? 1, parts.day ?? 1)
+    }
+    static func date(_ value: String, calendar: Calendar = .current) -> Date? {
+        let parts = value.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3, value.count == 10,
+              let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)),
+              string(date, calendar: calendar) == value else { return nil }
+        return date
+    }
+    static func title(_ value: String) -> String {
+        guard let date = date(value) else { return value }
+        if Calendar.current.isDateInToday(date) { return "Today" }
+        if Calendar.current.isDateInYesterday(date) { return "Yesterday" }
+        return date.formatted(.dateTime.day().month(.wide))
+    }
+}
+
+struct ExpenseDraft: Codable, Equatable {
+    var id = UUID()
+    var amount = ""
+    var categoryID: UUID?
+    var note = ""
+    var date = Date.now
+    var text = ""
+    var mode = EntryMode.keypad
+    var editing = false
+    var createdAt = Date.now
+    var source = "manual"
+    var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil }
+    func expense() throws -> Expense {
+        guard let categoryID else { throw EntryError.missingCategory }
+        let value = try Money.parse(amount)
+        return Expense(id: id, amount: value, day: Day.string(date), note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: [.init(categoryID: categoryID, amount: value)], source: source, createdAt: createdAt)
+    }
+    init() {}
+    init(expense: Expense) {
+        id = expense.id; amount = Money.digits(expense.amount); categoryID = expense.allocations.first?.categoryID
+        note = expense.note; date = Day.date(expense.day) ?? .now; editing = true; createdAt = expense.createdAt; source = expense.source
+    }
+}
+
+enum EntryMode: String, Codable, CaseIterable { case keypad = "Keypad", text = "Text" }
+
+struct ParsedExpense {
+    var amount: Int64
+    var note: String
+    var categoryID: UUID?
+}
+
+enum ExpenseParser {
+    static let keywords = [
+        0: ["coffee", "kopi", "lunch", "dinner", "breakfast", "food", "makan"],
+        1: ["grab", "gojek", "taxi", "parking", "petrol"],
+        2: ["shopping", "shirt", "shoes"],
+        3: ["rent", "internet", "electricity", "groceries"],
+        4: ["gym", "doctor", "medicine"],
+        5: ["cinema", "movie", "netflix"]
+    ]
+    static func parse(_ text: String, categories: [ExpenseCategory]) throws -> ParsedExpense {
+        let tokens = text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        let numberTokens = tokens.enumerated().filter { $0.element.contains(where: { $0.isNumber }) }
+        guard numberTokens.count == 1, let token = numberTokens.first else { throw EntryError.ambiguousAmount }
+        let amount = try Money.parse(token.element)
+        let words = tokens.enumerated().filter { $0.offset != token.offset }.map(\.element)
+        let matches = keywords.filter { _, keys in words.contains { keys.contains($0.lowercased()) } }.keys
+        let categoryID: UUID? = matches.count == 1 ? ExpenseCategory.defaults[matches.first!].id : nil
+        return ParsedExpense(amount: amount, note: words.joined(separator: " "), categoryID: categories.first(where: { $0.id == categoryID })?.id)
+    }
+}
+
+struct BudgetCycle {
+    let start: Date
+    let end: Date
+    static func containing(_ date: Date, startDay: Int, calendar: Calendar = .current) -> Self {
+        let day = min(31, max(1, startDay))
+        let month = calendar.dateInterval(of: .month, for: date)!.start
+        func boundary(_ month: Date) -> Date {
+            let days = calendar.range(of: .day, in: .month, for: month)!.count
+            return calendar.date(byAdding: .day, value: min(day, days) - 1, to: month)!
+        }
+        let current = boundary(month)
+        if date >= current {
+            return .init(start: current, end: boundary(calendar.date(byAdding: .month, value: 1, to: month)!))
+        }
+        return .init(start: boundary(calendar.date(byAdding: .month, value: -1, to: month)!), end: current)
+    }
+    func contains(_ expense: Expense) -> Bool {
+        guard let date = Day.date(expense.day) else { return false }
+        return date >= start && date < end
+    }
+    var label: String {
+        let last = Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end
+        return start.formatted(.dateTime.day().month(.abbreviated)) + " – " + last.formatted(.dateTime.day().month(.abbreviated))
+    }
+}

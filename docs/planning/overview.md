@@ -34,11 +34,11 @@ Storage and UI choices are implementation recommendations for the agreed require
 
 ## Current evidence
 
-- Project folder was empty before these documents were created.
+- Project folder was empty before planning; a local Git repository and native app now exist.
 - Local Xcode reports version 26.6, build 17F113.
 - Test phone from the handoff: iPhone 15 Pro. Its OS, signing, SideStore configuration, and app integration have not been checked in this task.
 - The user wants to start daily use once UI/UX and reliable recording work, ideally after a few Codex sessions. This is an aspiration, not a delivery guarantee.
 
 ## Next deliverable
 
-A native interaction prototype of Recents → Add Expense → Record, with both entry modes, plus budget-cycle and bill-setting screens. Evaluate on the actual iPhone. Use sample records until the daily-use checks pass.
+The native interaction prototype now exists: Recents → Add Expense → Record, both entry modes, budget-cycle preview, and bill settings. See [prototype status and review](../prototype/README.md). Next: evaluate the signed build on the actual iPhone and finish recovery before daily use.
