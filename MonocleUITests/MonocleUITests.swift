@@ -213,6 +213,31 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
+    func testExportedBackupIsSelectableForRestore() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launch()
+        app.buttons["homeSettings"].tap()
+        app.buttons["backupSettings"].tap()
+        app.buttons["exportBackup"].tap()
+        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
+        app.buttons["Save"].tap()
+        if app.buttons["Keep Both"].waitForExistence(timeout: 2) {
+            app.buttons["Keep Both"].tap()
+        }
+        XCTAssertTrue(app.alerts["Backup & restore"].waitForExistence(timeout: 5))
+        app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.buttons["importBackup"].waitForExistence(timeout: 5))
+        app.buttons["importBackup"].tap()
+        XCTAssertTrue(app.buttons["Browse"].waitForExistence(timeout: 5))
+        let picker = XCTAttachment(screenshot: app.screenshot())
+        picker.name = "backup-restore-picker"; picker.lifetime = .keepAlways; add(picker)
+        print(app.debugDescription)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.17, dy: 0.36)).tap()
+        XCTAssertTrue(app.buttons["restoreBackup"].waitForExistence(timeout: 5), "The exported file must open for review")
+    }
+
+    @MainActor
     func testSplitEditorAddsAnotherAllocationWithoutLeavingCapture() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
