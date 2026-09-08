@@ -79,6 +79,14 @@ final class AppModel {
         self.pendingEntry = nil
         if pendingRepeat { repeatExpense(pendingEntry) } else { edit(pendingEntry) }
     }
+    func startEmptyRealBook(named name: String) throws {
+        guard let backups else { throw BackupError.unsupported }
+        let settings = try backups.startEmptyRealBook(named: name, currentDraft: draft, settings: settings)
+        self.settings = settings
+        draft = ExpenseDraft()
+        undoExpense = nil; pendingEntry = nil
+        showToast("Your real book is ready")
+    }
     private func showToast(_ text: String) { toast = text; toastID = UUID() }
     func saveDraft() {
         do {

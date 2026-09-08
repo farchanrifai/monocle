@@ -3,7 +3,6 @@ import Foundation
 
 @MainActor
 final class ExpenseRepository: ExpenseStore {
-    static let bookID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
     let container: NSPersistentContainer
     private var context: NSManagedObjectContext { container.viewContext }
 
@@ -21,8 +20,8 @@ final class ExpenseRepository: ExpenseStore {
         guard try objects("Book").isEmpty else { return }
         do {
             let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
-            book.setValue(Self.bookID, forKey: "id")
-            book.setValue("Sample book", forKey: "name")
+            book.setValue(BookProfile.sample.id, forKey: "id")
+            book.setValue(BookProfile.sample.name, forKey: "name")
             for category in categories {
                 let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
                 row.setValue(category.id, forKey: "id"); row.setValue(category.name, forKey: "name")
@@ -64,7 +63,7 @@ final class ExpenseRepository: ExpenseStore {
         do {
             let existing = try find("ExpenseRecord", id: expense.id)
             let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: "ExpenseRecord", into: context)
-            guard let book = try find("Book", id: Self.bookID) else { throw EntryError.corruptStore }
+            let book = try currentBook()
             row.setValue(expense.id, forKey: "id"); row.setValue(expense.amount, forKey: "amount")
             row.setValue(expense.day, forKey: "day"); row.setValue(expense.note, forKey: "note")
             row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
@@ -83,7 +82,7 @@ final class ExpenseRepository: ExpenseStore {
     func saveCategory(_ category: ExpenseCategory) throws {
         let category = try category.validated(against: categories())
         do {
-            guard let book = try find("Book", id: Self.bookID) else { throw EntryError.corruptStore }
+            let book = try currentBook()
             let row = try find("CategoryRecord", id: category.id) ?? NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
             row.setValue(category.id, forKey: "id")
             row.setValue(category.name, forKey: "name")
@@ -97,6 +96,18 @@ final class ExpenseRepository: ExpenseStore {
         guard try !expenses().contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
         do {
             if let row = try find("CategoryRecord", id: id) { context.delete(row); try context.save() }
+        } catch { context.rollback(); throw error }
+    }
+
+    /// User-initiated promotion keeps categories but removes only recorded sample entries.
+    func startEmptyRealBook(_ profile: BookProfile) throws {
+        guard profile.kind == .real else { throw BackupError.invalid }
+        do {
+            let book = try currentBook()
+            for expense in try objects("ExpenseRecord") { context.delete(expense) }
+            book.setValue(profile.id, forKey: "id")
+            book.setValue(profile.name, forKey: "name")
+            try context.save()
         } catch { context.rollback(); throw error }
     }
 
@@ -140,6 +151,11 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
     private func objects(_ entity: String) throws -> [NSManagedObject] { try context.fetch(NSFetchRequest<NSManagedObject>(entityName: entity)) }
+    private func currentBook() throws -> NSManagedObject {
+        let books = try objects("Book")
+        guard books.count == 1 else { throw EntryError.corruptStore }
+        return books[0]
+    }
     private func find(_ entity: String, id: UUID) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
         request.predicate = NSPredicate(format: "id == %@", id as NSUUID)

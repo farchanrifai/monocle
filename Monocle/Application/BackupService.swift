@@ -18,9 +18,37 @@ final class BackupService {
         self.directory = directory; self.repository = repository; self.state = state; self.expenses = expenses
     }
     func snapshot(draft: ExpenseDraft, settings: PrototypeSettings) throws -> BookBackup {
-        let result = BookBackup(categories: try repository.categories(), expenses: try repository.expenses(), draft: draft, settings: settings)
+        let result = BookBackup(formatVersion: 2, bookID: settings.book.id, bookName: settings.book.name,
+                                bookKind: settings.book.kind.rawValue, sampleSeeded: settings.book.kind == .sample,
+                                categories: try repository.categories(), expenses: try repository.expenses(), draft: draft, settings: settings)
         try result.validate()
         return result
+    }
+
+    func startEmptyRealBook(named name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
+        let profile = try BookProfile.real(named: name)
+        var updated = settings
+        updated.book = profile
+        let original = try snapshot(draft: currentDraft, settings: settings).encoded()
+        try original.write(to: safetyURL, options: .atomic)
+        try original.write(to: journal, options: .atomic)
+        do {
+            try repository.startEmptyRealBook(profile)
+            try state.saveDraft(ExpenseDraft())
+            try state.saveSettings(updated)
+            try expenses.reload()
+            try FileManager.default.removeItem(at: journal)
+            return updated
+        } catch {
+            do {
+                try Self.recoverIfNeeded(directory: directory, repository: repository, state: state)
+                try expenses.reload()
+            } catch {
+                requiresRecovery = true; expenses.isBlocked = true
+                throw BackupError.recoveryRequired
+            }
+            throw error
+        }
     }
     func preview(data: Data) throws -> BookBackup {
         let candidate = try BookBackup.decode(data)

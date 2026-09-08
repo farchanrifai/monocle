@@ -24,7 +24,7 @@ The bill and budget settings are interaction previews. Scheduling and notificati
 
 Records use a versioned Core Data model, with book, category, expense, and allocation entities. Amounts use exact integer minor units. UI and the text Shortcut call the same validated save operation. The persistence layer can store and validate splits, but the split editor is deferred to the next milestone.
 
-Sample records are created once with stable identifiers. Clearing a book does not reseed it. Edits and retries retain the transaction ID. Draft and prototype-setting files are saved atomically. Data lives under the app's Application Support `monocle-prototype` folder, separate from the eventual personal book. Automated UI tests use distinct stores.
+Sample records are created once with stable identifiers. Clearing a book does not reseed it. Settings offers an explicit "Start your real book" flow: it keeps categories/settings, clears sample entries and the unfinished draft, and creates a safety backup before assigning a new real-book identity. Edits and retries retain the transaction ID. Draft and book-setting files are saved atomically. Automated UI tests use distinct stores.
 
 App locking, category archiving/rule editing, scheduled occurrences, CSV import/export, and production budget history remain unimplemented. Backup/restore is now implemented; signed-phone export/import/update checks remain pending. No sync/cloud entitlements are enabled. Use test purchases in this version.
 

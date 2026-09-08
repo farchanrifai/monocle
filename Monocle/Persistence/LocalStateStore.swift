@@ -23,6 +23,8 @@ enum AppLockTimeout: String, Codable, CaseIterable, Identifiable {
 }
 
 struct PrototypeSettings: Codable, Equatable {
+    /// The profile binds this otherwise single-book state file to the Core Data book and backup contract.
+    var book = BookProfile.sample
     var budget: Int64 = 450_000_000
     var startDay = 1
     var billAutomatic = false
@@ -33,10 +35,11 @@ struct PrototypeSettings: Codable, Equatable {
     var archivedCategoryIDs: Set<UUID> = []
     var categoryRules: [CategoryRule] = []
 
-    private enum CodingKeys: String, CodingKey { case budget, startDay, billAutomatic, billReminder, appLockTimeout, archivedCategoryIDs, categoryRules }
+    private enum CodingKeys: String, CodingKey { case book, budget, startDay, billAutomatic, billReminder, appLockTimeout, archivedCategoryIDs, categoryRules }
     init() {}
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        book = try values.decodeIfPresent(BookProfile.self, forKey: .book) ?? .sample
         budget = try values.decodeIfPresent(Int64.self, forKey: .budget) ?? 450_000_000
         startDay = try values.decodeIfPresent(Int.self, forKey: .startDay) ?? 1
         billAutomatic = try values.decodeIfPresent(Bool.self, forKey: .billAutomatic) ?? false
@@ -47,6 +50,7 @@ struct PrototypeSettings: Codable, Equatable {
     }
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(book, forKey: .book)
         try values.encode(budget, forKey: .budget); try values.encode(startDay, forKey: .startDay)
         try values.encode(billAutomatic, forKey: .billAutomatic); try values.encode(billReminder, forKey: .billReminder)
         try values.encodeIfPresent(appLockTimeout, forKey: .appLockTimeout); try values.encode(archivedCategoryIDs, forKey: .archivedCategoryIDs)

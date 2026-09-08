@@ -94,6 +94,28 @@ final class BackupTests: XCTestCase {
             XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("restore-journal.json").path))
         }
     }
+    func testStartingEmptyRealBookKeepsCategoriesAndCreatesRecoverableSafetyBackup() throws {
+        try withStore { repository, state, service, directory in
+            let original = fixture()
+            try repository.replace(with: original)
+            try state.saveDraft(original.draft); try state.saveSettings(original.settings)
+            try service.reload()
+
+            let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
+            let settings = try backup.startEmptyRealBook(named: "Farchan's expenses", currentDraft: original.draft, settings: original.settings)
+
+            XCTAssertEqual(settings.book.name, "Farchan's expenses")
+            XCTAssertEqual(settings.book.kind, .real)
+            XCTAssertTrue(try repository.expenses().isEmpty)
+            XCTAssertEqual(try repository.categories(), original.categories.sorted { $0.id.uuidString < $1.id.uuidString })
+            XCTAssertFalse(try state.loadDraft().hasContent)
+            XCTAssertEqual(try BookBackup.decode(Data(contentsOf: backup.safetyURL)).expenses, original.expenses)
+            let realBackup = try backup.snapshot(draft: ExpenseDraft(), settings: settings)
+            XCTAssertEqual(realBackup.formatVersion, 2)
+            XCTAssertEqual(realBackup.bookKind, BookKind.real.rawValue)
+            try realBackup.validate()
+        }
+    }
     func testRecoveryAfterClosingAndReopeningDiskStore() throws {
         try withStore { repository, state, _, directory in
             let original = fixture()

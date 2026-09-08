@@ -24,7 +24,7 @@ The user values a quick coffee entry (`+ → amount → category → optional no
 | M2a — local dependency structure | Implemented | Shared expense service, injected value-only store boundary, atomic local state adapter, isolated sample seeder; failed-write and reopen tests |
 | M2b — capture polish and category editor | Current checkpoint | System separators; separate glass navigation/+ islands; stationary category selection; category grid; create/rename/icon selection and protected deletion. Verify locale parsing and category persistence/history |
 | M2c — reliable backup and restoration | Implemented; phone validation pending | Full portable export, validated preview, safety backup, recoverable restore, old-store/update fixtures and failure tests |
-| M2d — remaining reliable capture and lock | In progress | Optional Face ID/device-passcode lock, split editing and structured Shortcuts are implemented; category archive/rules and real-book onboarding remain |
+| M2d — remaining reliable capture and lock | In progress | Optional Face ID/device-passcode lock, split editing, structured Shortcuts, category archive/rules and explicit empty real-book onboarding are implemented; signed-phone validation remains |
 | M3 — production budgets and bills | Prototype screens only | Effective-dated budget history, cycle transitions, persisted schedules/occurrences, pending/automatic reconciliation, optional reminders |
 | M4 — CSV and v1 completion | Pending | Reviewed mapping/import with reconciliation, CSV export, complete accessibility and recovery audit |
 | M5 — native Mac, iCloud, sharing, public release | Deferred | Reuse domain/data code, validate multi-device conflict/ownership behaviour, production cloud schema and distribution checks |
@@ -35,7 +35,7 @@ The user values a quick coffee entry (`+ → amount → category → optional no
 2. Review [backup format and recovery protocol](backup-format.md). The automated round-trip/failure tests are implemented; collect signed-phone Files export/import and update-preservation evidence using sample records when the user is available.
 3. Validate M2d app lock on a signed phone: optional device authentication, Face ID/system passcode fallback and timeout choices immediately/1 minute/5 minutes, including both Shortcuts. Never infer a lock from an authentication-policy declaration alone.
 4. Validate both structured and text Add Expense Shortcuts on a signed phone, including custom/renamed category resolution, device authentication, failure messages and repeated actions. Split editing is implemented locally and still needs signed-phone validation.
-5. Add category archive/rules and real-book onboarding with explicit model/backup version changes. Do not silently reset or replace the sample book.
+5. Validate real-book onboarding on a signed phone: it must retain categories/settings, clear only the explicitly selected sample entries and draft, create a safety backup, and export/restore a format-2 backup. Do not silently reset or replace the sample book.
 6. Re-evaluate every daily-use gate below; build an incremented IPA and update docs/HANDOFF with actual evidence. Keep previous artifacts.
 
 ## Daily-use gate — not yet met
@@ -68,7 +68,7 @@ No cloud entitlement, app server, account system or speculative package is neede
 
 ## Known constraints at this checkpoint
 
-- Storage is still one fixed sample book; no production multi-book UI.
+- Storage is one local book. Users can explicitly convert the sample book into an empty named real book; there is no multi-book UI.
 - Money remains IDR with exact Int64 minor units. Display and text separators follow the system locale. Entry accepts whole rupiah only; a localized decimal with `k` may yield whole rupiah. No silent fractional rounding or currency conversion.
 - Starter text keywords map to stable starter category IDs. Renaming does not change mappings. Custom keyword/rule editing is pending; custom categories can be chosen manually.
 - Category editor supports create/rename/curated icon selection and deletion only when unused. Recorded references, the current draft and Undo are protected. Archive/reorder and book-specific keyword rules remain pending.

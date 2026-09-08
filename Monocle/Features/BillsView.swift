@@ -81,7 +81,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    LabeledContent("Book", value: "Sample book")
+                    LabeledContent("Book", value: model.settings.book.name)
                     LabeledContent("Currency", value: "IDR")
                     LabeledContent("Version", value: "0.1.3 · Prototype")
                 }
@@ -89,6 +89,10 @@ struct SettingsView: View {
                     NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
                     NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
                     NavigationLink("App lock") { AppLockSettingsView(model: model) }.accessibilityIdentifier("appLockSettings")
+                    if model.settings.book.kind == .sample {
+                        NavigationLink("Start your real book") { RealBookOnboardingView(model: model) }
+                            .accessibilityIdentifier("startRealBook")
+                    }
                 }
                 Section("Try the flow") {
                     Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")
@@ -104,6 +108,41 @@ struct SettingsView: View {
             }.navigationTitle("monocle").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+}
+
+private struct RealBookOnboardingView: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = "My expenses"
+    @State private var confirm = false
+    @State private var error: String?
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Book name", text: $name).accessibilityIdentifier("realBookName")
+            } header: {
+                Text("Your real book")
+            } footer: {
+                Text("This keeps your categories and settings, removes sample entries and unfinished drafts, and creates a safety backup first. It cannot happen by accident.")
+            }
+            Section {
+                Button("Start empty real book", role: .destructive) { confirm = true }
+                    .accessibilityIdentifier("confirmRealBook")
+            }
+        }
+        .navigationTitle("Start real book").navigationBarTitleDisplayMode(.inline)
+        .alert("Start an empty real book?", isPresented: $confirm) {
+            Button("Start empty book", role: .destructive) {
+                do { try model.startEmptyRealBook(named: name); dismiss() }
+                catch { self.error = error.localizedDescription }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Sample entries and any unfinished draft will be removed. Your categories and settings stay in place, and a safety backup is created first.") }
+        .alert("Could not start real book", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK") { error = nil }
+        } message: { Text(error ?? "") }
     }
 }
 

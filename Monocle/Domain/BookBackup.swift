@@ -1,11 +1,27 @@
 import Foundation
 
+enum BookKind: String, Codable, Equatable { case sample, real }
+
+struct BookProfile: Codable, Equatable {
+    var id: UUID
+    var name: String
+    var kind: BookKind
+
+    static let sample = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .sample)
+
+    static func real(named name: String) throws -> Self {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 40 else { throw BackupError.invalid }
+        return Self(id: UUID(), name: name, kind: .real)
+    }
+}
+
 struct BookBackup: Codable {
     var formatVersion = 1
     var exportedAt = Date.now
-    var bookID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
-    var bookName = "Sample book"
-    var bookKind = "sample"
+    var bookID = BookProfile.sample.id
+    var bookName = BookProfile.sample.name
+    var bookKind = BookKind.sample.rawValue
     var currency = "IDR"
     var minorUnitScale = 2
     var sampleSeeded = true
@@ -16,8 +32,15 @@ struct BookBackup: Codable {
 
     var total: Int64 { expenses.reduce(0) { $0 + $1.amount } }
     func validate() throws {
-        guard formatVersion == 1, bookKind == "sample", currency == "IDR", minorUnitScale == 2,
-              bookID == UUID(uuidString: "20000000-0000-0000-0000-000000000001"), bookName == "Sample book", sampleSeeded else { throw BackupError.unsupported }
+        guard (formatVersion == 1 || formatVersion == 2), currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
+        if formatVersion == 1 {
+            guard bookKind == BookKind.sample.rawValue, bookID == BookProfile.sample.id,
+                  bookName == BookProfile.sample.name, sampleSeeded else { throw BackupError.unsupported }
+        } else {
+            guard let kind = BookKind(rawValue: bookKind), !bookName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  bookName.count <= 40, settings.book == .init(id: bookID, name: bookName, kind: kind),
+                  (kind == .sample) == sampleSeeded else { throw BackupError.invalid }
+        }
         guard expenses.count <= 10_000, categories.count <= 500,
               Set(expenses.map(\.id)).count == expenses.count,
               Set(categories.map(\.id)).count == categories.count,
