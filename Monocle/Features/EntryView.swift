@@ -9,6 +9,7 @@ struct EntryView: View {
     @State private var message: String?
     @State private var showDate = false
     @State private var showCategories = false
+    @State private var showSplits = false
     @State private var showDiscard = false
     @State private var selectionTick = 0
     private var amount: Int64 { (try? Money.parse(model.draft.amount)) ?? 0 }
@@ -22,9 +23,21 @@ struct EntryView: View {
                             modePicker
                             if model.draft.mode == .text { textEntry }
                             amountDisplay
-                            CategoryStrip(categories: model.categories, selectedID: model.draft.categoryID, select: selectCategory) {
-                                focusedField = nil
-                                showCategories = true
+                            if model.draft.isSplit {
+                                splitSummary
+                            } else {
+                                CategoryStrip(categories: model.categories, selectedID: model.draft.categoryID, select: selectCategory) {
+                                    focusedField = nil
+                                    showCategories = true
+                                }
+                                Button {
+                                    focusedField = nil
+                                    model.beginSplitting()
+                                    showSplits = model.draft.isSplit
+                                } label: {
+                                    Label("Split across categories", systemImage: "square.grid.2x2")
+                                        .font(.subheadline.weight(.semibold))
+                                }.tint(MC.red).accessibilityIdentifier("editSplits")
                             }
                             HStack(spacing: 10) {
                                 Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
@@ -74,6 +87,7 @@ struct EntryView: View {
             .sheet(isPresented: $showCategories) {
                 CategoryPicker(categories: model.categories, selectedID: model.draft.categoryID, select: selectCategory)
             }
+            .sheet(isPresented: $showSplits) { SplitEditor(model: model) }
             .alert(showDiscard ? (model.draft.editing ? "Discard your changes?" : "Discard this expense?") : "Check this", isPresented: Binding(get: { showDiscard || model.error != nil }, set: {
                 if !$0 { showDiscard = false; model.error = nil }
             })) {
@@ -131,6 +145,22 @@ struct EntryView: View {
             Rectangle().fill(MC.line).frame(height: 1)
         }
     }
+    private var splitSummary: some View {
+        Button {
+            focusedField = nil
+            showSplits = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "square.grid.2x2").foregroundStyle(MC.red)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Split across \(model.draft.splitAllocations.count) categories").font(.subheadline.weight(.semibold))
+                    Text("Edit allocations").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }.padding(14).background(MC.surface, in: RoundedRectangle(cornerRadius: 14))
+        }.buttonStyle(.plain).accessibilityIdentifier("editSplits")
+    }
     private func keypad(rowHeight: CGFloat) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 4) {
             ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", "000", "0", "delete.left"], id: \.self) { key in
@@ -175,6 +205,73 @@ struct EntryView: View {
         } catch {
             model.draft.amount = ""; model.draft.categoryID = nil
             message = error.localizedDescription
+        }
+    }
+}
+
+private struct SplitEditor: View {
+    @Bindable var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var choosingIndex: Int?
+
+    private var total: Int64 { (try? Money.parse(model.draft.amount)) ?? 0 }
+    private var allocated: Int64 { model.draft.splitAllocations.reduce(0) { $0 + ((try? Money.parse($1.amount)) ?? 0) } }
+    private var remaining: Int64 { total - allocated }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Allocations") {
+                    ForEach(model.draft.splitAllocations.indices, id: \.self) { index in
+                        let split = model.draft.splitAllocations[index]
+                        VStack(alignment: .leading, spacing: 10) {
+                            Button {
+                                choosingIndex = index
+                            } label: {
+                                HStack {
+                                    CategoryMark(symbol: model.category(split.categoryID)?.symbol ?? "square.grid.2x2")
+                                    Text(model.category(split.categoryID)?.name ?? "Choose category")
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }.buttonStyle(.plain).accessibilityIdentifier("split-category-\(index)")
+                            TextField("Amount", text: $model.draft.splitAllocations[index].amount)
+                                .keyboardType(.numberPad).accessibilityIdentifier("split-amount-\(index)")
+                            if model.draft.splitAllocations.count > 1 {
+                                Button("Remove allocation", role: .destructive) { model.draft.splitAllocations.remove(at: index) }
+                                    .font(.footnote)
+                            }
+                        }.padding(.vertical, 4)
+                    }
+                    Button("Add category", systemImage: "plus") { model.addSplitAllocation() }.accessibilityIdentifier("addSplit")
+                }
+                Section("Check") {
+                    LabeledContent("Expense total") { Text(Money.format(total)) }
+                    LabeledContent("Allocated") { Text(Money.format(allocated)) }
+                    LabeledContent("Remaining") { Text(Money.format(abs(remaining))).foregroundStyle(remaining == 0 ? .green : MC.red) }
+                    if remaining == 0 && model.draft.splitAllocations.count > 1 {
+                        Label("Ready to record", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    } else {
+                        Text("Use at least two categories and make allocations match the expense total.").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                Section {
+                    Button("Use one category instead", role: .destructive) {
+                        model.stopSplitting()
+                        dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Split expense").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .sheet(isPresented: Binding(get: { choosingIndex != nil }, set: { if !$0 { choosingIndex = nil } })) {
+                CategoryPicker(categories: model.categories, selectedID: choosingIndex.flatMap { index in model.draft.splitAllocations.indices.contains(index) ? model.draft.splitAllocations[index].categoryID : nil }) { categoryID in
+                    if let index = choosingIndex, model.draft.splitAllocations.indices.contains(index) {
+                        model.draft.splitAllocations[index].categoryID = categoryID
+                    }
+                    choosingIndex = nil
+                }
+            }
         }
     }
 }

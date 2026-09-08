@@ -61,7 +61,6 @@ final class AppModel {
     func openEntry() { showEntry = true }
     func edit(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = false; pendingEntry = expense; return }
-        guard expense.allocations.count == 1 else { error = "Split editing is coming in the next milestone."; return }
         draft = ExpenseDraft(expense: expense); showEntry = true
     }
     func persistDraft() {
@@ -115,6 +114,28 @@ final class AppModel {
     func saveCategory(_ category: ExpenseCategory) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.saveCategory(category)
+    }
+    func beginSplitting() {
+        guard draft.splitAllocations.isEmpty else { return }
+        guard let categoryID = draft.categoryID ?? categories.first?.id else { error = EntryError.missingCategory.localizedDescription; return }
+        draft.categoryID = categoryID
+        draft.splitAllocations = [.init(categoryID: categoryID, amount: draft.amount)]
+    }
+    func addSplitAllocation() {
+        beginSplitting()
+        let used = Set(draft.splitAllocations.map(\.categoryID))
+        guard let category = categories.first(where: { !used.contains($0.id) }) else {
+            error = "Create another category before adding a further split."
+            return
+        }
+        draft.splitAllocations.append(.init(categoryID: category.id, amount: ""))
+    }
+    func stopSplitting() {
+        categoryIDFromSplit()
+        draft.splitAllocations = []
+    }
+    private func categoryIDFromSplit() {
+        if let categoryID = draft.splitAllocations.first?.categoryID { draft.categoryID = categoryID }
     }
     func deleteCategory(_ category: ExpenseCategory) throws {
         guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true else { throw CategoryError.inUse }

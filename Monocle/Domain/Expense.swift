@@ -34,10 +34,12 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
         guard Day.date(day) != nil else { throw EntryError.invalidDate }
         guard !allocations.isEmpty else { throw EntryError.missingCategory }
         var sum: Int64 = 0
+        var categoryIDs = Set<UUID>()
         for allocation in allocations {
             guard categories.contains(where: { $0.id == allocation.categoryID }), allocation.amount > 0 else {
                 throw EntryError.missingCategory
             }
+            guard categoryIDs.insert(allocation.categoryID).inserted else { throw EntryError.duplicateSplitCategory }
             let addition = sum.addingReportingOverflow(allocation.amount)
             guard !addition.overflow else { throw EntryError.invalidAmount }
             sum = addition.partialValue
@@ -47,13 +49,14 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
 }
 
 enum EntryError: LocalizedError {
-    case invalidAmount, missingCategory, invalidDate, splitMismatch, ambiguousAmount, corruptStore
+    case invalidAmount, missingCategory, invalidDate, splitMismatch, duplicateSplitCategory, ambiguousAmount, corruptStore
     var errorDescription: String? {
         switch self {
         case .invalidAmount: "Enter an amount greater than zero, in whole rupiah."
         case .missingCategory: "Choose a category before recording."
         case .invalidDate: "Choose a valid expense date."
         case .splitMismatch: "Your category splits must equal the total."
+        case .duplicateSplitCategory: "Choose each split category only once."
         case .ambiguousAmount: "Use one amount, for example Coffee 28k."
         case .corruptStore: "Some stored records could not be read. Your data has been kept intact."
         }
@@ -116,6 +119,12 @@ enum Day {
     }
 }
 
+struct DraftAllocation: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var categoryID: UUID
+    var amount: String
+}
+
 struct ExpenseDraft: Codable, Equatable {
     var id = UUID()
     var amount = ""
@@ -127,16 +136,53 @@ struct ExpenseDraft: Codable, Equatable {
     var editing = false
     var createdAt = Date.now
     var source = "manual"
-    var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil }
+    /// Empty keeps the original one-category path; nonempty is the advanced split editor.
+    var splitAllocations: [DraftAllocation] = []
+    var isSplit: Bool { !splitAllocations.isEmpty }
+    var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil || !splitAllocations.isEmpty }
     func expense() throws -> Expense {
-        guard let categoryID else { throw EntryError.missingCategory }
         let value = try Money.parse(amount)
-        return Expense(id: id, amount: value, day: Day.string(date), note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: [.init(categoryID: categoryID, amount: value)], source: source, createdAt: createdAt)
+        let allocations: [Allocation]
+        if splitAllocations.isEmpty {
+            guard let categoryID else { throw EntryError.missingCategory }
+            allocations = [.init(categoryID: categoryID, amount: value)]
+        } else {
+            guard splitAllocations.count > 1 else { throw EntryError.splitMismatch }
+            allocations = try splitAllocations.map { .init(categoryID: $0.categoryID, amount: try Money.parse($0.amount)) }
+        }
+        return Expense(id: id, amount: value, day: Day.string(date), note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt)
     }
     init() {}
     init(expense: Expense) {
         id = expense.id; amount = Money.digits(expense.amount); categoryID = expense.allocations.first?.categoryID
         note = expense.note; date = Day.date(expense.day) ?? .now; editing = true; createdAt = expense.createdAt; source = expense.source
+        if expense.allocations.count > 1 {
+            splitAllocations = expense.allocations.map { .init(categoryID: $0.categoryID, amount: Money.digits($0.amount)) }
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations }
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        amount = try values.decodeIfPresent(String.self, forKey: .amount) ?? ""
+        categoryID = try values.decodeIfPresent(UUID.self, forKey: .categoryID)
+        note = try values.decodeIfPresent(String.self, forKey: .note) ?? ""
+        date = try values.decodeIfPresent(Date.self, forKey: .date) ?? .now
+        text = try values.decodeIfPresent(String.self, forKey: .text) ?? ""
+        mode = try values.decodeIfPresent(EntryMode.self, forKey: .mode) ?? .keypad
+        editing = try values.decodeIfPresent(Bool.self, forKey: .editing) ?? false
+        createdAt = try values.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+        source = try values.decodeIfPresent(String.self, forKey: .source) ?? "manual"
+        splitAllocations = try values.decodeIfPresent([DraftAllocation].self, forKey: .splitAllocations) ?? []
+    }
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id); try values.encode(amount, forKey: .amount)
+        try values.encodeIfPresent(categoryID, forKey: .categoryID); try values.encode(note, forKey: .note)
+        try values.encode(date, forKey: .date); try values.encode(text, forKey: .text); try values.encode(mode, forKey: .mode)
+        try values.encode(editing, forKey: .editing); try values.encode(createdAt, forKey: .createdAt); try values.encode(source, forKey: .source)
+        try values.encode(splitAllocations, forKey: .splitAllocations)
     }
 }
 

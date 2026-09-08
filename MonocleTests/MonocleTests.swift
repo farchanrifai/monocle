@@ -79,7 +79,22 @@ final class MonocleTests: XCTestCase {
         var draft = ExpenseDraft()
         draft.amount = "28000"; draft.text = "Coffee 28k"; draft.mode = .text
         draft.categoryID = ExpenseCategory.defaults[0].id
+        draft.splitAllocations = [
+            .init(categoryID: ExpenseCategory.defaults[0].id, amount: "12000"),
+            .init(categoryID: ExpenseCategory.defaults[1].id, amount: "16000")
+        ]
         let restored = try JSONDecoder().decode(ExpenseDraft.self, from: JSONEncoder().encode(draft))
         XCTAssertEqual(restored, draft)
+        XCTAssertEqual(try restored.expense().allocations, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 1_200_000), .init(categoryID: ExpenseCategory.defaults[1].id, amount: 1_600_000)])
+    }
+    func testOlderDraftWithoutSplitFieldsStillOpens() throws {
+        struct OlderDraft: Codable {
+            var id = UUID(); var amount = "28000"; var categoryID = ExpenseCategory.defaults[0].id
+            var note = "Coffee"; var date = Date.now; var text = ""; var mode = EntryMode.keypad
+            var editing = false; var createdAt = Date.now; var source = "manual"
+        }
+        let restored = try JSONDecoder().decode(ExpenseDraft.self, from: JSONEncoder().encode(OlderDraft()))
+        XCTAssertFalse(restored.isSplit)
+        XCTAssertEqual(try restored.expense().allocations, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
     }
 }

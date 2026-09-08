@@ -16,7 +16,7 @@ The format preserves all currently implemented durable application data:
 - `bookID`, `bookName`, `bookKind` (`sample`), `currency` (`IDR`), `minorUnitScale` (2), `sampleSeeded` (true).
 - Categories with stable IDs, names and icons.
 - Expenses with IDs, exact Int64 amounts, reporting date strings, notes, allocations, source and creation timestamp.
-- Draft including input mode, unfinished text, category reference, expense identity and editing status.
+- Draft including input mode, unfinished text, category reference, exact split allocations, expense identity and editing status.
 - Prototype settings: budget amount, cycle start day, bill recording mode and reminder preference, plus the optional app-lock timeout. The backup retains the preference, never a biometric credential or passcode.
 
 Transient navigation, toast and Undo state are cleared after restore and are not exported. There are no persisted production bill occurrences, budget history, custom parsing rules or cloud identities yet. Format 1 only accepts the current sample book identity; a future real-book format requires an explicit versioned change.

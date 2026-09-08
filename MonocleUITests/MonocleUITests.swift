@@ -212,4 +212,22 @@ final class MonocleUITests: XCTestCase {
         picker.name = "backup-export-013"; picker.lifetime = .keepAlways; add(picker)
     }
 
+    @MainActor
+    func testSplitEditorAddsAnotherAllocationWithoutLeavingCapture() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        app.buttons["addExpense"].tap()
+        app.buttons["key-2"].tap(); app.buttons["key-8"].tap(); app.buttons["key-000"].tap()
+        app.buttons["category-Food & Drink"].tap()
+        app.buttons["editSplits"].tap()
+        XCTAssertTrue(app.buttons["split-category-0"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["split-amount-0"].exists)
+        app.buttons["addSplit"].tap()
+        XCTAssertTrue(app.buttons["split-category-1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["split-amount-1"].exists)
+        XCTAssertTrue(app.staticTexts["Remaining"].exists)
+    }
+
 }

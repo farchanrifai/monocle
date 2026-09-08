@@ -43,7 +43,7 @@ BottomNavigation supplies two separate glass surfaces while each TabView child h
 
 ## Remaining foundation work
 
-Backup/restore is implemented for current durable state, with candidate validation, a safety document and a rollback journal spanning database and local files. See [format and recovery protocol](backup-format.md). Phone export/import/update validation remains required before real-data use. App lock, category archiving/rules, split editing, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget/bill persistence and sync are later milestones.
+Backup/restore is implemented for current durable state, with candidate validation, a safety document and a rollback journal spanning database and local files. See [format and recovery protocol](backup-format.md). Phone export/import/update validation remains required before real-data use. App lock and split editing are implemented; category archiving/rules, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget/bill persistence and sync are later milestones.
 
 The current repository still exposes one fixed sample book. The conceptual multi-book model below is a future design, not implemented multi-book or CloudKit support. Small local saves currently run on the main actor; imports and backup operations will need bounded work/background contexts as their implementation requires. Do not infer finished performance, app locking, or backup safety from this refactor.
 
