@@ -232,8 +232,9 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Browse"].waitForExistence(timeout: 5))
         let picker = XCTAttachment(screenshot: app.screenshot())
         picker.name = "backup-restore-picker"; picker.lifetime = .keepAlways; add(picker)
-        print(app.debugDescription)
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.17, dy: 0.36)).tap()
+        let backup = app.cells.matching(NSPredicate(format: "identifier CONTAINS %@", ".json")).firstMatch
+        XCTAssertTrue(backup.waitForExistence(timeout: 5), "The exported JSON must be selectable")
+        backup.tap()
         XCTAssertTrue(app.buttons["restoreBackup"].waitForExistence(timeout: 5), "The exported file must open for review")
     }
 
