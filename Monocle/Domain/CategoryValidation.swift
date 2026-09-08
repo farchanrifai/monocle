@@ -1,14 +1,32 @@
 import Foundation
 
 enum CategoryError: LocalizedError {
-    case invalidName, duplicateName, invalidSymbol, inUse
+    case invalidName, duplicateName, invalidSymbol, inUse, invalidRule, duplicateRule
     var errorDescription: String? {
         switch self {
         case .invalidName: "Use a category name between 1 and 40 characters."
         case .duplicateName: "A category with this name already exists."
         case .invalidSymbol: "Choose an icon from the list."
         case .inUse: "This category is used by an expense, your draft, or an expense available to undo. You can rename it, but it cannot be deleted."
+        case .invalidRule: "Use one keyword between 1 and 40 characters."
+        case .duplicateRule: "That keyword already has a rule."
         }
+    }
+}
+
+struct CategoryRule: Codable, Identifiable, Equatable {
+    var id: UUID
+    var keyword: String
+    var categoryID: UUID
+
+    func validated(against categories: [ExpenseCategory], archivedIDs: Set<UUID>) throws -> Self {
+        var result = self
+        result.keyword = keyword.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !result.keyword.isEmpty, result.keyword.count <= 40,
+              !result.keyword.contains(where: { $0.isWhitespace }),
+              result.keyword.rangeOfCharacter(from: .controlCharacters) == nil,
+              categories.contains(where: { $0.id == result.categoryID && !archivedIDs.contains($0.id) }) else { throw CategoryError.invalidRule }
+        return result
     }
 }
 

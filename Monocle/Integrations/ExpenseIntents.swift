@@ -31,7 +31,7 @@ struct ExpenseCategoryEntityQuery: EntityStringQuery {
     func suggestedEntities() async throws -> [ExpenseCategoryEntity] { await categories() }
 
     private func categories() async -> [ExpenseCategoryEntity] {
-        await MainActor.run { AppEnvironment.shared.expenses?.categories.map(ExpenseCategoryEntity.init) ?? [] }
+        await MainActor.run { AppEnvironment.shared.model.activeCategories.map(ExpenseCategoryEntity.init) }
     }
 }
 

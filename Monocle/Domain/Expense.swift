@@ -203,14 +203,15 @@ enum ExpenseParser {
         4: ["gym", "doctor", "medicine"],
         5: ["cinema", "movie", "netflix"]
     ]
-    static func parse(_ text: String, categories: [ExpenseCategory]) throws -> ParsedExpense {
+    static func parse(_ text: String, categories: [ExpenseCategory], rules: [CategoryRule] = []) throws -> ParsedExpense {
         let tokens = text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
         let numberTokens = tokens.enumerated().filter { $0.element.contains(where: { $0.isNumber }) }
         guard numberTokens.count == 1, let token = numberTokens.first else { throw EntryError.ambiguousAmount }
         let amount = try Money.parse(token.element)
         let words = tokens.enumerated().filter { $0.offset != token.offset }.map(\.element)
+        let customMatches = Set(rules.filter { rule in words.contains { $0.lowercased() == rule.keyword } }.map(\.categoryID))
         let matches = keywords.filter { _, keys in words.contains { keys.contains($0.lowercased()) } }.keys
-        let categoryID: UUID? = matches.count == 1 ? ExpenseCategory.defaults[matches.first!].id : nil
+        let categoryID: UUID? = customMatches.count == 1 ? customMatches.first : (customMatches.isEmpty && matches.count == 1 ? ExpenseCategory.defaults[matches.first!].id : nil)
         return ParsedExpense(amount: amount, note: words.joined(separator: " "), categoryID: categories.first(where: { $0.id == categoryID })?.id)
     }
 }

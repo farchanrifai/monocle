@@ -29,6 +29,29 @@ struct PrototypeSettings: Codable, Equatable {
     var billReminder = true
     /// Nil means the app never presents its own lock. System Shortcut authentication is separate.
     var appLockTimeout: AppLockTimeout?
+    /// Archived categories remain attached to historical expenses but are hidden from new capture.
+    var archivedCategoryIDs: Set<UUID> = []
+    var categoryRules: [CategoryRule] = []
+
+    private enum CodingKeys: String, CodingKey { case budget, startDay, billAutomatic, billReminder, appLockTimeout, archivedCategoryIDs, categoryRules }
+    init() {}
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        budget = try values.decodeIfPresent(Int64.self, forKey: .budget) ?? 450_000_000
+        startDay = try values.decodeIfPresent(Int.self, forKey: .startDay) ?? 1
+        billAutomatic = try values.decodeIfPresent(Bool.self, forKey: .billAutomatic) ?? false
+        billReminder = try values.decodeIfPresent(Bool.self, forKey: .billReminder) ?? true
+        appLockTimeout = try values.decodeIfPresent(AppLockTimeout.self, forKey: .appLockTimeout)
+        archivedCategoryIDs = try values.decodeIfPresent(Set<UUID>.self, forKey: .archivedCategoryIDs) ?? []
+        categoryRules = try values.decodeIfPresent([CategoryRule].self, forKey: .categoryRules) ?? []
+    }
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(budget, forKey: .budget); try values.encode(startDay, forKey: .startDay)
+        try values.encode(billAutomatic, forKey: .billAutomatic); try values.encode(billReminder, forKey: .billReminder)
+        try values.encodeIfPresent(appLockTimeout, forKey: .appLockTimeout); try values.encode(archivedCategoryIDs, forKey: .archivedCategoryIDs)
+        try values.encode(categoryRules, forKey: .categoryRules)
+    }
 }
 
 @MainActor

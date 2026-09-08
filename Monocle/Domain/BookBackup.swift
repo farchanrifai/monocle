@@ -21,6 +21,9 @@ struct BookBackup: Codable {
         guard expenses.count <= 10_000, categories.count <= 500,
               Set(expenses.map(\.id)).count == expenses.count,
               Set(categories.map(\.id)).count == categories.count,
+              settings.archivedCategoryIDs.isSubset(of: Set(categories.map(\.id))),
+              settings.categoryRules.allSatisfy { rule in (try? rule.validated(against: categories, archivedIDs: settings.archivedCategoryIDs)) == rule },
+              Set(settings.categoryRules.map(\.keyword)).count == settings.categoryRules.count,
               exportedAt.timeIntervalSince1970.isFinite,
               settings.budget > 0, settings.budget <= Money.maximum, (1...31).contains(settings.startDay) else { throw BackupError.invalid }
         for category in categories {

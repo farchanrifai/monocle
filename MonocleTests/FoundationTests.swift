@@ -99,6 +99,28 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(service.expenses.count, 1)
     }
 
+    func testArchivingPreservesHistoryButHidesCategoryFromNewCapture() throws {
+        let state = TestState()
+        let service = try ExpenseService(store: TestExpenseStore())
+        let model = AppModel(expenses: service, state: state)
+        let category = ExpenseCategory.defaults[0]
+        try model.archiveCategory(category)
+        XCTAssertFalse(model.activeCategories.contains(category))
+        XCTAssertEqual(state.savedSettings?.archivedCategoryIDs, [category.id])
+        try model.restoreCategory(category)
+        XCTAssertTrue(model.activeCategories.contains(category))
+    }
+
+    func testKeywordRuleOverridesStarterParserAndArchivedCategoriesAreRejected() throws {
+        let service = try ExpenseService(store: TestExpenseStore())
+        let rule = CategoryRule(id: UUID(), keyword: "coffee", categoryID: ExpenseCategory.defaults[1].id)
+        service.configure(categoryRules: [rule], archivedCategoryIDs: [])
+        XCTAssertEqual(try service.record(text: "Coffee 28k").allocations.first?.categoryID, rule.categoryID)
+        service.configure(categoryRules: [rule], archivedCategoryIDs: [rule.categoryID])
+        XCTAssertThrowsError(try service.record(text: "Coffee 28k"))
+        XCTAssertThrowsError(try service.record(amountInRupiah: 28_000, categoryID: rule.categoryID))
+    }
+
     func testAppLockUsesPrivacyShieldThenHonorsTimeout() async {
         let authenticator = TestAuthenticator()
         let lock = AppLockController(timeout: .oneMinute, authenticator: authenticator)

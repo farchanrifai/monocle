@@ -19,6 +19,7 @@ final class AppEnvironment {
             try repository.prepareSampleBook(categories: Self.initialCategories(directory: directory))
             try SampleBookSeeder.seedIfNeeded(repository: repository, directory: directory)
             let expenses = try ExpenseService(store: repository)
+            expenses.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             self.expenses = expenses
             model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings)
             model.backups = BackupService(directory: directory, repository: repository, state: state, expenses: expenses)

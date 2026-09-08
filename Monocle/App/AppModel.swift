@@ -6,6 +6,7 @@ final class AppModel {
     static var shared: AppModel { AppEnvironment.shared.model }
     var expenses: [Expense] { expenseService?.expenses ?? [] }
     var categories: [ExpenseCategory] { expenseService?.categories ?? [] }
+    var activeCategories: [ExpenseCategory] { categories.filter { !settings.archivedCategoryIDs.contains($0.id) } }
     var draft = ExpenseDraft()
     var settings = PrototypeSettings()
     var showEntry = false
@@ -115,16 +116,39 @@ final class AppModel {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.saveCategory(category)
     }
+    func isArchived(_ category: ExpenseCategory) -> Bool { settings.archivedCategoryIDs.contains(category.id) }
+    func archiveCategory(_ category: ExpenseCategory) throws {
+        guard draft.categoryID != category.id, !draft.splitAllocations.contains(where: { $0.categoryID == category.id }),
+              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
+        var proposed = settings; proposed.archivedCategoryIDs.insert(category.id)
+        try saveSettings(proposed)
+    }
+    func restoreCategory(_ category: ExpenseCategory) throws {
+        var proposed = settings; proposed.archivedCategoryIDs.remove(category.id)
+        try saveSettings(proposed)
+    }
+    func saveCategoryRule(_ rule: CategoryRule) throws {
+        let rule = try rule.validated(against: categories, archivedIDs: settings.archivedCategoryIDs)
+        guard !settings.categoryRules.contains(where: { $0.id != rule.id && $0.keyword == rule.keyword }) else { throw CategoryError.duplicateRule }
+        var proposed = settings
+        proposed.categoryRules.removeAll { $0.id == rule.id }
+        proposed.categoryRules.append(rule)
+        try saveSettings(proposed)
+    }
+    func deleteCategoryRule(_ rule: CategoryRule) throws {
+        var proposed = settings; proposed.categoryRules.removeAll { $0.id == rule.id }
+        try saveSettings(proposed)
+    }
     func beginSplitting() {
         guard draft.splitAllocations.isEmpty else { return }
-        guard let categoryID = draft.categoryID ?? categories.first?.id else { error = EntryError.missingCategory.localizedDescription; return }
+        guard let categoryID = draft.categoryID ?? activeCategories.first?.id else { error = EntryError.missingCategory.localizedDescription; return }
         draft.categoryID = categoryID
         draft.splitAllocations = [.init(categoryID: categoryID, amount: draft.amount)]
     }
     func addSplitAllocation() {
         beginSplitting()
         let used = Set(draft.splitAllocations.map(\.categoryID))
-        guard let category = categories.first(where: { !used.contains($0.id) }) else {
+        guard let category = activeCategories.first(where: { !used.contains($0.id) }) else {
             error = "Create another category before adding a further split."
             return
         }
@@ -138,7 +162,8 @@ final class AppModel {
         if let categoryID = draft.splitAllocations.first?.categoryID { draft.categoryID = categoryID }
     }
     func deleteCategory(_ category: ExpenseCategory) throws {
-        guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true else { throw CategoryError.inUse }
+        guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
+              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.deleteCategory(category.id)
     }
@@ -147,6 +172,7 @@ final class AppModel {
         do {
             try backups.restore(backup, currentDraft: draft, settings: settings)
             draft = backup.draft; settings = backup.settings
+            expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             undoExpense = nil; pendingEntry = nil; toast = nil
         } catch {
             if backups.requiresRecovery { startupError = error.localizedDescription }
@@ -156,6 +182,7 @@ final class AppModel {
     func saveSettings(_ proposed: PrototypeSettings) throws {
         guard proposed.budget > 0, (1...31).contains(proposed.startDay) else { throw EntryError.invalidAmount }
         try requireState().saveSettings(proposed); settings = proposed
+        expenseService?.configure(categoryRules: proposed.categoryRules, archivedCategoryIDs: proposed.archivedCategoryIDs)
     }
     func setAppLockTimeout(_ timeout: AppLockTimeout?) async -> Result<Void, AppLockError> {
         let previous = settings.appLockTimeout

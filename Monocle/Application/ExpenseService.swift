@@ -19,6 +19,8 @@ final class ExpenseService {
     private let store: any ExpenseStore
     private(set) var expenses: [Expense] = []
     private(set) var categories: [ExpenseCategory] = []
+    private var categoryRules: [CategoryRule] = []
+    private var archivedCategoryIDs: Set<UUID> = []
 
     init(store: any ExpenseStore) throws {
         self.store = store
@@ -31,6 +33,11 @@ final class ExpenseService {
         let expenses = try store.expenses()
         self.categories = categories
         self.expenses = expenses
+    }
+
+    func configure(categoryRules: [CategoryRule], archivedCategoryIDs: Set<UUID>) {
+        self.categoryRules = categoryRules
+        self.archivedCategoryIDs = archivedCategoryIDs
     }
 
     func save(_ expense: Expense) throws {
@@ -61,7 +68,7 @@ final class ExpenseService {
 
     @discardableResult
     func record(text: String, date: Date = .now, id: UUID = UUID()) throws -> Expense {
-        let parsed = try ExpenseParser.parse(text, categories: categories)
+        let parsed = try ExpenseParser.parse(text, categories: categories.filter { !archivedCategoryIDs.contains($0.id) }, rules: categoryRules)
         guard let categoryID = parsed.categoryID else { throw EntryError.missingCategory }
         return try record(amountInRupiah: parsed.amount / 100, categoryID: categoryID, note: parsed.note, date: date, id: id, source: "shortcut-text")
     }
@@ -73,7 +80,7 @@ final class ExpenseService {
         guard amountInRupiah > 0 else { throw EntryError.invalidAmount }
         let multiplication = amountInRupiah.multipliedReportingOverflow(by: 100)
         guard !multiplication.overflow, multiplication.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
-        guard categories.contains(where: { $0.id == categoryID }) else { throw EntryError.missingCategory }
+        guard categories.contains(where: { $0.id == categoryID }), !archivedCategoryIDs.contains(categoryID) else { throw EntryError.missingCategory }
         let expense = Expense(id: id, amount: multiplication.partialValue, day: Day.string(date),
                               note: note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
                               allocations: [.init(categoryID: categoryID, amount: multiplication.partialValue)],

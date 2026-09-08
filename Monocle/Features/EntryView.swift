@@ -26,7 +26,7 @@ struct EntryView: View {
                             if model.draft.isSplit {
                                 splitSummary
                             } else {
-                                CategoryStrip(categories: model.categories, selectedID: model.draft.categoryID, select: selectCategory) {
+                                CategoryStrip(categories: model.activeCategories, selectedID: model.draft.categoryID, select: selectCategory) {
                                     focusedField = nil
                                     showCategories = true
                                 }
@@ -85,7 +85,7 @@ struct EntryView: View {
                 }.presentationDetents([.medium])
             }
             .sheet(isPresented: $showCategories) {
-                CategoryPicker(categories: model.categories, selectedID: model.draft.categoryID, select: selectCategory)
+                CategoryPicker(categories: model.activeCategories, selectedID: model.draft.categoryID, select: selectCategory)
             }
             .sheet(isPresented: $showSplits) { SplitEditor(model: model) }
             .alert(showDiscard ? (model.draft.editing ? "Discard your changes?" : "Discard this expense?") : "Check this", isPresented: Binding(get: { showDiscard || model.error != nil }, set: {
@@ -195,7 +195,7 @@ struct EntryView: View {
     }
     private func parse(hideKeyboard: Bool = true) {
         do {
-            let parsed = try ExpenseParser.parse(model.draft.text, categories: model.categories)
+            let parsed = try ExpenseParser.parse(model.draft.text, categories: model.activeCategories, rules: model.settings.categoryRules)
             model.draft.amount = Money.digits(parsed.amount)
             model.draft.note = parsed.note
             model.draft.categoryID = parsed.categoryID
@@ -265,7 +265,7 @@ private struct SplitEditor: View {
             .navigationTitle("Split expense").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: Binding(get: { choosingIndex != nil }, set: { if !$0 { choosingIndex = nil } })) {
-                CategoryPicker(categories: model.categories, selectedID: choosingIndex.flatMap { index in model.draft.splitAllocations.indices.contains(index) ? model.draft.splitAllocations[index].categoryID : nil }) { categoryID in
+                CategoryPicker(categories: model.activeCategories, selectedID: choosingIndex.flatMap { index in model.draft.splitAllocations.indices.contains(index) ? model.draft.splitAllocations[index].categoryID : nil }) { categoryID in
                     if let index = choosingIndex, model.draft.splitAllocations.indices.contains(index) {
                         model.draft.splitAllocations[index].categoryID = categoryID
                     }
