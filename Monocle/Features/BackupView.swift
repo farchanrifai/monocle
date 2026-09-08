@@ -63,7 +63,7 @@ struct BackupView: View {
                 case .failure(let error): message = error.localizedDescription
                 }
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.item]) { result in
+            .fileImporter(isPresented: $importing, allowedContentTypes: [.monocleBackup, .json]) { result in
                 do {
                     let url = try result.get()
                     let access = url.startAccessingSecurityScopedResource()
