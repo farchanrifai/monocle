@@ -213,6 +213,7 @@ private struct SplitEditor: View {
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var choosingIndex: Int?
+    @State private var useOneCategoryAfterDismissal = false
 
     private var total: Int64 { (try? Money.parse(model.draft.amount)) ?? 0 }
     private var allocated: Int64 { model.draft.splitAllocations.reduce(0) { $0 + ((try? Money.parse($1.amount)) ?? 0) } }
@@ -257,13 +258,16 @@ private struct SplitEditor: View {
                 }
                 Section {
                     Button("Use one category instead", role: .destructive) {
-                        model.stopSplitting()
+                        useOneCategoryAfterDismissal = true
                         dismiss()
                     }
                 }
             }
             .navigationTitle("Split expense").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .onDisappear {
+                if useOneCategoryAfterDismissal { model.stopSplitting() }
+            }
             .sheet(isPresented: Binding(get: { choosingIndex != nil }, set: { if !$0 { choosingIndex = nil } })) {
                 CategoryPicker(categories: model.activeCategories, selectedID: choosingIndex.flatMap { index in model.draft.splitAllocations.indices.contains(index) ? model.draft.splitAllocations[index].categoryID : nil }) { categoryID in
                     if let index = choosingIndex, model.draft.splitAllocations.indices.contains(index) {

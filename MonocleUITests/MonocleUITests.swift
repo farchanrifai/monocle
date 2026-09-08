@@ -230,4 +230,31 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Remaining"].exists)
     }
 
+    @MainActor
+    func testSplitRevertAndDiscardResetEntryState() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        app.buttons["addExpense"].tap()
+        app.buttons["key-2"].tap(); app.buttons["key-8"].tap(); app.buttons["key-000"].tap()
+        app.buttons["category-Food & Drink"].tap()
+        app.buttons["editSplits"].tap()
+        XCTAssertTrue(app.buttons["split-category-0"].waitForExistence(timeout: 5))
+
+        app.buttons["Use one category instead"].tap()
+        XCTAssertTrue(app.buttons["editSplits"].waitForExistence(timeout: 5))
+
+        app.buttons["editSplits"].tap()
+        XCTAssertTrue(app.buttons["split-category-0"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        app.buttons["Close entry"].tap()
+        app.buttons["Discard"].tap()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
+
+        app.buttons["addExpense"].tap()
+        XCTAssertTrue(app.buttons["editSplits"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Split across 1 categories"].exists)
+    }
+
 }
