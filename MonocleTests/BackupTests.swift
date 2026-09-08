@@ -114,6 +114,29 @@ final class BackupTests: XCTestCase {
             XCTAssertEqual(realBackup.formatVersion, 2)
             XCTAssertEqual(realBackup.bookKind, BookKind.real.rawValue)
             try realBackup.validate()
+            let preview = try backup.preview(data: realBackup.encoded())
+            XCTAssertEqual(preview.bookID, realBackup.bookID)
+            XCTAssertEqual(preview.settings, realBackup.settings)
+            XCTAssertEqual(preview.categories, realBackup.categories)
+        }
+    }
+
+    func testRealBookRenamePreservesExportAndRecords() throws {
+        try withStore { repository, state, service, directory in
+            let original = fixture()
+            try repository.replace(with: original)
+            var settings = original.settings
+            settings.book = try BookProfile.real(named: "Before")
+            try repository.startEmptyRealBook(settings.book)
+            let expense = Expense(amount: 10000, day: "2026-09-08", note: "Coffee", allocations: [.init(categoryID: original.categories[0].id, amount: 10000)])
+            try repository.save(expense); try state.saveSettings(settings); try service.reload()
+
+            let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
+            let renamed = try backup.renameRealBook(to: "After", currentDraft: ExpenseDraft(), settings: settings)
+            XCTAssertEqual(renamed.book.id, settings.book.id)
+            XCTAssertEqual(renamed.book.name, "After")
+            XCTAssertEqual(try repository.expenses(), [expense])
+            XCTAssertEqual(try backup.snapshot(draft: ExpenseDraft(), settings: renamed).bookName, "After")
         }
     }
     func testRecoveryAfterClosingAndReopeningDiskStore() throws {

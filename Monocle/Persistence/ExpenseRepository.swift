@@ -111,6 +111,16 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
+    func renameRealBook(_ profile: BookProfile) throws {
+        guard profile.kind == .real else { throw BackupError.invalid }
+        do {
+            let book = try currentBook()
+            guard book.value(forKey: "id") as? UUID == profile.id else { throw EntryError.corruptStore }
+            book.setValue(profile.name, forKey: "name")
+            try context.save()
+        } catch { context.rollback(); throw error }
+    }
+
     /// Replace the complete graph with a single Core Data transaction.
     func replace(with backup: BookBackup) throws {
         try backup.validate()

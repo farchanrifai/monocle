@@ -87,6 +87,11 @@ final class AppModel {
         undoExpense = nil; pendingEntry = nil
         showToast("Your real book is ready")
     }
+    func renameRealBook(to name: String) throws {
+        guard let backups else { throw BackupError.unsupported }
+        settings = try backups.renameRealBook(to: name, currentDraft: draft, settings: settings)
+        showToast("Book renamed")
+    }
     private func showToast(_ text: String) { toast = text; toastID = UUID() }
     func saveDraft() {
         do {

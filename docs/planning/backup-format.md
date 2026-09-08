@@ -8,6 +8,8 @@ Settings → Backup & restore → Export full backup opens the system Files dest
 
 Before activation, monocle retains a local safety backup. Export last safety backup makes it portable. One local safety backup is kept; export it before a subsequent restore to retain an older version. Files are unencrypted JSON with a `.monoclebackup` extension and registered type `com.farchan.monocle.backup` conforming to `public.json`. File access uses the picker-granted security scope.
 
+The Files picker accepts a selected file regardless of its reported type and validates its size and backup contents inside monocle. This avoids Files metadata hiding a valid monocle export; unrelated or malformed files are still rejected before review.
+
 ## Scope and format
 
 The format preserves all currently implemented durable application data:

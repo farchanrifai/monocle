@@ -14,6 +14,13 @@ struct BookProfile: Codable, Equatable {
         guard !name.isEmpty, name.count <= 40 else { throw BackupError.invalid }
         return Self(id: UUID(), name: name, kind: .real)
     }
+
+    func renamed(to name: String) throws -> Self {
+        guard kind == .real else { throw BackupError.invalid }
+        var value = try Self.real(named: name)
+        value.id = id
+        return value
+    }
 }
 
 struct BookBackup: Codable {

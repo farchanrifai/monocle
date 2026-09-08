@@ -50,6 +50,31 @@ final class BackupService {
             throw error
         }
     }
+
+    func renameRealBook(to name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
+        let profile = try settings.book.renamed(to: name)
+        var updated = settings
+        updated.book = profile
+        let original = try snapshot(draft: currentDraft, settings: settings).encoded()
+        try original.write(to: safetyURL, options: .atomic)
+        try original.write(to: journal, options: .atomic)
+        do {
+            try repository.renameRealBook(profile)
+            try state.saveSettings(updated)
+            try expenses.reload()
+            try FileManager.default.removeItem(at: journal)
+            return updated
+        } catch {
+            do {
+                try Self.recoverIfNeeded(directory: directory, repository: repository, state: state)
+                try expenses.reload()
+            } catch {
+                requiresRecovery = true; expenses.isBlocked = true
+                throw BackupError.recoveryRequired
+            }
+            throw error
+        }
+    }
     func preview(data: Data) throws -> BookBackup {
         let candidate = try BookBackup.decode(data)
         let store = try ExpenseRepository(inMemory: true)

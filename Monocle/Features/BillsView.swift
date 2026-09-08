@@ -92,6 +92,9 @@ struct SettingsView: View {
                     if model.settings.book.kind == .sample {
                         NavigationLink("Start your real book") { RealBookOnboardingView(model: model) }
                             .accessibilityIdentifier("startRealBook")
+                    } else {
+                        NavigationLink("Rename book") { RenameBookView(model: model) }
+                            .accessibilityIdentifier("renameRealBook")
                     }
                 }
                 Section("Try the flow") {
@@ -108,6 +111,30 @@ struct SettingsView: View {
             }.navigationTitle("monocle").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+}
+
+private struct RenameBookView: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var error: String?
+
+    var body: some View {
+        Form {
+            TextField("Book name", text: $name).accessibilityIdentifier("renameBookName")
+        }
+        .navigationTitle("Rename book").navigationBarTitleDisplayMode(.inline)
+        .onAppear { name = model.settings.book.name }
+        .toolbar { ToolbarItem(placement: .confirmationAction) {
+            Button("Save") {
+                do { try model.renameRealBook(to: name); dismiss() }
+                catch { self.error = error.localizedDescription }
+            }
+        } }
+        .alert("Could not rename book", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK") { error = nil }
+        } message: { Text(error ?? "") }
     }
 }
 
