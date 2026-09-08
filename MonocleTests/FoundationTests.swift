@@ -85,6 +85,20 @@ final class FoundationTests: XCTestCase {
         XCTAssertTrue(service.expenses.isEmpty)
     }
 
+    func testStructuredShortcutCommandValidatesLiveCategoryAndRetriesByIdentity() throws {
+        let store = TestExpenseStore()
+        let service = try ExpenseService(store: store)
+        let id = UUID()
+        try service.record(amountInRupiah: 28_000, categoryID: ExpenseCategory.defaults[0].id, note: "Coffee", date: Date(timeIntervalSinceReferenceDate: 1_000), id: id)
+        try service.record(amountInRupiah: 32_000, categoryID: ExpenseCategory.defaults[0].id, note: "Coffee", date: Date(timeIntervalSinceReferenceDate: 1_000), id: id)
+        XCTAssertEqual(service.expenses.count, 1)
+        XCTAssertEqual(service.expenses.first?.amount, 3_200_000)
+        XCTAssertEqual(service.expenses.first?.note, "Coffee")
+        XCTAssertThrowsError(try service.record(amountInRupiah: 0, categoryID: ExpenseCategory.defaults[0].id))
+        XCTAssertThrowsError(try service.record(amountInRupiah: 28_000, categoryID: UUID()))
+        XCTAssertEqual(service.expenses.count, 1)
+    }
+
     func testAppLockUsesPrivacyShieldThenHonorsTimeout() async {
         let authenticator = TestAuthenticator()
         let lock = AppLockController(timeout: .oneMinute, authenticator: authenticator)

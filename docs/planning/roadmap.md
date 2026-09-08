@@ -24,7 +24,7 @@ The user values a quick coffee entry (`+ → amount → category → optional no
 | M2a — local dependency structure | Implemented | Shared expense service, injected value-only store boundary, atomic local state adapter, isolated sample seeder; failed-write and reopen tests |
 | M2b — capture polish and category editor | Current checkpoint | System separators; separate glass navigation/+ islands; stationary category selection; category grid; create/rename/icon selection and protected deletion. Verify locale parsing and category persistence/history |
 | M2c — reliable backup and restoration | Implemented; phone validation pending | Full portable export, validated preview, safety backup, recoverable restore, old-store/update fixtures and failure tests |
-| M2d — remaining reliable capture and lock | In progress | Optional Face ID/device-passcode lock and split editing are implemented; structured Shortcuts, category archive/rules and real-book onboarding remain |
+| M2d — remaining reliable capture and lock | In progress | Optional Face ID/device-passcode lock, split editing and structured Shortcuts are implemented; category archive/rules and real-book onboarding remain |
 | M3 — production budgets and bills | Prototype screens only | Effective-dated budget history, cycle transitions, persisted schedules/occurrences, pending/automatic reconciliation, optional reminders |
 | M4 — CSV and v1 completion | Pending | Reviewed mapping/import with reconciliation, CSV export, complete accessibility and recovery audit |
 | M5 — native Mac, iCloud, sharing, public release | Deferred | Reuse domain/data code, validate multi-device conflict/ownership behaviour, production cloud schema and distribution checks |
@@ -34,7 +34,7 @@ The user values a quick coffee entry (`+ → amount → category → optional no
 1. Read HANDOFF, confirm branch/status and latest test evidence. Preserve the store identity and user edits.
 2. Review [backup format and recovery protocol](backup-format.md). The automated round-trip/failure tests are implemented; collect signed-phone Files export/import and update-preservation evidence using sample records when the user is available.
 3. Validate M2d app lock on a signed phone: optional device authentication, Face ID/system passcode fallback and timeout choices immediately/1 minute/5 minutes, including both Shortcuts. Never infer a lock from an authentication-policy declaration alone.
-4. Complete structured Add Expense Shortcut parameters through the shared expense commands; extend failure/repeated-action tests. Split editing is implemented locally and still needs signed-phone validation.
+4. Validate both structured and text Add Expense Shortcuts on a signed phone, including custom/renamed category resolution, device authentication, failure messages and repeated actions. Split editing is implemented locally and still needs signed-phone validation.
 5. Add category archive/rules and real-book onboarding with explicit model/backup version changes. Do not silently reset or replace the sample book.
 6. Re-evaluate every daily-use gate below; build an incremented IPA and update docs/HANDOFF with actual evidence. Keep previous artifacts.
 
@@ -74,7 +74,7 @@ No cloud entitlement, app server, account system or speculative package is neede
 - Category editor supports create/rename/curated icon selection and deletion only when unused. Recorded references, the current draft and Undo are protected. Archive/reorder and book-specific keyword rules remain pending.
 - All categories now uses a full-height searchable grid. This is a monocle picker, not an exact recreation of Messages.
 - The custom bottom navigation retains TabView screen state, hides its visible native bar, and supplies accessible destination buttons plus a separate dark glass add button. At accessibility text sizes destination icons retain full accessibility labels.
-- Backup/restore is implemented with a safety document and restart rollback journal. Signed-phone validation remains pending. App lock now has an optional Face ID/device-passcode flow with immediate/1-minute/5-minute timeout, and split editing has a two-or-more-category allocation editor with exact-total validation; signed-phone validation remains pending. Production budget history, real schedules, CSV and sync remain unimplemented.
+- Backup/restore is implemented with a safety document and restart rollback journal. Signed-phone validation remains pending. App lock now has an optional Face ID/device-passcode flow with immediate/1-minute/5-minute timeout, split editing has a two-or-more-category allocation editor with exact-total validation, and structured Shortcuts accept an amount, live category, optional note and optional date through the shared service; signed-phone validation remains pending. Production budget history, real schedules, CSV and sync remain unimplemented.
 
 ## Working conventions for GPT-5.6 Terra continuation
 

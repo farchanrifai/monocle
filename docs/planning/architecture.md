@@ -94,7 +94,7 @@ Version the Core Data model from the first persistent release. Use supported mig
 
 ## Integration boundaries
 
-- App Intents: both current shortcuts always require system device authentication. The background text command never unlocks the app UI; the foreground quick-entry command may still arrive at the app lock.
+- App Intents: all current shortcuts require system device authentication. The structured Add Expense command accepts whole-IDR amount, a live `AppEntity` category, optional note and optional date, then calls `ExpenseService` just like manual capture. The background text/structured commands never unlock the app UI; the foreground quick-entry command may still arrive at the app lock. Signed-phone category-resolution and execution validation remains required.
 - LocalAuthentication: optional app lock uses `deviceOwnerAuthentication`, so Face ID falls back to the device passcode. Its setting is stored with local settings/backup but credentials are never stored. A privacy shield covers the app switcher immediately; immediate/1-minute/5-minute applies to the next foreground unlock. No monocle password backend.
 - UserNotifications: reminders are optional and independent of persisted spending. Background execution is opportunistic; reconcile occurrences on app execution.
 - CSV: staged parsing/mapping/validation/review followed by a controlled commit and summary.

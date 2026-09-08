@@ -63,9 +63,21 @@ final class ExpenseService {
     func record(text: String, date: Date = .now, id: UUID = UUID()) throws -> Expense {
         let parsed = try ExpenseParser.parse(text, categories: categories)
         guard let categoryID = parsed.categoryID else { throw EntryError.missingCategory }
-        let expense = Expense(id: id, amount: parsed.amount, day: Day.string(date), note: parsed.note,
-                              allocations: [.init(categoryID: categoryID, amount: parsed.amount)],
-                              source: "shortcut", createdAt: date)
+        return try record(amountInRupiah: parsed.amount / 100, categoryID: categoryID, note: parsed.note, date: date, id: id, source: "shortcut-text")
+    }
+
+    /// The structured Shortcut path. It accepts whole IDR, validates the selected live category,
+    /// and shares the same committed save path as manual capture.
+    @discardableResult
+    func record(amountInRupiah: Int64, categoryID: UUID, note: String? = nil, date: Date = .now, id: UUID = UUID(), source: String = "shortcut") throws -> Expense {
+        guard amountInRupiah > 0 else { throw EntryError.invalidAmount }
+        let multiplication = amountInRupiah.multipliedReportingOverflow(by: 100)
+        guard !multiplication.overflow, multiplication.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
+        guard categories.contains(where: { $0.id == categoryID }) else { throw EntryError.missingCategory }
+        let expense = Expense(id: id, amount: multiplication.partialValue, day: Day.string(date),
+                              note: note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+                              allocations: [.init(categoryID: categoryID, amount: multiplication.partialValue)],
+                              source: source, createdAt: date)
         try save(expense)
         return expense
     }
