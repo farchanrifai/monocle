@@ -1,11 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-extension UTType {
-    static let monocleBackup = UTType(exportedAs: "com.farchan.monocle.backup", conformingTo: .json)
-}
 struct BackupDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.monocleBackup, .json] }
+    static var readableContentTypes: [UTType] { [.json] }
     var data: Data
     init(data: Data) { self.data = data }
     init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
@@ -57,13 +54,13 @@ struct BackupView: View {
                 }
             } footer: { Text("Restoring replaces this book, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
         }.navigationTitle("Backup & restore")
-            .fileExporter(isPresented: $exporting, document: document, contentType: .monocleBackup, defaultFilename: "monocle-\(Day.string(.now)).monoclebackup") { result in
+            .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "monocle-\(Day.string(.now)).json") { result in
                 switch result {
                 case .success: message = "Backup exported."
                 case .failure(let error): message = error.localizedDescription
                 }
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.data]) { result in
+            .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 do {
                     let url = try result.get()
                     let access = url.startAccessingSecurityScopedResource()
