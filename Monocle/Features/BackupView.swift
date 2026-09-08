@@ -57,7 +57,7 @@ struct BackupView: View {
                 }
             } footer: { Text("Restoring replaces this book, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
         }.navigationTitle("Backup & restore")
-            .fileExporter(isPresented: $exporting, document: document, contentType: .monocleBackup, defaultFilename: "monocle-\(Day.string(.now))-backup") { result in
+            .fileExporter(isPresented: $exporting, document: document, contentType: .monocleBackup, defaultFilename: "monocle-\(Day.string(.now)).monoclebackup") { result in
                 switch result {
                 case .success: message = "Backup exported."
                 case .failure(let error): message = error.localizedDescription
