@@ -7,3 +7,8 @@
   2. Discard anything older than the last completed checkpoint (keep maximum 2 sections).
   3. Fill `## 1. Immediate Next Step` with the fresh, active state.
 - When starting a new chat session, read `HANDOFF.md` first to establish context before asking for instructions.
+
+## IPA Delivery
+
+- Put every future SideStore IPA in `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/`.
+- Preserve prior IPA artifacts there. After each build, report the filename and SHA-256; do not overwrite an existing IPA.
