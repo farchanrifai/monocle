@@ -3,8 +3,11 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 distribution_repo="${SIDESTORE_REPO:-farchanrifai/monocle-releases}"
-notes="${1:-Monocle update}"
+ipa="${1:-}"
+notes="${2:-Monocle update}"
 cd "$project_root"
+
+[ -f "$ipa" ] || { printf 'Usage: %s IPA_PATH [release notes]\n' "$0" >&2; exit 1; }
 
 for command in gh jq git; do
   command -v "$command" >/dev/null || { printf 'Missing command: %s\n' "$command" >&2; exit 1; }
@@ -17,8 +20,6 @@ if [ "$visibility" != "PUBLIC" ]; then
   exit 1
 fi
 
-scripts/build-ipa.sh
-ipa="$(find build/packages -maxdepth 1 -name 'monocle-*-unsigned*.ipa' -print0 | xargs -0 ls -t | head -1)"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 /usr/bin/unzip -q "$ipa" Payload/Monocle.app/Info.plist -d "$stage"

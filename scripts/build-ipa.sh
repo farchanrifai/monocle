@@ -27,3 +27,6 @@ if [ -e "$delivery_path" ]; then
 fi
 /usr/bin/ditto "$output_path" "$delivery_path"
 printf 'Unsigned IPA: %s\nSHA-256: %s\nDelivery copy: %s\n' "$output_path" "$sha256" "$delivery_path"
+if [ "${SKIP_SIDESTORE_PUBLISH:-0}" != "1" ]; then
+  "$project_root/scripts/publish-sidestore.sh" "$output_path" "${1:-Monocle $version ($build_number)}"
+fi
