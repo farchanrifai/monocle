@@ -24,7 +24,7 @@ Current evidence: native screens and local persistence implemented; capture test
 
 Implement the versioned local store and shared expense command; manual/text capture; categories and splits; draft recovery; edit, repeat, delete/Undo; complete manual backup and restoration; app-lock options; full Add Expense and Add Expense from Text Shortcuts. Preserve one store identity across builds. Clearly label remaining incomplete features.
 
-Foundation checkpoint: production dependency assembly, a shared injectable expense service for UI/Shortcuts, a value-only repository boundary, atomic draft/settings storage, and isolated sample seeding are implemented. Next: full backup/restore and old-store fixtures, then app locking and the remaining capture features.
+Foundation checkpoint: production dependency assembly, a shared injectable expense service for UI/Shortcuts, a value-only repository boundary, atomic draft/settings storage, and isolated sample seeding are implemented. Backup/restore now covers current durable state with a validated candidate, safety backup and recoverable journal; restart/failure tests are implemented. Next: signed-phone backup/update verification, app locking and remaining capture features.
 
 Daily-use readiness is a separate checkpoint, not a promise that the entire v1 is finished. Before inviting real entries:
 

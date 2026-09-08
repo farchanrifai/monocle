@@ -1,0 +1,69 @@
+import Foundation
+
+struct BookBackup: Codable {
+    var formatVersion = 1
+    var exportedAt = Date.now
+    var bookID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
+    var bookName = "Sample book"
+    var bookKind = "sample"
+    var currency = "IDR"
+    var minorUnitScale = 2
+    var sampleSeeded = true
+    var categories: [ExpenseCategory]
+    var expenses: [Expense]
+    var draft: ExpenseDraft
+    var settings: PrototypeSettings
+
+    var total: Int64 { expenses.reduce(0) { $0 + $1.amount } }
+    func validate() throws {
+        guard formatVersion == 1, bookKind == "sample", currency == "IDR", minorUnitScale == 2,
+              bookID == UUID(uuidString: "20000000-0000-0000-0000-000000000001"), bookName == "Sample book", sampleSeeded else { throw BackupError.unsupported }
+        guard expenses.count <= 10_000, categories.count <= 500,
+              Set(expenses.map(\.id)).count == expenses.count,
+              Set(categories.map(\.id)).count == categories.count,
+              exportedAt.timeIntervalSince1970.isFinite,
+              settings.budget > 0, settings.budget <= Money.maximum, (1...31).contains(settings.startDay) else { throw BackupError.invalid }
+        for category in categories {
+            guard try category.validated(against: categories) == category else { throw BackupError.invalid }
+        }
+        var sum: Int64 = 0
+        for expense in expenses {
+            try expense.validate(categories: categories)
+            guard expense.createdAt.timeIntervalSince1970.isFinite else { throw BackupError.invalid }
+            let next = sum.addingReportingOverflow(expense.amount)
+            guard !next.overflow else { throw BackupError.invalid }
+            sum = next.partialValue
+        }
+        if let id = draft.categoryID { guard categories.contains(where: { $0.id == id }) else { throw BackupError.invalid } }
+        guard draft.date.timeIntervalSince1970.isFinite, draft.createdAt.timeIntervalSince1970.isFinite,
+              !draft.editing || expenses.contains(where: { $0.id == draft.id }) else { throw BackupError.invalid }
+        // Drafts are intentionally allowed to be incomplete or contain invalid input.
+    }
+    func encoded() throws -> Data {
+        try validate()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(self)
+        guard data.count <= Self.maximumBytes else { throw BackupError.tooLarge }
+        return data
+    }
+    static let maximumBytes = 10 * 1024 * 1024
+    static func decode(_ data: Data) throws -> Self {
+        guard data.count <= maximumBytes else { throw BackupError.tooLarge }
+        let value = try JSONDecoder().decode(Self.self, from: data)
+        try value.validate()
+        return value
+    }
+}
+
+enum BackupError: LocalizedError {
+    case unsupported, invalid, tooLarge, recoveryRequired
+    var errorDescription: String? {
+        switch self {
+        case .unsupported: "This backup version or book type is not supported by this version of monocle."
+        case .invalid: "The backup contains invalid or inconsistent records. Your current book has not been replaced."
+        case .tooLarge: "This version supports backups up to 10 MB, 10,000 expenses and 500 categories."
+        case .recoveryRequired: "Restoration could not finish or roll back. Restart monocle to recover from the retained safety backup. Your original data has been kept."
+        }
+    }
+}

@@ -100,6 +100,40 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
+    /// Replace the complete graph with a single Core Data transaction.
+    func replace(with backup: BookBackup) throws {
+        try backup.validate()
+        do {
+            for entity in ["AllocationRecord", "ExpenseRecord", "CategoryRecord", "Book"] {
+                for row in try objects(entity) { context.delete(row) }
+            }
+            let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+            book.setValue(backup.bookID, forKey: "id")
+            book.setValue(backup.bookName, forKey: "name")
+            var categoryRows: [UUID: NSManagedObject] = [:]
+            for category in backup.categories {
+                let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
+                row.setValue(category.id, forKey: "id"); row.setValue(category.name, forKey: "name")
+                row.setValue(category.symbol, forKey: "symbol"); row.setValue(book, forKey: "book")
+                categoryRows[category.id] = row
+            }
+            for expense in backup.expenses {
+                let row = NSEntityDescription.insertNewObject(forEntityName: "ExpenseRecord", into: context)
+                row.setValue(expense.id, forKey: "id"); row.setValue(expense.amount, forKey: "amount")
+                row.setValue(expense.day, forKey: "day"); row.setValue(expense.note, forKey: "note")
+                row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
+                row.setValue(book, forKey: "book")
+                for value in expense.allocations {
+                    let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
+                    allocation.setValue(value.amount, forKey: "amount")
+                    allocation.setValue(categoryRows[value.categoryID], forKey: "category")
+                    allocation.setValue(row, forKey: "expense")
+                }
+            }
+            try context.save()
+        } catch { context.rollback(); throw error }
+    }
+
     func delete(_ id: UUID) throws {
         do {
             if let row = try find("ExpenseRecord", id: id) { context.delete(row); try context.save() }

@@ -13,6 +13,7 @@ final class AppModel {
     var selectedTab = 0
     var error: String?
     var startupError: String?
+    var backups: BackupService?
     var toast: String?
     var toastID = UUID()
     var saveFeedback = 0
@@ -116,6 +117,17 @@ final class AppModel {
         guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true else { throw CategoryError.inUse }
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.deleteCategory(category.id)
+    }
+    func restoreBackup(_ backup: BookBackup) throws {
+        guard let backups else { throw BackupError.unsupported }
+        do {
+            try backups.restore(backup, currentDraft: draft, settings: settings)
+            draft = backup.draft; settings = backup.settings
+            undoExpense = nil; pendingEntry = nil; toast = nil
+        } catch {
+            if backups.requiresRecovery { startupError = error.localizedDescription }
+            throw error
+        }
     }
     func saveSettings(_ proposed: PrototypeSettings) throws {
         guard proposed.budget > 0, (1...31).contains(proposed.startDay) else { throw EntryError.invalidAmount }

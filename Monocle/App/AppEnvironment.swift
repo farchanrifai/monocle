@@ -12,14 +12,16 @@ final class AppEnvironment {
             let directory = try Self.storageDirectory()
             let state = FileLocalStateStore(directory: directory)
             // Fail without replacing malformed user files or seeding over existing data.
+            let repository = try ExpenseRepository(url: directory.appendingPathComponent("Monocle.sqlite"))
+            try BackupService.recoverIfNeeded(directory: directory, repository: repository, state: state)
             let draft = try state.loadDraft()
             let settings = try state.loadSettings()
-            let repository = try ExpenseRepository(url: directory.appendingPathComponent("Monocle.sqlite"))
             try repository.prepareSampleBook(categories: Self.initialCategories(directory: directory))
             try SampleBookSeeder.seedIfNeeded(repository: repository, directory: directory)
             let expenses = try ExpenseService(store: repository)
             self.expenses = expenses
             model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings)
+            model.backups = BackupService(directory: directory, repository: repository, state: state, expenses: expenses)
         } catch {
             expenses = nil
             model = AppModel(startupFailure: error.localizedDescription)

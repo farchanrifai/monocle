@@ -195,4 +195,21 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["expense-"].firstMatch.waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testBackupSettingsExposeExportAndImport() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launch()
+        app.buttons["homeSettings"].tap()
+        app.buttons["backupSettings"].tap()
+        XCTAssertTrue(app.buttons["exportBackup"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["importBackup"].exists)
+        let screen = XCTAttachment(screenshot: app.screenshot())
+        screen.name = "backup-settings-013"; screen.lifetime = .keepAlways; add(screen)
+        app.buttons["exportBackup"].tap()
+        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5), "Export must present the system document picker")
+        let picker = XCTAttachment(screenshot: app.screenshot())
+        picker.name = "backup-export-013"; picker.lifetime = .keepAlways; add(picker)
+    }
+
 }

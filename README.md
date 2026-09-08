@@ -2,7 +2,7 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current stage: native interaction prototype (0.1.2, build 4).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
+**Current stage: native interaction prototype (0.1.3, build 5).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)
@@ -31,4 +31,4 @@ Local branch: `main`. The planning baseline is committed separately from impleme
 
 ## Development continuity
 
-Keep `docs/planning` and `docs/prototype/README.md` current. Preserve the sample store during updates. Before introducing a real-data book, implement and test full backup/restore, explicit migrations, and the daily-use checks. Do not infer working scheduling, lock security, import, or sync from their planned/settings UI.
+Keep `docs/planning` and `docs/prototype/README.md` current. Preserve the sample store during updates. Before introducing a real-data book, complete phone backup/restore and update checks, app lock and the remaining daily-use gates. Backup format and recovery semantics are documented in docs/planning/backup-format.md. Do not infer working scheduling, lock security, import, or sync from their planned/settings UI.

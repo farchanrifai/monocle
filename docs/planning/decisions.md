@@ -77,3 +77,7 @@ None of these prevent the entry prototype. Do not mistake unresolved implementat
 - Category taps preserve strip position and animate selection. All categories uses a searchable grid with a consistent page background.
 - Custom category editor brought forward: create, rename, curated icon selection and protected deletion. Referenced categories keep history; archive and keyword editing remain future work.
 - User will continue with GPT-5.6 Terra. Detailed committed roadmap and local two-section HANDOFF are the continuation contract; no new task/model change was requested.
+
+## Backup milestone — 2026-09-08
+
+Implemented format-1 portable JSON `.monoclebackup` files for the current sample book. Restore replaces rather than merges, requires an in-app review/confirmation and writes a local safety backup first. A rollback journal spans SQLite and draft/settings so restart recovers the original state until activation completes. Initial limits are 10 MB, 10,000 expenses and 500 categories. Files are unencrypted. See backup-format.md for validation, interruption semantics and phone checks still pending.

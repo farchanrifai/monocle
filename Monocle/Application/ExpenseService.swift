@@ -15,6 +15,7 @@ protocol ExpenseStore {
 /// Shared by screen state and App Intents. Main-actor isolation serializes local commands.
 @MainActor @Observable
 final class ExpenseService {
+    var isBlocked = false
     private let store: any ExpenseStore
     private(set) var expenses: [Expense] = []
     private(set) var categories: [ExpenseCategory] = []
@@ -25,6 +26,7 @@ final class ExpenseService {
     }
 
     func reload() throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
         let categories = try store.categories()
         let expenses = try store.expenses()
         self.categories = categories
@@ -32,6 +34,7 @@ final class ExpenseService {
     }
 
     func save(_ expense: Expense) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
         try expense.validate(categories: categories)
         try store.save(expense)
         // Publish the committed value without a second fallible read after the commit.
@@ -41,6 +44,7 @@ final class ExpenseService {
     }
 
     func saveCategory(_ category: ExpenseCategory) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
         let category = try category.validated(against: categories)
         try store.saveCategory(category)
         categories.removeAll { $0.id == category.id }
@@ -49,6 +53,7 @@ final class ExpenseService {
     }
 
     func deleteCategory(_ id: UUID) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
         guard !expenses.contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
         try store.deleteCategory(id)
         categories.removeAll { $0.id == id }
@@ -66,6 +71,7 @@ final class ExpenseService {
     }
 
     func delete(_ id: UUID) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
         try store.delete(id)
         expenses.removeAll { $0.id == id }
     }

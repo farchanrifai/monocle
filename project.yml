@@ -10,13 +10,24 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: '26.0'
     DEVELOPMENT_TEAM: ''
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    MARKETING_VERSION: '0.1.2'
-    CURRENT_PROJECT_VERSION: '4'
+    MARKETING_VERSION: '0.1.3'
+    CURRENT_PROJECT_VERSION: '5'
 targets:
   Monocle:
     type: application
     platform: iOS
     sources: [Monocle]
+    info:
+      path: Monocle/Resources/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.farchan.monocle.backup
+            UTTypeDescription: monocle Backup
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [monoclebackup]
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"

@@ -1,4 +1,4 @@
-# monocle — prototype 0.1.2, build 4
+# monocle — prototype 0.1.3, build 5
 
 Updated: 2026-09-08
 
@@ -18,13 +18,15 @@ Updated: 2026-09-08
 
 The bill and budget settings are interaction previews. Scheduling and notifications are inactive. The sample cycle editor changes the sample display immediately; production historical-period transitions have not been implemented.
 
+- Settings → Backup & restore exports a portable `.monoclebackup` file, validates an imported file for review, and replaces the book only after confirmation and a safety backup. Export last safety backup preserves the previous state outside the app.
+
 ## Data and foundation
 
 Records use a versioned Core Data model, with book, category, expense, and allocation entities. Amounts use exact integer minor units. UI and the text Shortcut call the same validated save operation. The persistence layer can store and validate splits, but the split editor is deferred to the next milestone.
 
 Sample records are created once with stable identifiers. Clearing a book does not reseed it. Edits and retries retain the transaction ID. Draft and prototype-setting files are saved atomically. Data lives under the app's Application Support `monocle-prototype` folder, separate from the eventual personal book. Automated UI tests use distinct stores.
 
-Full backup/restore, app locking, category archiving/rule editing, scheduled occurrences, CSV import/export, and production budget history remain unimplemented. No sync/cloud entitlements are enabled. Use test purchases in this version.
+App locking, category archiving/rule editing, scheduled occurrences, CSV import/export, and production budget history remain unimplemented. Backup/restore is now implemented; signed-phone export/import/update checks remain pending. No sync/cloud entitlements are enabled. Use test purchases in this version.
 
 ## Current Shortcuts
 
@@ -41,7 +43,7 @@ Six domain/storage tests pass: exact parsing/rejections, ambiguous text categori
 
 Six foundation tests cover shared text commands, identity-preserving retries, failed writes/discard/settings, post-commit publication without a second read, old JSON encoding, and corrupt-file preservation. The previous foundation baseline passed 20 tests. Result: `build/FoundationTests-20260908.xcresult`.
 
-Current validation adds locale correctness, category name/icon validation, rename/history protection, and an end-to-end custom-category/relaunch/no-scroll-jump UI check. All 24 tests pass (15 unit/storage and 9 UI) on the iPhone 15 Pro simulator. Result: `build/Refinement012FinalTests.xcresult`. The Release arm64 build succeeds without compiler warnings. Current light screenshots were inspected. The first navigation run exposed an overlapping native tab bar; visibility is now set in each tab and regression-tested.
+Current validation adds locale correctness, category name/icon validation, rename/history protection, and an end-to-end custom-category/relaunch/no-scroll-jump UI check. The 0.1.2 baseline passed 24 tests (15 unit/storage and 9 UI) on the iPhone 15 Pro simulator. Result: `build/Refinement012FinalTests.xcresult`. The Release arm64 build succeeds without compiler warnings. Current light screenshots were inspected. The first navigation run exposed an overlapping native tab bar; visibility is now set in each tab and regression-tested.
 
 The previous 0.1.1 UI pass validated eight flows on the iPhone 15 Pro simulator: interruption recovery, text interpretation/mode switching, invalid save, budget/bill preferences, keypad layout with 18 categories, Close/Keep editing/Discard, swipe discard, and replacing a recovered draft to edit another transaction. Results: `build/Final011Tests.xcresult`. The larger-text keypad/category test also passed in `build/LargeType011Tests.xcresult`. The final Home accessibility label fix compiles and is covered by the current normal-size suite; a further large-type visual check remains.
 
@@ -49,7 +51,7 @@ The user reports working functions and snappy navigation on their SideStore-inst
 
 The foundation now separates dependency assembly, shared expense commands, Core Data, atomic local files, and presentation state. The compiled bundle identity, database model, storage folder, and draft/settings encoding remain unchanged. See [roadmap and Terra continuation instructions](../planning/roadmap.md) and [architecture](../planning/architecture.md) for implemented boundaries and remaining work.
 
-## Current screens (0.1.2)
+## Previous screens (0.1.2)
 
 ![Two-island navigation](screenshots/recents-012-light.png)
 
@@ -77,9 +79,9 @@ The foundation now separates dependency assembly, shared expense commands, Core 
 
 ## Device package
 
-Local deliverable: `build/deliverables/monocle-prototype-0.1.2-build-4.ipa` (excluded from Git). Release build 4, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build artifacts are preserved.
+Local deliverable: `build/deliverables/monocle-prototype-0.1.3-build-5.ipa` (excluded from Git). Release build 5, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build artifacts are preserved.
 
-SHA-256: `be83e025315ebe1c38cec0583e1908188bf7cb38111f05531e7bb7996f8acf01`.
+SHA-256: `84fc02a9ae5b323eeed1a1c27a48612401a13925b08b248da7b0cf8d0d0a9db8`.
 
 ## iPhone / SideStore checkpoint
 
@@ -93,4 +95,14 @@ The user confirmed the original installation works on iPhone 15 Pro. The updated
 
 ## Next implementation checkpoint
 
-Collect feedback on the native flow. Then finish reliable capture and recovery: full backup/restore, app lock, category archiving/rules, split UI, structured Shortcut parameters, and old-store/update fixtures. Only mark daily use ready when those checks and the user's phone review pass. Budget history, real bills, and CSV follow the agreed implementation plan; they remain in v1 scope.
+Collect feedback on the native flow. Then complete phone backup/restore/update verification and remaining reliable capture: app lock, category archiving/rules, split UI and structured Shortcut parameters. Only mark daily use ready when those checks and the user's phone review pass. Budget history, real bills, and CSV follow the agreed implementation plan; they remain in v1 scope.
+
+## Backup milestone (0.1.3)
+
+Implementation and recovery contract: [backup format](../planning/backup-format.md). Tests exercise full values/IDs/splits/draft/settings, candidate rejection before mutation, rollback at every activation stage, failed safety backup creation, disk reopen recovery, corrupt journal retention and empty-book seed prevention. The UI test presents the system Files export picker; its initial Cancel-label assumption was corrected to assert the visible Save action.
+
+All 33 tests pass (23 unit/storage and 10 UI); Release arm64 build succeeds without compiler warnings.
+
+![Backup settings](screenshots/backup-settings-013.png)
+
+Final evidence: `build/Backup013FinalTests.xcresult`, `/tmp/monocle-013-final-tests.log`; device log `/tmp/monocle-013-device.log`. The repository/store model and app identity are unchanged. Actual file saving/import and replace/cancel flows still need a signed iPhone review.

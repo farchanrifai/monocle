@@ -83,9 +83,10 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: "Sample book")
                     LabeledContent("Currency", value: "IDR")
-                    LabeledContent("Version", value: "0.1.2 · Prototype")
+                    LabeledContent("Version", value: "0.1.3 · Prototype")
                 }
                 Section {
+                    NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
                     NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
                 }
                 Section("Try the flow") {
@@ -93,10 +94,9 @@ struct SettingsView: View {
                     Text("Your sample entries stay on this device. Interruptions preserve your draft; leaving a changed entry asks before discarding it.")
                 }
                 Section("Before daily use") {
-                    Text("This is an interaction prototype. Full backup/restore, app lock, imports, scheduled bills, and phone update checks are still pending. Use sample purchases here.")
+                    Text("This is an interaction prototype. App lock, imports, scheduled bills, and phone update checks are still pending. Use sample purchases here.")
                 }
                 Section("Coming next") {
-                    Label("Full backup and restoration", systemImage: "externaldrive")
                     Label("Face ID and lock timeout", systemImage: "faceid")
                     Label("Split entry", systemImage: "square.grid.2x2")
                     Label("CSV import", systemImage: "tablecells")
