@@ -88,21 +88,70 @@ struct SettingsView: View {
                 Section {
                     NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
                     NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
+                    NavigationLink("App lock") { AppLockSettingsView(model: model) }.accessibilityIdentifier("appLockSettings")
                 }
                 Section("Try the flow") {
                     Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")
                     Text("Your sample entries stay on this device. Interruptions preserve your draft; leaving a changed entry asks before discarding it.")
                 }
                 Section("Before daily use") {
-                    Text("This is an interaction prototype. App lock, imports, scheduled bills, and phone update checks are still pending. Use sample purchases here.")
+                    Text("This is an interaction prototype. App lock is optional; imports, scheduled bills, and phone update checks are still pending. Use sample purchases here.")
                 }
                 Section("Coming next") {
-                    Label("Face ID and lock timeout", systemImage: "faceid")
                     Label("Split entry", systemImage: "square.grid.2x2")
                     Label("CSV import", systemImage: "tablecells")
                 }.foregroundStyle(.secondary)
             }.navigationTitle("monocle").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+}
+
+struct AppLockSettingsView: View {
+    let model: AppModel
+    @State private var error: String?
+    @State private var saving = false
+
+    var body: some View {
+        Form {
+            Section {
+                if let timeout = model.settings.appLockTimeout {
+                    LabeledContent { Text(timeout.title) } label: { Text("Current setting") }
+                    Button("Turn off app lock", role: .destructive) { update(nil) }
+                        .disabled(saving)
+                } else {
+                    Text("Off").foregroundStyle(.secondary)
+                }
+                ForEach(AppLockTimeout.allCases) { timeout in
+                    Button { update(timeout) } label: {
+                        HStack {
+                            Text(timeout.title)
+                            Spacer()
+                            if timeout == model.settings.appLockTimeout { Image(systemName: "checkmark").foregroundStyle(MC.red) }
+                        }
+                    }
+                    .disabled(saving || timeout == model.settings.appLockTimeout)
+                }
+            } header: {
+                Text("Lock after leaving monocle")
+            } footer: {
+                Text("Turning this on or changing its timeout confirms your device authentication. monocle covers its interface while it is in the app switcher, then asks for Face ID or your device passcode when the timeout has elapsed.")
+            }
+            Section("Shortcuts") {
+                Text("Both monocle Shortcuts always use the system device-authentication policy. A background text shortcut can record only after that system check; it does not unlock the app screen. Quick entry may still show this lock when monocle opens.")
+            }
+            if saving { HStack { Spacer(); ProgressView("Saving app lock…"); Spacer() } }
+            if let error { Text(error).foregroundStyle(MC.red) }
+        }
+        .navigationTitle("App lock").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func update(_ timeout: AppLockTimeout?) {
+        saving = true
+        Task {
+            let result = await model.setAppLockTimeout(timeout)
+            saving = false
+            if case let .failure(error) = result { self.error = error.localizedDescription }
         }
     }
 }

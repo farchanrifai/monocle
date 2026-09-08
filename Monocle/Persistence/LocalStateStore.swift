@@ -1,10 +1,34 @@
 import Foundation
 
+enum AppLockTimeout: String, Codable, CaseIterable, Identifiable {
+    case immediately
+    case oneMinute
+    case fiveMinutes
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .immediately: "Immediately"
+        case .oneMinute: "After 1 minute"
+        case .fiveMinutes: "After 5 minutes"
+        }
+    }
+    var interval: TimeInterval {
+        switch self {
+        case .immediately: 0
+        case .oneMinute: 60
+        case .fiveMinutes: 5 * 60
+        }
+    }
+}
+
 struct PrototypeSettings: Codable, Equatable {
     var budget: Int64 = 450_000_000
     var startDay = 1
     var billAutomatic = false
     var billReminder = true
+    /// Nil means the app never presents its own lock. System Shortcut authentication is separate.
+    var appLockTimeout: AppLockTimeout?
 }
 
 @MainActor

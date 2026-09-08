@@ -6,7 +6,8 @@ final class BackupTests: XCTestCase {
     private func fixture() -> BookBackup {
         let categories = ExpenseCategory.defaults
         var draft = ExpenseDraft(); draft.note = "unfinished"
-        return BookBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: PrototypeSettings())
+        var settings = PrototypeSettings(); settings.appLockTimeout = .fiveMinutes
+        return BookBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings)
     }
     func testRoundTripPreservesIDsSplitsDraftAndSettings() throws {
         let original = fixture()

@@ -14,6 +14,7 @@ final class AppModel {
     var error: String?
     var startupError: String?
     var backups: BackupService?
+    let appLock: AppLockController
     var toast: String?
     var toastID = UUID()
     var saveFeedback = 0
@@ -28,16 +29,18 @@ final class AppModel {
     var spent: Int64 { cycleExpenses.reduce(0) { $0 + $1.amount } }
     var remaining: Int64 { settings.budget - spent }
 
-    init(expenses: ExpenseService, state: any LocalStateStore, draft: ExpenseDraft = ExpenseDraft(), settings: PrototypeSettings = PrototypeSettings()) {
+    init(expenses: ExpenseService, state: any LocalStateStore, draft: ExpenseDraft = ExpenseDraft(), settings: PrototypeSettings = PrototypeSettings(), appLock: AppLockController? = nil) {
         self.expenseService = expenses
         self.state = state
         self.draft = draft
         self.settings = settings
+        self.appLock = appLock ?? AppLockController(timeout: settings.appLockTimeout)
     }
 
     init(startupFailure: String) {
         expenseService = nil
         state = nil
+        appLock = AppLockController(timeout: nil)
         startupError = startupFailure
     }
 
@@ -132,6 +135,27 @@ final class AppModel {
     func saveSettings(_ proposed: PrototypeSettings) throws {
         guard proposed.budget > 0, (1...31).contains(proposed.startDay) else { throw EntryError.invalidAmount }
         try requireState().saveSettings(proposed); settings = proposed
+    }
+    func setAppLockTimeout(_ timeout: AppLockTimeout?) async -> Result<Void, AppLockError> {
+        let previous = settings.appLockTimeout
+        guard let timeout else {
+            do {
+                var proposed = settings; proposed.appLockTimeout = nil
+                try saveSettings(proposed)
+                appLock.disable()
+                return .success(())
+            } catch { return .failure(.settingsCouldNotSave(error.localizedDescription)) }
+        }
+        let result = await appLock.enable(timeout: timeout)
+        guard case .success = result else { return result }
+        do {
+            var proposed = settings; proposed.appLockTimeout = timeout
+            try saveSettings(proposed)
+            return .success(())
+        } catch {
+            appLock.restorePersistedConfiguration(previous)
+            return .failure(.settingsCouldNotSave(error.localizedDescription))
+        }
     }
     private func requireState() throws -> any LocalStateStore {
         guard let state else { throw EntryError.corruptStore }

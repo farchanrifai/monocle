@@ -84,6 +84,36 @@ final class FoundationTests: XCTestCase {
         XCTAssertTrue(store.values.isEmpty)
         XCTAssertTrue(service.expenses.isEmpty)
     }
+
+    func testAppLockUsesPrivacyShieldThenHonorsTimeout() async {
+        let authenticator = TestAuthenticator()
+        let lock = AppLockController(timeout: .oneMinute, authenticator: authenticator)
+        XCTAssertTrue(lock.needsAuthentication, "A newly launched locked app must not reveal its book")
+        let unlockResult = await lock.unlock()
+        XCTAssertNoThrow(try unlockResult.get())
+        XCTAssertFalse(lock.blocksContent)
+
+        let left = Date(timeIntervalSinceReferenceDate: 1_000)
+        lock.suspend(now: left)
+        XCTAssertTrue(lock.blocksContent, "The app switcher must get the shield immediately")
+        lock.resume(now: left.addingTimeInterval(59))
+        XCTAssertFalse(lock.blocksContent, "Returning within the grace period should not prompt again")
+
+        lock.suspend(now: left.addingTimeInterval(60))
+        lock.resume(now: left.addingTimeInterval(120))
+        XCTAssertTrue(lock.needsAuthentication)
+    }
+
+    func testEnablingAppLockAuthenticatesBeforePersisting() async throws {
+        let state = TestState()
+        let lock = AppLockController(timeout: nil, authenticator: TestAuthenticator())
+        let model = AppModel(expenses: try ExpenseService(store: TestExpenseStore()), state: state, appLock: lock)
+        let enableResult = await model.setAppLockTimeout(.fiveMinutes)
+        XCTAssertNoThrow(try enableResult.get())
+        XCTAssertEqual(model.settings.appLockTimeout, .fiveMinutes)
+        XCTAssertEqual(state.savedSettings?.appLockTimeout, .fiveMinutes)
+        XCTAssertEqual(lock.timeout, .fiveMinutes)
+    }
 }
 
 @MainActor
@@ -115,8 +145,14 @@ private final class TestExpenseStore: ExpenseStore {
 @MainActor
 private final class TestState: LocalStateStore {
     var failWrites = false
+    var savedSettings: PrototypeSettings?
     func loadDraft() throws -> ExpenseDraft { ExpenseDraft() }
     func loadSettings() throws -> PrototypeSettings { PrototypeSettings() }
     func saveDraft(_ draft: ExpenseDraft) throws { if failWrites { throw EntryError.corruptStore } }
-    func saveSettings(_ settings: PrototypeSettings) throws { if failWrites { throw EntryError.corruptStore } }
+    func saveSettings(_ settings: PrototypeSettings) throws { if failWrites { throw EntryError.corruptStore }; savedSettings = settings }
+}
+
+@MainActor
+private final class TestAuthenticator: DeviceAuthenticating {
+    func authenticate(reason: String) async -> Result<Void, AppLockError> { .success(()) }
 }

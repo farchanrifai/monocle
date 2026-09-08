@@ -12,6 +12,7 @@
 		0F6F3FFB14D8DD030BEC004F /* BackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7626BE09A6EE4CB31A47D198 /* BackupTests.swift */; };
 		1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
 		2632A060A85BB7A9F0136CD0 /* ExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */; };
+		29AA0001C6F7D08400000001 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29AA0002C6F7D08400000001 /* AppLock.swift */; };
 		2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */; };
 		2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
 		2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 259DC603F39D197686C31B1F /* MonocleTests.swift */; };
@@ -59,6 +60,7 @@
 		02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleBookSeeder.swift; sourceTree = "<group>"; };
 		0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
 		259DC603F39D197686C31B1F /* MonocleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleTests.swift; sourceTree = "<group>"; };
+		29AA0002C6F7D08400000001 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		41C095F291D89DF974579CA6 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
 		55C6F2F7E78348046E865E34 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
@@ -194,6 +196,7 @@
 		B7363BBB322477D6D3227D93 /* Application */ = {
 			isa = PBXGroup;
 			children = (
+				29AA0002C6F7D08400000001 /* AppLock.swift */,
 				55C6F2F7E78348046E865E34 /* BackupService.swift */,
 				AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */,
 			);
@@ -361,6 +364,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				29AA0001C6F7D08400000001 /* AppLock.swift in Sources */,
 				5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */,
 				B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */,
 				37B80FDB18C1C00EA9CFCEE8 /* BackupService.swift in Sources */,
