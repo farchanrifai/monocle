@@ -25,6 +25,12 @@ scripts/build-ipa.sh
 
 The IPA script builds an **unsigned arm64 device app**, packaged for SideStore to re-sign. It is not an App Store export or an already signed installation. Generated builds, IPA files, signing material, and test results are excluded from Git.
 
+## Wireless SideStore updates
+
+`scripts/publish-sidestore.sh "Release notes"` builds the IPA, preserves a copy in iCloud Drive, publishes it to the public `farchanrifai/monocle-releases` repository, and updates its SideStore source. The public repository contains only release artifacts and metadata; this source repository can remain private. Set `SIDESTORE_REPO=owner/repository` to use another public distribution repository.
+
+Add the printed `sidestore://source?...` link to SideStore once. Later builds appear as updates after publishing; keep the bundle identifier unchanged and increment the build number before each release.
+
 ## Repository
 
 Local branch: `main`. The planning baseline is committed separately from implementation. Remote repository: https://github.com/farchanrifai/monocle.

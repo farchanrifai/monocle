@@ -6,6 +6,7 @@ mkdir -p build/device build/packages
 xcodebuild build -project Monocle.xcodeproj -scheme Monocle -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO
 package_stage="$(mktemp -d "$project_root/build/packages/stage.XXXXXX")"
+trap 'rm -rf "$package_stage"' EXIT
 mkdir -p "$package_stage/Payload"
 ditto build/device/Build/Products/Release-iphoneos/Monocle.app "$package_stage/Payload/Monocle.app"
 # An unsigned device build for SideStore to re-sign, not an App Store export.
@@ -17,4 +18,12 @@ if [ -e "$output_path" ]; then
 fi
 (cd "$package_stage" && /usr/bin/zip -qr "$output_path" Payload)
 /usr/bin/unzip -t "$output_path"
-printf 'Unsigned IPA: %s\n' "$output_path"
+sha256="$(/usr/bin/shasum -a 256 "$output_path" | /usr/bin/awk '{print $1}')"
+delivery_dir="/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex"
+mkdir -p "$delivery_dir"
+delivery_path="$delivery_dir/$(basename "$output_path")"
+if [ -e "$delivery_path" ]; then
+  delivery_path="${delivery_path%.ipa}-$(date +%Y%m%d-%H%M%S).ipa"
+fi
+/usr/bin/ditto "$output_path" "$delivery_path"
+printf 'Unsigned IPA: %s\nSHA-256: %s\nDelivery copy: %s\n' "$output_path" "$sha256" "$delivery_path"
