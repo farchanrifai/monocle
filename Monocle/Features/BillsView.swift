@@ -84,7 +84,9 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: model.settings.book.name)
                     LabeledContent("Currency", value: "IDR")
-                    LabeledContent("Version", value: "0.1.4 (20)")
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.5"
+                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "21"
+                    LabeledContent("Version", value: "\(version) (\(build))")
                 }
                 Section {
                     Toggle("Auto switch", isOn: $model.autoAppearance)
