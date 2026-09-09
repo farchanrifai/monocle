@@ -2,26 +2,52 @@ import Foundation
 
 enum BookKind: String, Codable, Equatable { case sample, real }
 
-struct BookProfile: Codable, Equatable {
+struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
     var id: UUID
     var name: String
     var kind: BookKind
+    var colorIndex: Int
 
-    static let sample = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .sample)
+    static let sample = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .sample, colorIndex: 0)
 
-    static func real(named name: String) throws -> Self {
+    init(id: UUID = UUID(), name: String, kind: BookKind = .real, colorIndex: Int = 0) {
+        self.id = id
+        self.name = name
+        self.kind = kind
+        self.colorIndex = colorIndex
+    }
+
+    static func real(named name: String, colorIndex: Int = 0) throws -> Self {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name.count <= 40 else { throw BackupError.invalid }
-        return Self(id: UUID(), name: name, kind: .real)
+        return Self(id: UUID(), name: name, kind: .real, colorIndex: colorIndex)
     }
 
     func renamed(to name: String) throws -> Self {
         guard kind == .real else { throw BackupError.invalid }
-        var value = try Self.real(named: name)
+        var value = try Self.real(named: name, colorIndex: colorIndex)
         value.id = id
         return value
     }
+
+    private enum CodingKeys: String, CodingKey { case id, name, kind, colorIndex }
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        kind = try values.decode(BookKind.self, forKey: .kind)
+        colorIndex = try values.decodeIfPresent(Int.self, forKey: .colorIndex) ?? 0
+    }
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id, forKey: .id)
+        try values.encode(name, forKey: .name)
+        try values.encode(kind, forKey: .kind)
+        try values.encode(colorIndex, forKey: .colorIndex)
+    }
 }
+
+typealias Book = BookProfile
 
 struct BookBackup: Codable {
     var formatVersion = 3
@@ -138,6 +164,101 @@ struct BookBackup: Codable {
         let value = try JSONDecoder().decode(Self.self, from: data)
         try value.validate()
         return value
+    }
+}
+
+struct WorkspacePreferences: Codable, Equatable, Sendable {
+    var visibleBookIDs: [UUID] = []
+    var bookOrder: [UUID] = []
+    var allActivitiesScope: Bool = false
+    var visualDirection: String = "Instrument"
+}
+
+struct BookBackupItem: Codable, Equatable, Sendable {
+    var book: BookProfile
+    var categories: [ExpenseCategory]
+    var expenses: [Expense]
+    var budgets: [BudgetVersion]
+    var draft: ExpenseDraft?
+}
+
+struct WorkspaceBackup: Codable, Equatable, Sendable {
+    var formatVersion: Int = 4
+    var exportedAt: Date = .now
+    var currency: String = "IDR"
+    var minorUnitScale: Int = 2
+    var books: [BookBackupItem]
+    var preferences: WorkspacePreferences
+    var settings: PrototypeSettings
+
+    init(formatVersion: Int = 4, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init()) {
+        self.formatVersion = formatVersion
+        self.exportedAt = exportedAt
+        self.currency = currency
+        self.minorUnitScale = minorUnitScale
+        self.books = books
+        self.preferences = preferences
+        self.settings = settings
+    }
+
+    /// Convert a single-book BookBackup (formats 1–3) into a WorkspaceBackup
+    init(singleBook backup: BookBackup) {
+        let kind = BookKind(rawValue: backup.bookKind) ?? (backup.bookID == BookProfile.sample.id ? .sample : .real)
+        let profile = BookProfile(id: backup.bookID, name: backup.bookName, kind: kind)
+        let item = BookBackupItem(book: profile, categories: backup.categories, expenses: backup.expenses, budgets: backup.budgets, draft: backup.draft)
+        self.init(
+            formatVersion: 4,
+            exportedAt: backup.exportedAt,
+            currency: backup.currency,
+            minorUnitScale: backup.minorUnitScale,
+            books: [item],
+            preferences: WorkspacePreferences(visibleBookIDs: [profile.id], bookOrder: [profile.id]),
+            settings: backup.settings
+        )
+    }
+
+    func validate() throws {
+        guard formatVersion == 4, currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
+        guard !books.isEmpty, books.count <= 100 else { throw BackupError.invalid }
+        let bookIDs = Set(books.map(\.book.id))
+        guard bookIDs.count == books.count else { throw BackupError.invalid }
+        for item in books {
+            guard !item.book.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, item.book.name.count <= 40 else { throw BackupError.invalid }
+            guard item.expenses.count <= 10_000, item.categories.count <= 500 else { throw BackupError.tooLarge }
+            guard Set(item.expenses.map(\.id)).count == item.expenses.count,
+                  Set(item.categories.map(\.id)).count == item.categories.count else { throw BackupError.invalid }
+            for cat in item.categories {
+                guard try cat.validated(against: item.categories) == cat else { throw BackupError.invalid }
+            }
+            for exp in item.expenses {
+                try exp.validate(categories: item.categories)
+            }
+            for budget in item.budgets {
+                try budget.validate(categories: item.categories)
+            }
+        }
+    }
+
+    func encoded() throws -> Data {
+        try validate()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(self)
+        guard data.count <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
+        return data
+    }
+
+    static func decode(_ data: Data) throws -> WorkspaceBackup {
+        guard data.count <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
+        if let workspace = try? JSONDecoder().decode(WorkspaceBackup.self, from: data) {
+            try workspace.validate()
+            return workspace
+        }
+        // Fall back to decoding as legacy BookBackup (formats 1–3)
+        let legacy = try BookBackup.decode(data)
+        let workspace = WorkspaceBackup(singleBook: legacy)
+        try workspace.validate()
+        return workspace
     }
 }
 

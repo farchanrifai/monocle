@@ -25,7 +25,7 @@ struct RootView: View {
                 AppLockView(lock: model.appLock)
             } else {
                 TabView(selection: $model.selectedTab) {
-                    Tab("Recents", systemImage: "list.bullet", value: 0) { RecentsView(model: model).toolbar(.hidden, for: .tabBar) }
+                    Tab("Recents", systemImage: "rectangle.stack", value: 0) { BookHomeView(model: model).toolbar(.hidden, for: .tabBar) }
                     Tab("Budgets", systemImage: "chart.bar.xaxis", value: 1) { BudgetsView(model: model).toolbar(.hidden, for: .tabBar) }
                     Tab("Bills", systemImage: "calendar", value: 2) { BillsView(model: model).toolbar(.hidden, for: .tabBar) }
                 }

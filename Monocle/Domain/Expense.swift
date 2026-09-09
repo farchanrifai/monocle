@@ -28,6 +28,29 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
     var allocations: [Allocation]
     var source: String = "manual"
     var createdAt: Date = .now
+    var bookID: UUID? = nil
+
+    init(id: UUID = UUID(), amount: Int64, day: String, note: String, allocations: [Allocation], source: String = "manual", createdAt: Date = .now, bookID: UUID? = nil) {
+        self.id = id
+        self.amount = amount
+        self.day = day
+        self.note = note
+        self.allocations = allocations
+        self.source = source
+        self.createdAt = createdAt
+        self.bookID = bookID
+    }
+
+    static func == (lhs: Expense, rhs: Expense) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.amount == rhs.amount &&
+        lhs.day == rhs.day &&
+        lhs.note == rhs.note &&
+        lhs.allocations == rhs.allocations &&
+        lhs.source == rhs.source &&
+        lhs.createdAt == rhs.createdAt &&
+        (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
+    }
 
     func validate(categories: [ExpenseCategory]) throws {
         guard amount > 0, amount <= Money.maximum else { throw EntryError.invalidAmount }
@@ -127,6 +150,7 @@ struct DraftAllocation: Identifiable, Codable, Equatable {
 
 struct ExpenseDraft: Codable, Equatable {
     var id = UUID()
+    var bookID: UUID?
     var amount = ""
     var categoryID: UUID?
     var note = ""
@@ -150,21 +174,22 @@ struct ExpenseDraft: Codable, Equatable {
             guard splitAllocations.count > 1 else { throw EntryError.splitMismatch }
             allocations = try splitAllocations.map { .init(categoryID: $0.categoryID, amount: try Money.parse($0.amount)) }
         }
-        return Expense(id: id, amount: value, day: Day.string(date), note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt)
+        return Expense(id: id, amount: value, day: Day.string(date), note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt, bookID: bookID)
     }
     init() {}
     init(expense: Expense) {
-        id = expense.id; amount = Money.digits(expense.amount); categoryID = expense.allocations.first?.categoryID
+        id = expense.id; bookID = expense.bookID; amount = Money.digits(expense.amount); categoryID = expense.allocations.first?.categoryID
         note = expense.note; date = Day.date(expense.day) ?? .now; editing = true; createdAt = expense.createdAt; source = expense.source
         if expense.allocations.count > 1 {
             splitAllocations = expense.allocations.map { .init(categoryID: $0.categoryID, amount: Money.digits($0.amount)) }
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case id, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations }
+    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        bookID = try values.decodeIfPresent(UUID.self, forKey: .bookID)
         amount = try values.decodeIfPresent(String.self, forKey: .amount) ?? ""
         categoryID = try values.decodeIfPresent(UUID.self, forKey: .categoryID)
         note = try values.decodeIfPresent(String.self, forKey: .note) ?? ""
@@ -178,11 +203,26 @@ struct ExpenseDraft: Codable, Equatable {
     }
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
-        try values.encode(id, forKey: .id); try values.encode(amount, forKey: .amount)
+        try values.encode(id, forKey: .id); try values.encodeIfPresent(bookID, forKey: .bookID); try values.encode(amount, forKey: .amount)
         try values.encodeIfPresent(categoryID, forKey: .categoryID); try values.encode(note, forKey: .note)
         try values.encode(date, forKey: .date); try values.encode(text, forKey: .text); try values.encode(mode, forKey: .mode)
         try values.encode(editing, forKey: .editing); try values.encode(createdAt, forKey: .createdAt); try values.encode(source, forKey: .source)
         try values.encode(splitAllocations, forKey: .splitAllocations)
+    }
+
+    static func == (lhs: ExpenseDraft, rhs: ExpenseDraft) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.amount == rhs.amount &&
+        lhs.categoryID == rhs.categoryID &&
+        lhs.note == rhs.note &&
+        lhs.date == rhs.date &&
+        lhs.text == rhs.text &&
+        lhs.mode == rhs.mode &&
+        lhs.editing == rhs.editing &&
+        lhs.createdAt == rhs.createdAt &&
+        lhs.source == rhs.source &&
+        lhs.splitAllocations == rhs.splitAllocations &&
+        (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
     }
 }
 
@@ -257,12 +297,15 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
     var categoryLimits: [CategoryBudget] = []
     /// Set only for the first period after a start-day change.
     var transitionEndDay: String?
+    var bookID: UUID? = nil
 
-    static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = .current) -> Self {
+    static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = .current, bookID: UUID? = nil) -> Self {
         let validStartDay = min(31, max(1, startDay))
         let cycle = BudgetCycle.containing(date, startDay: validStartDay, calendar: calendar)
-        return .init(id: legacyID, effectiveDay: Day.string(cycle.start, calendar: calendar),
-                     overallLimit: max(1, min(Money.maximum, overallLimit)), startDay: validStartDay)
+        let id = (bookID == nil || bookID == BookProfile.sample.id) ? legacyID : UUID()
+        return .init(id: id, effectiveDay: Day.string(cycle.start, calendar: calendar),
+                     overallLimit: max(1, min(Money.maximum, overallLimit)), startDay: validStartDay,
+                     categoryLimits: [], transitionEndDay: nil, bookID: bookID)
     }
 
     func validate(categories: [ExpenseCategory]) throws {
@@ -283,6 +326,16 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
 
     func limit(for categoryID: UUID) -> Int64? {
         categoryLimits.first { $0.categoryID == categoryID }?.limit
+    }
+
+    static func == (lhs: BudgetVersion, rhs: BudgetVersion) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.effectiveDay == rhs.effectiveDay &&
+        lhs.overallLimit == rhs.overallLimit &&
+        lhs.startDay == rhs.startDay &&
+        lhs.categoryLimits == rhs.categoryLimits &&
+        lhs.transitionEndDay == rhs.transitionEndDay &&
+        (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
     }
 }
 

@@ -15,7 +15,7 @@ struct BookHomePrototype: View {
     @State private var managing = false
     @State private var adding = false
     @State private var pull: CGFloat = 0
-    @Namespace private var cardTransition
+    @State private var info = ScrollInfo()
     @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
     @ScaledMetric(relativeTo: .title) private var cardHeight = 224
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,6 +31,15 @@ struct BookHomePrototype: View {
          Color(red: 0.84, green: 0.94, blue: 0.38), Color(red: 0.93, green: 0.68, blue: 0.88)][abs(id) % 4]
     }
 
+    private var selectedBookBinding: Binding<PrototypeBook?> {
+        Binding(
+            get: { current },
+            set: { newBook in
+                focus(newBook?.id)
+            }
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -44,57 +53,68 @@ struct BookHomePrototype: View {
                 Spacer()
                 options
             }.padding(.horizontal, 20).padding(.bottom, 8)
-            ZStack(alignment: .top) {
-                // Retain this scroll view during detail presentation so closing restores its exact position.
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        stack.offset(y: -pull * 0.9)
-                        if visible.isEmpty {
-                            ContentUnavailableView {
-                                Label("Your stack is empty", systemImage: "rectangle.stack")
-                            } description: { Text("All books are still in the options menu.") }
-                            actions: { Button("Choose visible books") { managing = true } }
-                        }
-                        activityList(bookID: nil)
-                            .offset(y: pull * (CGFloat(max(0, visible.count - 1)) * 0.22 - 0.9))
-                    }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 24)
-                }
-                .scrollBounceBehavior(.always)
-                .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                    max(0, -(geometry.contentOffset.y + geometry.contentInsets.top))
-                } action: { _, value in
-                    pull = reduceMotion ? 0 : value
-                }
-                .scrollDisabled(selected != nil)
-                .allowsHitTesting(selected == nil)
-                .accessibilityHidden(selected != nil)
-
-                paper.opacity(selected == nil ? 0 : 1)
-                    .allowsHitTesting(false).accessibilityHidden(true)
-
-                if let current {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) {
-                            card(current)
-                                .matchedGeometryEffect(id: current.id, in: cardTransition)
-                                .frame(height: cardHeight)
-                                .zIndex(2)
-                            activityList(bookID: current.id)
-                                .transition(.opacity.combined(with: .offset(y: reduceMotion ? 0 : 30)))
-                        }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 24)
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 24) {
+                    stack
+                    if visible.isEmpty {
+                        ContentUnavailableView {
+                            Label("Your stack is empty", systemImage: "rectangle.stack")
+                        } description: { Text("All books are still in the options menu.") }
+                        actions: { Button("Choose visible books") { managing = true } }
                     }
-                    .scrollBounceBehavior(.always)
-                    .transition(.identity)
-                    .zIndex(10)
-                }
+                    activityList(bookID: nil)
+                        .offset(y: (reduceMotion || selected != nil) ? 0 : (pull * (CGFloat(max(0, visible.count - 1)) * 0.22 - 0.90)))
+                        .opacity(selected == nil ? 1 : 0)
+                }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 24)
+            }
+            .scrollBounceBehavior(.always)
+            .scrollDisabled(selected != nil)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, value in
+                info.scrollOffset = value
+                pull = reduceMotion ? 0 : max(0, -value)
+            }
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.frame(in: .global).minY
+            } action: { newValue in
+                info.minY = newValue - info.safeArea.top
+            }
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { newValue in
+                info.containerSize = newValue
+            }
+            .onGeometryChange(for: EdgeInsets.self) { proxy in
+                proxy.safeAreaInsets
+            } action: { newValue in
+                info.safeArea = newValue
             }
         }
         .background(paper).foregroundStyle(ink)
         .safeAreaInset(edge: .bottom) {
-            Button { adding = true } label: {
-                Label("Add Expense", systemImage: "plus").font(.headline)
-                    .frame(maxWidth: .infinity).padding(18).background(ink, in: Capsule()).foregroundStyle(paper)
-            }.buttonStyle(PressFeedbackStyle()).padding(.horizontal, 20).padding(.bottom, 8)
+            if selected == nil {
+                Button { adding = true } label: {
+                    Label("Add Expense", systemImage: "plus").font(.headline)
+                        .frame(maxWidth: .infinity).padding(18).background(ink, in: Capsule()).foregroundStyle(paper)
+                }.buttonStyle(PressFeedbackStyle()).padding(.horizontal, 20).padding(.bottom, 8)
+            }
+        }
+        .sheet(item: selectedBookBinding) { book in
+            let spacing: CGFloat = 16
+            let minSheetHeight: CGFloat = max(180, info.containerSize.height + info.safeArea.bottom - cardHeight - spacing)
+            PrototypeBookDetailSheet(
+                book: book,
+                activities: $activities,
+                paper: paper,
+                ink: ink,
+                onDismiss: { focus(nil) }
+            )
+            .presentationDetents([.height(minSheetHeight), .large])
+            .presentationBackgroundInteraction(.enabled(upThrough: .large))
+            .interactiveDismissDisabled()
+            .presentationDragIndicator(.visible)
+            .presentationBackground(paper)
         }
         .sheet(isPresented: $managing) { management }
         .sheet(isPresented: $adding) {
@@ -107,29 +127,38 @@ struct BookHomePrototype: View {
     }
 
     private var stack: some View {
-        ZStack(alignment: .top) {
+        VStack(spacing: -(cardHeight - stripHeight)) {
             ForEach(Array(visible.enumerated()), id: \.element.id) { index, book in
-                Group {
-                    if selected == book.id {
-                        Color.clear.frame(height: cardHeight)
-                    } else {
-                        Button { focus(book.id) } label: {
-                            card(book)
-                                .matchedGeometryEffect(id: book.id, in: cardTransition)
-                                .frame(height: cardHeight)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Open \(book.name), \(count(book.id)) transactions")
-                        .accessibilityIdentifier("stack-book-\(book.id)")
-                    }
-                }
-                .offset(y: CGFloat(index) * (stripHeight + pull * 0.22))
-                .offset(y: selected == nil ? 0 : (index > selectedIndex ? 700 : -40))
-                .opacity(selected == nil ? 1 : 0)
-                .zIndex(Double(index))
+                cardItem(book, index: index)
             }
         }
-        .frame(height: visible.isEmpty ? 0 : cardHeight + CGFloat(visible.count - 1) * stripHeight, alignment: .top)
+    }
+
+    private func cardItem(_ book: PrototypeBook, index: Int) -> some View {
+        let isSelected = selected != nil
+        let isCurrent = selected == book.id
+        let selectedIdx = selectedIndex
+
+        return Button {
+            focus(isCurrent ? nil : book.id)
+        } label: {
+            card(book)
+                .frame(height: cardHeight)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open \(book.name), \(count(book.id)) transactions")
+        .accessibilityIdentifier("stack-book-\(book.id)")
+        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion] content, proxy in
+            let rect = proxy.frame(in: .scrollView)
+            let bounds = info.containerSize
+            let pushOffset = selectedIdx < index ? (bounds.height - rect.minY) : -rect.minY
+            let scale: CGFloat = (reduceMotion || selectedIdx < index) ? 1.0 : 0.95
+            let fan: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
+
+            return content
+                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
+                .offset(y: isSelected ? pushOffset : fan)
+        }
     }
 
     private var selectedIndex: Int { visible.firstIndex { $0.id == selected } ?? visible.count }
@@ -243,6 +272,102 @@ struct BookHomePrototype: View {
         }
     }
 }
+
+private struct PrototypeBookDetailSheet: View {
+    let book: PrototypeBook
+    @Binding var activities: [PrototypeActivity]
+    let paper: Color
+    let ink: Color
+    var onDismiss: () -> Void
+    @State private var addingExpense = false
+
+    private var bookActivities: [PrototypeActivity] {
+        activities.filter { $0.bookID == book.id }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(book.name)
+                                .font(.title2.bold())
+                                .accessibilityAddTraits(.isHeader)
+                            Text("\(bookActivities.count) TRANSACTIONS · SAMPLE")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            addingExpense = true
+                        } label: {
+                            Label("Add Expense", systemImage: "plus")
+                                .font(.headline)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .background(ink, in: Capsule())
+                                .foregroundStyle(paper)
+                        }
+                        .buttonStyle(PressFeedbackStyle())
+                    }
+                    .padding(.top, 8)
+
+                    Divider()
+
+                    if bookActivities.isEmpty {
+                        ContentUnavailableView("Nothing recorded yet", systemImage: "text.book.closed",
+                                               description: Text("Add a sample expense to explore this book."))
+                            .padding(.vertical, 24)
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(bookActivities) { row in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(row.day).font(.caption.monospaced())
+                                    ViewThatFits(in: .horizontal) {
+                                        HStack {
+                                            Text(row.title)
+                                            Spacer()
+                                            Text(Money.format(row.amount)).monospacedDigit()
+                                        }
+                                        VStack(alignment: .leading) {
+                                            Text(row.title)
+                                            Text(Money.format(row.amount)).monospacedDigit()
+                                        }
+                                    }.font(.body.weight(.medium))
+                                    Text(book.name).font(.caption)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 16)
+
+                                Rectangle().fill(ink.opacity(0.2)).frame(height: 1).accessibilityHidden(true)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
+            }
+            .scrollBounceBehavior(.always)
+            .background(paper)
+            .navigationTitle(book.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        onDismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $addingExpense) {
+                PrototypeExpenseEntry(books: [book], initialBookID: book.id) { newActivity in
+                    activities.insert(newActivity, at: 0)
+                }
+            }
+        }
+    }
+}
+
 
 private struct PrototypeExpenseEntry: View {
     let books: [PrototypeBook]

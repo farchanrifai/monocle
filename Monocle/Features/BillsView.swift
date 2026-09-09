@@ -98,7 +98,8 @@ struct SettingsView: View {
                     }
                 }
                 Section("Design exploration") {
-                    NavigationLink("Explore book home") { BookHomePrototype() }
+                    NavigationLink("Explore book home (Production)") { BookHomeView(model: model, showsBottomBar: true) }
+                    NavigationLink("Prototype samples") { BookHomePrototype() }
                 }
                 Section("Try the flow") {
                     Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")

@@ -179,6 +179,19 @@ private final class TestExpenseStore: ExpenseStore {
     var budgetValues: [BudgetVersion] = []
     var failWrites = false
     var failReads = false
+    func books() throws -> [BookProfile] { [BookProfile.sample] }
+    func createBook(named name: String) throws -> BookProfile { BookProfile(name: name) }
+    func renameBook(id: UUID, to name: String) throws {}
+    func deleteBook(id: UUID) throws {}
+
+    func categories(in bookID: UUID) throws -> [ExpenseCategory] { try categories() }
+    func expenses(in bookID: UUID) throws -> [Expense] { try expenses() }
+    func budgets(in bookID: UUID) throws -> [BudgetVersion] { try budgets() }
+    func save(_ expense: Expense, in bookID: UUID) throws { try save(expense) }
+    func save(_ budget: BudgetVersion, in bookID: UUID) throws { try save(budget) }
+    func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws { try saveCategory(category) }
+    func deleteCategory(_ id: UUID, in bookID: UUID) throws { try deleteCategory(id) }
+
     func categories() throws -> [ExpenseCategory] {
         if failReads { throw EntryError.corruptStore }
         return ExpenseCategory.defaults
@@ -217,6 +230,11 @@ private final class TestState: LocalStateStore {
     func loadSettings() throws -> PrototypeSettings { PrototypeSettings() }
     func saveDraft(_ draft: ExpenseDraft) throws { if failWrites { throw EntryError.corruptStore } }
     func saveSettings(_ settings: PrototypeSettings) throws { if failWrites { throw EntryError.corruptStore }; savedSettings = settings }
+
+    func loadDraft(for bookID: UUID) throws -> ExpenseDraft { try loadDraft() }
+    func saveDraft(_ draft: ExpenseDraft, for bookID: UUID) throws { try saveDraft(draft) }
+    func loadWorkspacePreferences() throws -> WorkspacePreferences { WorkspacePreferences() }
+    func saveWorkspacePreferences(_ preferences: WorkspacePreferences) throws { if failWrites { throw EntryError.corruptStore } }
 }
 
 @MainActor

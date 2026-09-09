@@ -62,8 +62,12 @@ struct PrototypeSettings: Codable, Equatable {
 protocol LocalStateStore {
     func loadDraft() throws -> ExpenseDraft
     func saveDraft(_ draft: ExpenseDraft) throws
+    func loadDraft(for bookID: UUID) throws -> ExpenseDraft
+    func saveDraft(_ draft: ExpenseDraft, for bookID: UUID) throws
     func loadSettings() throws -> PrototypeSettings
     func saveSettings(_ settings: PrototypeSettings) throws
+    func loadWorkspacePreferences() throws -> WorkspacePreferences
+    func saveWorkspacePreferences(_ preferences: WorkspacePreferences) throws
 }
 
 /// Retains the original filenames and encoding so existing installations reopen unchanged.
@@ -71,10 +75,35 @@ protocol LocalStateStore {
 final class FileLocalStateStore: LocalStateStore {
     private let directory: URL
     init(directory: URL) { self.directory = directory }
-    func loadDraft() throws -> ExpenseDraft { try read("draft.json") ?? ExpenseDraft() }
-    func saveDraft(_ draft: ExpenseDraft) throws { try write(draft, name: "draft.json") }
+    func loadDraft() throws -> ExpenseDraft { try loadDraft(for: BookProfile.sample.id) }
+    func saveDraft(_ draft: ExpenseDraft) throws { try saveDraft(draft, for: draft.bookID ?? BookProfile.sample.id) }
+
+    func loadDraft(for bookID: UUID) throws -> ExpenseDraft {
+        if let draft: ExpenseDraft = try read("draft-\(bookID.uuidString).json") {
+            return draft
+        }
+        if bookID == BookProfile.sample.id, let legacy: ExpenseDraft = try read("draft.json") {
+            return legacy
+        }
+        return ExpenseDraft()
+    }
+
+    func saveDraft(_ draft: ExpenseDraft, for bookID: UUID) throws {
+        var draft = draft
+        draft.bookID = bookID
+        try write(draft, name: "draft-\(bookID.uuidString).json")
+        if bookID == BookProfile.sample.id {
+            var legacy = draft
+            legacy.bookID = nil
+            try write(legacy, name: "draft.json")
+        }
+    }
+
     func loadSettings() throws -> PrototypeSettings { try read("settings.json") ?? PrototypeSettings() }
     func saveSettings(_ settings: PrototypeSettings) throws { try write(settings, name: "settings.json") }
+
+    func loadWorkspacePreferences() throws -> WorkspacePreferences { try read("workspace.json") ?? WorkspacePreferences() }
+    func saveWorkspacePreferences(_ preferences: WorkspacePreferences) throws { try write(preferences, name: "workspace.json") }
 
     private func read<T: Decodable>(_ name: String) throws -> T? {
         let url = directory.appendingPathComponent(name)

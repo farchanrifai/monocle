@@ -25,6 +25,30 @@ final class AppModel {
     private let expenseService: ExpenseService?
     private let state: (any LocalStateStore)?
 
+    var books: [BookProfile] { expenseService?.books ?? [settings.book] }
+    var activeBookID: UUID { expenseService?.activeBookID ?? settings.book.id }
+    var selectedBookID: UUID?
+    var workspacePreferences = WorkspacePreferences()
+    var hiddenBookIDs: Set<UUID> = []
+
+    var orderedBooks: [BookProfile] {
+        let current = books
+        var result: [BookProfile] = []
+        for id in workspacePreferences.bookOrder {
+            if let book = current.first(where: { $0.id == id }) {
+                result.append(book)
+            }
+        }
+        for book in current where !result.contains(where: { $0.id == book.id }) {
+            result.append(book)
+        }
+        return result
+    }
+
+    var visibleBooks: [BookProfile] {
+        orderedBooks.filter { !hiddenBookIDs.contains($0.id) }
+    }
+
     var budgetHistory: [BudgetVersion] { expenseService?.budgets ?? [] }
     var activeBudget: BudgetVersion {
         BudgetHistory.active(on: .now, budgets: budgetHistory) ?? BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay)
@@ -44,6 +68,10 @@ final class AppModel {
         self.draft = draft
         self.settings = settings
         self.appLock = appLock ?? AppLockController(timeout: settings.appLockTimeout)
+        if let prefs = try? state.loadWorkspacePreferences() {
+            self.workspacePreferences = prefs
+            self.hiddenBookIDs = Set(prefs.visibleBookIDs.isEmpty ? [] : expenses.books.map(\.id).filter { !prefs.visibleBookIDs.contains($0) })
+        }
     }
 
     init(startupFailure: String) {
@@ -67,19 +95,43 @@ final class AppModel {
         guard let saved = expenses.first(where: { $0.id == draft.id }) else { return draft.hasContent }
         return (try? draft.expense()) != saved
     }
-    func openEntry() { showEntry = true }
+    func openEntry(for bookID: UUID? = nil) {
+        if let bookID {
+            draft.bookID = bookID
+        } else if draft.bookID == nil {
+            draft.bookID = selectedBookID ?? activeBookID
+        }
+        showEntry = true
+    }
     func edit(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = false; pendingEntry = expense; return }
-        draft = ExpenseDraft(expense: expense); showEntry = true
+        draft = ExpenseDraft(expense: expense)
+        if draft.bookID == nil {
+            draft.bookID = expense.bookID ?? activeBookID
+        }
+        showEntry = true
     }
     func persistDraft() {
         guard startupError == nil else { return }
-        do { try requireState().saveDraft(draft) } catch { self.error = "Your draft could not be saved: \(error.localizedDescription)" }
+        do {
+            if let bookID = draft.bookID {
+                try requireState().saveDraft(draft, for: bookID)
+            } else {
+                try requireState().saveDraft(draft)
+            }
+        } catch { self.error = "Your draft could not be saved: \(error.localizedDescription)" }
     }
     @discardableResult
     func discardDraft() -> Bool {
         let cleared = ExpenseDraft()
-        do { try requireState().saveDraft(cleared); draft = cleared; return true }
+        do {
+            if let bookID = draft.bookID {
+                try requireState().saveDraft(cleared, for: bookID)
+            } else {
+                try requireState().saveDraft(cleared)
+            }
+            draft = cleared; return true
+        }
         catch { self.error = "Your draft could not be discarded: \(error.localizedDescription)"; return false }
     }
     func discardAndOpenPendingEntry() {
@@ -87,6 +139,91 @@ final class AppModel {
         self.pendingEntry = nil
         if pendingRepeat { repeatExpense(pendingEntry) } else { edit(pendingEntry) }
     }
+
+    func selectBook(_ id: UUID) {
+        selectedBookID = id
+        if let expenseService {
+            try? expenseService.selectBook(id)
+        }
+    }
+
+    func createBook(named name: String) throws -> BookProfile {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let book = try expenseService.createBook(named: name)
+        workspacePreferences.bookOrder.append(book.id)
+        persistWorkspacePreferences()
+        showToast("Book created")
+        return book
+    }
+
+    func renameBook(id: UUID, to name: String) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.renameBook(id: id, to: name)
+        showToast("Book renamed")
+    }
+
+    func deleteBook(id: UUID) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.deleteBook(id: id)
+        workspacePreferences.bookOrder.removeAll { $0 == id }
+        workspacePreferences.visibleBookIDs.removeAll { $0 == id }
+        hiddenBookIDs.remove(id)
+        if selectedBookID == id { selectedBookID = nil }
+        persistWorkspacePreferences()
+        showToast("Book deleted")
+    }
+
+    func setBookHidden(id: UUID, isHidden: Bool) {
+        if isHidden {
+            hiddenBookIDs.insert(id)
+        } else {
+            hiddenBookIDs.remove(id)
+        }
+        persistWorkspacePreferences()
+    }
+
+    func reorderBooks(fromOffsets: IndexSet, toOffset: Int) {
+        var currentOrder = orderedBooks.map(\.id)
+        currentOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        workspacePreferences.bookOrder = currentOrder
+        persistWorkspacePreferences()
+    }
+
+    func persistWorkspacePreferences() {
+        workspacePreferences.visibleBookIDs = visibleBooks.map(\.id)
+        try? state?.saveWorkspacePreferences(workspacePreferences)
+    }
+
+    func expenses(for bookID: UUID) -> [Expense] {
+        if bookID == activeBookID {
+            return expenses
+        }
+        return (try? expenseService?.expenses(for: bookID)) ?? []
+    }
+
+    func spent(for bookID: UUID) -> Int64 {
+        expenses(for: bookID).reduce(0) { $0 + $1.amount }
+    }
+
+    func activities(selectedBookID: UUID?, allBooks: Bool) -> [Expense] {
+        if let selectedBookID {
+            return expenses(for: selectedBookID)
+        }
+        if allBooks {
+            var all: [Expense] = []
+            for b in books {
+                all.append(contentsOf: expenses(for: b.id))
+            }
+            return all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+        } else {
+            var all: [Expense] = []
+            for b in visibleBooks {
+                all.append(contentsOf: expenses(for: b.id))
+            }
+            return all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+        }
+    }
+
     func startEmptyRealBook(named name: String) throws {
         guard let backups else { throw BackupError.unsupported }
         let settings = try backups.startEmptyRealBook(named: name, currentDraft: draft, settings: settings)
@@ -103,7 +240,9 @@ final class AppModel {
     private func showToast(_ text: String) { toast = text; toastID = UUID() }
     func saveDraft() {
         do {
-            let expense = try draft.expense()
+            var expense = try draft.expense()
+            let targetID = draft.bookID ?? selectedBookID ?? activeBookID
+            expense.bookID = targetID
             try save(expense)
             let editing = draft.editing
             draft = ExpenseDraft(); persistDraft(); showEntry = false
@@ -131,7 +270,9 @@ final class AppModel {
     func repeatExpense(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense); draft.id = UUID(); draft.editing = false
-        draft.createdAt = .now; draft.date = .now; draft.source = "repeat"; showEntry = true
+        draft.createdAt = .now; draft.date = .now; draft.source = "repeat"
+        draft.bookID = expense.bookID ?? activeBookID
+        showEntry = true
     }
     func saveCategory(_ category: ExpenseCategory) throws {
         guard let expenseService else { throw EntryError.corruptStore }
@@ -193,6 +334,24 @@ final class AppModel {
         do {
             try backups.restore(backup, currentDraft: draft, settings: settings)
             draft = backup.draft; settings = backup.settings
+            expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
+            undoExpense = nil; pendingEntry = nil; toast = nil
+        } catch {
+            if backups.requiresRecovery { startupError = error.localizedDescription }
+            throw error
+        }
+    }
+
+    func restoreWorkspaceBackup(_ backup: WorkspaceBackup) throws {
+        guard let backups else { throw BackupError.unsupported }
+        do {
+            try backups.restoreWorkspace(backup, currentDraft: draft, settings: settings)
+            if let first = backup.books.first {
+                draft = first.draft ?? ExpenseDraft()
+            }
+            settings = backup.settings
+            workspacePreferences = backup.preferences
+            hiddenBookIDs = Set(books.map(\.id).filter { !backup.preferences.visibleBookIDs.contains($0) })
             expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             undoExpense = nil; pendingEntry = nil; toast = nil
         } catch {

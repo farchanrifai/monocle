@@ -15,12 +15,14 @@
 		2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */; };
 		2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
 		2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 259DC603F39D197686C31B1F /* MonocleTests.swift */; };
+		31E1C2727B36CA6DDE0FB01A /* BookHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */; };
 		37B80FDB18C1C00EA9CFCEE8 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C6F2F7E78348046E865E34 /* BackupService.swift */; };
 		3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */; };
 		40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15119B5A62BE722F4E6FA3B4 /* AppLock.swift */; };
 		4F6ECEAEF550F957029CEB09 /* CategoryAndLocaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */; };
 		5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C095F291D89DF974579CA6 /* AppEnvironment.swift */; };
 		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
+		671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */; };
 		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
 		694FC3702BE496718FC0F365 /* BookHomePrototype.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC9AF96E53A1B711F386903 /* BookHomePrototype.swift */; };
 		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
@@ -63,10 +65,12 @@
 		0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
 		15119B5A62BE722F4E6FA3B4 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		259DC603F39D197686C31B1F /* MonocleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleTests.swift; sourceTree = "<group>"; };
+		3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiBookTests.swift; sourceTree = "<group>"; };
 		41C095F291D89DF974579CA6 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
 		55C6F2F7E78348046E865E34 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		5917E02740846F6B5ED016CC /* BookBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookBackup.swift; sourceTree = "<group>"; };
+		5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookHomeView.swift; sourceTree = "<group>"; };
 		5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleUITests.swift; sourceTree = "<group>"; };
 		5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV1.xcdatamodel; sourceTree = "<group>"; };
 		6486A991712AB436BBFA6A1D /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
@@ -214,6 +218,7 @@
 				EE369F72DE2591D9D60E1B77 /* BackupView.swift */,
 				BFAB59F8D69B863E198985F9 /* BillsView.swift */,
 				DEC9AF96E53A1B711F386903 /* BookHomePrototype.swift */,
+				5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */,
 				0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */,
 				D433FF1198DE03E544B102E2 /* BudgetsView.swift */,
 				6C573062CE2769892729F737 /* CategoryManager.swift */,
@@ -233,6 +238,7 @@
 				AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */,
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
 				259DC603F39D197686C31B1F /* MonocleTests.swift */,
+				3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */,
 			);
 			path = MonocleTests;
 			sourceTree = "<group>";
@@ -356,6 +362,7 @@
 				4F6ECEAEF550F957029CEB09 /* CategoryAndLocaleTests.swift in Sources */,
 				E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */,
 				2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */,
+				671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -379,6 +386,7 @@
 				ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */,
 				E802991A6C68D4C9D4C7C56E /* BookBackup.swift in Sources */,
 				694FC3702BE496718FC0F365 /* BookHomePrototype.swift in Sources */,
+				31E1C2727B36CA6DDE0FB01A /* BookHomeView.swift in Sources */,
 				ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */,
 				B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */,
 				0D620B558ECBCB24392F65FD /* CategoryManager.swift in Sources */,
@@ -467,7 +475,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -576,7 +584,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;

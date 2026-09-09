@@ -29,6 +29,24 @@ final class BackupService {
         return result
     }
 
+    func workspaceSnapshot(currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> WorkspaceBackup {
+        let exportedAt = Date.now
+        let allBooks = try repository.books()
+        var items: [BookBackupItem] = []
+        for book in allBooks {
+            let cats = try repository.categories(in: book.id)
+            let exps = try repository.expenses(in: book.id)
+            let budgets = try repository.budgets(in: book.id)
+            let draft = (book.id == settings.book.id) ? currentDraft : (try? state.loadDraft(for: book.id))
+            items.append(BookBackupItem(book: book, categories: cats, expenses: exps, budgets: budgets, draft: draft))
+        }
+        let prefs = (try? state.loadWorkspacePreferences()) ?? WorkspacePreferences(visibleBookIDs: allBooks.map(\.id), bookOrder: allBooks.map(\.id))
+        let workspace = WorkspaceBackup(formatVersion: 4, exportedAt: exportedAt, currency: "IDR", minorUnitScale: 2,
+                                        books: items, preferences: prefs, settings: settings)
+        try workspace.validate()
+        return workspace
+    }
+
     func startEmptyRealBook(named name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
         let profile = try BookProfile.real(named: name)
         var updated = settings
@@ -79,6 +97,7 @@ final class BackupService {
             throw error
         }
     }
+
     func preview(data: Data) throws -> BookBackup {
         let candidate = try BookBackup.decode(data)
         let store = try ExpenseRepository(inMemory: true)
@@ -105,8 +124,50 @@ final class BackupService {
               canonicalBudgets(try store.budgets()) == canonicalBudgets(expectedBudgets) else { throw BackupError.invalid }
         return candidate
     }
+
+    func previewWorkspace(data: Data) throws -> WorkspaceBackup {
+        let candidate = try WorkspaceBackup.decode(data)
+        let store = try ExpenseRepository(inMemory: true)
+        try store.replace(with: candidate)
+        return candidate
+    }
+
+    func restoreWorkspace(_ candidate: WorkspaceBackup, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
+        _ = try previewWorkspace(data: candidate.encoded())
+        guard !FileManager.default.fileExists(atPath: journal.path) else { throw BackupError.recoveryRequired }
+        let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
+        try original.write(to: safetyURL, options: .atomic)
+        try original.write(to: journal, options: .atomic)
+        do {
+            try fault?(.journalWritten)
+            try repository.replace(with: candidate)
+            try fault?(.databaseReplaced)
+            if let firstBook = candidate.books.first {
+                try state.saveDraft(firstBook.draft ?? ExpenseDraft())
+            }
+            try fault?(.draftWritten)
+            try state.saveSettings(candidate.settings)
+            try state.saveWorkspacePreferences(candidate.preferences)
+            try fault?(.settingsWritten)
+            try Data("1".utf8).write(to: directory.appendingPathComponent("sample-seeded"), options: .atomic)
+            try expenses.reload()
+            try FileManager.default.removeItem(at: journal)
+        } catch {
+            let originalError = error
+            do {
+                try Self.recoverIfNeeded(directory: directory, repository: repository, state: state)
+                try expenses.reload()
+            } catch {
+                requiresRecovery = true
+                expenses.isBlocked = true
+                throw BackupError.recoveryRequired
+            }
+            throw originalError
+        }
+    }
+
     func restore(_ candidate: BookBackup, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
-        // Validate again at activation; callers cannot bypass preview with a mutated value.
+        // Validate single-book candidate preview:
         _ = try preview(data: candidate.encoded())
         guard !FileManager.default.fileExists(atPath: journal.path) else { throw BackupError.recoveryRequired }
         let original = try snapshot(draft: currentDraft, settings: settings).encoded()
@@ -136,13 +197,24 @@ final class BackupService {
             throw originalError
         }
     }
+
     static func recoverIfNeeded(directory: URL, repository: ExpenseRepository, state: FileLocalStateStore) throws {
         let journal = directory.appendingPathComponent("restore-journal.json")
         guard FileManager.default.fileExists(atPath: journal.path) else { return }
-        let original = try BookBackup.decode(Data(contentsOf: journal))
-        try repository.replace(with: original)
-        try state.saveDraft(original.draft)
-        try state.saveSettings(original.settings)
+        let journalData = try Data(contentsOf: journal)
+        if let workspace = try? WorkspaceBackup.decode(journalData) {
+            try repository.replace(with: workspace)
+            if let first = workspace.books.first, let draft = first.draft {
+                try state.saveDraft(draft)
+            }
+            try state.saveSettings(workspace.settings)
+            try state.saveWorkspacePreferences(workspace.preferences)
+        } else {
+            let original = try BookBackup.decode(journalData)
+            try repository.replace(with: original)
+            try state.saveDraft(original.draft)
+            try state.saveSettings(original.settings)
+        }
         try Data("1".utf8).write(to: directory.appendingPathComponent("sample-seeded"), options: .atomic)
         try FileManager.default.removeItem(at: journal)
     }
