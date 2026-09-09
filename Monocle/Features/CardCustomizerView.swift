@@ -9,6 +9,18 @@ enum CustomizerTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+struct CarouselScrollTargetBehavior: ScrollTargetBehavior {
+    let step: CGFloat
+    let count: Int
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        let proposedX = target.rect.origin.x
+        let maxIndex = CGFloat(max(0, count - 1))
+        let targetIndex = min(maxIndex, max(0, round(proposedX / max(1, step))))
+        target.rect.origin.x = targetIndex * step
+    }
+}
+
 struct CardCustomizerView: View {
     @Bindable var model: AppModel
     let initialBook: BookProfile?
@@ -20,6 +32,7 @@ struct CardCustomizerView: View {
     @State private var customizerBooks: [BookProfile]
     @State private var newBookIDs: Set<UUID>
     @State private var activeBookID: UUID?
+    @State private var settledBookID: UUID
     @State private var drafts: [UUID: BookCardCustomization]
     @State private var draftNames: [UUID: String]
     @State private var editingBookNameID: UUID? = nil
@@ -90,6 +103,8 @@ struct CardCustomizerView: View {
         _drafts = State(initialValue: initialDrafts)
         _draftNames = State(initialValue: initialNames)
         _activeBookID = State(initialValue: activeID)
+        let initialSettledID = activeID ?? booksList.first?.id ?? placeholderID
+        _settledBookID = State(initialValue: initialSettledID)
 
         if let targetID = activeID, let custom = initialDrafts[targetID], case .customColor(let hex) = custom.style {
             _customColor = State(initialValue: CardPalette.color(fromHex: hex))
@@ -101,7 +116,7 @@ struct CardCustomizerView: View {
     }
 
     private var currentBookID: UUID {
-        activeBookID ?? initialBook?.id ?? customizerBooks.first?.id ?? placeholderID
+        activeBookID ?? settledBookID
     }
 
     private var activeBook: BookProfile {
@@ -238,11 +253,14 @@ struct CardCustomizerView: View {
                 loadSelectedPhoto(newItem)
             }
             .onChange(of: activeBookID) { _, newID in
-                if let editingID = editingBookNameID, editingID != newID {
-                    commitEditingName(for: editingID)
-                }
-                if let targetID = newID, targetID != placeholderID, let custom = drafts[targetID], case .customColor(let hex) = custom.style {
-                    customColor = CardPalette.color(fromHex: hex)
+                if let newID {
+                    settledBookID = newID
+                    if let editingID = editingBookNameID, editingID != newID {
+                        commitEditingName(for: editingID)
+                    }
+                    if newID != placeholderID, let custom = drafts[newID], case .customColor(let hex) = custom.style {
+                        customColor = CardPalette.color(fromHex: hex)
+                    }
                 }
             }
         }
@@ -262,6 +280,7 @@ struct CardCustomizerView: View {
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
             activeBookID = newID
+            settledBookID = newID
         }
         startEditingName(for: newID)
     }
@@ -276,7 +295,9 @@ struct CardCustomizerView: View {
             drafts.removeValue(forKey: bookID)
             draftNames.removeValue(forKey: bookID)
             if activeBookID == bookID {
-                activeBookID = customizerBooks.last?.id ?? placeholderID
+                let nextID = customizerBooks.last?.id ?? placeholderID
+                activeBookID = nextID
+                settledBookID = nextID
             }
         }
     }
@@ -309,17 +330,19 @@ struct CardCustomizerView: View {
         let sideInset: CGFloat = 36
         let spacing: CGFloat = 12
         let cardWidth = max(240, width - (sideInset * 2))
+        let step = cardWidth + spacing
+        let totalCount = customizerBooks.count + 1
 
         return VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: spacing) {
+                HStack(spacing: spacing) {
                     ForEach(customizerBooks) { book in
                         previewCard(for: book)
                             .frame(width: cardWidth)
                             .id(book.id)
-                            .contentShape(Rectangle())
                             .onTapGesture {
                                 if currentBookID != book.id {
+                                    settledBookID = book.id
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
                                         activeBookID = book.id
                                     }
@@ -334,7 +357,7 @@ struct CardCustomizerView: View {
                 .scrollTargetLayout()
             }
             .contentMargins(.horizontal, sideInset, for: .scrollContent)
-            .scrollTargetBehavior(.viewAligned)
+            .scrollTargetBehavior(CarouselScrollTargetBehavior(step: step, count: totalCount))
             .scrollPosition(id: $activeBookID)
             .frame(height: 204)
 
@@ -355,6 +378,7 @@ struct CardCustomizerView: View {
                         .foregroundStyle(isActive ? Color.accentColor : Color.secondary.opacity(0.4))
                         .frame(width: isActive ? 18 : 6, height: 6)
                         .onTapGesture {
+                            settledBookID = placeholderID
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
                                 activeBookID = placeholderID
                             }
@@ -366,6 +390,7 @@ struct CardCustomizerView: View {
                         .frame(width: isActive ? 18 : 6, height: 6)
                         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentBookID)
                         .onTapGesture {
+                            settledBookID = id
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
                                 activeBookID = id
                             }
@@ -417,7 +442,7 @@ struct CardCustomizerView: View {
                     )
             )
             .shadow(color: Color.black.opacity(isActive ? 0.08 : 0.02), radius: isActive ? 8 : 3, y: isActive ? 3 : 1)
-            .scaleEffect(isActive ? 1.0 : 0.96)
+            .opacity(isActive ? 1.0 : 0.72)
             .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
         }
         .buttonStyle(.plain)
@@ -583,7 +608,7 @@ struct CardCustomizerView: View {
                 .strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
-        .scaleEffect(isActive ? 1.0 : 0.96)
+        .opacity(isActive ? 1.0 : 0.72)
         .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("customizer-preview-\(book.id)")
