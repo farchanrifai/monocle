@@ -1,6 +1,6 @@
-# Backup and restore — formats 1 and 2
+# Backup and restore — formats 1, 2 and 3
 
-Updated: 2026-09-08. Implementation: BookBackup, BackupService, ExpenseRepository.replace, BackupView.
+Updated: 2026-09-09. Implementation: BookBackup, BackupService, ExpenseRepository.replace, BackupView.
 
 ## User flow
 
@@ -14,18 +14,19 @@ The Files picker accepts a selected file regardless of its reported type and val
 
 The format preserves all currently implemented durable application data:
 
-- `formatVersion` (1 for legacy sample backups; 2 for current sample or real books), `exportedAt` (Foundation JSON Date encoding: seconds since 2001-01-01).
+- `formatVersion` (1 for legacy sample backups, 2 for pre-history backups, 3 for the current format), `exportedAt` (Foundation JSON Date encoding: seconds since 2001-01-01).
 - `bookID`, `bookName`, `bookKind` (`sample` or `real`), `currency` (`IDR`), `minorUnitScale` (2), and `sampleSeeded`.
 - Categories with stable IDs, names and icons.
 - Expenses with IDs, exact Int64 amounts, reporting date strings, notes, allocations, source and creation timestamp.
+- Effective-dated budget versions with overall/category limits, cycle start day, and any explicit transition end.
 - Draft including input mode, unfinished text, category reference, exact split allocations, expense identity and editing status.
 - Prototype settings: budget amount, cycle start day, bill recording mode and reminder preference, plus the optional app-lock timeout. The backup retains the preference, never a biometric credential or passcode.
 
-Transient navigation, toast and Undo state are cleared after restore and are not exported. Format 1 accepts only the historical sample-book identity. Format 2 binds the book profile to the persisted settings, allowing one real local book with a stable UUID and name. Starting an empty real book is explicit: it retains categories and settings, removes recorded sample entries and the unfinished draft, and writes a safety backup before changing the book profile.
+Transient navigation, toast and Undo state are cleared after restore and are not exported. Format 1 accepts only the historical sample-book identity. Format 2 binds the book profile to the persisted settings, allowing one real local book with a stable UUID and name. Format 3 requires at least one budget version; format 1/2 documents without budget history are upgraded from their exported settings and date during restore. Starting an empty real book is explicit: it retains categories and settings, removes recorded sample entries and the unfinished draft, and writes a safety backup before changing the book profile.
 
 ## Validation
 
-Maximum 10 MB, 10,000 expenses, 500 categories. Reject unsupported versions/book identities/currency scale, duplicate IDs, invalid category names/icons, broken category references, invalid dates or money, incorrect allocation totals, aggregate Int64 overflow, and invalid settings. Editing drafts must reference a recorded expense; unfinished draft text and amount may remain invalid so recovery does not lose work in progress.
+Maximum 10 MB, 10,000 expenses, 500 categories. Reject unsupported versions/book identities/currency scale, duplicate IDs, invalid category names/icons, broken category references, invalid dates or money, incorrect allocation totals, aggregate Int64 overflow, invalid settings, and invalid or duplicate budget versions. Editing drafts must reference a recorded expense; unfinished draft text and amount may remain invalid so recovery does not lose work in progress.
 
 The imported snapshot is first materialized into an independent in-memory Core Data candidate. Compare canonical complete expense values (including IDs and sorted allocations) and categories against the decoded snapshot. No active writes occur during preview. Activation validates the candidate again so a mutated value cannot bypass the gate.
 
@@ -49,10 +50,10 @@ The journal is idempotent: a restart during recovery repeats restoration of the 
 
 ## Compatibility and verification
 
-Existing bundle ID, SQLite filename/model, draft/settings encoding, and sample folder stay unchanged. No model migration or store reset is introduced. The existing disk-reopen regression remains applicable.
+Existing bundle ID, SQLite filename, draft/settings encoding, and sample folder stay unchanged. The V2 Core Data model adds budget entities and uses automatic/inferred migration from V1; no store reset is introduced. The existing disk-reopen regression remains applicable.
 
-Tests cover portable round-trip with exact IDs/splits/draft/settings, invalid candidates, failures at every activation stage, failed safety-file creation, disk close/reopen recovery, malformed journal retention, and empty-book seed prevention. UI checks cover reaching backup settings and presenting the system export picker. Actual Files save/import and successful/failed replacement should also be exercised on the user's signed iPhone installation before daily-use readiness.
+Tests cover portable round-trip with exact IDs/splits/draft/settings/budget history, invalid candidates, failures at every activation stage, failed safety-file creation, disk close/reopen recovery, V1-to-V2 migration, malformed journal retention, and empty-book seed prevention. UI checks cover reaching backup settings and presenting the system export picker. Actual Files save/import and successful/failed replacement should also be exercised on the user's signed iPhone installation before daily-use readiness.
 
 ## Next milestone
 
-M2d: optional app lock and remaining capture features. First collect phone backup/restore/update evidence using sample data. Full daily-use gate remains in roadmap.md; backup implementation alone does not satisfy it.
+M3 budget history is implemented locally. Bills still need persisted rules and occurrences, pending/automatic recording, reminders, catch-up and skip handling. First collect phone backup/restore/update evidence using sample data. Full daily-use gate remains in roadmap.md; budget implementation alone does not satisfy it.

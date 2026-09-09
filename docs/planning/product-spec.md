@@ -1,12 +1,22 @@
 # monocle — product specification
 
-Updated: 2026-09-07. Confirmed requirements come from the original handoff and subsequent conversation. New implementation defaults are identified below and in the decision log.
+Updated: 2026-09-09. Confirmed requirements come from the original handoff and subsequent conversation. New implementation defaults are identified below and in the decision log.
 
 ## Scope
 
-English interface, IDR initially, offline operation, one visible book in v1. Required v1 input methods: manual fields, local text parsing, CSV import, and Apple Shortcuts. All remain in v1 even if delivered across several milestones.
+English interface, IDR initially, offline operation, and multiple user-defined local books in v1. Required v1 input methods: manual fields, local text parsing, CSV import, and Apple Shortcuts. All remain in v1 even if delivered across several milestones.
 
-No initial account-balance tracking. Native Mac, sync, shared books, and public distribution come later. Sync is expected near public release. Repayments, paid-for-others tracking, multiple-book UI, tags, multiple currencies, and cash-flow projections are deferred.
+No bank, card, or account tracking. Native Mac, sync, shared books, and public distribution come later. Sync is expected near public release. Repayments, paid-for-others tracking, tags, multiple currencies, and cash-flow projections are deferred.
+
+## Book workspace and home
+
+- A Book is a generic local container for an independent transaction list. It can represent daily expenses, travel, bills, projects, or another user-defined expense-tracking context.
+- The home screen shows a user-customizable stack of selected books. Users can choose visible books and their order; all books remain accessible through the options menu.
+- All Activities can be scoped to visible books or all books.
+- Tapping a book focuses its hero card and opens the transaction list for that book.
+- Each book can have a customizable hero image. Images are stored in app-owned local storage, downsampled, backed up and given a fallback when unavailable.
+- The UI direction combines Apple's interaction clarity and accessibility with Teenage Engineering-inspired modular composition, bold color, oversized typography and tactile personality. It is not a pixel-for-pixel Wallet clone.
+- There is no fixed book type and no persisted WalletCard entity unless future behavior requires one.
 
 ## Recents and navigation
 
@@ -61,7 +71,7 @@ Confirmed:
 
 Proposed calendar details from the handoff: start on the 25th means 25th through the following 24th; clamp a nonexistent day to that month's last day. Use explicit period boundaries, not a hard-coded number of days.
 
-The user's actual start day is not yet supplied. Make it a setting; use day 1 as the proposed initial value. A start-day change needs a visible transition-period preview and a tested rule for its budget amount before that setting ships. No gaps, overlaps, or silent historical regrouping.
+The user's actual start day is not yet supplied. Make it a setting; use day 1 as the proposed initial value. The implemented budget slice records a start-day change at the next existing boundary, applies the new amount through the next boundary under the new start day, and uses inclusive-start/exclusive-end periods. No gaps, overlaps, or silent historical regrouping.
 
 ## Bills
 

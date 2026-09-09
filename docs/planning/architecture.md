@@ -1,6 +1,6 @@
 # monocle — architecture direction
 
-Updated: 2026-09-08. Local foundation implemented; future capabilities are identified below.
+Updated: 2026-09-09. Local foundation and the first budget persistence slice are implemented; future capabilities are identified below.
 
 ## Structure
 
@@ -24,7 +24,7 @@ flowchart TD
     Store --> CoreData[ExpenseRepository: local Core Data]
 ```
 
-- `AppEnvironment` is the single production composition root. It selects the existing storage directory, loads local files, opens the repository, seeds the sample book when needed, and constructs dependencies. Startup failure produces a blocked screen without overwriting malformed draft/settings files.
+- `AppEnvironment` is the single production composition root. It selects the existing storage directory, loads local files, opens the repository, seeds the sample book and initial budget when needed, and constructs dependencies. Startup failure produces a blocked screen without overwriting malformed draft/settings files.
 - `ExpenseService` owns observable value snapshots and save/delete/text commands. Both UI and background text intents use this same instance. It publishes only after a successful store write, without a second fallible fetch after commit. Reload publishes a complete snapshot or leaves the previous snapshot intact.
 - `ExpenseStore` is an injectable value-only persistence boundary. `ExpenseRepository` confines managed objects to its main-actor context, validates writes, and rolls back failed changes. Main-actor commands have no suspension points; this provides local serialization, not cross-process/cloud coordination.
 - `FileLocalStateStore` retains the original JSON filenames and encoding. Missing files use defaults; malformed files throw. `LocalStateStore` permits write-failure tests independently of Core Data.
@@ -43,9 +43,9 @@ BottomNavigation supplies two separate glass surfaces while each TabView child h
 
 ## Remaining foundation work
 
-Backup/restore is implemented for current durable state, with candidate validation, a safety document and a rollback journal spanning database and local files. See [format and recovery protocol](backup-format.md). Phone export/import/update validation remains required before real-data use. App lock and split editing are implemented; category archiving/rules, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget/bill persistence and sync are later milestones.
+Backup/restore is implemented for current durable state, with candidate validation, a safety document and a rollback journal spanning database and local files. See [format and recovery protocol](backup-format.md). Phone export/import/update validation remains required before real-data use. App lock and split editing are implemented; category archiving/rules, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget history and V1-to-V2 migration are implemented locally; bill persistence and sync are later milestones.
 
-The current repository still exposes one fixed sample book. The conceptual multi-book model below is a future design, not implemented multi-book or CloudKit support. Small local saves currently run on the main actor; imports and backup operations will need bounded work/background contexts as their implementation requires. Do not infer finished performance, app locking, or backup safety from this refactor.
+The current repository still exposes one fixed sample book. The next local extension is a user-defined multi-book workspace: books are generic transaction containers, not bank/card/account entities, and the Wallet-style cards are derived presentation projections rather than persisted WalletCard objects. Book identity must become explicit across every expense, category, budget, bill, occurrence, draft and Shortcut path. Stack visibility/order and All Activities scope are presentation preferences; hero images belong in app-owned file storage and portable backups. This remains a future local feature, distinct from multi-user CloudKit sharing. Small local saves currently run on the main actor; imports and backup operations will need bounded work/background contexts as their implementation requires. Do not infer finished performance, app locking, or backup safety from this refactor.
 
 ## Storage and CloudKit path
 
@@ -61,18 +61,18 @@ An active Apple Developer Program membership is needed for the CloudKit containe
 
 | Type | Responsibility |
 | --- | --- |
-| Book | Stable UUID, name, reporting calendar/timezone, currency; one visible book initially |
+| Book | Stable UUID, user-facing name, optional visual metadata, reporting calendar/timezone, currency; one visible book initially |
 | Expense | Stable UUID, book, exact total, transaction calendar date, optional note, origin, creation/update timestamps |
 | Allocation | Expense, category, exact allocated amount; one or more per expense |
 | Category | Book-local stable UUID, label, display metadata, archive status |
-| Budget configuration/version | Book, effective period boundary, overall/category limits, start-day configuration |
+| Budget configuration/version | Book, effective period boundary, overall/category limits, start-day configuration and transition boundary |
 | Budget period | Explicit start/end dates and applicable limits; historical periods retained |
 | Bill rule | Book, recurrence, amount/allocations, independent reminder setting and recording mode |
 | Bill occurrence | Rule plus scheduled occurrence identity; pending/recorded/skipped state and optional resulting expense |
 | Parsing rule | Book-local keyword-to-category mapping |
-| Draft | Durable unfinished entry and input mode, separate from recorded expenses |
+| Draft | Durable unfinished entry and input mode, explicit target book, separate from recorded expenses |
 
-This is a conceptual model; exact managed-object fields are established in the persistence milestone. Do not add speculative repayment/account/subscription entities now. Reserve stable book identifiers and origin metadata without creating a fake cloud identity for local users.
+Budget version fields are implemented in the V2 local model; bill rules and occurrences remain conceptual until their persistence slice. Do not add speculative repayment/account/subscription entities now. Reserve stable book identifiers and origin metadata without creating a fake cloud identity for local users.
 
 ## Invariants
 
@@ -90,7 +90,7 @@ Use a versioned portable document, proposed as a JSON-based .monoclebackup file.
 
 Parse and validate into a separate candidate store; verify references, allocation totals, object counts, periods, and occurrence state. Reject corrupted/unsupported backups before mutating the active store. Initially restore by replacement with user-visible scope, safety backup, and recoverable store replacement. Reconcile notifications and refresh UI after successful restoration.
 
-Version the Core Data model from the first persistent release. Use supported migration paths; test old-store fixtures before upgrades. Never recover a migration failure by deleting the user's store. Keep backup schema versioning separate from store schema versioning.
+Version the Core Data model from the first persistent release. The current V2 model adds budget versions and uses supported automatic/inferred migration from V1; the old-store fixture preserves expenses through that upgrade. Use supported migration paths; test old-store fixtures before upgrades. Never recover a migration failure by deleting the user's store. Keep backup schema versioning separate from store schema versioning.
 
 ## Integration boundaries
 

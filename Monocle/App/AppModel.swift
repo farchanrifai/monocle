@@ -25,10 +25,18 @@ final class AppModel {
     private let expenseService: ExpenseService?
     private let state: (any LocalStateStore)?
 
-    var cycle: BudgetCycle { BudgetCycle.containing(.now, startDay: settings.startDay) }
+    var budgetHistory: [BudgetVersion] { expenseService?.budgets ?? [] }
+    var activeBudget: BudgetVersion {
+        BudgetHistory.active(on: .now, budgets: budgetHistory) ?? BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay)
+    }
+    var currentBudgetPeriod: BudgetPeriod {
+        BudgetHistory.period(containing: .now, budgets: budgetHistory)
+            ?? BudgetPeriod(budget: activeBudget, cycle: BudgetCycle.containing(.now, startDay: activeBudget.startDay))
+    }
+    var cycle: BudgetCycle { currentBudgetPeriod.cycle }
     var cycleExpenses: [Expense] { expenses.filter { cycle.contains($0) } }
     var spent: Int64 { cycleExpenses.reduce(0) { $0 + $1.amount } }
-    var remaining: Int64 { settings.budget - spent }
+    var remaining: Int64 { activeBudget.overallLimit - spent }
 
     init(expenses: ExpenseService, state: any LocalStateStore, draft: ExpenseDraft = ExpenseDraft(), settings: PrototypeSettings = PrototypeSettings(), appLock: AppLockController? = nil) {
         self.expenseService = expenses
@@ -192,8 +200,45 @@ final class AppModel {
             throw error
         }
     }
+
+    func saveBudget(overallLimit: Int64, startDay: Int, categoryLimits: [CategoryBudget], applyToNextCycle: Bool,
+                    date: Date = .now, calendar: Calendar = .current) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: date, calendar: calendar)
+        let current = BudgetHistory.period(containing: date, budgets: budgetHistory, calendar: calendar)
+            ?? BudgetPeriod(budget: fallback, cycle: BudgetCycle.containing(date, startDay: fallback.startDay, calendar: calendar))
+        let effectiveStart: Date
+        let transitionEndDay: String?
+        let isTransition = current.budget.transitionEndDay == Day.string(current.cycle.end, calendar: calendar)
+        if startDay == current.budget.startDay {
+            effectiveStart = applyToNextCycle ? current.cycle.end : current.cycle.start
+            transitionEndDay = applyToNextCycle ? nil : (isTransition ? current.budget.transitionEndDay : nil)
+        } else {
+            effectiveStart = current.cycle.end
+            transitionEndDay = Day.string(BudgetHistory.transitionEnd(after: effectiveStart, startDay: startDay, calendar: calendar), calendar: calendar)
+        }
+        let effectiveDay = Day.string(effectiveStart, calendar: calendar)
+        let id = budgetHistory.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
+        let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
+                                   startDay: startDay, categoryLimits: categoryLimits, transitionEndDay: transitionEndDay)
+        try expenseService.save(budget)
+        var proposed = settings
+        proposed.budget = overallLimit
+        proposed.startDay = startDay
+        do {
+            try requireState().saveSettings(proposed)
+        } catch {
+            settings = proposed
+            throw error
+        }
+        settings = proposed
+    }
+
     func saveSettings(_ proposed: PrototypeSettings) throws {
         guard proposed.budget > 0, (1...31).contains(proposed.startDay) else { throw EntryError.invalidAmount }
+        var proposed = proposed
+        proposed.budget = activeBudget.overallLimit
+        proposed.startDay = activeBudget.startDay
         try requireState().saveSettings(proposed); settings = proposed
         expenseService?.configure(categoryRules: proposed.categoryRules, archivedCategoryIDs: proposed.archivedCategoryIDs)
     }

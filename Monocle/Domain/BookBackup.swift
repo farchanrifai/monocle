@@ -24,7 +24,7 @@ struct BookProfile: Codable, Equatable {
 }
 
 struct BookBackup: Codable {
-    var formatVersion = 1
+    var formatVersion = 3
     var exportedAt = Date.now
     var bookID = BookProfile.sample.id
     var bookName = BookProfile.sample.name
@@ -36,10 +36,56 @@ struct BookBackup: Codable {
     var expenses: [Expense]
     var draft: ExpenseDraft
     var settings: PrototypeSettings
+    var budgets: [BudgetVersion]
+
+    init(formatVersion: Int = 3, exportedAt: Date = .now, bookID: UUID = BookProfile.sample.id,
+         bookName: String = BookProfile.sample.name, bookKind: String = BookKind.sample.rawValue,
+         currency: String = "IDR", minorUnitScale: Int = 2, sampleSeeded: Bool = true,
+         categories: [ExpenseCategory], expenses: [Expense], draft: ExpenseDraft,
+         settings: PrototypeSettings, budgets: [BudgetVersion]? = nil) {
+        self.formatVersion = formatVersion; self.exportedAt = exportedAt; self.bookID = bookID
+        self.bookName = bookName; self.bookKind = bookKind; self.currency = currency
+        self.minorUnitScale = minorUnitScale; self.sampleSeeded = sampleSeeded
+        self.categories = categories; self.expenses = expenses; self.draft = draft; self.settings = settings
+        self.budgets = budgets ?? [BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: exportedAt)]
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, exportedAt, bookID, bookName, bookKind, currency, minorUnitScale, sampleSeeded
+        case categories, expenses, draft, settings, budgets
+    }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try values.decodeIfPresent(Int.self, forKey: .formatVersion) ?? 1
+        exportedAt = try values.decodeIfPresent(Date.self, forKey: .exportedAt) ?? .now
+        bookID = try values.decodeIfPresent(UUID.self, forKey: .bookID) ?? BookProfile.sample.id
+        bookName = try values.decodeIfPresent(String.self, forKey: .bookName) ?? BookProfile.sample.name
+        bookKind = try values.decodeIfPresent(String.self, forKey: .bookKind) ?? BookKind.sample.rawValue
+        currency = try values.decodeIfPresent(String.self, forKey: .currency) ?? "IDR"
+        minorUnitScale = try values.decodeIfPresent(Int.self, forKey: .minorUnitScale) ?? 2
+        sampleSeeded = try values.decodeIfPresent(Bool.self, forKey: .sampleSeeded) ?? true
+        categories = try values.decode([ExpenseCategory].self, forKey: .categories)
+        expenses = try values.decode([Expense].self, forKey: .expenses)
+        draft = try values.decode(ExpenseDraft.self, forKey: .draft)
+        settings = try values.decode(PrototypeSettings.self, forKey: .settings)
+        budgets = try values.decodeIfPresent([BudgetVersion].self, forKey: .budgets) ?? []
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(formatVersion, forKey: .formatVersion); try values.encode(exportedAt, forKey: .exportedAt)
+        try values.encode(bookID, forKey: .bookID); try values.encode(bookName, forKey: .bookName)
+        try values.encode(bookKind, forKey: .bookKind); try values.encode(currency, forKey: .currency)
+        try values.encode(minorUnitScale, forKey: .minorUnitScale); try values.encode(sampleSeeded, forKey: .sampleSeeded)
+        try values.encode(categories, forKey: .categories); try values.encode(expenses, forKey: .expenses)
+        try values.encode(draft, forKey: .draft); try values.encode(settings, forKey: .settings)
+        try values.encode(budgets, forKey: .budgets)
+    }
 
     var total: Int64 { expenses.reduce(0) { $0 + $1.amount } }
     func validate() throws {
-        guard (formatVersion == 1 || formatVersion == 2), currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
+        guard (1...3).contains(formatVersion), currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
         if formatVersion == 1 {
             guard bookKind == BookKind.sample.rawValue, bookID == BookProfile.sample.id,
                   bookName == BookProfile.sample.name, sampleSeeded else { throw BackupError.unsupported }
@@ -52,7 +98,7 @@ struct BookBackup: Codable {
               Set(expenses.map(\.id)).count == expenses.count,
               Set(categories.map(\.id)).count == categories.count,
               settings.archivedCategoryIDs.isSubset(of: Set(categories.map(\.id))),
-              settings.categoryRules.allSatisfy { rule in (try? rule.validated(against: categories, archivedIDs: settings.archivedCategoryIDs)) == rule },
+              settings.categoryRules.allSatisfy({ rule in (try? rule.validated(against: categories, archivedIDs: settings.archivedCategoryIDs)) == rule }),
               Set(settings.categoryRules.map(\.keyword)).count == settings.categoryRules.count,
               exportedAt.timeIntervalSince1970.isFinite,
               settings.budget > 0, settings.budget <= Money.maximum, (1...31).contains(settings.startDay) else { throw BackupError.invalid }
@@ -66,6 +112,12 @@ struct BookBackup: Codable {
             let next = sum.addingReportingOverflow(expense.amount)
             guard !next.overflow else { throw BackupError.invalid }
             sum = next.partialValue
+        }
+        if formatVersion == 3 { guard !budgets.isEmpty else { throw BackupError.invalid } }
+        if !budgets.isEmpty {
+            guard Set(budgets.map(\.id)).count == budgets.count,
+                  Set(budgets.map(\.effectiveDay)).count == budgets.count else { throw BackupError.invalid }
+            for budget in budgets { try budget.validate(categories: categories) }
         }
         if let id = draft.categoryID { guard categories.contains(where: { $0.id == id }) else { throw BackupError.invalid } }
         guard draft.date.timeIntervalSince1970.isFinite, draft.createdAt.timeIntervalSince1970.isFinite,

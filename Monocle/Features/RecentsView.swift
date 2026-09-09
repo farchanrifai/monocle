@@ -75,9 +75,9 @@ struct RecentsView: View {
             Text(Money.format(model.spent)).font(.system(size: 38, weight: .medium, design: .monospaced)).tracking(-2).foregroundStyle(.white).minimumScaleFactor(0.6).lineLimit(1)
                 .accessibilityLabel("Spent this cycle, \(Money.format(model.spent))")
             GeometryReader { geometry in
-                Capsule().fill(.white.opacity(0.12))
+                    Capsule().fill(.white.opacity(0.12))
                     .overlay(alignment: .leading) {
-                        Capsule().fill(MC.red).frame(width: geometry.size.width * min(1, max(0, Double(model.spent) / Double(max(1, model.settings.budget)))))
+                        Capsule().fill(MC.red).frame(width: geometry.size.width * min(1, max(0, Double(model.spent) / Double(max(1, model.activeBudget.overallLimit)))))
                     }
             }.frame(height: 4).accessibilityHidden(true)
             HStack {

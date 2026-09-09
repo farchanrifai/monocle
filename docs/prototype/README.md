@@ -1,6 +1,6 @@
-# monocle — prototype 0.1.3, build 5
+# monocle — prototype 0.1.3, build 13
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 
 ## What you can try
 
@@ -13,20 +13,20 @@ Updated: 2026-09-08
 - In Settings → Categories, create a category, rename it or choose an icon. Swipe to delete unused categories; saved references, draft and Undo are protected.
 - Amount separators follow the system locale, including text input. Currency remains IDR; entry still uses whole rupiah.
 - Home uses a small native Settings control, a three-destination glass capsule, and a separate dark glass + circle on the same bottom row. The keypad adapts to available height; press/amount animations and haptics provide brief feedback.
-- Explore a sample budget and start-day preview.
+- Review the persisted overall/category budget and effective-date history. Change the amount for the current or next cycle, or move the start day at the next boundary.
 - Choose automatic or pending recording for the sample bill, with an independent reminder preference.
 
-The bill and budget settings are interaction previews. Scheduling and notifications are inactive. The sample cycle editor changes the sample display immediately; production historical-period transitions have not been implemented.
+Budget settings now use persisted effective-dated versions and real cycle boundaries, including the explicit transition period created by a start-day change. Bills remain an interaction preview; scheduling and notifications are inactive.
 
 - Settings → Backup & restore exports a portable `.monoclebackup` file, validates an imported file for review, and replaces the book only after confirmation and a safety backup. Export last safety backup preserves the previous state outside the app.
 
 ## Data and foundation
 
-Records use a versioned Core Data model, with book, category, expense, and allocation entities. Amounts use exact integer minor units. UI and the text Shortcut call the same validated save operation. The persistence layer can store and validate splits, but the split editor is deferred to the next milestone.
+Records use a versioned Core Data model, with book, category, expense, allocation, and budget-version entities. Amounts use exact integer minor units. UI and the text Shortcut call the same validated save operation. The persistence layer can store and validate splits, but the split editor is deferred to the next milestone.
 
 Sample records are created once with stable identifiers. Clearing a book does not reseed it. Settings offers an explicit "Start your real book" flow: it keeps categories/settings, clears sample entries and the unfinished draft, and creates a safety backup before assigning a new real-book identity. Edits and retries retain the transaction ID. Draft and book-setting files are saved atomically. Automated UI tests use distinct stores.
 
-App locking, category archiving/rule editing, scheduled occurrences, CSV import/export, and production budget history remain unimplemented. Backup/restore is now implemented; signed-phone export/import/update checks remain pending. No sync/cloud entitlements are enabled. Use test purchases in this version.
+App locking, category archiving/rule editing, bill rules/occurrences, CSV import/export, and sync remain unimplemented. Backup/restore and production budget history are implemented locally; signed-phone export/import/update checks remain pending. No sync/cloud entitlements are enabled. Use test purchases in this version.
 
 ## Current Shortcuts
 
@@ -49,7 +49,7 @@ The previous 0.1.1 UI pass validated eight flows on the iPhone 15 Pro simulator:
 
 The user reports working functions and snappy navigation on their SideStore-installed iPhone 15 Pro. Real-device haptic feel, signed Shortcut behaviour, refresh, and update preservation still require phone checks. VoiceOver and Reduce Motion have not received a complete manual audit.
 
-The foundation now separates dependency assembly, shared expense commands, Core Data, atomic local files, and presentation state. The compiled bundle identity, database model, storage folder, and draft/settings encoding remain unchanged. See [roadmap and Terra continuation instructions](../planning/roadmap.md) and [architecture](../planning/architecture.md) for implemented boundaries and remaining work.
+The foundation now separates dependency assembly, shared expense commands, Core Data, atomic local files, and presentation state. The compiled bundle identity, storage folder, and draft/settings encoding remain unchanged; the Core Data model now has a V2 budget migration. See [roadmap and Terra continuation instructions](../planning/roadmap.md) and [architecture](../planning/architecture.md) for implemented boundaries and remaining work.
 
 ## Previous screens (0.1.2)
 
@@ -79,9 +79,9 @@ The foundation now separates dependency assembly, shared expense commands, Core 
 
 ## Device package
 
-Local deliverable: `build/deliverables/monocle-prototype-0.1.3-build-5.ipa` (excluded from Git). Release build 5, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build artifacts are preserved.
+Latest delivered package: `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/monocle-0.1.3-build-13-unsigned.ipa` (preserved outside Git). Release build 13, arm64, iPhone only, minimum iOS 26.0. Unsigned; SideStore must sign it. Package integrity, version, device family and bundle identity verified. Earlier build artifacts are preserved.
 
-SHA-256: `84fc02a9ae5b323eeed1a1c27a48612401a13925b08b248da7b0cf8d0d0a9db8`.
+SHA-256: `c8940a35459cfa5619b6ee5eb2bbdf0a37ed589d6ae532a0f54304308fb21741`.
 
 ## iPhone / SideStore checkpoint
 
@@ -105,4 +105,8 @@ All 33 tests pass (23 unit/storage and 10 UI); Release arm64 build succeeds with
 
 ![Backup settings](screenshots/backup-settings-013.png)
 
-Final evidence: `build/Backup013FinalTests.xcresult`, `/tmp/monocle-013-final-tests.log`; device log `/tmp/monocle-013-device.log`. The repository/store model and app identity are unchanged. Actual file saving/import and replace/cancel flows still need a signed iPhone review.
+Final evidence: `build/Backup013FinalTests.xcresult`, `/tmp/monocle-013-final-tests.log`; device log `/tmp/monocle-013-device.log`. The repository/store model now includes the V2 budget migration; app identity remains unchanged. Actual file saving/import and replace/cancel flows still need a signed iPhone review.
+
+## M3 budget slice evidence — 2026-09-09
+
+The app and XCTest sources type-check under Swift 6. A macOS Core Data smoke run persisted and upserted budget history, then migrated a V1 store while preserving its expense and seeding the initial budget. Simulator build/test execution remains pending because the current host has no available CoreSimulator runtime/service.

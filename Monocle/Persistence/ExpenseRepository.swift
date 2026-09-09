@@ -58,6 +58,33 @@ final class ExpenseRepository: ExpenseStore {
         }.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
     }
 
+    func budgets() throws -> [BudgetVersion] {
+        let categories = try categories()
+        let values = try objects("BudgetRecord").map { row -> BudgetVersion in
+            guard let id = row.value(forKey: "id") as? UUID,
+                  let effectiveDay = row.value(forKey: "effectiveDay") as? String,
+                  let overallLimit = row.value(forKey: "overallLimit") as? Int64,
+                  let startDay = (row.value(forKey: "startDay") as? NSNumber)?.intValue else { throw EntryError.corruptStore }
+            let limits = try (row.value(forKey: "categoryLimits") as? Set<NSManagedObject> ?? []).map { value -> CategoryBudget in
+                guard let categoryID = value.value(forKey: "categoryID") as? UUID,
+                      let limit = value.value(forKey: "limit") as? Int64 else { throw EntryError.corruptStore }
+                return CategoryBudget(categoryID: categoryID, limit: limit)
+            }.sorted { $0.categoryID.uuidString < $1.categoryID.uuidString }
+            let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
+                                       startDay: startDay, categoryLimits: limits,
+                                       transitionEndDay: row.value(forKey: "transitionEndDay") as? String)
+            try budget.validate(categories: categories)
+            return budget
+        }.sorted { $0.effectiveDay < $1.effectiveDay }
+        guard Set(values.map(\.effectiveDay)).count == values.count else { throw EntryError.corruptStore }
+        return values
+    }
+
+    func prepareInitialBudget(settings: PrototypeSettings) throws {
+        guard try budgets().isEmpty else { return }
+        try save(BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay))
+    }
+
     func save(_ expense: Expense) throws {
         try expense.validate(categories: categories())
         do {
@@ -74,6 +101,33 @@ final class ExpenseRepository: ExpenseStore {
                 let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
                 allocation.setValue(value.amount, forKey: "amount"); allocation.setValue(category, forKey: "category")
                 allocation.setValue(row, forKey: "expense")
+            }
+            try context.save()
+        } catch { context.rollback(); throw error }
+    }
+
+    func save(_ budget: BudgetVersion) throws {
+        try budget.validate(categories: categories())
+        do {
+            for row in try objects("BudgetRecord") where
+                row.value(forKey: "effectiveDay") as? String == budget.effectiveDay &&
+                row.value(forKey: "id") as? UUID != budget.id {
+                context.delete(row)
+            }
+            let row = try find("BudgetRecord", id: budget.id) ?? NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
+            let book = try currentBook()
+            row.setValue(budget.id, forKey: "id")
+            row.setValue(budget.effectiveDay, forKey: "effectiveDay")
+            row.setValue(budget.overallLimit, forKey: "overallLimit")
+            row.setValue(budget.startDay, forKey: "startDay")
+            row.setValue(budget.transitionEndDay, forKey: "transitionEndDay")
+            row.setValue(book, forKey: "book")
+            for value in row.value(forKey: "categoryLimits") as? Set<NSManagedObject> ?? [] { context.delete(value) }
+            for categoryLimit in budget.categoryLimits {
+                let value = NSEntityDescription.insertNewObject(forEntityName: "BudgetCategoryRecord", into: context)
+                value.setValue(categoryLimit.categoryID, forKey: "categoryID")
+                value.setValue(categoryLimit.limit, forKey: "limit")
+                value.setValue(row, forKey: "budget")
             }
             try context.save()
         } catch { context.rollback(); throw error }
@@ -125,7 +179,7 @@ final class ExpenseRepository: ExpenseStore {
     func replace(with backup: BookBackup) throws {
         try backup.validate()
         do {
-            for entity in ["AllocationRecord", "ExpenseRecord", "CategoryRecord", "Book"] {
+            for entity in ["AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
                 for row in try objects(entity) { context.delete(row) }
             }
             let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
@@ -149,6 +203,25 @@ final class ExpenseRepository: ExpenseStore {
                     allocation.setValue(value.amount, forKey: "amount")
                     allocation.setValue(categoryRows[value.categoryID], forKey: "category")
                     allocation.setValue(row, forKey: "expense")
+                }
+            }
+            let budgets = backup.budgets.isEmpty
+                ? [BudgetVersion.initial(overallLimit: backup.settings.budget, startDay: backup.settings.startDay, date: backup.exportedAt)]
+                : backup.budgets
+            for budget in budgets {
+                try budget.validate(categories: backup.categories)
+                let row = NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
+                row.setValue(budget.id, forKey: "id")
+                row.setValue(budget.effectiveDay, forKey: "effectiveDay")
+                row.setValue(budget.overallLimit, forKey: "overallLimit")
+                row.setValue(budget.startDay, forKey: "startDay")
+                row.setValue(budget.transitionEndDay, forKey: "transitionEndDay")
+                row.setValue(book, forKey: "book")
+                for categoryLimit in budget.categoryLimits {
+                    let value = NSEntityDescription.insertNewObject(forEntityName: "BudgetCategoryRecord", into: context)
+                    value.setValue(categoryLimit.categoryID, forKey: "categoryID")
+                    value.setValue(categoryLimit.limit, forKey: "limit")
+                    value.setValue(row, forKey: "budget")
                 }
             }
             try context.save()

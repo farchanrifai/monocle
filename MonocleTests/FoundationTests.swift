@@ -58,6 +58,27 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(model.settings.startDay, 1)
     }
 
+    func testBudgetSaveCreatesAnEffectiveTransitionVersion() throws {
+        let store = TestExpenseStore()
+        let service = try ExpenseService(store: store)
+        let state = TestState()
+        let model = AppModel(expenses: service, state: state)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = try XCTUnwrap(Day.date("2026-09-08", calendar: calendar))
+        try model.saveBudget(overallLimit: 500_000_000, startDay: 1, categoryLimits: [], applyToNextCycle: false, date: date, calendar: calendar)
+        try model.saveBudget(overallLimit: 600_000_000, startDay: 25, categoryLimits: [], applyToNextCycle: false, date: date, calendar: calendar)
+        let transition = try XCTUnwrap(store.budgetValues.first { $0.startDay == 25 })
+        XCTAssertEqual(transition.effectiveDay, "2026-10-01")
+        XCTAssertEqual(transition.transitionEndDay, "2026-10-25")
+        XCTAssertEqual(model.settings.budget, 600_000_000)
+        XCTAssertEqual(model.settings.startDay, 25)
+        let transitionDate = try XCTUnwrap(Day.date("2026-10-10", calendar: calendar))
+        try model.saveBudget(overallLimit: 650_000_000, startDay: 25, categoryLimits: [], applyToNextCycle: false, date: transitionDate, calendar: calendar)
+        let adjusted = try XCTUnwrap(store.budgetValues.first { $0.effectiveDay == "2026-10-01" })
+        XCTAssertEqual(adjusted.transitionEndDay, "2026-10-25")
+    }
+
     func testExistingStateEncodingReopensAndCorruptionIsPreserved() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -155,6 +176,7 @@ final class FoundationTests: XCTestCase {
 @MainActor
 private final class TestExpenseStore: ExpenseStore {
     var values: [Expense] = []
+    var budgetValues: [BudgetVersion] = []
     var failWrites = false
     var failReads = false
     func categories() throws -> [ExpenseCategory] {
@@ -165,10 +187,19 @@ private final class TestExpenseStore: ExpenseStore {
         if failReads { throw EntryError.corruptStore }
         return values
     }
+    func budgets() throws -> [BudgetVersion] {
+        if failReads { throw EntryError.corruptStore }
+        return budgetValues
+    }
     func save(_ expense: Expense) throws {
         if failWrites { throw EntryError.corruptStore }
         values.removeAll { $0.id == expense.id }
         values.append(expense)
+    }
+    func save(_ budget: BudgetVersion) throws {
+        if failWrites { throw EntryError.corruptStore }
+        budgetValues.removeAll { $0.id == budget.id || $0.effectiveDay == budget.effectiveDay }
+        budgetValues.append(budget)
     }
     func saveCategory(_ category: ExpenseCategory) throws { throw CategoryError.invalidName }
     func deleteCategory(_ id: UUID) throws { throw CategoryError.inUse }

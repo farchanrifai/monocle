@@ -216,7 +216,7 @@ enum ExpenseParser {
     }
 }
 
-struct BudgetCycle {
+struct BudgetCycle: Equatable, Sendable {
     let start: Date
     let end: Date
     static func containing(_ date: Date, startDay: Int, calendar: Calendar = .current) -> Self {
@@ -239,5 +239,91 @@ struct BudgetCycle {
     var label: String {
         let last = Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end
         return start.formatted(.dateTime.day().month(.abbreviated)) + " – " + last.formatted(.dateTime.day().month(.abbreviated))
+    }
+}
+
+struct CategoryBudget: Codable, Equatable, Sendable {
+    var categoryID: UUID
+    var limit: Int64
+}
+
+struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
+    static let legacyID = UUID(uuidString: "40000000-0000-0000-0000-000000000001")!
+
+    var id = UUID()
+    var effectiveDay: String
+    var overallLimit: Int64
+    var startDay: Int
+    var categoryLimits: [CategoryBudget] = []
+    /// Set only for the first period after a start-day change.
+    var transitionEndDay: String?
+
+    static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = .current) -> Self {
+        let validStartDay = min(31, max(1, startDay))
+        let cycle = BudgetCycle.containing(date, startDay: validStartDay, calendar: calendar)
+        return .init(id: legacyID, effectiveDay: Day.string(cycle.start, calendar: calendar),
+                     overallLimit: max(1, min(Money.maximum, overallLimit)), startDay: validStartDay)
+    }
+
+    func validate(categories: [ExpenseCategory]) throws {
+        guard overallLimit > 0, overallLimit <= Money.maximum else { throw BudgetError.invalidLimit }
+        guard (1...31).contains(startDay), Day.date(effectiveDay) != nil else { throw BudgetError.invalidEffectiveDate }
+        if let transitionEndDay {
+            guard let start = Day.date(effectiveDay), let end = Day.date(transitionEndDay), end > start else {
+                throw BudgetError.invalidTransition
+            }
+        }
+        var categoryIDs = Set<UUID>()
+        for categoryLimit in categoryLimits {
+            guard categories.contains(where: { $0.id == categoryLimit.categoryID }) else { throw BudgetError.missingCategory }
+            guard categoryLimit.limit > 0, categoryLimit.limit <= Money.maximum else { throw BudgetError.invalidLimit }
+            guard categoryIDs.insert(categoryLimit.categoryID).inserted else { throw BudgetError.duplicateCategory }
+        }
+    }
+
+    func limit(for categoryID: UUID) -> Int64? {
+        categoryLimits.first { $0.categoryID == categoryID }?.limit
+    }
+}
+
+struct BudgetPeriod: Equatable, Sendable {
+    let budget: BudgetVersion
+    let cycle: BudgetCycle
+    var isTransition: Bool { budget.transitionEndDay == Day.string(cycle.end) }
+}
+
+enum BudgetHistory {
+    static func active(on date: Date, budgets: [BudgetVersion], calendar: Calendar = .current) -> BudgetVersion? {
+        let day = Day.string(date, calendar: calendar)
+        return budgets.filter { $0.effectiveDay <= day }.max { $0.effectiveDay < $1.effectiveDay }
+    }
+
+    static func period(containing date: Date, budgets: [BudgetVersion], calendar: Calendar = .current) -> BudgetPeriod? {
+        guard let budget = active(on: date, budgets: budgets, calendar: calendar) else { return nil }
+        let day = Day.string(date, calendar: calendar)
+        if let start = Day.date(budget.effectiveDay, calendar: calendar),
+           let endDay = budget.transitionEndDay, let end = Day.date(endDay, calendar: calendar),
+           day >= budget.effectiveDay, day < endDay {
+            return BudgetPeriod(budget: budget, cycle: BudgetCycle(start: start, end: end))
+        }
+        return BudgetPeriod(budget: budget, cycle: BudgetCycle.containing(date, startDay: budget.startDay, calendar: calendar))
+    }
+
+    static func transitionEnd(after date: Date, startDay: Int, calendar: Calendar = .current) -> Date {
+        BudgetCycle.containing(date, startDay: startDay, calendar: calendar).end
+    }
+}
+
+enum BudgetError: LocalizedError {
+    case invalidLimit, invalidEffectiveDate, invalidTransition, missingCategory, duplicateCategory
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidLimit: "Enter a valid budget greater than zero."
+        case .invalidEffectiveDate: "The budget cycle date is invalid."
+        case .invalidTransition: "The budget transition period is invalid."
+        case .missingCategory: "A category budget refers to a missing category."
+        case .duplicateCategory: "A category can have only one budget limit."
+        }
     }
 }

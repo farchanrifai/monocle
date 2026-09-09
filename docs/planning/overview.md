@@ -1,6 +1,6 @@
 # monocle — planning overview
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 
 ## Purpose
 
@@ -20,7 +20,7 @@ Initially a personal app. A public subscription release is a possible later stag
 | Recovery | Manual full backup/export and tested restoration |
 | Entry | One Add Expense screen, keypad and text modes, one shared draft |
 | App lock | Optional Face ID with device-passcode fallback and configurable timeout |
-| Visual identity | Black, off-white, deliberate red accents; precise typography and native interaction |
+| Visual identity | Apple interaction clarity and accessibility combined with Teenage Engineering-inspired modular composition, bold book colors, oversized typography and tactile personality |
 
 Storage and UI choices are implementation recommendations for the agreed requirements. Real-device validation remains necessary; the planning direction does not imply working sync, signing, or Shortcuts.
 
@@ -42,4 +42,4 @@ Storage and UI choices are implementation recommendations for the agreed require
 
 ## Next deliverable
 
-The native interaction prototype now exists: Recents → Add Expense → Record, both entry modes, budget-cycle preview, and bill settings. See [prototype status and review](../prototype/README.md). Next: evaluate the signed build on the actual iPhone and finish recovery before daily use.
+The native interaction prototype now includes persisted budget history and real cycle transitions; bills remain preview-only. See [prototype status and review](../prototype/README.md). Next: evaluate the signed build on the actual iPhone, continue M3 with bill occurrences, and explore M3b's multi-book book-stack home in parallel before daily use.

@@ -2,7 +2,7 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current stage: native interaction prototype (0.1.3, build 5).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
+**Current source stage: M3 budget slice (latest delivered artifact: 0.1.3, build 13).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)

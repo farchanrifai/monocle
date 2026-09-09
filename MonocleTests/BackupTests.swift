@@ -7,7 +7,8 @@ final class BackupTests: XCTestCase {
         let categories = ExpenseCategory.defaults
         var draft = ExpenseDraft(); draft.note = "unfinished"
         var settings = PrototypeSettings(); settings.appLockTimeout = .fiveMinutes
-        return BookBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings)
+        let budget = BudgetVersion(id: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!, effectiveDay: "2026-09-01", overallLimit: 450_000_000, startDay: 1, categoryLimits: [.init(categoryID: categories[0].id, limit: 100_000_000)])
+        return BookBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings, budgets: [budget])
     }
     func testRoundTripPreservesIDsSplitsDraftAndSettings() throws {
         let original = fixture()
@@ -16,6 +17,7 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(decoded.draft, original.draft)
         XCTAssertEqual(decoded.categories, original.categories)
         XCTAssertEqual(decoded.settings, original.settings)
+        XCTAssertEqual(decoded.budgets, original.budgets)
         XCTAssertEqual(decoded.total, 10000)
         try withStore { repository, state, service, directory in
             let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
@@ -23,6 +25,7 @@ final class BackupTests: XCTestCase {
             XCTAssertEqual(try repository.expenses(), original.expenses)
             XCTAssertEqual(try state.loadDraft(), original.draft)
             XCTAssertEqual(try state.loadSettings(), original.settings)
+            XCTAssertEqual(try repository.budgets(), original.budgets)
             XCTAssertTrue(FileManager.default.fileExists(atPath: backup.safetyURL.path))
             XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("restore-journal.json").path))
         }
@@ -41,6 +44,20 @@ final class BackupTests: XCTestCase {
         bad = fixture(); bad.draft.categoryID = UUID()
         XCTAssertThrowsError(try bad.validate())
         XCTAssertThrowsError(try BookBackup.decode(Data("broken".utf8)))
+    }
+    func testFormatTwoBackupWithoutBudgetHistoryGetsAnInitialBudgetOnRestore() throws {
+        var legacy = fixture()
+        legacy.formatVersion = 2
+        legacy.budgets = []
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: legacy.encoded()) as? [String: Any])
+        object.removeValue(forKey: "budgets")
+        let decoded = try BookBackup.decode(JSONSerialization.data(withJSONObject: object))
+        XCTAssertTrue(decoded.budgets.isEmpty)
+        try withStore { repository, state, service, directory in
+            let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
+            try backup.restore(decoded, currentDraft: ExpenseDraft(), settings: PrototypeSettings())
+            XCTAssertEqual(try repository.budgets().count, 1)
+        }
     }
     func testEachActivationFailureRollsBackCompleteState() throws {
         for stage in BackupService.Stage.allCases {
@@ -111,7 +128,7 @@ final class BackupTests: XCTestCase {
             XCTAssertFalse(try state.loadDraft().hasContent)
             XCTAssertEqual(try BookBackup.decode(Data(contentsOf: backup.safetyURL)).expenses, original.expenses)
             let realBackup = try backup.snapshot(draft: ExpenseDraft(), settings: settings)
-            XCTAssertEqual(realBackup.formatVersion, 2)
+            XCTAssertEqual(realBackup.formatVersion, 3)
             XCTAssertEqual(realBackup.bookKind, BookKind.real.rawValue)
             try realBackup.validate()
             let preview = try backup.preview(data: realBackup.encoded())

@@ -18,9 +18,13 @@ final class BackupService {
         self.directory = directory; self.repository = repository; self.state = state; self.expenses = expenses
     }
     func snapshot(draft: ExpenseDraft, settings: PrototypeSettings) throws -> BookBackup {
-        let result = BookBackup(formatVersion: 2, bookID: settings.book.id, bookName: settings.book.name,
+        let exportedAt = Date.now
+        let storedBudgets = try repository.budgets()
+        let fallbackBudget = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: exportedAt)
+        let result = BookBackup(formatVersion: 3, exportedAt: exportedAt, bookID: settings.book.id, bookName: settings.book.name,
                                 bookKind: settings.book.kind.rawValue, sampleSeeded: settings.book.kind == .sample,
-                                categories: try repository.categories(), expenses: try repository.expenses(), draft: draft, settings: settings)
+                                categories: try repository.categories(), expenses: try repository.expenses(), draft: draft, settings: settings,
+                                budgets: storedBudgets.isEmpty ? [fallbackBudget] : storedBudgets)
         try result.validate()
         return result
     }
@@ -86,8 +90,19 @@ final class BackupService {
                 return value
             }.sorted { $0.id.uuidString < $1.id.uuidString }
         }
+        func canonicalBudgets(_ budgets: [BudgetVersion]) -> [BudgetVersion] {
+            budgets.map { budget in
+                var value = budget
+                value.categoryLimits.sort { $0.categoryID.uuidString < $1.categoryID.uuidString }
+                return value
+            }.sorted { $0.effectiveDay < $1.effectiveDay }
+        }
+        let expectedBudgets = candidate.budgets.isEmpty
+            ? [BudgetVersion.initial(overallLimit: candidate.settings.budget, startDay: candidate.settings.startDay, date: candidate.exportedAt)]
+            : candidate.budgets
         guard try canonical(store.expenses()) == canonical(candidate.expenses),
-              (try store.categories()) == candidate.categories.sorted(by: { $0.id.uuidString < $1.id.uuidString }) else { throw BackupError.invalid }
+              (try store.categories()) == candidate.categories.sorted(by: { $0.id.uuidString < $1.id.uuidString }),
+              canonicalBudgets(try store.budgets()) == canonicalBudgets(expectedBudgets) else { throw BackupError.invalid }
         return candidate
     }
     func restore(_ candidate: BookBackup, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {

@@ -29,13 +29,14 @@ struct BackupView: View {
                 }.accessibilityIdentifier("exportBackup")
                 Button("Choose backup to restore", systemImage: "arrow.counterclockwise") { importing = true }
                     .accessibilityIdentifier("importBackup")
-            } footer: { Text("Includes your sample book, categories, expenses, splits, unfinished draft and settings. Backups are readable JSON files; store them somewhere you trust.") }
+            } footer: { Text("Includes your book, categories, expenses, splits, budget history, unfinished draft and settings. Backups are readable JSON files; store them somewhere you trust.") }
             if let candidate {
                 Section("Review replacement") {
                     LabeledContent("Book", value: candidate.bookName)
                     LabeledContent("Exported", value: candidate.exportedAt.formatted(date: .abbreviated, time: .shortened))
                     LabeledContent("Expenses", value: String(candidate.expenses.count))
                     LabeledContent("Categories", value: String(candidate.categories.count))
+                    LabeledContent("Budget versions", value: String(max(1, candidate.budgets.count)))
                     LabeledContent("Total", value: Money.format(candidate.total))
                     LabeledContent("Current expenses replaced", value: String(model.expenses.count))
                     Button("Replace current book", role: .destructive) { confirm = true }

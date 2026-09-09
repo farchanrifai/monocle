@@ -1,6 +1,6 @@
 # monocle — decision log
 
-Updated: 2026-09-07
+Updated: 2026-09-09
 
 ## Confirmed by the user
 
@@ -17,6 +17,7 @@ Updated: 2026-09-07
 | Per-bill automatic or pending mode | Reminder toggle independent; pending excluded from recorded spending |
 | Face ID/device-passcode fallback | No app-specific PIN recovery flow; configurable timeout |
 | Planning documents in docs/planning | Keep specification and implementation decisions together |
+| User-defined multi-book workspace | No bank/card/account tracking; each local book owns its transaction context, and the home stack shows user-selected books |
 
 All other confirmed v1 requirements and design direction in the handoff remain in scope.
 
@@ -59,7 +60,7 @@ These are architecture choices, not claims of implemented or tested capabilities
 | Question | Required before |
 | --- | --- |
 | Exact bundle identifier, signing route, final signed capabilities | First phone installation |
-| Budget start-day transition length and transition budget amount | Shipping cycle-date changes |
+| Budget start-day transition length and transition budget amount | Resolved in the M3 budget slice; transition uses the new amount through the next boundary |
 | Accepted text formats, keyword precedence, correction-to-rule behaviour | Shipping parser |
 | Refund handling and imported negative/zero amounts | Shipping CSV import; reject unsupported values explicitly until decided |
 | Bill recurrence frequencies, reminder timing, and edit/skip semantics | Shipping bills |
@@ -81,3 +82,20 @@ None of these prevent the entry prototype. Do not mistake unresolved implementat
 ## Backup milestone — 2026-09-08
 
 Implemented format-1 portable JSON `.monoclebackup` files for the current sample book. Restore replaces rather than merges, requires an in-app review/confirmation and writes a local safety backup first. A rollback journal spans SQLite and draft/settings so restart recovers the original state until activation completes. Initial limits are 10 MB, 10,000 expenses and 500 categories. Files are unencrypted. See backup-format.md for validation, interruption semantics and phone checks still pending.
+
+## M3 budget slice — 2026-09-09
+
+- Persist budget versions by effective calendar day, retaining prior versions and independent overall/category limits.
+- An amount change with the existing start day applies at the current cycle start or next cycle start. A start-day change applies at the old cycle end and uses a transition period through the next boundary under the new start day; the new amount governs that transition.
+- Store periods as inclusive start/exclusive end ranges. Clamp start days to the end of short months and do not carry forward unused amounts.
+- Add Core Data V2 budget entities with automatic/inferred V1 migration and backup format 3. Older backups without budget history receive one initial version from their settings/date during restore.
+
+## Multi-book workspace and UI direction — 2026-09-09
+
+- The app is a local workspace of user-defined books, not a wallet for banks, cards or financial accounts.
+- A book can represent expenses, travel, bills, projects or another expense-tracking context. Avoid a fixed `BookType` unless it later changes behavior.
+- The home screen will use a customizable stack of book cards. Users choose which books are visible and their order; all books remain available through the options menu.
+- Tapping a book focuses its hero card and opens that book's transaction list. All Activities can show either visible books or all books.
+- Book hero images are customizable, stored in app-owned local storage, downsampled, included in backup/restore and given a safe fallback.
+- The visual direction combines Apple's clarity, accessibility and responsive interaction with Teenage Engineering-inspired modular layouts, bold color, oversized type and tactile personality. It is not a pixel-for-pixel Wallet clone.
+- M3 budgets and bills remain the active implementation phase. Multi-book UI is a parallel design track; before implementation, every record, command, draft, Shortcut and backup path must be explicitly book-scoped.

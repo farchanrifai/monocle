@@ -6,7 +6,9 @@ import Observation
 protocol ExpenseStore {
     func categories() throws -> [ExpenseCategory]
     func expenses() throws -> [Expense]
+    func budgets() throws -> [BudgetVersion]
     func save(_ expense: Expense) throws
+    func save(_ budget: BudgetVersion) throws
     func delete(_ id: UUID) throws
     func saveCategory(_ category: ExpenseCategory) throws
     func deleteCategory(_ id: UUID) throws
@@ -19,6 +21,7 @@ final class ExpenseService {
     private let store: any ExpenseStore
     private(set) var expenses: [Expense] = []
     private(set) var categories: [ExpenseCategory] = []
+    private(set) var budgets: [BudgetVersion] = []
     private var categoryRules: [CategoryRule] = []
     private var archivedCategoryIDs: Set<UUID> = []
 
@@ -31,8 +34,10 @@ final class ExpenseService {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let categories = try store.categories()
         let expenses = try store.expenses()
+        let budgets = try store.budgets()
         self.categories = categories
         self.expenses = expenses
+        self.budgets = budgets
     }
 
     func configure(categoryRules: [CategoryRule], archivedCategoryIDs: Set<UUID>) {
@@ -48,6 +53,15 @@ final class ExpenseService {
         expenses.removeAll { $0.id == expense.id }
         expenses.append(expense)
         expenses.sort { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+    }
+
+    func save(_ budget: BudgetVersion) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try budget.validate(categories: categories)
+        try store.save(budget)
+        budgets.removeAll { $0.id == budget.id || $0.effectiveDay == budget.effectiveDay }
+        budgets.append(budget)
+        budgets.sort { $0.effectiveDay < $1.effectiveDay }
     }
 
     func saveCategory(_ category: ExpenseCategory) throws {

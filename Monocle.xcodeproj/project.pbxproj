@@ -67,6 +67,7 @@
 		5917E02740846F6B5ED016CC /* BookBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookBackup.swift; sourceTree = "<group>"; };
 		5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleUITests.swift; sourceTree = "<group>"; };
 		5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV1.xcdatamodel; sourceTree = "<group>"; };
+		D0C3B0D2A1E44A7E9C2F0011 /* MonocleV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV2.xcdatamodel; sourceTree = "<group>"; };
 		6486A991712AB436BBFA6A1D /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
 		65AF43141767E4C3DFD4DBFA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleStyle.swift; sourceTree = "<group>"; };
@@ -698,8 +699,9 @@
 			isa = XCVersionGroup;
 			children = (
 				5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */,
+				D0C3B0D2A1E44A7E9C2F0011 /* MonocleV2.xcdatamodel */,
 			);
-			currentVersion = 5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */;
+			currentVersion = D0C3B0D2A1E44A7E9C2F0011 /* MonocleV2.xcdatamodel */;
 			path = Monocle.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
