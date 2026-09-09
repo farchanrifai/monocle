@@ -1,0 +1,284 @@
+import SwiftUI
+
+/// Isolated design exploration. Sample writes never reach ExpenseService or the user's store.
+struct BookHomePrototype: View {
+    enum Direction: String, CaseIterable, Identifiable {
+        case instrument = "Instrument", ledger = "Ledger", signal = "Signal"
+        var id: Self { self }
+    }
+    @State var direction: Direction = .instrument
+    @State private var books = PrototypeBookSamples.books
+    @State private var activities = PrototypeBookSamples.activities
+    @State private var hidden: Set<Int> = []
+    @State private var selected: Int?
+    @State private var allBooks = false
+    @State private var managing = false
+    @State private var adding = false
+    @State private var pull: CGFloat = 0
+    @Namespace private var cardTransition
+    @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
+    @ScaledMetric(relativeTo: .title) private var cardHeight = 224
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dismiss) private var dismiss
+    @AccessibilityFocusState private var headingFocused: Bool
+
+    private var visible: [PrototypeBook] { books.filter { !hidden.contains($0.id) } }
+    private var current: PrototypeBook? { books.first { $0.id == selected } }
+    private var paper: Color { direction == .ledger ? Color(red: 0.96, green: 0.94, blue: 0.88) : .black }
+    private var ink: Color { direction == .ledger ? .black : .white }
+    private func color(_ id: Int) -> Color {
+        [Color(red: 0.99, green: 0.40, blue: 0.22), Color(red: 0.68, green: 0.79, blue: 0.99),
+         Color(red: 0.84, green: 0.94, blue: 0.38), Color(red: 0.93, green: 0.68, blue: 0.88)][abs(id) % 4]
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                if current != nil {
+                    Button { focus(nil) } label: {
+                        Image(systemName: "xmark").frame(width: 44, height: 44)
+                    }.accessibilityLabel("All book cards")
+                } else {
+                    Text("Monocle").font(.largeTitle.bold())
+                }
+                Spacer()
+                options
+            }.padding(.horizontal, 20).padding(.bottom, 8)
+            ZStack(alignment: .top) {
+                // Retain this scroll view during detail presentation so closing restores its exact position.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        stack.offset(y: -pull * 0.9)
+                        if visible.isEmpty {
+                            ContentUnavailableView {
+                                Label("Your stack is empty", systemImage: "rectangle.stack")
+                            } description: { Text("All books are still in the options menu.") }
+                            actions: { Button("Choose visible books") { managing = true } }
+                        }
+                        activityList(bookID: nil)
+                            .offset(y: pull * (CGFloat(max(0, visible.count - 1)) * 0.22 - 0.9))
+                    }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 24)
+                }
+                .scrollBounceBehavior(.always)
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    max(0, -(geometry.contentOffset.y + geometry.contentInsets.top))
+                } action: { _, value in
+                    pull = reduceMotion ? 0 : value
+                }
+                .scrollDisabled(selected != nil)
+                .allowsHitTesting(selected == nil)
+                .accessibilityHidden(selected != nil)
+
+                paper.opacity(selected == nil ? 0 : 1)
+                    .allowsHitTesting(false).accessibilityHidden(true)
+
+                if let current {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            card(current)
+                                .matchedGeometryEffect(id: current.id, in: cardTransition)
+                                .frame(height: cardHeight)
+                                .zIndex(2)
+                            activityList(bookID: current.id)
+                                .transition(.opacity.combined(with: .offset(y: reduceMotion ? 0 : 30)))
+                        }.padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 24)
+                    }
+                    .scrollBounceBehavior(.always)
+                    .transition(.identity)
+                    .zIndex(10)
+                }
+            }
+        }
+        .background(paper).foregroundStyle(ink)
+        .safeAreaInset(edge: .bottom) {
+            Button { adding = true } label: {
+                Label("Add Expense", systemImage: "plus").font(.headline)
+                    .frame(maxWidth: .infinity).padding(18).background(ink, in: Capsule()).foregroundStyle(paper)
+            }.buttonStyle(PressFeedbackStyle()).padding(.horizontal, 20).padding(.bottom, 8)
+        }
+        .sheet(isPresented: $managing) { management }
+        .sheet(isPresented: $adding) {
+            PrototypeExpenseEntry(books: books, initialBookID: selected ?? visible.first?.id ?? books[0].id) {
+                activities.insert($0, at: 0)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .preferredColorScheme(direction == .ledger ? .light : .dark)
+    }
+
+    private var stack: some View {
+        ZStack(alignment: .top) {
+            ForEach(Array(visible.enumerated()), id: \.element.id) { index, book in
+                Group {
+                    if selected == book.id {
+                        Color.clear.frame(height: cardHeight)
+                    } else {
+                        Button { focus(book.id) } label: {
+                            card(book)
+                                .matchedGeometryEffect(id: book.id, in: cardTransition)
+                                .frame(height: cardHeight)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open \(book.name), \(count(book.id)) transactions")
+                        .accessibilityIdentifier("stack-book-\(book.id)")
+                    }
+                }
+                .offset(y: CGFloat(index) * (stripHeight + pull * 0.22))
+                .offset(y: selected == nil ? 0 : (index > selectedIndex ? 700 : -40))
+                .opacity(selected == nil ? 1 : 0)
+                .zIndex(Double(index))
+            }
+        }
+        .frame(height: visible.isEmpty ? 0 : cardHeight + CGFloat(visible.count - 1) * stripHeight, alignment: .top)
+    }
+
+    private var selectedIndex: Int { visible.firstIndex { $0.id == selected } ?? visible.count }
+
+    private func activityList(bookID: Int?) -> some View {
+        let values = PrototypeBookSamples.activities(activities, selectedBookID: bookID,
+                            visibleBookIDs: Set(visible.map(\.id)), allBooks: allBooks)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text(books.first { $0.id == bookID }?.name ?? "All Activities")
+                .font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($headingFocused)
+            if bookID == nil {
+                Picker("Activity scope", selection: $allBooks) {
+                    Text("Visible books").tag(false)
+                    Text("All books").tag(true)
+                }.pickerStyle(.segmented)
+            }
+            if values.isEmpty {
+                ContentUnavailableView("Nothing recorded yet", systemImage: "text.book.closed",
+                                       description: Text("Add a sample expense to explore this book."))
+            }
+            LazyVStack(spacing: 0) {
+                ForEach(values) { row in
+                    Button { if bookID == nil { focus(row.bookID) } } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(row.day).font(.caption.monospaced())
+                            ViewThatFits(in: .horizontal) {
+                                HStack { Text(row.title); Spacer(); Text(Money.format(row.amount)).monospacedDigit() }
+                                VStack(alignment: .leading) { Text(row.title); Text(Money.format(row.amount)).monospacedDigit() }
+                            }.font(.body.weight(.medium))
+                            Text(books.first { $0.id == row.bookID }?.name ?? "Book").font(.caption)
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 16)
+                    }.buttonStyle(.plain)
+                    Rectangle().fill(ink.opacity(0.2)).frame(height: 1).accessibilityHidden(true)
+                }
+            }
+        }
+    }
+
+    private var options: some View {
+        Menu {
+            Picker("Visual direction", selection: $direction) {
+                ForEach(Direction.allCases) { Text($0.rawValue).tag($0) }
+            }
+            Button("Leave design prototype") { dismiss() }
+            Button("Manage stack", systemImage: "slider.horizontal.3") { managing = true }
+            Button("Return to stack") { focus(nil) }
+            Section("All books") {
+                ForEach(books) { book in Button(book.name) { focus(book.id) } }
+            }
+        } label: { Image(systemName: "ellipsis.circle").font(.title2).frame(width: 44, height: 44) }
+            .accessibilityLabel("Book options")
+    }
+
+    private func count(_ id: Int) -> Int { activities.filter { $0.bookID == id }.count }
+    private func card(_ book: PrototypeBook) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                Text(book.name).font(.headline).lineLimit(1)
+                Spacer(minLength: 8)
+                Text(String(format: "%02d", book.id)).font(.caption.monospaced())
+            }.frame(minHeight: stripHeight - 24, alignment: .top)
+            Spacer(minLength: 0)
+            Text(Money.format(activities.filter { $0.bookID == book.id }.reduce(0) { $0 + $1.amount }))
+                .font(direction == .ledger ? .system(.title, design: .serif, weight: .semibold) : .title.bold())
+                .monospacedDigit().minimumScaleFactor(0.65)
+            Text("\(count(book.id)) TRANSACTIONS · SAMPLE").font(.caption.monospaced())
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .foregroundStyle(.black)
+        .background(color(book.id), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.black.opacity(0.12), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.18), radius: 8, y: -2)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func focus(_ id: Int?) {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.86)) {
+            selected = id
+        }
+        headingFocused = true
+    }
+
+    private var management: some View {
+        NavigationStack {
+            List {
+                Section("Visible cards · drag to reorder") {
+                    ForEach(books) { book in
+                        Toggle(book.name, isOn: Binding(get: { !hidden.contains(book.id) }, set: {
+                            if $0 { hidden.remove(book.id) } else { hidden.insert(book.id) }
+                        }))
+                        .contextMenu {
+                            Button("Move to top") {
+                                books.removeAll { $0.id == book.id }; books.insert(book, at: 0)
+                            }
+                        }
+                        .accessibilityAction(named: "Move to top") {
+                            books.removeAll { $0.id == book.id }; books.insert(book, at: 0)
+                        }
+                    }.onMove { books.move(fromOffsets: $0, toOffset: $1) }
+                }
+                Section("Try a state") {
+                    Button("One visible book") { hidden = Set(books.dropFirst().map(\.id)) }
+                    Button("Show every book") { hidden = [] }
+                    Button("Hide every book") { hidden = Set(books.map(\.id)) }
+                }
+            }.environment(\.editMode, .constant(.active))
+                .navigationTitle("Manage stack")
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { managing = false } } }
+        }
+    }
+}
+
+private struct PrototypeExpenseEntry: View {
+    let books: [PrototypeBook]
+    let initialBookID: Int
+    let record: (PrototypeActivity) -> Void
+    @State private var bookID = 0
+    @State private var amount = ""
+    @State private var note = ""
+    @State private var error: String?
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Book", selection: $bookID) { ForEach(books) { Text($0.name).tag($0.id) } }
+                    TextField("Amount (IDR)", text: $amount).keyboardType(.numberPad)
+                    TextField("Note", text: $note)
+                } footer: { Text("Sample only. This does not write to your saved book.") }
+                if let error { Text(error).foregroundStyle(.red) }
+                Button("Record sample expense") {
+                    do {
+                        let value = try Money.parse(amount)
+                        guard books.contains(where: { $0.id == bookID }) else { throw EntryError.corruptStore }
+                        record(.init(id: UUID(), bookID: bookID, title: note.isEmpty ? "Expense" : note,
+                                     amount: value, day: Day.string(.now)))
+                        dismiss()
+                    } catch { self.error = error.localizedDescription }
+                }
+            }.navigationTitle("Add Expense")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+                .onAppear { bookID = initialBookID }
+        }
+    }
+}
+
+#Preview("Instrument") { NavigationStack { BookHomePrototype(direction: .instrument) } }
+#Preview("Ledger") { NavigationStack { BookHomePrototype(direction: .ledger) } }
+#Preview("Signal") { NavigationStack { BookHomePrototype(direction: .signal) } }
+#Preview("Large text") { NavigationStack { BookHomePrototype() }.environment(\.dynamicTypeSize, .accessibility3) }

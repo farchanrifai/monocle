@@ -83,7 +83,7 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: model.settings.book.name)
                     LabeledContent("Currency", value: "IDR")
-                    LabeledContent("Version", value: "0.1.3 · Prototype")
+                    LabeledContent("Version", value: "0.1.4 · Prototype")
                 }
                 Section {
                     NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
@@ -96,6 +96,9 @@ struct SettingsView: View {
                         NavigationLink("Rename book") { RenameBookView(model: model) }
                             .accessibilityIdentifier("renameRealBook")
                     }
+                }
+                Section("Design exploration") {
+                    NavigationLink("Explore book home") { BookHomePrototype() }
                 }
                 Section("Try the flow") {
                     Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")

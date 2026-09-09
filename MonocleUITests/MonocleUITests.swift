@@ -283,4 +283,52 @@ final class MonocleUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Split across 1 categories"].exists)
     }
 
+    @MainActor
+    func testBookPrototypeFocusAndSampleEntry() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-book-home-prototype"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Book options"].waitForExistence(timeout: 10))
+        app.buttons["Book options"].tap()
+        app.buttons["A fresh start"].tap()
+        XCTAssertTrue(app.staticTexts["Nothing recorded yet"].waitForExistence(timeout: 5))
+        app.buttons["Add Expense"].tap()
+        app.textFields["Amount (IDR)"].tap()
+        app.textFields["Amount (IDR)"].typeText("28000")
+        app.textFields["Note"].tap()
+        app.textFields["Note"].typeText("Prototype coffee")
+        app.buttons["Record sample expense"].tap()
+        XCTAssertTrue(app.staticTexts["Prototype coffee"].waitForExistence(timeout: 5))
+        app.buttons["All book cards"].tap()
+        app.buttons["Book options"].tap()
+        app.buttons["Everyday"].tap()
+        XCTAssertFalse(app.staticTexts["Prototype coffee"].exists)
+    }
+
+    @MainActor
+    func testWalletStackReturnsCardToItsSlot() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-book-home-prototype"]
+        app.launch()
+        let first = app.buttons["stack-book-1"]
+        let second = app.buttons["stack-book-2"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        let original = second.frame.minY
+        XCTAssertLessThan(second.frame.minY - first.frame.minY, first.frame.height / 2)
+        second.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
+        XCTAssertTrue(app.buttons["All book cards"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tokyo / September"].exists)
+        app.buttons["All book cards"].tap()
+        XCTAssertTrue(second.waitForExistence(timeout: 5))
+        XCTAssertEqual(second.frame.minY, original, accuracy: 2)
+        // Native bounce must settle back without losing the card's slot.
+        first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05))
+            .press(forDuration: 0.05, thenDragTo: first.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)))
+        XCTAssertTrue(app.buttons["Book options"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "wallet-stack"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
 }
