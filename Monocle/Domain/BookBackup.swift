@@ -167,11 +167,23 @@ struct BookBackup: Codable {
     }
 }
 
+enum BookVisualDirection: String, CaseIterable, Identifiable, Codable, Sendable {
+    case instrument = "Instrument"
+    case ledger = "Ledger"
+    case signal = "Signal"
+    var id: Self { self }
+}
+
 struct WorkspacePreferences: Codable, Equatable, Sendable {
     var visibleBookIDs: [UUID] = []
     var bookOrder: [UUID] = []
     var allActivitiesScope: Bool = false
     var visualDirection: String = "Instrument"
+
+    var direction: BookVisualDirection {
+        get { BookVisualDirection(rawValue: visualDirection) ?? .instrument }
+        set { visualDirection = newValue.rawValue }
+    }
 }
 
 struct BookBackupItem: Codable, Equatable, Sendable {

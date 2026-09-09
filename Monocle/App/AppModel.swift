@@ -31,6 +31,15 @@ final class AppModel {
     var workspacePreferences = WorkspacePreferences()
     var hiddenBookIDs: Set<UUID> = []
 
+    var visualDirection: BookVisualDirection {
+        get { workspacePreferences.direction }
+        set {
+            guard workspacePreferences.direction != newValue else { return }
+            workspacePreferences.direction = newValue
+            persistWorkspacePreferences()
+        }
+    }
+
     var orderedBooks: [BookProfile] {
         let current = books
         var result: [BookProfile] = []

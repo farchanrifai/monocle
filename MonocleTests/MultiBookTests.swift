@@ -109,4 +109,22 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(workspace.books[0].expenses[0].id, exp.id)
         XCTAssertEqual(workspace.books[0].categories[0].id, cat.id)
     }
+
+    func testVisualDirectionPersistsAndDecodes() throws {
+        var prefs = WorkspacePreferences()
+        XCTAssertEqual(prefs.direction, .instrument)
+
+        prefs.direction = .ledger
+        XCTAssertEqual(prefs.visualDirection, "Ledger")
+        XCTAssertEqual(prefs.direction, .ledger)
+
+        prefs.direction = .signal
+        XCTAssertEqual(prefs.visualDirection, "Signal")
+        XCTAssertEqual(prefs.direction, .signal)
+
+        let encoded = try JSONEncoder().encode(prefs)
+        let decoded = try JSONDecoder().decode(WorkspacePreferences.self, from: encoded)
+        XCTAssertEqual(decoded.direction, .signal)
+        XCTAssertEqual(decoded.visualDirection, "Signal")
+    }
 }

@@ -28,6 +28,24 @@ struct BookHomeView: View {
     private var visible: [BookProfile] { model.visibleBooks }
     private var current: BookProfile? { model.books.first { $0.id == selectedID } }
 
+    private var direction: BookVisualDirection { model.visualDirection }
+    private var paper: Color {
+        direction == .ledger ? Color(red: 0.96, green: 0.94, blue: 0.88) : .black
+    }
+    private var ink: Color {
+        direction == .ledger ? .black : .white
+    }
+    private var amountFont: Font {
+        switch direction {
+        case .ledger:
+            return .system(.title, design: .serif, weight: .semibold)
+        case .instrument:
+            return .system(.title, design: .monospaced, weight: .bold)
+        case .signal:
+            return .title.bold()
+        }
+    }
+
     private static let cardPalette: [Color] = [
         Color(red: 0.99, green: 0.40, blue: 0.22), // Tangerine
         Color(red: 0.68, green: 0.79, blue: 0.99), // Soft Sky Blue
@@ -99,7 +117,8 @@ struct BookHomeView: View {
                 info.safeArea = newValue
             }
         }
-        .background(MC.paper).foregroundStyle(MC.ink)
+        .background(paper).foregroundStyle(ink)
+        .preferredColorScheme(direction == .ledger ? .light : .dark)
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
@@ -110,8 +129,8 @@ struct BookHomeView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(18)
-                        .background(MC.ink, in: Capsule())
-                        .foregroundStyle(MC.paper)
+                        .background(ink, in: Capsule())
+                        .foregroundStyle(paper)
                 }
                 .buttonStyle(PressFeedbackStyle())
                 .padding(.horizontal, 20)
@@ -122,12 +141,18 @@ struct BookHomeView: View {
         .sheet(item: selectedBookBinding) { book in
             let spacing: CGFloat = 16
             let minSheetHeight: CGFloat = max(180, info.containerSize.height + info.safeArea.bottom - cardHeight - spacing)
-            BookDetailSheet(model: model, book: book, onDismiss: { focus(nil) })
-                .presentationDetents([.height(minSheetHeight), .large])
-                .presentationBackgroundInteraction(.enabled(upThrough: .large))
-                .interactiveDismissDisabled()
-                .presentationDragIndicator(.visible)
-                .presentationBackground(MC.paper)
+            BookDetailSheet(
+                model: model,
+                book: book,
+                paper: paper,
+                ink: ink,
+                onDismiss: { focus(nil) }
+            )
+            .presentationDetents([.height(minSheetHeight), .large])
+            .presentationBackgroundInteraction(.enabled(upThrough: .large))
+            .interactiveDismissDisabled()
+            .presentationDragIndicator(.visible)
+            .presentationBackground(paper)
         }
         .sheet(isPresented: $managing) {
             manageStackSheet
@@ -183,13 +208,14 @@ struct BookHomeView: View {
                     Image(systemName: "xmark")
                         .font(.headline.weight(.semibold))
                         .frame(width: 44, height: 44)
-                        .foregroundStyle(MC.ink)
+                        .foregroundStyle(ink)
                 }
                 .accessibilityLabel("All book cards")
                 .accessibilityIdentifier("closeBookDetail")
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("monocle").font(.system(size: 28, weight: .semibold, design: .rounded)).tracking(-1.2)
+                        .foregroundStyle(ink)
                     Text(".").font(.system(size: 30, weight: .bold)).foregroundStyle(MC.red)
                 }
                 .fixedSize(horizontal: true, vertical: false)
@@ -200,7 +226,7 @@ struct BookHomeView: View {
                 Image(systemName: "slider.horizontal.3")
                     .font(.title3)
                     .frame(width: 44, height: 44)
-                    .foregroundStyle(MC.ink)
+                    .foregroundStyle(ink)
             }
             .accessibilityLabel("Settings")
             .accessibilityIdentifier("homeSettings")
@@ -266,7 +292,7 @@ struct BookHomeView: View {
             Spacer(minLength: 0)
 
             Text(Money.format(total))
-                .font(.title.bold())
+                .font(amountFont)
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
             Text("\(bookExpenses.count) TRANSACTIONS")
@@ -309,7 +335,7 @@ struct BookHomeView: View {
                     ForEach(activities) { row in
                         activityRow(row, showBookLabel: bookID == nil)
                         Rectangle()
-                            .fill(MC.ink.opacity(0.12))
+                            .fill(ink.opacity(0.15))
                             .frame(height: 0.5)
                             .accessibilityHidden(true)
                     }
@@ -325,18 +351,22 @@ struct BookHomeView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(expense.day)
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ink.opacity(0.6))
                 ViewThatFits(in: .horizontal) {
                     HStack {
                         Text(model.title(expense))
+                            .foregroundStyle(ink)
                         Spacer()
                         Text(Money.format(expense.amount))
                             .monospacedDigit()
+                            .foregroundStyle(ink)
                     }
                     VStack(alignment: .leading) {
                         Text(model.title(expense))
+                            .foregroundStyle(ink)
                         Text(Money.format(expense.amount))
                             .monospacedDigit()
+                            .foregroundStyle(ink)
                     }
                 }
                 .font(.body.weight(.medium))
@@ -344,7 +374,7 @@ struct BookHomeView: View {
                 if showBookLabel, let bID = expense.bookID, let b = model.books.first(where: { $0.id == bID }) {
                     Text(b.name)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ink.opacity(0.6))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -368,6 +398,12 @@ struct BookHomeView: View {
 
     private var optionsMenu: some View {
         Menu {
+            Picker("Visual direction", selection: $model.visualDirection) {
+                ForEach(BookVisualDirection.allCases) { dir in
+                    Text(dir.rawValue).tag(dir)
+                }
+            }
+
             Button {
                 showingCreateBook = true
             } label: {
@@ -409,7 +445,7 @@ struct BookHomeView: View {
             Image(systemName: "ellipsis.circle")
                 .font(.title2)
                 .frame(width: 44, height: 44)
-                .foregroundStyle(MC.ink)
+                .foregroundStyle(ink)
         }
         .accessibilityLabel("Book options")
         .accessibilityIdentifier("bookOptionsMenu")
@@ -469,6 +505,8 @@ struct BookHomeView: View {
 struct BookDetailSheet: View {
     @Bindable var model: AppModel
     let book: BookProfile
+    var paper: Color = MC.paper
+    var ink: Color = MC.ink
     var onDismiss: () -> Void
 
     var body: some View {
@@ -479,10 +517,11 @@ struct BookDetailSheet: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(book.name)
                                 .font(.title2.bold())
+                                .foregroundStyle(ink)
                                 .accessibilityAddTraits(.isHeader)
                             Text("\(model.expenses(for: book.id).count) transactions · \(Money.format(model.spent(for: book.id)))")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(ink.opacity(0.6))
                         }
                         Spacer()
                         Button {
@@ -492,8 +531,8 @@ struct BookDetailSheet: View {
                                 .font(.subheadline.weight(.semibold))
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(MC.ink, in: Capsule())
-                                .foregroundStyle(MC.paper)
+                                .background(ink, in: Capsule())
+                                .foregroundStyle(paper)
                         }
                         .buttonStyle(PressFeedbackStyle())
                         .accessibilityIdentifier("addExpenseButton")
@@ -501,6 +540,7 @@ struct BookDetailSheet: View {
                     .padding(.top, 8)
 
                     Divider()
+                        .overlay(ink.opacity(0.15))
 
                     let activities = model.activities(selectedBookID: book.id, allBooks: false)
                     if activities.isEmpty {
@@ -512,7 +552,7 @@ struct BookDetailSheet: View {
                             ForEach(activities) { expense in
                                 activityRow(expense)
                                 Rectangle()
-                                    .fill(MC.ink.opacity(0.12))
+                                    .fill(ink.opacity(0.15))
                                     .frame(height: 0.5)
                                     .accessibilityHidden(true)
                             }
@@ -523,7 +563,7 @@ struct BookDetailSheet: View {
                 .padding(.bottom, 32)
             }
             .scrollBounceBehavior(.always)
-            .background(MC.paper)
+            .background(paper)
             .navigationTitle(book.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -531,6 +571,7 @@ struct BookDetailSheet: View {
                     Button("Done") {
                         onDismiss()
                     }
+                    .foregroundStyle(ink)
                 }
             }
             .sheet(isPresented: $model.showEntry, onDismiss: {
@@ -548,18 +589,22 @@ struct BookDetailSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(expense.day)
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ink.opacity(0.6))
                 ViewThatFits(in: .horizontal) {
                     HStack {
                         Text(model.title(expense))
+                            .foregroundStyle(ink)
                         Spacer()
                         Text(Money.format(expense.amount))
                             .monospacedDigit()
+                            .foregroundStyle(ink)
                     }
                     VStack(alignment: .leading) {
                         Text(model.title(expense))
+                            .foregroundStyle(ink)
                         Text(Money.format(expense.amount))
                             .monospacedDigit()
+                            .foregroundStyle(ink)
                     }
                 }
                 .font(.body.weight(.medium))
