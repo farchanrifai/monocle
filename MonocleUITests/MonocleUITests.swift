@@ -506,12 +506,27 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(previews.element(boundBy: 0).waitForExistence(timeout: 5))
         XCTAssertTrue(previews.element(boundBy: 1).waitForExistence(timeout: 5))
 
+        // Verify active card is horizontally center-aligned and neighboring card peeks subtly
+        let windowWidth = app.windows.element(boundBy: 0).frame.width
+        let activeCardFrame = previews.element(boundBy: 0).frame
+        let leadingSpace = activeCardFrame.minX
+        let trailingSpace = windowWidth - activeCardFrame.maxX
+        XCTAssertEqual(leadingSpace, trailingSpace, accuracy: 3.0, "Active card in customizer carousel must be center-aligned")
+
+        let neighboringCardFrame = previews.element(boundBy: 1).frame
+        let peek = windowWidth - neighboringCardFrame.minX
+        XCTAssertLessThanOrEqual(peek, 30.0, "Neighboring card peek should be subtle, not excessive")
+        XCTAssertGreaterThanOrEqual(peek, 10.0, "Neighboring card should still peek slightly into view")
+
         // Take a screenshot of the multi-card horizontal carousel
         let carouselShot = app.screenshot()
         try? carouselShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_carousel.png"))
 
         // Tap the second preview card in carousel to make it active
         previews.element(boundBy: 1).tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        let secondCardShot = app.screenshot()
+        try? secondCardShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_carousel_second_active.png"))
 
         // Switch to Stock tab
         app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()

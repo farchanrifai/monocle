@@ -75,52 +75,56 @@ struct CardCustomizerView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // MARK: - Live Preview Carousel
-                    cardCarousel
-                        .padding(.top, 8)
+            GeometryReader { windowProxy in
+                let screenWidth = windowProxy.size.width
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // MARK: - Live Preview Carousel
+                        cardCarousel(width: screenWidth)
+                            .padding(.top, 8)
 
-                    // MARK: - Text Tone Picker
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Text Tone")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
+                        // MARK: - Text Tone Picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Text Tone")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
 
-                        Picker("Text Tone", selection: currentDraft.textTone) {
-                            Text("Auto").tag(CardTextTone.auto)
-                            Text("Light").tag(CardTextTone.light)
-                            Text("Dark").tag(CardTextTone.dark)
+                            Picker("Text Tone", selection: currentDraft.textTone) {
+                                Text("Auto").tag(CardTextTone.auto)
+                                Text("Light").tag(CardTextTone.light)
+                                Text("Dark").tag(CardTextTone.dark)
+                            }
+                            .pickerStyle(.segmented)
+                            .accessibilityIdentifier("cardTextTonePicker")
+                        }
+                        .padding(.horizontal, 20)
+
+                        // MARK: - Category Tabs
+                        Picker("Customization Mode", selection: $selectedTab) {
+                            ForEach(CustomizerTab.allCases) { tab in
+                                Text(tab.rawValue).tag(tab)
+                            }
                         }
                         .pickerStyle(.segmented)
-                        .accessibilityIdentifier("cardTextTonePicker")
-                    }
-                    .padding(.horizontal, 20)
+                        .padding(.horizontal, 20)
+                        .accessibilityIdentifier("cardCustomizerTabPicker")
 
-                    // MARK: - Category Tabs
-                    Picker("Customization Mode", selection: $selectedTab) {
-                        ForEach(CustomizerTab.allCases) { tab in
-                            Text(tab.rawValue).tag(tab)
+                        // MARK: - Tab Content
+                        switch selectedTab {
+                        case .colors:
+                            colorsSection
+                        case .stock:
+                            stockSection
+                        case .photo:
+                            photoSection
                         }
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 20)
-                    .accessibilityIdentifier("cardCustomizerTabPicker")
-
-                    // MARK: - Tab Content
-                    switch selectedTab {
-                    case .colors:
-                        colorsSection
-                    case .stock:
-                        stockSection
-                    case .photo:
-                        photoSection
-                    }
+                    .frame(width: screenWidth)
+                    .padding(.bottom, 60)
                 }
-                .padding(.bottom, 60)
+                .scrollBounceBehavior(.always)
             }
-            .scrollBounceBehavior(.always)
             .navigationTitle("Customize Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -155,16 +159,19 @@ struct CardCustomizerView: View {
     }
 
     // MARK: - Card Carousel
-    private var cardCarousel: some View {
-        VStack(spacing: 12) {
+    private func cardCarousel(width: CGFloat) -> some View {
+        let sideInset: CGFloat = 36
+        let spacing: CGFloat = 12
+        let cardWidth = max(240, width - (sideInset * 2))
+
+        return VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 14) {
+                LazyHStack(spacing: spacing) {
                     ForEach(books) { book in
                         previewCard(for: book)
-                            .containerRelativeFrame(.horizontal) { length, _ in
-                                max(240, length - 56)
-                            }
+                            .frame(width: cardWidth)
                             .id(book.id)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 if currentBookID != book.id {
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
@@ -176,14 +183,16 @@ struct CardCustomizerView: View {
                 }
                 .scrollTargetLayout()
             }
-            .contentMargins(.horizontal, 28, for: .scrollContent)
+            .contentMargins(.horizontal, sideInset, for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $activeBookID)
+            .frame(height: 204)
 
             if books.count > 1 {
                 pageIndicator
             }
         }
+        .frame(width: width)
     }
 
     private var pageIndicator: some View {
@@ -245,8 +254,9 @@ struct CardCustomizerView: View {
                 .strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
-        .scaleEffect(isActive ? 1.0 : 0.94)
+        .scaleEffect(isActive ? 1.0 : 0.96)
         .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
+        .accessibilityElement(children: .combine)
         .accessibilityIdentifier("customizer-preview-\(book.id)")
     }
 
