@@ -15,10 +15,7 @@ struct BookHomeView: View {
     @State private var allActivities = false
     @State private var managing = false
     @State private var showingBudgets = false
-    @State private var showingCreateBook = false
-    @State private var newBookName = ""
-    @State private var createBookError: String?
-    @State private var pendingCustomizingBook: BookProfile? = nil
+    @State private var pendingCustomizerTarget: CustomizerTarget? = nil
     @State private var pull: CGFloat = 0
     @State private var info = ScrollInfo()
     @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
@@ -142,10 +139,10 @@ struct BookHomeView: View {
             }
         }
         .sheet(item: selectedBookBinding, onDismiss: {
-            if let pending = pendingCustomizingBook {
-                pendingCustomizingBook = nil
+            if let pending = pendingCustomizerTarget {
+                pendingCustomizerTarget = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    model.customizingBook = pending
+                    model.customizerTarget = pending
                 }
             }
         }) { book in
@@ -170,13 +167,26 @@ struct BookHomeView: View {
         .sheet(isPresented: $managing) {
             manageStackSheet
         }
-        .sheet(item: $model.customizingBook) { book in
-            CardCustomizerView(
-                model: model,
-                initialBook: book,
-                books: visible.isEmpty ? model.books : visible
-            ) {
-                model.customizingBook = nil
+        .sheet(item: $model.customizerTarget) { target in
+            switch target {
+            case .existing(let book):
+                CardCustomizerView(
+                    model: model,
+                    initialBook: book,
+                    books: visible.isEmpty ? model.books : visible,
+                    isCreatingNewBook: false
+                ) {
+                    model.customizerTarget = nil
+                }
+            case .newBook:
+                CardCustomizerView(
+                    model: model,
+                    initialBook: visible.first ?? model.books.first,
+                    books: visible.isEmpty ? model.books : visible,
+                    isCreatingNewBook: true
+                ) {
+                    model.customizerTarget = nil
+                }
             }
         }
         .sheet(isPresented: $showingBudgets) {
@@ -189,28 +199,6 @@ struct BookHomeView: View {
                     }
             }
         }
-        .alert("Create new book", isPresented: $showingCreateBook) {
-            TextField("Book name", text: $newBookName)
-            Button("Create") {
-                let name = newBookName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { return }
-                do {
-                    let created = try model.createBook(named: name)
-                    focus(created.id)
-                    newBookName = ""
-                } catch {
-                    createBookError = error.localizedDescription
-                }
-            }
-            Button("Cancel", role: .cancel) { newBookName = "" }
-        } message: {
-            Text("Enter a name for the new personal expense book.")
-        }
-        .alert("Could not create book", isPresented: Binding(get: { createBookError != nil }, set: { if !$0 { createBookError = nil } })) {
-            Button("OK") { createBookError = nil }
-        } message: {
-            Text(createBookError ?? "")
-        }
         .onAppear {
             if let active = model.selectedBookID {
                 selectedID = active
@@ -222,10 +210,10 @@ struct BookHomeView: View {
             }
         }
         .onChange(of: selectedID) { _, newID in
-            if newID == nil, let pending = pendingCustomizingBook {
-                pendingCustomizingBook = nil
+            if newID == nil, let pending = pendingCustomizerTarget {
+                pendingCustomizerTarget = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    model.customizingBook = pending
+                    model.customizerTarget = pending
                 }
             }
         }
@@ -465,7 +453,7 @@ struct BookHomeView: View {
             }
 
             Button {
-                showingCreateBook = true
+                openCustomizerForNewBook()
             } label: {
                 Label("Create new book", systemImage: "plus.rectangle.on.rectangle")
             }
@@ -532,10 +520,19 @@ struct BookHomeView: View {
 
     private func openCustomizer(for book: BookProfile) {
         if selectedID != nil {
-            pendingCustomizingBook = book
+            pendingCustomizerTarget = .existing(book)
             focus(nil)
         } else {
-            model.customizingBook = book
+            model.customizerTarget = .existing(book)
+        }
+    }
+
+    private func openCustomizerForNewBook() {
+        if selectedID != nil {
+            pendingCustomizerTarget = .newBook
+            focus(nil)
+        } else {
+            model.customizerTarget = .newBook
         }
     }
 
@@ -563,7 +560,9 @@ struct BookHomeView: View {
                     }
                     Button("Create new book") {
                         managing = false
-                        showingCreateBook = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            openCustomizerForNewBook()
+                        }
                     }
                 }
             }

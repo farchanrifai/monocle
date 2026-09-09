@@ -481,10 +481,15 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Create new book"].waitForExistence(timeout: 5))
         app.buttons["Create new book"].tap()
 
-        let nameField = app.textFields["Book name"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
-        nameField.typeText("Business")
-        app.alerts.buttons["Create"].tap()
+        let inlineField = app.textFields["cardNameInlineTextField"]
+        if inlineField.waitForExistence(timeout: 5) {
+            let clearBtn = app.buttons["cardNameInlineClearButton"]
+            if clearBtn.waitForExistence(timeout: 2) { clearBtn.tap() }
+            inlineField.typeText("Business")
+            let commitBtn = app.buttons["cardNameInlineCommitButton"]
+            if commitBtn.waitForExistence(timeout: 2) { commitBtn.tap() }
+        }
+        app.buttons["saveCardCustomization"].tap()
 
         // Close newly focused book detail sheet if open
         if app.buttons["closeBookDetail"].waitForExistence(timeout: 3) {
@@ -602,6 +607,104 @@ final class MonocleUITests: XCTestCase {
 
         let renamedStackShot = app.screenshot()
         try? renamedStackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_stack_renamed.png"))
+    }
+
+    @MainActor
+    func testCreateNewBookDirectlyInCustomizationPanel() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Tap Create new book in options menu
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let createButton = app.buttons["Create new book"]
+        XCTAssertTrue(createButton.waitForExistence(timeout: 5))
+        createButton.tap()
+
+        // 2. Verify we are directly in the customization panel
+        XCTAssertTrue(app.staticTexts["New Book"].waitForExistence(timeout: 5))
+
+        // Capture screenshot of direct new book customizer entry
+        let directEntryShot = app.screenshot()
+        try? directEntryShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_direct_new_book.png"))
+
+        // 3. Rename inline to "Investments"
+        let inlineTextField = app.textFields["cardNameInlineTextField"]
+        if inlineTextField.waitForExistence(timeout: 5) {
+            let clearBtn = app.buttons["cardNameInlineClearButton"]
+            if clearBtn.waitForExistence(timeout: 2) { clearBtn.tap() }
+            inlineTextField.typeText("Investments")
+            let commitBtn = app.buttons["cardNameInlineCommitButton"]
+            if commitBtn.waitForExistence(timeout: 2) { commitBtn.tap() }
+        }
+
+        // 4. Select Stock tab and pick Aurora design
+        app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
+        let aurora = app.buttons["stockDesign-auroraBorealis"]
+        XCTAssertTrue(aurora.waitForExistence(timeout: 5))
+        aurora.tap()
+
+        // 5. Save customization
+        let saveButton = app.buttons["saveCardCustomization"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        saveButton.tap()
+
+        // 6. Verify back on home screen with "Investments" present in stack
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Investments"].waitForExistence(timeout: 5))
+
+        let newBookStackShot = app.screenshot()
+        try? newBookStackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/home_stack_after_new_book.png"))
+    }
+
+    @MainActor
+    func testCardCustomizerPlaceholderCardAddsNewBook() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Open Customize card
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let customizeButton = app.buttons["Customize card"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
+        customizeButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+
+        // 2. Find placeholder card in carousel
+        let placeholderCard = app.buttons["customizerPlaceholderCard"]
+        XCTAssertTrue(placeholderCard.waitForExistence(timeout: 5))
+
+        // Swipe carousel left to center the placeholder card
+        placeholderCard.swipeLeft()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        let centeredShot = app.screenshot()
+        try? centeredShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_placeholder_card_centered.png"))
+
+        // Tap the createNewCardButton or placeholder card to create new draft book
+        let createNewCardButton = app.buttons["createNewCardButton"]
+        if createNewCardButton.waitForExistence(timeout: 3) {
+            createNewCardButton.tap()
+        } else {
+            placeholderCard.tap()
+        }
+
+        // 4. Verify inline text field for the new draft book appears
+        let inlineTextField = app.textFields["cardNameInlineTextField"]
+        XCTAssertTrue(inlineTextField.waitForExistence(timeout: 5))
+
+        // 5. Test discard/cancel draft: tap Cancel in navigation bar
+        app.buttons["Cancel"].tap()
+
+        // 6. Verify back on home screen and no extra book was added
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
 }

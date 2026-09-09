@@ -8,6 +8,20 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     var id: Self { self }
 }
 
+enum CustomizerTarget: Identifiable, Equatable {
+    case existing(BookProfile)
+    case newBook
+
+    var id: String {
+        switch self {
+        case .existing(let book):
+            return book.id.uuidString
+        case .newBook:
+            return "new-book"
+        }
+    }
+}
+
 @MainActor @Observable
 final class AppModel {
     static var shared: AppModel { AppEnvironment.shared.model }
@@ -37,7 +51,22 @@ final class AppModel {
     var selectedBookID: UUID?
     var workspacePreferences = WorkspacePreferences()
     var hiddenBookIDs: Set<UUID> = []
-    var customizingBook: BookProfile? = nil
+    var customizerTarget: CustomizerTarget? = nil
+    var customizingBook: BookProfile? {
+        get {
+            if case .existing(let book) = customizerTarget {
+                return book
+            }
+            return nil
+        }
+        set {
+            if let newValue {
+                customizerTarget = .existing(newValue)
+            } else {
+                customizerTarget = nil
+            }
+        }
+    }
 
     var autoAppearance: Bool {
         get { workspacePreferences.autoAppearance }
