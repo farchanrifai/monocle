@@ -181,6 +181,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var allActivitiesScope: Bool = false
     var visualDirection: String = "Light"
     var autoAppearance: Bool = false
+    var cardCustomizations: [UUID: BookCardCustomization] = [:]
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
@@ -188,7 +189,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance
+        case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
     }
 
     init(
@@ -196,13 +197,15 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         bookOrder: [UUID] = [],
         allActivitiesScope: Bool = false,
         visualDirection: String = "Light",
-        autoAppearance: Bool = false
+        autoAppearance: Bool = false,
+        cardCustomizations: [UUID: BookCardCustomization] = [:]
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
         self.allActivitiesScope = allActivitiesScope
         self.visualDirection = visualDirection
         self.autoAppearance = autoAppearance
+        self.cardCustomizations = cardCustomizations
     }
 
     init(from decoder: any Decoder) throws {
@@ -212,6 +215,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         allActivitiesScope = try container.decodeIfPresent(Bool.self, forKey: .allActivitiesScope) ?? false
         visualDirection = try container.decodeIfPresent(String.self, forKey: .visualDirection) ?? "Light"
         autoAppearance = try container.decodeIfPresent(Bool.self, forKey: .autoAppearance) ?? false
+        cardCustomizations = try container.decodeIfPresent([UUID: BookCardCustomization].self, forKey: .cardCustomizations) ?? [:]
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -221,6 +225,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(allActivitiesScope, forKey: .allActivitiesScope)
         try container.encode(visualDirection, forKey: .visualDirection)
         try container.encode(autoAppearance, forKey: .autoAppearance)
+        try container.encode(cardCustomizations, forKey: .cardCustomizations)
     }
 }
 
@@ -233,15 +238,16 @@ struct BookBackupItem: Codable, Equatable, Sendable {
 }
 
 struct WorkspaceBackup: Codable, Equatable, Sendable {
-    var formatVersion: Int = 4
+    var formatVersion: Int = 5
     var exportedAt: Date = .now
     var currency: String = "IDR"
     var minorUnitScale: Int = 2
     var books: [BookBackupItem]
     var preferences: WorkspacePreferences
     var settings: PrototypeSettings
+    var cardArtworks: [String: Data]? = nil
 
-    init(formatVersion: Int = 4, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init()) {
+    init(formatVersion: Int = 5, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
         self.formatVersion = formatVersion
         self.exportedAt = exportedAt
         self.currency = currency
@@ -249,6 +255,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
         self.books = books
         self.preferences = preferences
         self.settings = settings
+        self.cardArtworks = cardArtworks
     }
 
     /// Convert a single-book BookBackup (formats 1–3) into a WorkspaceBackup
@@ -257,7 +264,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
         let profile = BookProfile(id: backup.bookID, name: backup.bookName, kind: kind)
         let item = BookBackupItem(book: profile, categories: backup.categories, expenses: backup.expenses, budgets: backup.budgets, draft: backup.draft)
         self.init(
-            formatVersion: 4,
+            formatVersion: 5,
             exportedAt: backup.exportedAt,
             currency: backup.currency,
             minorUnitScale: backup.minorUnitScale,
@@ -268,7 +275,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     }
 
     func validate() throws {
-        guard formatVersion == 4, currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
+        guard formatVersion >= 4 && formatVersion <= 5, currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
         guard !books.isEmpty, books.count <= 100 else { throw BackupError.invalid }
         let bookIDs = Set(books.map(\.book.id))
         guard bookIDs.count == books.count else { throw BackupError.invalid }

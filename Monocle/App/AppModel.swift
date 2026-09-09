@@ -37,6 +37,7 @@ final class AppModel {
     var selectedBookID: UUID?
     var workspacePreferences = WorkspacePreferences()
     var hiddenBookIDs: Set<UUID> = []
+    var customizingBook: BookProfile? = nil
 
     var autoAppearance: Bool {
         get { workspacePreferences.autoAppearance }
@@ -221,12 +222,30 @@ final class AppModel {
     func deleteBook(id: UUID) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.deleteBook(id: id)
+        if let custom = workspacePreferences.cardCustomizations[id],
+           case .customPhoto(let filename) = custom.style {
+            CardArtworkStore.shared.deleteArtwork(filename: filename)
+        }
+        workspacePreferences.cardCustomizations.removeValue(forKey: id)
         workspacePreferences.bookOrder.removeAll { $0 == id }
         workspacePreferences.visibleBookIDs.removeAll { $0 == id }
         hiddenBookIDs.remove(id)
         if selectedBookID == id { selectedBookID = nil }
         persistWorkspacePreferences()
         showToast("Book deleted")
+    }
+
+    func customization(for bookID: UUID) -> BookCardCustomization {
+        if let custom = workspacePreferences.cardCustomizations[bookID] {
+            return custom
+        }
+        let colorIdx = books.first { $0.id == bookID }?.colorIndex ?? 0
+        return BookCardCustomization.defaultFor(colorIndex: colorIdx)
+    }
+
+    func updateCustomization(_ customization: BookCardCustomization, for bookID: UUID) {
+        workspacePreferences.cardCustomizations[bookID] = customization
+        persistWorkspacePreferences()
     }
 
     func setBookHidden(id: UUID, isHidden: Bool) {

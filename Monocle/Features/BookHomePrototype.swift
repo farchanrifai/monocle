@@ -243,7 +243,6 @@ struct BookHomePrototype: View {
         .foregroundStyle(.black)
         .background(color(book.id), in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.black.opacity(0.12), lineWidth: 0.5))
-        .shadow(color: .black.opacity(0.18), radius: 8, y: -2)
         .accessibilityElement(children: .combine)
     }
 

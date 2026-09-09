@@ -374,4 +374,47 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testCardCustomizerOpensSelectsStockDesignAndSaves() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // Wait for options menu
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        // Tap "Customize card"
+        let customizeButton = app.buttons["Customize card"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
+        customizeButton.tap()
+
+        // Verify Customizer view is displayed
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls["cardCustomizerTabPicker"].waitForExistence(timeout: 5))
+
+        // Switch to Stock designs
+        app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
+
+        let customizerSheetShot = app.screenshot()
+        try? customizerSheetShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/card_customizer_sheet.png"))
+
+        // Select Aurora Borealis
+        let auroraButton = app.buttons["stockDesign-auroraBorealis"]
+        XCTAssertTrue(auroraButton.waitForExistence(timeout: 5))
+        auroraButton.tap()
+
+        // Save customization
+        let saveButton = app.buttons["saveCardCustomization"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        saveButton.tap()
+
+        // Verify we are back on home screen
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+
+        let customScreenshot = app.screenshot()
+        try? customScreenshot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_card_stack.png"))
+    }
+
 }

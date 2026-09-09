@@ -41,8 +41,16 @@ final class BackupService {
             items.append(BookBackupItem(book: book, categories: cats, expenses: exps, budgets: budgets, draft: draft))
         }
         let prefs = (try? state.loadWorkspacePreferences()) ?? WorkspacePreferences(visibleBookIDs: allBooks.map(\.id), bookOrder: allBooks.map(\.id))
-        let workspace = WorkspaceBackup(formatVersion: 4, exportedAt: exportedAt, currency: "IDR", minorUnitScale: 2,
-                                        books: items, preferences: prefs, settings: settings)
+        var artworks: [String: Data] = [:]
+        for (_, custom) in prefs.cardCustomizations {
+            if case .customPhoto(let filename) = custom.style,
+               let data = CardArtworkStore.shared.loadArtworkData(filename: filename) {
+                artworks[filename] = data
+            }
+        }
+        let workspace = WorkspaceBackup(formatVersion: 5, exportedAt: exportedAt, currency: "IDR", minorUnitScale: 2,
+                                        books: items, preferences: prefs, settings: settings,
+                                        cardArtworks: artworks.isEmpty ? nil : artworks)
         try workspace.validate()
         return workspace
     }

@@ -329,6 +329,11 @@ final class ExpenseRepository: ExpenseStore {
                 }
             }
             try context.save()
+            if let artworks = workspace.cardArtworks {
+                for (filename, data) in artworks {
+                    try? CardArtworkStore.shared.importArtworkData(data, filename: filename)
+                }
+            }
         } catch { context.rollback(); throw error }
     }
 

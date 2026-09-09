@@ -59,19 +59,8 @@ struct BookHomeView: View {
         }
     }
 
-    private static let cardPalette: [Color] = [
-        Color(red: 0.99, green: 0.40, blue: 0.22), // Tangerine
-        Color(red: 0.68, green: 0.79, blue: 0.99), // Soft Sky Blue
-        Color(red: 0.84, green: 0.94, blue: 0.38), // Acid Lime
-        Color(red: 0.93, green: 0.68, blue: 0.88), // Lavender
-        Color(red: 0.98, green: 0.80, blue: 0.28), // Goldenrod
-        Color(red: 0.40, green: 0.85, blue: 0.75), // Seafoam
-        Color(red: 0.85, green: 0.45, blue: 0.55), // Rose
-        Color(red: 0.55, green: 0.60, blue: 0.90)  // Periwinkle
-    ]
-
     private func cardColor(for book: BookProfile) -> Color {
-        Self.cardPalette[abs(book.colorIndex) % Self.cardPalette.count]
+        CardPalette.color(for: book.colorIndex)
     }
 
     private var selectedBookBinding: Binding<BookProfile?> {
@@ -169,6 +158,11 @@ struct BookHomeView: View {
         }
         .sheet(isPresented: $managing) {
             manageStackSheet
+        }
+        .sheet(item: $model.customizingBook) { book in
+            CardCustomizerView(model: model, book: book) {
+                model.customizingBook = nil
+            }
         }
         .sheet(isPresented: $showingBudgets) {
             NavigationStack {
@@ -269,6 +263,13 @@ struct BookHomeView: View {
                 .frame(height: cardHeight)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                model.customizingBook = book
+            } label: {
+                Label("Customize card", systemImage: "paintbrush")
+            }
+        }
         .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
         .accessibilityIdentifier("stack-book-\(book.id)")
         .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion] content, proxy in
@@ -291,6 +292,9 @@ struct BookHomeView: View {
     private func cardView(_ book: BookProfile, index: Int) -> some View {
         let bookExpenses = model.expenses(for: book.id)
         let total = model.spent(for: book.id)
+        let customization = model.customization(for: book.id)
+        let textStyle = CardPalette.resolvedTextColor(for: customization)
+
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 Text(book.name)
@@ -313,11 +317,31 @@ struct BookHomeView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(.black)
-        .background(cardColor(for: book), in: RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(textStyle)
+        .background(cardBackground(for: customization, book: book))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
-        .shadow(color: Color.black.opacity(0.18), radius: 8, y: -2)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func cardBackground(for customization: BookCardCustomization, book: BookProfile) -> some View {
+        switch customization.style {
+        case .palette(let index):
+            CardPalette.color(for: index)
+        case .customColor(let hex):
+            CardPalette.color(fromHex: hex)
+        case .stock(let design):
+            StockDesignBackgroundView(design: design)
+        case .customPhoto(let filename):
+            if let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                CardPalette.color(for: book.colorIndex)
+            }
+        }
     }
 
     private func activitySection(bookID: UUID?) -> some View {
@@ -421,6 +445,14 @@ struct BookHomeView: View {
                 showingCreateBook = true
             } label: {
                 Label("Create new book", systemImage: "plus.rectangle.on.rectangle")
+            }
+
+            if let targetBook = current ?? visible.first ?? model.books.first {
+                Button {
+                    model.customizingBook = targetBook
+                } label: {
+                    Label("Customize card", systemImage: "paintbrush")
+                }
             }
 
             Button {

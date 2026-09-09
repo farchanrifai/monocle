@@ -41,6 +41,10 @@
 		E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9824AED70CAEA0CCB49515DA /* FoundationTests.swift */; };
 		ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAB59F8D69B863E198985F9 /* BillsView.swift */; };
 		F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */; };
+		CC0000022D75000100000001 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000001 /* CardCustomization.swift */; };
+		CC0000022D75000100000002 /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000002 /* CardArtworkStore.swift */; };
+		CC0000022D75000100000003 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000003 /* StockDesignViews.swift */; };
+		CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000004 /* CardCustomizerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -100,6 +104,10 @@
 		EE369F72DE2591D9D60E1B77 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 		F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseRepository.swift; sourceTree = "<group>"; };
 		FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV2.xcdatamodel; sourceTree = "<group>"; };
+		CC0000012D75000100000001 /* CardCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomization.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000002 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000003 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000004 /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -131,6 +139,7 @@
 		3B0E9DB67034274B29F020A5 /* Persistence */ = {
 			isa = PBXGroup;
 			children = (
+				CC0000012D75000100000002 /* CardArtworkStore.swift */,
 				F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */,
 				AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */,
 				02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */,
@@ -196,6 +205,7 @@
 			isa = PBXGroup;
 			children = (
 				5917E02740846F6B5ED016CC /* BookBackup.swift */,
+				CC0000012D75000100000001 /* CardCustomization.swift */,
 				BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */,
 				AB0C913F4994169E78CFEEF8 /* Expense.swift */,
 			);
@@ -221,12 +231,14 @@
 				5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */,
 				0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */,
 				D433FF1198DE03E544B102E2 /* BudgetsView.swift */,
+				CC0000012D75000100000004 /* CardCustomizerView.swift */,
 				6C573062CE2769892729F737 /* CategoryManager.swift */,
 				6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
 				E977F1EDBCA155B67ADD7082 /* PrototypeBookSamples.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
+				CC0000012D75000100000003 /* StockDesignViews.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -405,6 +417,10 @@
 				975C80EE5A9E4DB240BA73FF /* PrototypeBookSamples.swift in Sources */,
 				B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */,
 				DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */,
+				CC0000022D75000100000001 /* CardCustomization.swift in Sources */,
+				CC0000022D75000100000002 /* CardArtworkStore.swift in Sources */,
+				CC0000022D75000100000003 /* StockDesignViews.swift in Sources */,
+				CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -102,9 +102,9 @@ final class MultiBookTests: XCTestCase {
         let singleBookBackup = BookBackup(categories: [cat], expenses: [exp], draft: ExpenseDraft(), settings: PrototypeSettings(), budgets: [budget])
         let data = try singleBookBackup.encoded()
 
-        // Decode as WorkspaceBackup (Format 4 upgrade)
+        // Decode as WorkspaceBackup (Format 5 upgrade)
         let workspace = try WorkspaceBackup.decode(data)
-        XCTAssertEqual(workspace.formatVersion, 4)
+        XCTAssertEqual(workspace.formatVersion, 5)
         XCTAssertEqual(workspace.books.count, 1)
         XCTAssertEqual(workspace.books[0].expenses.count, 1)
         XCTAssertEqual(workspace.books[0].expenses[0].id, exp.id)
@@ -203,5 +203,143 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(model.visualDirection, .signal)
         XCTAssertEqual(model.manualAppearance, .dark)
         XCTAssertEqual(model.preferredColorScheme, .dark)
+    }
+
+    func testCardCustomizationColorAndLuminance() {
+        XCTAssertTrue(CardPalette.isDark(hex: "#000000"))
+        XCTAssertTrue(CardPalette.isDark(hex: "#212124"))
+        XCTAssertFalse(CardPalette.isDark(hex: "#FFFFFF"))
+        XCTAssertFalse(CardPalette.isDark(hex: "#D6F061"))
+
+        let color = Color(red: 1.0, green: 0.0, blue: 0.0)
+        let hex = CardPalette.hexString(from: color)
+        XCTAssertEqual(hex, "#FF0000")
+
+        // Text tone auto vs overrides
+        let lightAuto = BookCardCustomization(style: .palette(index: 2), textTone: .auto) // Acid Lime is bright
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: lightAuto), .black)
+
+        let darkAuto = BookCardCustomization(style: .palette(index: 8), textTone: .auto) // Obsidian is dark
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: darkAuto), .white)
+
+        let lightManual = BookCardCustomization(style: .palette(index: 2), textTone: .light)
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: lightManual), .white)
+
+        let darkManual = BookCardCustomization(style: .palette(index: 8), textTone: .dark)
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: darkManual), .black)
+
+        let stockSunset = BookCardCustomization(style: .stock(.sunsetHeat), textTone: .auto)
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: stockSunset), .white)
+
+        let stockParchment = BookCardCustomization(style: .stock(.warmParchment), textTone: .auto)
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: stockParchment), .black)
+
+        let photoCustom = BookCardCustomization(style: .customPhoto(filename: "card.jpg"), textTone: .auto)
+        XCTAssertEqual(CardPalette.resolvedTextColor(for: photoCustom), .white)
+    }
+
+    func testCardCustomizationPersistenceAndRoundTrip() throws {
+        let bookID = UUID()
+        var prefs = WorkspacePreferences()
+        XCTAssertTrue(prefs.cardCustomizations.isEmpty)
+
+        let custom = BookCardCustomization(style: .stock(.auroraBorealis), textTone: .light)
+        prefs.cardCustomizations[bookID] = custom
+
+        let encoded = try JSONEncoder().encode(prefs)
+        let decoded = try JSONDecoder().decode(WorkspacePreferences.self, from: encoded)
+
+        XCTAssertEqual(decoded.cardCustomizations[bookID]?.style, .stock(.auroraBorealis))
+        XCTAssertEqual(decoded.cardCustomizations[bookID]?.textTone, .light)
+
+        // Test customColor
+        prefs.cardCustomizations[bookID] = BookCardCustomization(style: .customColor(hex: "#123456"), textTone: .auto)
+        let enc2 = try JSONEncoder().encode(prefs)
+        let dec2 = try JSONDecoder().decode(WorkspacePreferences.self, from: enc2)
+        XCTAssertEqual(dec2.cardCustomizations[bookID]?.style, .customColor(hex: "#123456"))
+
+        // Test customPhoto
+        prefs.cardCustomizations[bookID] = BookCardCustomization(style: .customPhoto(filename: "artwork-\(bookID).jpg"), textTone: .dark)
+        let enc3 = try JSONEncoder().encode(prefs)
+        let dec3 = try JSONDecoder().decode(WorkspacePreferences.self, from: enc3)
+        XCTAssertEqual(dec3.cardCustomizations[bookID]?.style, .customPhoto(filename: "artwork-\(bookID).jpg"))
+        XCTAssertEqual(dec3.cardCustomizations[bookID]?.textTone, .dark)
+    }
+
+    func testCardArtworkStoreSaveLoadDelete() throws {
+        let testID = UUID()
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 100, height: 100))
+        let testImage = renderer.image { ctx in
+            UIColor.systemBlue.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+        }
+        let rawData = testImage.jpegData(compressionQuality: 0.9)!
+
+        let filename = try CardArtworkStore.shared.saveArtwork(rawData, for: testID)
+        XCTAssertTrue(filename.contains(testID.uuidString))
+
+        let loaded = CardArtworkStore.shared.loadArtwork(filename: filename)
+        XCTAssertNotNil(loaded)
+
+        let data = CardArtworkStore.shared.loadArtworkData(filename: filename)
+        XCTAssertNotNil(data)
+        XCTAssertGreaterThan(data?.count ?? 0, 0)
+
+        CardArtworkStore.shared.deleteArtwork(filename: filename)
+        XCTAssertNil(CardArtworkStore.shared.loadArtwork(filename: filename))
+    }
+
+    func testFormatFiveWorkspaceRoundTripWithCardArtworkAndCustomizations() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let bookA = try store.createBook(named: "Trip to Paris")
+        let catA = ExpenseCategory(id: UUID(), name: "Museums", symbol: "airplane")
+        try store.saveCategory(catA, in: bookA.id)
+        let expA = Expense(id: UUID(), amount: 350_000_00, day: "2026-09-08", note: "Louvre Ticket",
+                           allocations: [.init(categoryID: catA.id, amount: 350_000_00)], bookID: bookA.id)
+        try store.save(expA, in: bookA.id)
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 50, height: 50))
+        let sampleImage = renderer.image { ctx in
+            UIColor.red.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 50, height: 50))
+        }
+        let sampleData = sampleImage.jpegData(compressionQuality: 0.8)!
+        let photoFilename = "sample-\(bookA.id.uuidString).jpg"
+
+        var prefs = WorkspacePreferences(visibleBookIDs: [bookA.id], bookOrder: [bookA.id])
+        prefs.cardCustomizations[bookA.id] = BookCardCustomization(style: .customPhoto(filename: photoFilename), textTone: .auto)
+
+        let items = [
+            BookBackupItem(book: bookA, categories: [catA], expenses: [expA], budgets: [], draft: nil)
+        ]
+        let workspace = WorkspaceBackup(
+            formatVersion: 5,
+            exportedAt: .now,
+            currency: "IDR",
+            minorUnitScale: 2,
+            books: items,
+            preferences: prefs,
+            settings: PrototypeSettings(),
+            cardArtworks: [photoFilename: sampleData]
+        )
+        try workspace.validate()
+
+        let encoded = try workspace.encoded()
+        let decoded = try WorkspaceBackup.decode(encoded)
+
+        XCTAssertEqual(decoded.formatVersion, 5)
+        XCTAssertEqual(decoded.books.count, 1)
+        XCTAssertEqual(decoded.preferences.cardCustomizations[bookA.id]?.style, .customPhoto(filename: photoFilename))
+        XCTAssertEqual(decoded.cardArtworks?[photoFilename], sampleData)
+
+        // Restore into fresh store and verify artwork import
+        let freshStore = try ExpenseRepository(inMemory: true)
+        try freshStore.replace(with: decoded)
+
+        let loadedArtwork = CardArtworkStore.shared.loadArtwork(filename: photoFilename)
+        XCTAssertNotNil(loadedArtwork)
+
+        // Clean up
+        CardArtworkStore.shared.deleteArtwork(filename: photoFilename)
     }
 }
