@@ -30,19 +30,31 @@ struct BookHomeView: View {
 
     private var direction: BookVisualDirection { model.visualDirection }
     private var paper: Color {
-        direction == .ledger ? Color(red: 0.96, green: 0.94, blue: 0.88) : .black
+        switch direction {
+        case .light:
+            return MC.paper
+        case .ledger:
+            return Color(red: 0.96, green: 0.94, blue: 0.88)
+        case .instrument, .signal:
+            return .black
+        }
     }
     private var ink: Color {
-        direction == .ledger ? .black : .white
+        switch direction {
+        case .light, .ledger:
+            return MC.ink
+        case .instrument, .signal:
+            return .white
+        }
     }
     private var amountFont: Font {
         switch direction {
+        case .light, .signal:
+            return .title.bold()
         case .ledger:
             return .system(.title, design: .serif, weight: .semibold)
         case .instrument:
             return .system(.title, design: .monospaced, weight: .bold)
-        case .signal:
-            return .title.bold()
         }
     }
 
@@ -118,7 +130,7 @@ struct BookHomeView: View {
             }
         }
         .background(paper).foregroundStyle(ink)
-        .preferredColorScheme(direction == .ledger ? .light : .dark)
+        .preferredColorScheme((direction == .light || direction == .ledger) ? .light : .dark)
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
@@ -335,7 +347,7 @@ struct BookHomeView: View {
                     ForEach(activities) { row in
                         activityRow(row, showBookLabel: bookID == nil)
                         Rectangle()
-                            .fill(ink.opacity(0.15))
+                            .fill(ink.opacity(direction == .light ? 0.08 : 0.15))
                             .frame(height: 0.5)
                             .accessibilityHidden(true)
                     }
@@ -540,7 +552,7 @@ struct BookDetailSheet: View {
                     .padding(.top, 8)
 
                     Divider()
-                        .overlay(ink.opacity(0.15))
+                        .overlay(ink.opacity(paper == MC.paper ? 0.08 : 0.15))
 
                     let activities = model.activities(selectedBookID: book.id, allBooks: false)
                     if activities.isEmpty {
@@ -552,7 +564,7 @@ struct BookDetailSheet: View {
                             ForEach(activities) { expense in
                                 activityRow(expense)
                                 Rectangle()
-                                    .fill(ink.opacity(0.15))
+                                    .fill(ink.opacity(paper == MC.paper ? 0.08 : 0.15))
                                     .frame(height: 0.5)
                                     .accessibilityHidden(true)
                             }

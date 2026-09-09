@@ -3,10 +3,10 @@ import SwiftUI
 /// Isolated design exploration. Sample writes never reach ExpenseService or the user's store.
 struct BookHomePrototype: View {
     enum Direction: String, CaseIterable, Identifiable {
-        case instrument = "Instrument", ledger = "Ledger", signal = "Signal"
+        case light = "Light", instrument = "Instrument", ledger = "Ledger", signal = "Signal"
         var id: Self { self }
     }
-    @State var direction: Direction = .instrument
+    @State var direction: Direction = .light
     @State private var books = PrototypeBookSamples.books
     @State private var activities = PrototypeBookSamples.activities
     @State private var hidden: Set<Int> = []
@@ -24,8 +24,19 @@ struct BookHomePrototype: View {
 
     private var visible: [PrototypeBook] { books.filter { !hidden.contains($0.id) } }
     private var current: PrototypeBook? { books.first { $0.id == selected } }
-    private var paper: Color { direction == .ledger ? Color(red: 0.96, green: 0.94, blue: 0.88) : .black }
-    private var ink: Color { direction == .ledger ? .black : .white }
+    private var paper: Color {
+        switch direction {
+        case .light: return MC.paper
+        case .ledger: return Color(red: 0.96, green: 0.94, blue: 0.88)
+        case .instrument, .signal: return .black
+        }
+    }
+    private var ink: Color {
+        switch direction {
+        case .light, .ledger: return MC.ink
+        case .instrument, .signal: return .white
+        }
+    }
     private func color(_ id: Int) -> Color {
         [Color(red: 0.99, green: 0.40, blue: 0.22), Color(red: 0.68, green: 0.79, blue: 0.99),
          Color(red: 0.84, green: 0.94, blue: 0.38), Color(red: 0.93, green: 0.68, blue: 0.88)][abs(id) % 4]
@@ -123,7 +134,7 @@ struct BookHomePrototype: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .preferredColorScheme(direction == .ledger ? .light : .dark)
+        .preferredColorScheme((direction == .light || direction == .ledger) ? .light : .dark)
     }
 
     private var stack: some View {
@@ -403,6 +414,7 @@ private struct PrototypeExpenseEntry: View {
     }
 }
 
+#Preview("Light") { NavigationStack { BookHomePrototype(direction: .light) } }
 #Preview("Instrument") { NavigationStack { BookHomePrototype(direction: .instrument) } }
 #Preview("Ledger") { NavigationStack { BookHomePrototype(direction: .ledger) } }
 #Preview("Signal") { NavigationStack { BookHomePrototype(direction: .signal) } }

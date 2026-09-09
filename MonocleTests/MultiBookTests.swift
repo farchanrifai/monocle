@@ -112,6 +112,11 @@ final class MultiBookTests: XCTestCase {
 
     func testVisualDirectionPersistsAndDecodes() throws {
         var prefs = WorkspacePreferences()
+        XCTAssertEqual(prefs.direction, .light)
+        XCTAssertEqual(prefs.visualDirection, "Light")
+
+        prefs.direction = .instrument
+        XCTAssertEqual(prefs.visualDirection, "Instrument")
         XCTAssertEqual(prefs.direction, .instrument)
 
         prefs.direction = .ledger
@@ -122,9 +127,13 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(prefs.visualDirection, "Signal")
         XCTAssertEqual(prefs.direction, .signal)
 
+        prefs.direction = .light
+        XCTAssertEqual(prefs.visualDirection, "Light")
+        XCTAssertEqual(prefs.direction, .light)
+
         let encoded = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(WorkspacePreferences.self, from: encoded)
-        XCTAssertEqual(decoded.direction, .signal)
-        XCTAssertEqual(decoded.visualDirection, "Signal")
+        XCTAssertEqual(decoded.direction, .light)
+        XCTAssertEqual(decoded.visualDirection, "Light")
     }
 }
