@@ -86,12 +86,12 @@ struct BottomNavigation: View {
                         model.openEntry()
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 26, weight: .medium))
+                            .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(.white)
-                            .frame(width: 60, height: 60)
+                            .frame(width: 56, height: 56)
                     }
                     .buttonStyle(.plain)
-                    .glassEffect(.regular.tint(MC.red.opacity(0.40)).interactive(), in: .circle)
+                    .glassEffect(.regular.tint(MC.red.opacity(0.85)).interactive(), in: .circle)
                     .environment(\.colorScheme, .dark)
                     .accessibilityLabel(model.draft.hasContent ? "Continue expense" : "Add expense")
                     .accessibilityIdentifier("addExpense")

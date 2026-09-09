@@ -94,6 +94,10 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["activityFilterButton"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["addExpense"].exists)
 
+        // Capture screenshot of bottom navigation bubbles
+        let shot = app.screenshot()
+        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/bottom_nav_bubbles.png"))
+
         // 2. Quick tap toggles filter scope
         let initialBadge = app.staticTexts["activityScopeBadge"]
         XCTAssertTrue(initialBadge.waitForExistence(timeout: 5))

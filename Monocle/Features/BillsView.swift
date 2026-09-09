@@ -84,7 +84,7 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: model.settings.book.name)
                     LabeledContent("Currency", value: "IDR")
-                    LabeledContent("Version", value: "0.1.4 · Prototype")
+                    LabeledContent("Version", value: "0.1.4 (20)")
                 }
                 Section {
                     Toggle("Auto switch", isOn: $model.autoAppearance)
@@ -139,22 +139,7 @@ struct SettingsView: View {
                             .accessibilityIdentifier("renameRealBook")
                     }
                 }
-                Section("Design exploration") {
-                    NavigationLink("Explore book home (Production)") { BookHomeView(model: model, showsBottomBar: true) }
-                    NavigationLink("Prototype samples") { BookHomePrototype() }
-                }
-                Section("Try the flow") {
-                    Text("Record a coffee with the keypad or type Coffee 28k. Tap an entry to edit, or touch and hold to repeat or delete it.")
-                    Text("Your sample entries stay on this device. Interruptions preserve your draft; leaving a changed entry asks before discarding it.")
-                }
-                Section("Before daily use") {
-                    Text("This is an interaction prototype. App lock is optional; imports, scheduled bills, and phone update checks are still pending. Use sample purchases here.")
-                }
-                Section("Coming next") {
-                    Label("Split entry", systemImage: "square.grid.2x2")
-                    Label("CSV import", systemImage: "tablecells")
-                }.foregroundStyle(.secondary)
-            }.navigationTitle("monocle").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }

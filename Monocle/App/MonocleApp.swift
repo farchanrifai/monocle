@@ -5,11 +5,7 @@ struct MonocleApp: App {
     @State private var model = AppModel.shared
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("-book-home-prototype") {
-                NavigationStack { BookHomePrototype() }
-            } else {
-                RootView(model: model)
-            }
+            RootView(model: model)
         }
     }
 }
