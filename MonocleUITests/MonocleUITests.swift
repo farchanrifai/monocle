@@ -546,4 +546,62 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testCardCustomizerInlineRenameCard() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Open customize card modal
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let customizeButton = app.buttons["Customize card"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
+        customizeButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+
+        // 2. Find and tap the card name button on the active card
+        let nameButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'cardNameButton-'")).element(boundBy: 0)
+        XCTAssertTrue(nameButton.waitForExistence(timeout: 5))
+        nameButton.tap()
+
+        // 3. Verify inline TextField appears
+        let inlineTextField = app.textFields["cardNameInlineTextField"]
+        XCTAssertTrue(inlineTextField.waitForExistence(timeout: 5))
+
+        // Take a screenshot of the inline card rename in progress
+        let renameShot = app.screenshot()
+        try? renameShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_inline_rename.png"))
+
+        // 4. Tap clear button and type new card name
+        let clearButton = app.buttons["cardNameInlineClearButton"]
+        if clearButton.waitForExistence(timeout: 2) {
+            clearButton.tap()
+        }
+        inlineTextField.typeText("Groceries")
+
+        // 5. Commit inline rename via checkmark button
+        let commitButton = app.buttons["cardNameInlineCommitButton"]
+        XCTAssertTrue(commitButton.waitForExistence(timeout: 5))
+        commitButton.tap()
+
+        // 6. Verify the card name is updated in the preview
+        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+
+        // 7. Save customization
+        let saveButton = app.buttons["saveCardCustomization"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        saveButton.tap()
+
+        // 8. Verify we are back on home screen and the card name is updated in the stack
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+
+        let renamedStackShot = app.screenshot()
+        try? renamedStackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_stack_renamed.png"))
+    }
+
 }

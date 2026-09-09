@@ -17,6 +17,9 @@ struct CardCustomizerView: View {
 
     @State private var activeBookID: UUID?
     @State private var drafts: [UUID: BookCardCustomization]
+    @State private var draftNames: [UUID: String]
+    @State private var editingBookNameID: UUID? = nil
+    @FocusState private var isNameFieldFocused: Bool
     @State private var selectedTab: CustomizerTab = .colors
     @State private var customColor: Color = .orange
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
@@ -39,10 +42,13 @@ struct CardCustomizerView: View {
         _activeBookID = State(initialValue: initialBook.id)
 
         var initialDrafts: [UUID: BookCardCustomization] = [:]
+        var initialNames: [UUID: String] = [:]
         for b in self.books {
             initialDrafts[b.id] = model.customization(for: b.id)
+            initialNames[b.id] = b.name
         }
         _drafts = State(initialValue: initialDrafts)
+        _draftNames = State(initialValue: initialNames)
 
         let initialCustom = model.customization(for: initialBook.id)
         if case .customColor(let hex) = initialCustom.style {
@@ -135,6 +141,17 @@ struct CardCustomizerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        if let editingID = editingBookNameID {
+                            commitEditingName(for: editingID)
+                        }
+                        for (bookID, newName) in draftNames {
+                            let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !trimmed.isEmpty,
+                               let book = books.first(where: { $0.id == bookID }),
+                               book.name != trimmed {
+                                try? model.renameBook(id: bookID, to: trimmed)
+                            }
+                        }
                         for (bookID, custom) in drafts {
                             if custom != model.customization(for: bookID) {
                                 model.updateCustomization(custom, for: bookID)
@@ -151,10 +168,36 @@ struct CardCustomizerView: View {
                 loadSelectedPhoto(newItem)
             }
             .onChange(of: activeBookID) { _, newID in
+                if let editingID = editingBookNameID {
+                    commitEditingName(for: editingID)
+                }
                 if let targetID = newID, let custom = drafts[targetID], case .customColor(let hex) = custom.style {
                     customColor = CardPalette.color(fromHex: hex)
                 }
             }
+        }
+    }
+
+    private func startEditingName(for bookID: UUID) {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            editingBookNameID = bookID
+            isNameFieldFocused = true
+        }
+    }
+
+    private func commitEditingName(for bookID: UUID) {
+        if let current = draftNames[bookID] {
+            let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                let original = books.first(where: { $0.id == bookID })?.name ?? "Book"
+                draftNames[bookID] = original
+            } else {
+                draftNames[bookID] = String(trimmed.prefix(40))
+            }
+        }
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            editingBookNameID = nil
+            isNameFieldFocused = false
         }
     }
 
@@ -223,12 +266,86 @@ struct CardCustomizerView: View {
         let count = model.expenses(for: book.id).count
         let isActive = (book.id == currentBookID)
         let bookIndex = (books.firstIndex(where: { $0.id == book.id }) ?? 0) + 1
+        let isEditingThisName = (editingBookNameID == book.id)
+        let displayName = draftNames[book.id] ?? book.name
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                Text(book.name)
-                    .font(.headline)
-                    .lineLimit(1)
+                if isEditingThisName {
+                    HStack(spacing: 6) {
+                        TextField(
+                            "Card Name",
+                            text: Binding(
+                                get: { draftNames[book.id] ?? book.name },
+                                set: { draftNames[book.id] = $0 }
+                            )
+                        )
+                        .font(.headline)
+                        .foregroundStyle(textStyle)
+                        .textFieldStyle(.plain)
+                        .focused($isNameFieldFocused)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            commitEditingName(for: book.id)
+                        }
+                        .accessibilityIdentifier("cardNameInlineTextField")
+
+                        if !(draftNames[book.id] ?? "").isEmpty {
+                            Button {
+                                draftNames[book.id] = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.subheadline)
+                                    .foregroundStyle(textStyle.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("cardNameInlineClearButton")
+                        }
+
+                        Button {
+                            commitEditingName(for: book.id)
+                        } label: {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.headline)
+                                .foregroundStyle(textStyle)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("cardNameInlineCommitButton")
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(textStyle.opacity(0.15))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(textStyle.opacity(0.3), lineWidth: 1)
+                    )
+                } else {
+                    if isActive {
+                        Button {
+                            startEditingName(for: book.id)
+                        } label: {
+                            HStack(spacing: 5) {
+                                Text(displayName)
+                                    .font(.headline)
+                                    .lineLimit(1)
+                                Image(systemName: "pencil")
+                                    .font(.caption2.weight(.semibold))
+                                    .opacity(0.7)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("cardNameButton-\(book.id)")
+                    } else {
+                        Text(displayName)
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                }
+
                 Spacer(minLength: 8)
                 Text(String(format: "%02d", bookIndex))
                     .font(.caption.monospaced())
@@ -256,7 +373,7 @@ struct CardCustomizerView: View {
         .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
         .scaleEffect(isActive ? 1.0 : 0.96)
         .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("customizer-preview-\(book.id)")
     }
 
