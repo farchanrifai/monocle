@@ -7,6 +7,12 @@ struct ScrollInfo: Equatable {
     var minY: CGFloat = 0
 }
 
+struct StackPlaceholderInfo: Equatable {
+    let name: String
+    let icon: String
+    let count: Int
+}
+
 /// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-book persistence.
 struct BookHomeView: View {
     @Bindable var model: AppModel
@@ -23,6 +29,17 @@ struct BookHomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @AccessibilityFocusState private var headingFocused: Bool
+
+    @State private var displayedBooks: [BookProfile] = []
+    @State private var currentStackKey: String = ""
+    @State private var stackCollapseProgress: CGFloat = 0.0
+    @State private var showPlaceholder: Bool = false
+    @State private var placeholderInfo: StackPlaceholderInfo? = nil
+    @State private var transitionTask: Task<Void, Never>? = nil
+
+    private var stackKey: String {
+        "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
+    }
 
     private var visible: [BookProfile] { model.visibleBooks }
     private var current: BookProfile? { model.books.first { $0.id == selectedID } }
@@ -76,7 +93,7 @@ struct BookHomeView: View {
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 24) {
                     stack
-                    if visible.isEmpty {
+                    if displayedBooks.isEmpty && !showPlaceholder {
                         ContentUnavailableView {
                             Label("Your stack is empty", systemImage: "rectangle.stack")
                         } description: {
@@ -89,7 +106,7 @@ struct BookHomeView: View {
                         }
                     }
                     activitySection(bookID: nil)
-                        .offset(y: (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, visible.count - 1)) * 0.22 - 0.90)))
+                        .offset(y: (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90)))
                         .opacity(selectedID == nil ? 1 : 0)
                 }
                 .padding(.horizontal, 16)
@@ -125,7 +142,7 @@ struct BookHomeView: View {
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
-                    let targetID = selectedID ?? visible.first?.id ?? model.activeBookID
+                    let targetID = selectedID ?? displayedBooks.first?.id ?? model.activeBookID
                     model.openEntry(for: targetID)
                 } label: {
                     Label("Add Expense", systemImage: "plus")
@@ -218,8 +235,24 @@ struct BookHomeView: View {
             }
         }
         .onAppear {
+            if displayedBooks.isEmpty {
+                displayedBooks = model.visibleBooks
+            }
+            if currentStackKey.isEmpty {
+                currentStackKey = stackKey
+            }
             if let active = model.selectedBookID {
                 selectedID = active
+            }
+        }
+        .onChange(of: stackKey) { _, newKey in
+            if currentStackKey != newKey {
+                performStackTransition(to: newKey)
+            }
+        }
+        .onChange(of: model.visibleBooks) { _, newVisible in
+            if currentStackKey == stackKey && transitionTask == nil {
+                displayedBooks = newVisible
             }
         }
         .onChange(of: model.selectedBookID) { _, newID in
@@ -273,9 +306,21 @@ struct BookHomeView: View {
     }
 
     private var stack: some View {
-        VStack(spacing: -(cardHeight - stripHeight)) {
-            ForEach(Array(visible.enumerated()), id: \.element.id) { index, book in
-                cardItem(book, index: index)
+        ZStack(alignment: .top) {
+            VStack(spacing: -(cardHeight - stripHeight)) {
+                ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
+                    cardItem(book, index: index)
+                }
+            }
+
+            if showPlaceholder, let info = placeholderInfo {
+                stackPlaceholderCard(name: info.name, icon: info.icon, count: info.count)
+                    .frame(height: cardHeight)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.94)),
+                        removal: .opacity.combined(with: .scale(scale: 1.04))
+                    ))
+                    .zIndex(100)
             }
         }
     }
@@ -301,21 +346,155 @@ struct BookHomeView: View {
         }
         .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
         .accessibilityIdentifier("stack-book-\(book.id)")
-        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion] content, proxy in
+        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion, stackCollapseProgress] content, proxy in
             let rect = proxy.frame(in: .scrollView)
             let bounds = info.containerSize
             let pushOffset = selectedIdx < index ? (bounds.height - rect.minY) : -rect.minY
             let scale: CGFloat = (reduceMotion || selectedIdx < index) ? 1.0 : 0.95
             let fan: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
+            let collapseOffset = -CGFloat(index) * stripHeight * stackCollapseProgress
 
             return content
-                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
-                .offset(y: isSelected ? pushOffset : fan)
+                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : (1.0 - (CGFloat(index) * 0.015 * stackCollapseProgress)), anchor: .top)
+                .offset(y: isSelected ? pushOffset : (fan + collapseOffset))
         }
     }
 
     private var selectedIndex: Int {
-        visible.firstIndex { $0.id == selectedID } ?? visible.count
+        displayedBooks.firstIndex { $0.id == selectedID } ?? displayedBooks.count
+    }
+
+    private func stackPlaceholderCard(name: String, icon: String, count: Int) -> some View {
+        let isAllCards = model.filterScope == .allCards
+        let accent = isAllCards ? Color.primary : MC.red
+
+        return VStack(spacing: 14) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.caption.weight(.bold))
+                    Text(isAllCards ? "ALL CARDS" : "STACK")
+                        .font(.caption.weight(.heavy))
+                        .tracking(1.0)
+                }
+                .foregroundStyle(accent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(accent.opacity(0.12), in: Capsule())
+
+                Spacer()
+
+                Text("\(count) \(count == 1 ? "CARD" : "CARDS")")
+                    .font(.caption.monospaced().weight(.semibold))
+                    .foregroundStyle(Color.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            ZStack {
+                Circle()
+                    .fill(accent.opacity(0.14))
+                    .frame(width: 58, height: 58)
+                Image(systemName: icon)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundStyle(accent)
+            }
+
+            VStack(spacing: 4) {
+                Text(name)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                Text(isAllCards ? "Viewing all active cards" : "Active stack collection")
+                    .font(.caption)
+                    .foregroundStyle(Color.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(accent.opacity(0.35), lineWidth: 1.5)
+        )
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.35 : 0.08), radius: 14, y: 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Switched to stack \(name), \(count) cards")
+        .accessibilityIdentifier("stackPlaceholderCard")
+    }
+
+    private func performStackTransition(to targetKey: String) {
+        let isAllCards = model.filterScope == .allCards
+        let targetName: String
+        let targetIcon: String
+        let targetCount: Int
+
+        if isAllCards {
+            targetName = "All Active Cards"
+            targetIcon = "rectangle.stack"
+            targetCount = model.unhiddenBooks.count
+        } else if let stack = model.currentStack {
+            targetName = stack.name
+            targetIcon = stack.icon
+            targetCount = model.cardsInCurrentStack.count
+        } else {
+            targetName = "Stack"
+            targetIcon = "square.stack.3d.up.fill"
+            targetCount = model.visibleBooks.count
+        }
+
+        if reduceMotion {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                displayedBooks = model.visibleBooks
+                currentStackKey = targetKey
+            }
+            return
+        }
+
+        transitionTask?.cancel()
+        transitionTask = Task { @MainActor in
+            placeholderInfo = StackPlaceholderInfo(name: targetName, icon: targetIcon, count: targetCount)
+
+            // Step 1: Stacks up all cards to top
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                stackCollapseProgress = 1.0
+            }
+
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+
+            // Step 2: Show placeholder card with the new Stack name (fade in)
+            withAnimation(.easeIn(duration: 0.18)) {
+                showPlaceholder = true
+            }
+
+            try? await Task.sleep(for: .milliseconds(260))
+            guard !Task.isCancelled else { return }
+
+            // Step 3: Swap cards under placeholder and fan down new cards
+            displayedBooks = model.visibleBooks
+            stackCollapseProgress = 1.0
+
+            withAnimation(.easeOut(duration: 0.18)) {
+                showPlaceholder = false
+            }
+
+            withAnimation(.spring(response: 0.44, dampingFraction: 0.76)) {
+                stackCollapseProgress = 0.0
+            }
+
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+
+            currentStackKey = targetKey
+            placeholderInfo = nil
+            transitionTask = nil
+        }
     }
 
     private func cardView(_ book: BookProfile, index: Int) -> some View {

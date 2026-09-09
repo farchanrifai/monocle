@@ -746,4 +746,42 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testStackSwitchAnimationSequence() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // Verify filter button exists
+        let filterButton = app.buttons["activityFilterButton"]
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 10))
+
+        // Initial screenshot before stack switch
+        let initialShot = app.screenshot()
+        try? initialShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_initial.png"))
+
+        // Tap filter button to toggle stack scope
+        filterButton.tap()
+
+        // Check for stackPlaceholderCard appearance during transition
+        let placeholderCard = app.otherElements["stackPlaceholderCard"]
+        let appeared = placeholderCard.waitForExistence(timeout: 1.5)
+        if appeared {
+            let transitionShot = app.screenshot()
+            try? transitionShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_transition_placeholder.png"))
+        }
+
+        // Wait for transition to settle
+        Thread.sleep(forTimeInterval: 1.0)
+        let settledShot = app.screenshot()
+        try? settledShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_settled.png"))
+
+        // Switch back
+        filterButton.tap()
+        Thread.sleep(forTimeInterval: 1.0)
+        XCTAssertTrue(filterButton.exists)
+    }
+
 }
+
