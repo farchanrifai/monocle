@@ -342,4 +342,81 @@ final class MultiBookTests: XCTestCase {
         // Clean up
         CardArtworkStore.shared.deleteArtwork(filename: photoFilename)
     }
+
+    func testCardStacksAndAlwaysHiddenFiltering() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleBook()
+        let daily = try repo.createBook(named: "Daily")
+        let travel = try repo.createBook(named: "Tokyo Travel")
+        let shopping = try repo.createBook(named: "Shopping")
+        let oldTrip = try repo.createBook(named: "Old Bali Trip")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let expenseService = try ExpenseService(store: repo)
+        let model = AppModel(expenses: expenseService, state: state)
+
+        // Add expense to each book using book-scoped categories
+        let catDaily = try repo.categories(in: daily.id)[0]
+        let catTravel = try repo.categories(in: travel.id)[0]
+        let catShopping = try repo.categories(in: shopping.id)[0]
+        let catOldTrip = try repo.categories(in: oldTrip.id)[0]
+        try repo.save(Expense(id: UUID(), amount: 10_000_00, day: "2026-09-10", note: "Daily Coffee", allocations: [.init(categoryID: catDaily.id, amount: 10_000_00)], bookID: daily.id), in: daily.id)
+        try repo.save(Expense(id: UUID(), amount: 50_000_00, day: "2026-09-10", note: "Sushi", allocations: [.init(categoryID: catTravel.id, amount: 50_000_00)], bookID: travel.id), in: travel.id)
+        try repo.save(Expense(id: UUID(), amount: 30_000_00, day: "2026-09-10", note: "Souvenir", allocations: [.init(categoryID: catShopping.id, amount: 30_000_00)], bookID: shopping.id), in: shopping.id)
+        try repo.save(Expense(id: UUID(), amount: 99_000_00, day: "2026-09-10", note: "Old Resort", allocations: [.init(categoryID: catOldTrip.id, amount: 99_000_00)], bookID: oldTrip.id), in: oldTrip.id)
+
+        // 1. Create Travel Stack with travel & shopping cards
+        let travelStack = model.createStack(name: "Tokyo Trip", icon: "airplane", cardIDs: [travel.id, shopping.id])
+        XCTAssertEqual(model.activeStackID, travelStack.id)
+        XCTAssertEqual(model.filterScope, StackFilterScope.activeStack)
+        let inCurrent: [UUID] = model.cardsInCurrentStack.map { $0.id }
+        XCTAssertEqual(inCurrent, [travel.id, shopping.id])
+        let onDeck: [UUID] = model.homeDeckCards.map { $0.id }
+        XCTAssertEqual(onDeck, [travel.id, shopping.id])
+
+        // Activities in active stack should only contain Sushi & Souvenir (not Daily Coffee or Old Resort)
+        let stackActivities = model.activities(selectedBookID: nil, allBooks: false)
+        XCTAssertEqual(stackActivities.count, 2)
+        XCTAssertTrue(stackActivities.contains(where: { $0.note == "Sushi" }))
+        XCTAssertTrue(stackActivities.contains(where: { $0.note == "Souvenir" }))
+        XCTAssertFalse(stackActivities.contains(where: { $0.note == "Daily Coffee" }))
+        XCTAssertFalse(stackActivities.contains(where: { $0.note == "Old Resort" }))
+
+        // 2. Switch to All Cards
+        model.toggleFilterScope()
+        XCTAssertEqual(model.filterScope, StackFilterScope.allCards)
+        XCTAssertTrue(model.homeDeckCards.contains(where: { $0.id == oldTrip.id }))
+        let allBeforeArchive = model.activities(selectedBookID: nil, allBooks: true)
+        XCTAssertTrue(allBeforeArchive.contains(where: { $0.note == "Old Resort" }))
+
+        // 3. Mark Old Bali Trip as Always Hidden (Archive)
+        model.setCardAlwaysHidden(id: oldTrip.id, isHidden: true)
+        XCTAssertTrue(model.alwaysHiddenBookIDs.contains(oldTrip.id))
+        XCTAssertFalse(model.unhiddenBooks.contains(where: { $0.id == oldTrip.id }))
+        XCTAssertFalse(model.homeDeckCards.contains(where: { $0.id == oldTrip.id }))
+
+        // In All Activities, Old Resort MUST NEVER appear
+        let allAfterArchive = model.activities(selectedBookID: nil, allBooks: true)
+        XCTAssertFalse(allAfterArchive.contains(where: { $0.note == "Old Resort" }))
+        XCTAssertTrue(allAfterArchive.contains(where: { $0.note == "Daily Coffee" }))
+
+        // But when viewing that card explicitly (via top menu), it is accessible
+        let oldTripDirect = model.activities(selectedBookID: oldTrip.id, allBooks: false)
+        XCTAssertEqual(oldTripDirect.count, 1)
+        XCTAssertEqual(oldTripDirect.first?.note, "Old Resort")
+
+        // 4. Multiple stacks: Shopping card can also be in Daily Stack
+        let dailyStack = model.createStack(name: "Home Daily", icon: "house", cardIDs: [daily.id, shopping.id])
+        model.setActiveStack(id: dailyStack.id)
+        let inDaily: [UUID] = model.cardsInCurrentStack.map { $0.id }
+        XCTAssertEqual(inDaily, [daily.id, shopping.id])
+
+        // 5. Delete stack
+        model.deleteStack(id: travelStack.id)
+        XCTAssertFalse(model.stacks.contains(where: { $0.id == travelStack.id }))
+        XCTAssertTrue(model.books.contains(where: { $0.id == travel.id })) // Book itself still exists!
+    }
 }

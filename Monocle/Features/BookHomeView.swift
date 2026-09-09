@@ -12,9 +12,9 @@ struct BookHomeView: View {
     @Bindable var model: AppModel
     var showsBottomBar: Bool = false
     @State private var selectedID: UUID?
-    @State private var allActivities = false
     @State private var managing = false
     @State private var showingBudgets = false
+    @State private var showingBills = false
     @State private var pendingCustomizerTarget: CustomizerTarget? = nil
     @State private var pull: CGFloat = 0
     @State private var info = ScrollInfo()
@@ -80,9 +80,12 @@ struct BookHomeView: View {
                         ContentUnavailableView {
                             Label("Your stack is empty", systemImage: "rectangle.stack")
                         } description: {
-                            Text("All books are still accessible in the options menu.")
+                            Text("Add cards to this stack or switch stacks with the filter button.")
                         } actions: {
-                            Button("Manage visible books") { managing = true }
+                            Button("Manage Stacks & Cards") {
+                                model.stackCustomizerMode = .manage
+                                model.showStackCustomizer = true
+                            }
                         }
                     }
                     activitySection(bookID: nil)
@@ -167,13 +170,18 @@ struct BookHomeView: View {
         .sheet(isPresented: $managing) {
             manageStackSheet
         }
+        .sheet(isPresented: $model.showStackCustomizer) {
+            StackCustomizerView(model: model, initialMode: model.stackCustomizerMode) {
+                model.showStackCustomizer = false
+            }
+        }
         .sheet(item: $model.customizerTarget) { target in
             switch target {
             case .existing(let book):
                 CardCustomizerView(
                     model: model,
                     initialBook: book,
-                    books: visible.isEmpty ? model.books : visible,
+                    books: visible.isEmpty ? model.unhiddenBooks : visible,
                     isCreatingNewBook: false
                 ) {
                     model.customizerTarget = nil
@@ -181,8 +189,8 @@ struct BookHomeView: View {
             case .newBook:
                 CardCustomizerView(
                     model: model,
-                    initialBook: visible.first ?? model.books.first,
-                    books: visible.isEmpty ? model.books : visible,
+                    initialBook: visible.first ?? model.unhiddenBooks.first,
+                    books: visible.isEmpty ? model.unhiddenBooks : visible,
                     isCreatingNewBook: true
                 ) {
                     model.customizerTarget = nil
@@ -195,6 +203,16 @@ struct BookHomeView: View {
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { showingBudgets = false }
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $showingBills) {
+            NavigationStack {
+                BillsView(model: model)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingBills = false }
                         }
                     }
             }
@@ -356,22 +374,33 @@ struct BookHomeView: View {
     }
 
     private func activitySection(bookID: UUID?) -> some View {
-        let activities = model.activities(selectedBookID: bookID, allBooks: allActivities)
+        let isAllCards = model.filterScope == .allCards
+        let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
         return VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 Text(bookID != nil ? (model.books.first { $0.id == bookID }?.name ?? "Book Activities") : "Recent Activities")
                     .font(.title2.bold())
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
-                Spacer()
-            }
 
-            if bookID == nil {
-                Picker("Activity scope", selection: $allActivities) {
-                    Text("Visible books").tag(false)
-                    Text("All books").tag(true)
+                if bookID == nil {
+                    HStack(spacing: 4) {
+                        Image(systemName: isAllCards ? "rectangle.stack" : (model.currentStack?.icon ?? "square.stack.3d.up.fill"))
+                            .font(.caption2.weight(.bold))
+                        Text(isAllCards ? "All cards · \(model.unhiddenBooks.count)" : "\(model.currentStack?.name ?? "Stack") · \(model.cardsInCurrentStack.count)")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(isAllCards ? Color.secondary : MC.red)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(isAllCards ? Color.primary.opacity(0.06) : MC.red.opacity(0.12))
+                    )
+                    .accessibilityIdentifier("activityScopeBadge")
                 }
-                .pickerStyle(.segmented)
+
+                Spacer()
             }
 
             if activities.isEmpty {
@@ -467,9 +496,16 @@ struct BookHomeView: View {
             }
 
             Button {
+                model.stackCustomizerMode = .manage
+                model.showStackCustomizer = true
+            } label: {
+                Label("Stacks & Card Visibility", systemImage: "square.stack.3d.up")
+            }
+
+            Button {
                 managing = true
             } label: {
-                Label("Manage stack", systemImage: "slider.horizontal.3")
+                Label("Manage stack order", systemImage: "slider.horizontal.3")
             }
 
             Button {
@@ -477,15 +513,34 @@ struct BookHomeView: View {
             } label: {
                 Label("Budgets", systemImage: "chart.bar.xaxis")
             }
+            .accessibilityIdentifier("menuBudgets")
+
+            Button {
+                showingBills = true
+            } label: {
+                Label("Bills", systemImage: "calendar")
+            }
+            .accessibilityIdentifier("menuBills")
 
             if selectedID != nil {
                 Button("Return to stack") { focus(nil) }
             }
 
-            Section("All books") {
-                ForEach(model.books) { book in
+            Section("Active cards") {
+                ForEach(model.unhiddenBooks) { book in
                     Button(book.name) {
                         focus(book.id)
+                    }
+                }
+            }
+
+            let archived = model.books.filter { model.alwaysHiddenBookIDs.contains($0.id) }
+            if !archived.isEmpty {
+                Section("Archived cards") {
+                    ForEach(archived) { book in
+                        Button(book.name) {
+                            focus(book.id)
+                        }
                     }
                 }
             }

@@ -22,6 +22,18 @@ enum CustomizerTarget: Identifiable, Equatable {
     }
 }
 
+enum StackCustomizerMode: Identifiable, Equatable {
+    case manage
+    case create
+
+    var id: String {
+        switch self {
+        case .manage: return "manage"
+        case .create: return "create"
+        }
+    }
+}
+
 @MainActor @Observable
 final class AppModel {
     static var shared: AppModel { AppEnvironment.shared.model }
@@ -32,6 +44,8 @@ final class AppModel {
     var settings = PrototypeSettings()
     var showEntry = false
     var showSettings = false
+    var showStackCustomizer = false
+    var stackCustomizerMode: StackCustomizerMode = .manage
     var selectedTab = 0
     var error: String?
     var startupError: String?
@@ -51,6 +65,7 @@ final class AppModel {
     var selectedBookID: UUID?
     var workspacePreferences = WorkspacePreferences()
     var hiddenBookIDs: Set<UUID> = []
+    var alwaysHiddenBookIDs: Set<UUID> = []
     var customizerTarget: CustomizerTarget? = nil
     var customizingBook: BookProfile? {
         get {
@@ -117,6 +132,37 @@ final class AppModel {
         return (visualDirection == .light || visualDirection == .ledger) ? .light : .dark
     }
 
+    var filterScope: StackFilterScope {
+        get { workspacePreferences.filterScope }
+        set {
+            workspacePreferences.filterScope = newValue
+            persistWorkspacePreferences()
+        }
+    }
+
+    var stacks: [CardStack] {
+        get { workspacePreferences.stacks }
+        set {
+            workspacePreferences.stacks = newValue
+            persistWorkspacePreferences()
+        }
+    }
+
+    var activeStackID: UUID? {
+        get { workspacePreferences.activeStackID }
+        set {
+            workspacePreferences.activeStackID = newValue
+            persistWorkspacePreferences()
+        }
+    }
+
+    var currentStack: CardStack? {
+        if let id = activeStackID, let stack = stacks.first(where: { $0.id == id }) {
+            return stack
+        }
+        return stacks.first
+    }
+
     var orderedBooks: [BookProfile] {
         let current = books
         var result: [BookProfile] = []
@@ -131,8 +177,33 @@ final class AppModel {
         return result
     }
 
+    var unhiddenBooks: [BookProfile] {
+        orderedBooks.filter { !alwaysHiddenBookIDs.contains($0.id) }
+    }
+
+    var cardsInCurrentStack: [BookProfile] {
+        guard let stack = currentStack else { return unhiddenBooks }
+        let current = books
+        var result: [BookProfile] = []
+        for id in stack.cardIDs {
+            if !alwaysHiddenBookIDs.contains(id), let book = current.first(where: { $0.id == id }) {
+                result.append(book)
+            }
+        }
+        return result
+    }
+
+    var homeDeckCards: [BookProfile] {
+        switch filterScope {
+        case .activeStack:
+            return cardsInCurrentStack
+        case .allCards:
+            return unhiddenBooks
+        }
+    }
+
     var visibleBooks: [BookProfile] {
-        orderedBooks.filter { !hiddenBookIDs.contains($0.id) }
+        homeDeckCards
     }
 
     var budgetHistory: [BudgetVersion] { expenseService?.budgets ?? [] }
@@ -157,7 +228,9 @@ final class AppModel {
         if let prefs = try? state.loadWorkspacePreferences() {
             self.workspacePreferences = prefs
             self.hiddenBookIDs = Set(prefs.visibleBookIDs.isEmpty ? [] : expenses.books.map(\.id).filter { !prefs.visibleBookIDs.contains($0) })
+            self.alwaysHiddenBookIDs = Set(prefs.alwaysHiddenBookIDs)
         }
+        ensureDefaultStack()
     }
 
     init(startupFailure: String) {
@@ -167,9 +240,27 @@ final class AppModel {
         startupError = startupFailure
     }
 
+    func ensureDefaultStack() {
+        if workspacePreferences.bookOrder.isEmpty {
+            workspacePreferences.bookOrder = books.map(\.id)
+            persistWorkspacePreferences()
+        }
+        if workspacePreferences.stacks.isEmpty {
+            let initialCardIDs = orderedBooks.map(\.id).filter { !alwaysHiddenBookIDs.contains($0) }
+            let defaultStack = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: initialCardIDs)
+            workspacePreferences.stacks = [defaultStack]
+            workspacePreferences.activeStackID = defaultStack.id
+            persistWorkspacePreferences()
+        } else if workspacePreferences.activeStackID == nil || !workspacePreferences.stacks.contains(where: { $0.id == workspacePreferences.activeStackID }) {
+            workspacePreferences.activeStackID = workspacePreferences.stacks.first?.id
+            persistWorkspacePreferences()
+        }
+    }
+
     func reload() throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.reload()
+        ensureDefaultStack()
     }
     func category(_ id: UUID?) -> ExpenseCategory? { categories.first { $0.id == id } }
     func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.allocations.first?.categoryID)?.name ?? "Expense" : expense.note }
@@ -237,6 +328,12 @@ final class AppModel {
         guard let expenseService else { throw EntryError.corruptStore }
         let book = try expenseService.createBook(named: name)
         workspacePreferences.bookOrder.append(book.id)
+        if let activeID = workspacePreferences.activeStackID,
+           let index = workspacePreferences.stacks.firstIndex(where: { $0.id == activeID }) {
+            if !workspacePreferences.stacks[index].cardIDs.contains(book.id) {
+                workspacePreferences.stacks[index].cardIDs.append(book.id)
+            }
+        }
         persistWorkspacePreferences()
         showToast("Book created")
         return book
@@ -259,6 +356,10 @@ final class AppModel {
         workspacePreferences.bookOrder.removeAll { $0 == id }
         workspacePreferences.visibleBookIDs.removeAll { $0 == id }
         hiddenBookIDs.remove(id)
+        alwaysHiddenBookIDs.remove(id)
+        for i in workspacePreferences.stacks.indices {
+            workspacePreferences.stacks[i].cardIDs.removeAll { $0 == id }
+        }
         if selectedBookID == id { selectedBookID = nil }
         persistWorkspacePreferences()
         showToast("Book deleted")
@@ -286,6 +387,89 @@ final class AppModel {
         persistWorkspacePreferences()
     }
 
+    func setCardAlwaysHidden(id: UUID, isHidden: Bool) {
+        if isHidden {
+            alwaysHiddenBookIDs.insert(id)
+            hiddenBookIDs.insert(id)
+            var updatedStacks = stacks
+            for i in updatedStacks.indices {
+                updatedStacks[i].cardIDs.removeAll { $0 == id }
+            }
+            stacks = updatedStacks
+            if selectedBookID == id { selectedBookID = nil }
+            showToast("Card archived")
+        } else {
+            alwaysHiddenBookIDs.remove(id)
+            hiddenBookIDs.remove(id)
+            if let activeID = activeStackID, let index = stacks.firstIndex(where: { $0.id == activeID }) {
+                if !stacks[index].cardIDs.contains(id) {
+                    var updatedStacks = stacks
+                    updatedStacks[index].cardIDs.append(id)
+                    stacks = updatedStacks
+                }
+            }
+            showToast("Card unarchived")
+        }
+        workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
+        persistWorkspacePreferences()
+    }
+
+    func toggleFilterScope() {
+        switch filterScope {
+        case .activeStack:
+            filterScope = .allCards
+            showToast("All cards")
+        case .allCards:
+            filterScope = .activeStack
+            showToast(currentStack.map { "Stack: \($0.name)" } ?? "Active stack")
+        }
+    }
+
+    func setActiveStack(id: UUID) {
+        guard stacks.contains(where: { $0.id == id }) else { return }
+        activeStackID = id
+        filterScope = .activeStack
+        if let stack = stacks.first(where: { $0.id == id }) {
+            showToast("Switched to \(stack.name)")
+        }
+    }
+
+    @discardableResult
+    func createStack(name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) -> CardStack {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = trimmed.isEmpty ? "New Stack" : String(trimmed.prefix(40))
+        let newStack = CardStack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
+        var updated = stacks
+        updated.append(newStack)
+        stacks = updated
+        activeStackID = newStack.id
+        filterScope = .activeStack
+        showToast("Stack '\(finalName)' created")
+        return newStack
+    }
+
+    func updateStack(_ stack: CardStack) {
+        if let index = stacks.firstIndex(where: { $0.id == stack.id }) {
+            var updated = stacks
+            updated[index] = stack
+            stacks = updated
+        }
+    }
+
+    func deleteStack(id: UUID) {
+        guard stacks.count > 1 else {
+            showToast("Cannot delete the only stack")
+            return
+        }
+        var updated = stacks
+        updated.removeAll { $0.id == id }
+        stacks = updated
+        if activeStackID == id {
+            activeStackID = updated.first?.id
+        }
+        showToast("Stack deleted")
+    }
+
     func reorderBooks(fromOffsets: IndexSet, toOffset: Int) {
         var currentOrder = orderedBooks.map(\.id)
         currentOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)
@@ -295,6 +479,7 @@ final class AppModel {
 
     func persistWorkspacePreferences() {
         workspacePreferences.visibleBookIDs = visibleBooks.map(\.id)
+        workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
         try? state?.saveWorkspacePreferences(workspacePreferences)
     }
 
@@ -315,13 +500,13 @@ final class AppModel {
         }
         if allBooks {
             var all: [Expense] = []
-            for b in books {
+            for b in unhiddenBooks {
                 all.append(contentsOf: expenses(for: b.id))
             }
             return all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
         } else {
             var all: [Expense] = []
-            for b in visibleBooks {
+            for b in homeDeckCards {
                 all.append(contentsOf: expenses(for: b.id))
             }
             return all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }

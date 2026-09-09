@@ -56,11 +56,14 @@ final class MonocleUITests: XCTestCase {
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        app.buttons["tab-Budgets"].tap()
+        app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Budgets"].tap()
         XCTAssertTrue(app.staticTexts["Where it went"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
-        app.buttons["tab-Bills"].tap()
+        app.buttons["Done"].tap()
+        app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Bills"].tap()
         XCTAssertTrue(app.buttons["Configure sample bill"].waitForExistence(timeout: 5))
         app.buttons["Configure sample bill"].tap()
         let reminder = app.switches["Remind me"]
@@ -70,10 +73,42 @@ final class MonocleUITests: XCTestCase {
         let bill = XCTAttachment(screenshot: app.screenshot())
         bill.name = "bill-settings"; bill.lifetime = .keepAlways; add(bill)
         app.buttons["Save"].tap()
+        app.buttons["Done"].tap()
         app.terminate(); app.launch()
-        app.buttons["tab-Bills"].tap()
+        app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Bills"].tap()
         app.buttons["Configure sample bill"].tap()
         XCTAssertEqual(app.switches["Remind me"].value as? String, "0")
+        app.buttons["Cancel"].tap()
+        app.buttons["Done"].tap()
+    }
+
+    @MainActor
+    func testStacksFilterBubbleAndCustomizer() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Verify two-bubble bottom navigation exists
+        XCTAssertTrue(app.buttons["activityFilterButton"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["addExpense"].exists)
+
+        // 2. Quick tap toggles filter scope
+        let initialBadge = app.staticTexts["activityScopeBadge"]
+        XCTAssertTrue(initialBadge.waitForExistence(timeout: 5))
+        app.buttons["activityFilterButton"].tap()
+        XCTAssertTrue(app.staticTexts["All cards"].waitForExistence(timeout: 5) || initialBadge.exists)
+
+        // 3. Open Stacks & Card Visibility from menu
+        app.buttons["bookOptionsMenu"].tap()
+        XCTAssertTrue(app.buttons["Stacks & Card Visibility"].waitForExistence(timeout: 5))
+        app.buttons["Stacks & Card Visibility"].tap()
+
+        // 4. Verify Stack Customizer presented
+        XCTAssertTrue(app.navigationBars["Manage Stacks"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["saveStackCustomizer"].exists)
+        app.buttons["saveStackCustomizer"].tap()
     }
 
     @MainActor

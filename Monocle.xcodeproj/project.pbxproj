@@ -45,6 +45,7 @@
 		CC0000022D75000100000002 /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000002 /* CardArtworkStore.swift */; };
 		CC0000022D75000100000003 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000003 /* StockDesignViews.swift */; };
 		CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000004 /* CardCustomizerView.swift */; };
+		CC0000022D75000100000005 /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000005 /* StackCustomizerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -108,6 +109,7 @@
 		CC0000012D75000100000002 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
 		CC0000012D75000100000003 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
 		CC0000012D75000100000004 /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000005 /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -239,6 +241,7 @@
 				E977F1EDBCA155B67ADD7082 /* PrototypeBookSamples.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
 				CC0000012D75000100000003 /* StockDesignViews.swift */,
+				CC0000012D75000100000005 /* StackCustomizerView.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -421,6 +424,7 @@
 				CC0000022D75000100000002 /* CardArtworkStore.swift in Sources */,
 				CC0000022D75000100000003 /* StockDesignViews.swift in Sources */,
 				CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */,
+				CC0000022D75000100000005 /* StackCustomizerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -175,6 +175,25 @@ enum BookVisualDirection: String, CaseIterable, Identifiable, Codable, Sendable 
     var id: Self { self }
 }
 
+enum StackFilterScope: String, Codable, Equatable, Sendable {
+    case activeStack
+    case allCards
+}
+
+struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
+    var id: UUID = UUID()
+    var name: String
+    var icon: String = "rectangle.stack"
+    var cardIDs: [UUID] = []
+
+    init(id: UUID = UUID(), name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.cardIDs = cardIDs
+    }
+}
+
 struct WorkspacePreferences: Codable, Equatable, Sendable {
     var visibleBookIDs: [UUID] = []
     var bookOrder: [UUID] = []
@@ -182,14 +201,24 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var visualDirection: String = "Light"
     var autoAppearance: Bool = false
     var cardCustomizations: [UUID: BookCardCustomization] = [:]
+    var alwaysHiddenBookIDs: [UUID] = []
+    var stacks: [CardStack] = []
+    var activeStackID: UUID? = nil
+    var filterScopeRaw: String = "activeStack"
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
         set { visualDirection = newValue.rawValue }
     }
 
+    var filterScope: StackFilterScope {
+        get { StackFilterScope(rawValue: filterScopeRaw) ?? .activeStack }
+        set { filterScopeRaw = newValue.rawValue }
+    }
+
     private enum CodingKeys: String, CodingKey {
         case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
+        case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw
     }
 
     init(
@@ -198,7 +227,11 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         allActivitiesScope: Bool = false,
         visualDirection: String = "Light",
         autoAppearance: Bool = false,
-        cardCustomizations: [UUID: BookCardCustomization] = [:]
+        cardCustomizations: [UUID: BookCardCustomization] = [:],
+        alwaysHiddenBookIDs: [UUID] = [],
+        stacks: [CardStack] = [],
+        activeStackID: UUID? = nil,
+        filterScope: StackFilterScope = .activeStack
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
@@ -206,6 +239,10 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.visualDirection = visualDirection
         self.autoAppearance = autoAppearance
         self.cardCustomizations = cardCustomizations
+        self.alwaysHiddenBookIDs = alwaysHiddenBookIDs
+        self.stacks = stacks
+        self.activeStackID = activeStackID
+        self.filterScopeRaw = filterScope.rawValue
     }
 
     init(from decoder: any Decoder) throws {
@@ -216,6 +253,10 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         visualDirection = try container.decodeIfPresent(String.self, forKey: .visualDirection) ?? "Light"
         autoAppearance = try container.decodeIfPresent(Bool.self, forKey: .autoAppearance) ?? false
         cardCustomizations = try container.decodeIfPresent([UUID: BookCardCustomization].self, forKey: .cardCustomizations) ?? [:]
+        alwaysHiddenBookIDs = try container.decodeIfPresent([UUID].self, forKey: .alwaysHiddenBookIDs) ?? []
+        stacks = try container.decodeIfPresent([CardStack].self, forKey: .stacks) ?? []
+        activeStackID = try container.decodeIfPresent(UUID.self, forKey: .activeStackID)
+        filterScopeRaw = try container.decodeIfPresent(String.self, forKey: .filterScopeRaw) ?? "activeStack"
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -226,6 +267,10 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(visualDirection, forKey: .visualDirection)
         try container.encode(autoAppearance, forKey: .autoAppearance)
         try container.encode(cardCustomizations, forKey: .cardCustomizations)
+        try container.encode(alwaysHiddenBookIDs, forKey: .alwaysHiddenBookIDs)
+        try container.encode(stacks, forKey: .stacks)
+        try container.encodeIfPresent(activeStackID, forKey: .activeStackID)
+        try container.encode(filterScopeRaw, forKey: .filterScopeRaw)
     }
 }
 

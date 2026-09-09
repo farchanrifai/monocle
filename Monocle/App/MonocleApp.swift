@@ -24,14 +24,9 @@ struct RootView: View {
             } else if model.appLock.blocksContent {
                 AppLockView(lock: model.appLock)
             } else {
-                TabView(selection: $model.selectedTab) {
-                    Tab("Recents", systemImage: "rectangle.stack", value: 0) { BookHomeView(model: model).toolbar(.hidden, for: .tabBar) }
-                    Tab("Budgets", systemImage: "chart.bar.xaxis", value: 1) { BudgetsView(model: model).toolbar(.hidden, for: .tabBar) }
-                    Tab("Bills", systemImage: "calendar", value: 2) { BillsView(model: model).toolbar(.hidden, for: .tabBar) }
-                }
-                .toolbar(.hidden, for: .tabBar)
-                .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
-                .tint(MC.red)
+                BookHomeView(model: model)
+                    .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
+                    .tint(MC.red)
                 .sheet(isPresented: $model.showEntry, onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }
                 }) { EntryView(model: model) }
