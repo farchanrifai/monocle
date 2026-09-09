@@ -23,12 +23,13 @@ struct BookHomeView: View {
     @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
     @ScaledMetric(relativeTo: .title) private var cardHeight = 224
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @AccessibilityFocusState private var headingFocused: Bool
 
     private var visible: [BookProfile] { model.visibleBooks }
     private var current: BookProfile? { model.books.first { $0.id == selectedID } }
 
-    private var direction: BookVisualDirection { model.visualDirection }
+    private var direction: BookVisualDirection { model.effectiveDirection(for: colorScheme) }
     private var paper: Color {
         switch direction {
         case .light:
@@ -130,7 +131,7 @@ struct BookHomeView: View {
             }
         }
         .background(paper).foregroundStyle(ink)
-        .preferredColorScheme((direction == .light || direction == .ledger) ? .light : .dark)
+        .preferredColorScheme(model.preferredColorScheme)
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
@@ -152,7 +153,7 @@ struct BookHomeView: View {
         }
         .sheet(item: selectedBookBinding) { book in
             let spacing: CGFloat = 16
-            let minSheetHeight: CGFloat = max(180, info.containerSize.height + info.safeArea.bottom - cardHeight - spacing)
+            let minSheetHeight: CGFloat = max(180, info.containerSize.height - cardHeight - spacing)
             BookDetailSheet(
                 model: model,
                 book: book,
@@ -524,40 +525,16 @@ struct BookDetailSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(book.name)
-                                .font(.title2.bold())
-                                .foregroundStyle(ink)
-                                .accessibilityAddTraits(.isHeader)
-                            Text("\(model.expenses(for: book.id).count) transactions · \(Money.format(model.spent(for: book.id)))")
-                                .font(.subheadline)
-                                .foregroundStyle(ink.opacity(0.6))
-                        }
-                        Spacer()
-                        Button {
-                            model.openEntry(for: book.id)
-                        } label: {
-                            Label("Add Expense", systemImage: "plus")
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(ink, in: Capsule())
-                                .foregroundStyle(paper)
-                        }
-                        .buttonStyle(PressFeedbackStyle())
-                        .accessibilityIdentifier("addExpenseButton")
-                    }
-                    .padding(.top, 8)
-
-                    Divider()
-                        .overlay(ink.opacity(paper == MC.paper ? 0.08 : 0.15))
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Latest Transactions")
+                        .font(.headline)
+                        .foregroundStyle(ink)
+                        .padding(.top, 8)
 
                     let activities = model.activities(selectedBookID: book.id, allBooks: false)
                     if activities.isEmpty {
                         ContentUnavailableView("Nothing recorded yet", systemImage: "text.book.closed",
-                                               description: Text("Tap Add Expense below to record your first transaction."))
+                                               description: Text("Tap + above to record your first transaction."))
                             .padding(.vertical, 24)
                     } else {
                         LazyVStack(spacing: 0) {
@@ -584,6 +561,17 @@ struct BookDetailSheet: View {
                         onDismiss()
                     }
                     .foregroundStyle(ink)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        model.openEntry(for: book.id)
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(ink)
+                    }
+                    .accessibilityLabel("Add Expense")
+                    .accessibilityIdentifier("addExpenseButton")
                 }
             }
             .sheet(isPresented: $model.showEntry, onDismiss: {

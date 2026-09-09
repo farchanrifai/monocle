@@ -1,5 +1,12 @@
 import Foundation
 import Observation
+import SwiftUI
+
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case light = "Light"
+    case dark = "Dark"
+    var id: Self { self }
+}
 
 @MainActor @Observable
 final class AppModel {
@@ -31,13 +38,53 @@ final class AppModel {
     var workspacePreferences = WorkspacePreferences()
     var hiddenBookIDs: Set<UUID> = []
 
+    var autoAppearance: Bool {
+        get { workspacePreferences.autoAppearance }
+        set {
+            guard workspacePreferences.autoAppearance != newValue else { return }
+            workspacePreferences.autoAppearance = newValue
+            persistWorkspacePreferences()
+        }
+    }
+
+    var manualAppearance: AppearanceMode {
+        get {
+            (visualDirection == .light || visualDirection == .ledger) ? .light : .dark
+        }
+        set {
+            autoAppearance = false
+            switch newValue {
+            case .light:
+                visualDirection = .light
+            case .dark:
+                visualDirection = .instrument
+            }
+        }
+    }
+
     var visualDirection: BookVisualDirection {
         get { workspacePreferences.direction }
         set {
             guard workspacePreferences.direction != newValue else { return }
             workspacePreferences.direction = newValue
+            workspacePreferences.autoAppearance = false
             persistWorkspacePreferences()
         }
+    }
+
+    func effectiveDirection(for systemScheme: ColorScheme) -> BookVisualDirection {
+        if autoAppearance {
+            return systemScheme == .dark ? .instrument : .light
+        } else {
+            return visualDirection
+        }
+    }
+
+    var preferredColorScheme: ColorScheme? {
+        if autoAppearance {
+            return nil
+        }
+        return (visualDirection == .light || visualDirection == .ledger) ? .light : .dark
     }
 
     var orderedBooks: [BookProfile] {

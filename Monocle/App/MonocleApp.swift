@@ -46,6 +46,7 @@ struct RootView: View {
                 } message: { Text(model.error ?? "") }
             }
         }
+        .preferredColorScheme(model.preferredColorScheme)
         .onChange(of: phase) { _, phase in
             if phase != .active {
                 model.persistDraft()

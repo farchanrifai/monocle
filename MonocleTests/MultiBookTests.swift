@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import Monocle
 
 @MainActor
@@ -114,6 +115,10 @@ final class MultiBookTests: XCTestCase {
         var prefs = WorkspacePreferences()
         XCTAssertEqual(prefs.direction, .light)
         XCTAssertEqual(prefs.visualDirection, "Light")
+        XCTAssertFalse(prefs.autoAppearance)
+
+        prefs.autoAppearance = true
+        XCTAssertTrue(prefs.autoAppearance)
 
         prefs.direction = .instrument
         XCTAssertEqual(prefs.visualDirection, "Instrument")
@@ -135,5 +140,68 @@ final class MultiBookTests: XCTestCase {
         let decoded = try JSONDecoder().decode(WorkspacePreferences.self, from: encoded)
         XCTAssertEqual(decoded.direction, .light)
         XCTAssertEqual(decoded.visualDirection, "Light")
+        XCTAssertTrue(decoded.autoAppearance)
+
+        // Backward compatibility: decoding older JSON without autoAppearance
+        let legacyJSON = """
+        {
+            "visibleBookIDs": [],
+            "bookOrder": [],
+            "allActivitiesScope": false,
+            "visualDirection": "Instrument"
+        }
+        """.data(using: .utf8)!
+        let legacyDecoded = try JSONDecoder().decode(WorkspacePreferences.self, from: legacyJSON)
+        XCTAssertEqual(legacyDecoded.direction, .instrument)
+        XCTAssertFalse(legacyDecoded.autoAppearance)
+    }
+
+    func testAppModelAppearanceModesAndAutoSwitch() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let expenseService = try ExpenseService(store: repo)
+        let model = AppModel(expenses: expenseService, state: state)
+
+        // Default: Light mode, auto switch is false
+        XCTAssertEqual(model.visualDirection, .light)
+        XCTAssertEqual(model.manualAppearance, .light)
+        XCTAssertFalse(model.autoAppearance)
+        XCTAssertEqual(model.preferredColorScheme, .light)
+        XCTAssertEqual(model.effectiveDirection(for: .light), .light)
+        XCTAssertEqual(model.effectiveDirection(for: .dark), .light)
+
+        // Switch to Dark mode manually
+        model.manualAppearance = .dark
+        XCTAssertEqual(model.visualDirection, .instrument)
+        XCTAssertEqual(model.manualAppearance, .dark)
+        XCTAssertFalse(model.autoAppearance)
+        XCTAssertEqual(model.preferredColorScheme, .dark)
+        XCTAssertEqual(model.effectiveDirection(for: .light), .instrument)
+        XCTAssertEqual(model.effectiveDirection(for: .dark), .instrument)
+
+        // Switch back to Light mode manually
+        model.manualAppearance = .light
+        XCTAssertEqual(model.visualDirection, .light)
+        XCTAssertEqual(model.manualAppearance, .light)
+        XCTAssertFalse(model.autoAppearance)
+        XCTAssertEqual(model.preferredColorScheme, .light)
+
+        // Enable Auto switch
+        model.autoAppearance = true
+        XCTAssertTrue(model.autoAppearance)
+        XCTAssertNil(model.preferredColorScheme) // nil lets iOS system control color scheme
+        XCTAssertEqual(model.effectiveDirection(for: .light), .light)
+        XCTAssertEqual(model.effectiveDirection(for: .dark), .instrument)
+
+        // Changing visual direction manually turns off auto appearance
+        model.visualDirection = .signal
+        XCTAssertFalse(model.autoAppearance)
+        XCTAssertEqual(model.visualDirection, .signal)
+        XCTAssertEqual(model.manualAppearance, .dark)
+        XCTAssertEqual(model.preferredColorScheme, .dark)
     }
 }

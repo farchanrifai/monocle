@@ -113,7 +113,7 @@ struct BookHomePrototype: View {
         }
         .sheet(item: selectedBookBinding) { book in
             let spacing: CGFloat = 16
-            let minSheetHeight: CGFloat = max(180, info.containerSize.height + info.safeArea.bottom - cardHeight - spacing)
+            let minSheetHeight: CGFloat = max(180, info.containerSize.height - cardHeight - spacing)
             PrototypeBookDetailSheet(
                 book: book,
                 activities: $activities,
@@ -299,32 +299,11 @@ private struct PrototypeBookDetailSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(book.name)
-                                .font(.title2.bold())
-                                .accessibilityAddTraits(.isHeader)
-                            Text("\(bookActivities.count) TRANSACTIONS · SAMPLE")
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button {
-                            addingExpense = true
-                        } label: {
-                            Label("Add Expense", systemImage: "plus")
-                                .font(.headline)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(ink, in: Capsule())
-                                .foregroundStyle(paper)
-                        }
-                        .buttonStyle(PressFeedbackStyle())
-                    }
-                    .padding(.top, 8)
-
-                    Divider()
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Latest Transactions")
+                        .font(.headline)
+                        .foregroundStyle(ink)
+                        .padding(.top, 8)
 
                     if bookActivities.isEmpty {
                         ContentUnavailableView("Nothing recorded yet", systemImage: "text.book.closed",
@@ -368,6 +347,15 @@ private struct PrototypeBookDetailSheet: View {
                     Button("Done") {
                         onDismiss()
                     }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        addingExpense = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.body.weight(.semibold))
+                    }
+                    .accessibilityLabel("Add Expense")
                 }
             }
             .sheet(isPresented: $addingExpense) {

@@ -148,6 +148,7 @@ final class MonocleUITests: XCTestCase {
             .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
         XCTAssertTrue(app.buttons["Discard"].waitForExistence(timeout: 5))
         app.buttons["Discard"].tap()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
         app.buttons["addExpense"].tap()
         XCTAssertTrue(app.staticTexts["amountDisplay"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["amountDisplay"].label, "Amount Rp0")
@@ -329,6 +330,48 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Book options"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "wallet-stack"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
+    @MainActor
+    func testSettingsAppearanceModeAndAutoSwitch() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 10))
+        app.buttons["homeSettings"].tap()
+
+        XCTAssertTrue(app.switches["autoAppearanceToggle"].waitForExistence(timeout: 5))
+        let autoToggle = app.switches["autoAppearanceToggle"]
+        XCTAssertEqual(autoToggle.value as? String, "0")
+
+        // Tapping Dark in appearanceModePicker
+        XCTAssertTrue(app.segmentedControls["appearanceModePicker"].waitForExistence(timeout: 5))
+        app.segmentedControls["appearanceModePicker"].buttons["Dark"].tap()
+
+        // Turn on auto switch
+        autoToggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertEqual(autoToggle.value as? String, "1")
+
+        // Dismiss settings
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testCardDetailSheetDoesNotOverlapCard() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'")).element(boundBy: 0)
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+        XCTAssertTrue(app.buttons["closeBookDetail"].waitForExistence(timeout: 5))
+        let shot = app.screenshot()
+        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/prod_card_detail.png"))
+        app.buttons["closeBookDetail"].tap()
+        XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 5))
     }
 
 }

@@ -180,10 +180,47 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var bookOrder: [UUID] = []
     var allActivitiesScope: Bool = false
     var visualDirection: String = "Light"
+    var autoAppearance: Bool = false
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
         set { visualDirection = newValue.rawValue }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance
+    }
+
+    init(
+        visibleBookIDs: [UUID] = [],
+        bookOrder: [UUID] = [],
+        allActivitiesScope: Bool = false,
+        visualDirection: String = "Light",
+        autoAppearance: Bool = false
+    ) {
+        self.visibleBookIDs = visibleBookIDs
+        self.bookOrder = bookOrder
+        self.allActivitiesScope = allActivitiesScope
+        self.visualDirection = visualDirection
+        self.autoAppearance = autoAppearance
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        visibleBookIDs = try container.decodeIfPresent([UUID].self, forKey: .visibleBookIDs) ?? []
+        bookOrder = try container.decodeIfPresent([UUID].self, forKey: .bookOrder) ?? []
+        allActivitiesScope = try container.decodeIfPresent(Bool.self, forKey: .allActivitiesScope) ?? false
+        visualDirection = try container.decodeIfPresent(String.self, forKey: .visualDirection) ?? "Light"
+        autoAppearance = try container.decodeIfPresent(Bool.self, forKey: .autoAppearance) ?? false
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(visibleBookIDs, forKey: .visibleBookIDs)
+        try container.encode(bookOrder, forKey: .bookOrder)
+        try container.encode(allActivitiesScope, forKey: .allActivitiesScope)
+        try container.encode(visualDirection, forKey: .visualDirection)
+        try container.encode(autoAppearance, forKey: .autoAppearance)
     }
 }
 

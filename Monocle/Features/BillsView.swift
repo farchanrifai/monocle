@@ -75,8 +75,9 @@ struct BillEditor: View {
 }
 
 struct SettingsView: View {
-    let model: AppModel
+    @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         NavigationStack {
             Form {
@@ -84,6 +85,47 @@ struct SettingsView: View {
                     LabeledContent("Book", value: model.settings.book.name)
                     LabeledContent("Currency", value: "IDR")
                     LabeledContent("Version", value: "0.1.4 · Prototype")
+                }
+                Section {
+                    Toggle("Auto switch", isOn: $model.autoAppearance)
+                        .accessibilityIdentifier("autoAppearanceToggle")
+
+                    Picker("Appearance", selection: Binding(
+                        get: {
+                            if model.autoAppearance {
+                                return colorScheme == .dark ? AppearanceMode.dark : AppearanceMode.light
+                            }
+                            return model.manualAppearance
+                        },
+                        set: { newMode in
+                            model.manualAppearance = newMode
+                        }
+                    )) {
+                        Text("Light").tag(AppearanceMode.light)
+                        Text("Dark").tag(AppearanceMode.dark)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("appearanceModePicker")
+
+                    Picker("Theme style", selection: Binding(
+                        get: { model.visualDirection },
+                        set: { newDir in
+                            model.visualDirection = newDir
+                        }
+                    )) {
+                        ForEach(BookVisualDirection.allCases) { dir in
+                            Text(dir.rawValue).tag(dir)
+                        }
+                    }
+                    .accessibilityIdentifier("themeStylePicker")
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    if model.autoAppearance {
+                        Text("monocle automatically matches your iOS system appearance.")
+                    } else {
+                        Text("Appearance is locked to your selection.")
+                    }
                 }
                 Section {
                     NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
