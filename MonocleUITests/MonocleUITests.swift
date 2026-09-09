@@ -417,4 +417,118 @@ final class MonocleUITests: XCTestCase {
         try? customScreenshot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_card_stack.png"))
     }
 
+    @MainActor
+    func testCustomizeCardWhenCardAlreadyOpenDismissesTransactionSheetAndOpensCustomizer() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Open the first card
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'")).element(boundBy: 0)
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+
+        // 2. Verify card detail sheet is open
+        XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
+
+        // 3. Tap options menu -> "Customize card" while card detail is open
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let customizeButton = app.buttons["Customize card"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
+        customizeButton.tap()
+
+        // 4. Verify "Customize Card" sheet presents successfully without failing silently
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["saveCardCustomization"].waitForExistence(timeout: 5))
+
+        // 5. Dismiss customizer
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testCustomizeCardDirectlyFromDetailSheetToolbar() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'")).element(boundBy: 0)
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+
+        XCTAssertTrue(app.buttons["customizeCardDetailButton"].waitForExistence(timeout: 5))
+        app.buttons["customizeCardDetailButton"].tap()
+
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testCardCustomizerHorizontalCarouselSwitchesActiveCard() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // Create second book so stack has multiple cards
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+        XCTAssertTrue(app.buttons["Create new book"].waitForExistence(timeout: 5))
+        app.buttons["Create new book"].tap()
+
+        let nameField = app.textFields["Book name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        nameField.typeText("Business")
+        app.alerts.buttons["Create"].tap()
+
+        // Close newly focused book detail sheet if open
+        if app.buttons["closeBookDetail"].waitForExistence(timeout: 3) {
+            app.buttons["closeBookDetail"].tap()
+        }
+
+        // Open customizer
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let customizeButton = app.buttons["Customize card"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
+        customizeButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+
+        // Verify carousel previews exist for multiple books
+        let previews = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'customizer-preview-'"))
+        XCTAssertTrue(previews.element(boundBy: 0).waitForExistence(timeout: 5))
+        XCTAssertTrue(previews.element(boundBy: 1).waitForExistence(timeout: 5))
+
+        // Take a screenshot of the multi-card horizontal carousel
+        let carouselShot = app.screenshot()
+        try? carouselShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_carousel.png"))
+
+        // Tap the second preview card in carousel to make it active
+        previews.element(boundBy: 1).tap()
+
+        // Switch to Stock tab
+        app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
+
+        // Select Sunset Heat
+        let sunset = app.buttons["stockDesign-sunsetHeat"]
+        XCTAssertTrue(sunset.waitForExistence(timeout: 5))
+        sunset.tap()
+
+        // Save customization
+        app.buttons["saveCardCustomization"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+
+        // Take screenshot of home screen with customized card stack
+        let stackShot = app.screenshot()
+        try? stackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_stack_multibook.png"))
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
+
 }

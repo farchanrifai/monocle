@@ -11,30 +11,74 @@ enum CustomizerTab: String, CaseIterable, Identifiable {
 
 struct CardCustomizerView: View {
     @Bindable var model: AppModel
-    let book: BookProfile
+    let initialBook: BookProfile
+    let books: [BookProfile]
     var onDismiss: () -> Void
 
-    @State private var draft: BookCardCustomization
+    @State private var activeBookID: UUID?
+    @State private var drafts: [UUID: BookCardCustomization]
     @State private var selectedTab: CustomizerTab = .colors
     @State private var customColor: Color = .orange
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var isProcessingPhoto = false
     @State private var photoError: String? = nil
 
-    init(model: AppModel, book: BookProfile, onDismiss: @escaping () -> Void) {
+    init(model: AppModel, initialBook: BookProfile, books: [BookProfile]? = nil, onDismiss: @escaping () -> Void) {
         self.model = model
-        self.book = book
+        self.initialBook = initialBook
+        let visibleBooks = books ?? {
+            let list = model.orderedBooks.filter { !model.hiddenBookIDs.contains($0.id) }
+            return list.isEmpty ? model.books : list
+        }()
+        if !visibleBooks.contains(where: { $0.id == initialBook.id }) {
+            self.books = [initialBook] + visibleBooks
+        } else {
+            self.books = visibleBooks
+        }
         self.onDismiss = onDismiss
-        _draft = State(initialValue: model.customization(for: book.id))
+        _activeBookID = State(initialValue: initialBook.id)
+
+        var initialDrafts: [UUID: BookCardCustomization] = [:]
+        for b in self.books {
+            initialDrafts[b.id] = model.customization(for: b.id)
+        }
+        _drafts = State(initialValue: initialDrafts)
+
+        let initialCustom = model.customization(for: initialBook.id)
+        if case .customColor(let hex) = initialCustom.style {
+            _customColor = State(initialValue: CardPalette.color(fromHex: hex))
+        }
+    }
+
+    init(model: AppModel, book: BookProfile, onDismiss: @escaping () -> Void) {
+        self.init(model: model, initialBook: book, books: nil, onDismiss: onDismiss)
+    }
+
+    private var currentBookID: UUID {
+        activeBookID ?? initialBook.id
+    }
+
+    private var activeBook: BookProfile {
+        books.first(where: { $0.id == currentBookID }) ?? initialBook
+    }
+
+    private var currentDraft: Binding<BookCardCustomization> {
+        Binding(
+            get: {
+                drafts[currentBookID] ?? model.customization(for: currentBookID)
+            },
+            set: { newCustomization in
+                drafts[currentBookID] = newCustomization
+            }
+        )
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // MARK: - Live Preview Card
-                    cardPreview
-                        .padding(.horizontal, 20)
+                    // MARK: - Live Preview Carousel
+                    cardCarousel
                         .padding(.top, 8)
 
                     // MARK: - Text Tone Picker
@@ -44,7 +88,7 @@ struct CardCustomizerView: View {
                             .foregroundStyle(.secondary)
                             .textCase(.uppercase)
 
-                        Picker("Text Tone", selection: $draft.textTone) {
+                        Picker("Text Tone", selection: currentDraft.textTone) {
                             Text("Auto").tag(CardTextTone.auto)
                             Text("Light").tag(CardTextTone.light)
                             Text("Dark").tag(CardTextTone.dark)
@@ -87,7 +131,11 @@ struct CardCustomizerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        model.updateCustomization(draft, for: book.id)
+                        for (bookID, custom) in drafts {
+                            if custom != model.customization(for: bookID) {
+                                model.updateCustomization(custom, for: bookID)
+                            }
+                        }
                         onDismiss()
                     }
                     .font(.headline)
@@ -98,14 +146,74 @@ struct CardCustomizerView: View {
                 guard let newItem else { return }
                 loadSelectedPhoto(newItem)
             }
+            .onChange(of: activeBookID) { _, newID in
+                if let targetID = newID, let custom = drafts[targetID], case .customColor(let hex) = custom.style {
+                    customColor = CardPalette.color(fromHex: hex)
+                }
+            }
         }
     }
 
-    // MARK: - Card Preview
-    private var cardPreview: some View {
-        let textStyle = CardPalette.resolvedTextColor(for: draft)
+    // MARK: - Card Carousel
+    private var cardCarousel: some View {
+        VStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 14) {
+                    ForEach(books) { book in
+                        previewCard(for: book)
+                            .containerRelativeFrame(.horizontal) { length, _ in
+                                max(240, length - 56)
+                            }
+                            .id(book.id)
+                            .onTapGesture {
+                                if currentBookID != book.id {
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                                        activeBookID = book.id
+                                    }
+                                }
+                            }
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .contentMargins(.horizontal, 28, for: .scrollContent)
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $activeBookID)
+
+            if books.count > 1 {
+                pageIndicator
+            }
+        }
+    }
+
+    private var pageIndicator: some View {
+        HStack(spacing: 6) {
+            ForEach(books) { book in
+                let isActive = book.id == currentBookID
+                Capsule()
+                    .fill(isActive ? Color.primary : Color.secondary.opacity(0.3))
+                    .frame(width: isActive ? 18 : 6, height: 6)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentBookID)
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            activeBookID = book.id
+                        }
+                    }
+                    .accessibilityLabel("Card \(book.name)")
+            }
+        }
+        .padding(.top, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("cardCustomizerPageIndicator")
+    }
+
+    private func previewCard(for book: BookProfile) -> some View {
+        let custom = drafts[book.id] ?? model.customization(for: book.id)
+        let textStyle = CardPalette.resolvedTextColor(for: custom)
         let total = model.spent(for: book.id)
         let count = model.expenses(for: book.id).count
+        let isActive = (book.id == currentBookID)
+        let bookIndex = (books.firstIndex(where: { $0.id == book.id }) ?? 0) + 1
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -113,7 +221,7 @@ struct CardCustomizerView: View {
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                Text(book.kind == .sample ? "01" : "02")
+                Text(String(format: "%02d", bookIndex))
                     .font(.caption.monospaced())
             }
 
@@ -130,18 +238,21 @@ struct CardCustomizerView: View {
         .frame(maxWidth: .infinity)
         .frame(height: 190, alignment: .topLeading)
         .foregroundStyle(textStyle)
-        .background(cardBackgroundView)
+        .background(cardBackgroundView(for: custom, book: book))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5)
         )
-        .shadow(color: Color.black.opacity(0.08), radius: 8, y: 4)
+        .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
+        .scaleEffect(isActive ? 1.0 : 0.94)
+        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
+        .accessibilityIdentifier("customizer-preview-\(book.id)")
     }
 
     @ViewBuilder
-    private var cardBackgroundView: some View {
-        switch draft.style {
+    private func cardBackgroundView(for custom: BookCardCustomization, book: BookProfile) -> some View {
+        switch custom.style {
         case .palette(let index):
             CardPalette.color(for: index)
         case .customColor(let hex):
@@ -154,7 +265,7 @@ struct CardCustomizerView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                Color.gray
+                CardPalette.color(for: book.colorIndex)
             }
         }
     }
@@ -170,14 +281,14 @@ struct CardCustomizerView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 12)], spacing: 12) {
                 ForEach(CardPalette.standard) { item in
                     let isSelected: Bool = {
-                        if case .palette(let idx) = draft.style {
+                        if case .palette(let idx) = currentDraft.wrappedValue.style {
                             return (idx % CardPalette.standard.count) == item.id
                         }
                         return false
                     }()
 
                     Button {
-                        draft.style = .palette(index: item.id)
+                        currentDraft.wrappedValue.style = .palette(index: item.id)
                     } label: {
                         Circle()
                             .fill(item.color)
@@ -205,14 +316,14 @@ struct CardCustomizerView: View {
 
             ColorPicker("Custom Color", selection: Binding(
                 get: {
-                    if case .customColor(let hex) = draft.style {
+                    if case .customColor(let hex) = currentDraft.wrappedValue.style {
                         return CardPalette.color(fromHex: hex)
                     }
                     return customColor
                 },
                 set: { newColor in
                     customColor = newColor
-                    draft.style = .customColor(hex: CardPalette.hexString(from: newColor))
+                    currentDraft.wrappedValue.style = .customColor(hex: CardPalette.hexString(from: newColor))
                 }
             ), supportsOpacity: false)
             .font(.subheadline.weight(.medium))
@@ -232,14 +343,14 @@ struct CardCustomizerView: View {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(StockCardDesign.allCases) { design in
                     let isSelected: Bool = {
-                        if case .stock(let current) = draft.style {
+                        if case .stock(let current) = currentDraft.wrappedValue.style {
                             return current == design
                         }
                         return false
                     }()
 
                     Button {
-                        draft.style = .stock(design)
+                        currentDraft.wrappedValue.style = .stock(design)
                     } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             StockDesignBackgroundView(design: design)
@@ -283,7 +394,7 @@ struct CardCustomizerView: View {
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
 
-            if case .customPhoto(let filename) = draft.style,
+            if case .customPhoto(let filename) = currentDraft.wrappedValue.style,
                let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
                 VStack(spacing: 12) {
                     Image(uiImage: image)
@@ -305,7 +416,7 @@ struct CardCustomizerView: View {
                         .accessibilityIdentifier("replacePhotoPicker")
 
                         Button(role: .destructive) {
-                            draft.style = .palette(index: 0)
+                            currentDraft.wrappedValue.style = .palette(index: 0)
                         } label: {
                             Label("Remove", systemImage: "trash")
                                 .font(.subheadline.weight(.semibold))
@@ -361,6 +472,7 @@ struct CardCustomizerView: View {
     private func loadSelectedPhoto(_ item: PhotosPickerItem) {
         isProcessingPhoto = true
         photoError = nil
+        let targetBookID = currentBookID
         Task {
             do {
                 guard let data = try await item.loadTransferable(type: Data.self) else {
@@ -370,10 +482,11 @@ struct CardCustomizerView: View {
                     }
                     return
                 }
-                let filename = try CardArtworkStore.shared.saveArtwork(data, for: book.id)
+                let filename = try CardArtworkStore.shared.saveArtwork(data, for: targetBookID)
                 await MainActor.run {
-                    self.draft.style = .customPhoto(filename: filename)
+                    self.drafts[targetBookID]?.style = .customPhoto(filename: filename)
                     self.isProcessingPhoto = false
+                    self.selectedPhotoItem = nil
                 }
             } catch {
                 await MainActor.run {

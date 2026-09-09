@@ -18,6 +18,7 @@ struct BookHomeView: View {
     @State private var showingCreateBook = false
     @State private var newBookName = ""
     @State private var createBookError: String?
+    @State private var pendingCustomizingBook: BookProfile? = nil
     @State private var pull: CGFloat = 0
     @State private var info = ScrollInfo()
     @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
@@ -140,7 +141,14 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("addExpenseButton")
             }
         }
-        .sheet(item: selectedBookBinding) { book in
+        .sheet(item: selectedBookBinding, onDismiss: {
+            if let pending = pendingCustomizingBook {
+                pendingCustomizingBook = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    model.customizingBook = pending
+                }
+            }
+        }) { book in
             let spacing: CGFloat = 16
             let minSheetHeight: CGFloat = max(180, info.containerSize.height - cardHeight - spacing)
             BookDetailSheet(
@@ -148,7 +156,10 @@ struct BookHomeView: View {
                 book: book,
                 paper: paper,
                 ink: ink,
-                onDismiss: { focus(nil) }
+                onDismiss: { focus(nil) },
+                onCustomize: {
+                    openCustomizer(for: book)
+                }
             )
             .presentationDetents([.height(minSheetHeight), .large])
             .presentationBackgroundInteraction(.enabled(upThrough: .large))
@@ -160,7 +171,11 @@ struct BookHomeView: View {
             manageStackSheet
         }
         .sheet(item: $model.customizingBook) { book in
-            CardCustomizerView(model: model, book: book) {
+            CardCustomizerView(
+                model: model,
+                initialBook: book,
+                books: visible.isEmpty ? model.books : visible
+            ) {
                 model.customizingBook = nil
             }
         }
@@ -204,6 +219,14 @@ struct BookHomeView: View {
         .onChange(of: model.selectedBookID) { _, newID in
             if selectedID != newID {
                 focus(newID)
+            }
+        }
+        .onChange(of: selectedID) { _, newID in
+            if newID == nil, let pending = pendingCustomizingBook {
+                pendingCustomizingBook = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    model.customizingBook = pending
+                }
             }
         }
     }
@@ -265,7 +288,7 @@ struct BookHomeView: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button {
-                model.customizingBook = book
+                openCustomizer(for: book)
             } label: {
                 Label("Customize card", systemImage: "paintbrush")
             }
@@ -449,7 +472,7 @@ struct BookHomeView: View {
 
             if let targetBook = current ?? visible.first ?? model.books.first {
                 Button {
-                    model.customizingBook = targetBook
+                    openCustomizer(for: targetBook)
                 } label: {
                     Label("Customize card", systemImage: "paintbrush")
                 }
@@ -507,6 +530,15 @@ struct BookHomeView: View {
         headingFocused = true
     }
 
+    private func openCustomizer(for book: BookProfile) {
+        if selectedID != nil {
+            pendingCustomizingBook = book
+            focus(nil)
+        } else {
+            model.customizingBook = book
+        }
+    }
+
     private var manageStackSheet: some View {
         NavigationStack {
             List {
@@ -553,6 +585,7 @@ struct BookDetailSheet: View {
     var paper: Color = MC.paper
     var ink: Color = MC.ink
     var onDismiss: () -> Void
+    var onCustomize: (() -> Void)? = nil
 
     var body: some View {
         NavigationStack {
@@ -595,15 +628,28 @@ struct BookDetailSheet: View {
                     .foregroundStyle(ink)
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        model.openEntry(for: book.id)
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(ink)
+                    HStack(spacing: 12) {
+                        if let onCustomize {
+                            Button {
+                                onCustomize()
+                            } label: {
+                                Image(systemName: "paintbrush")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(ink)
+                            }
+                            .accessibilityLabel("Customize Card")
+                            .accessibilityIdentifier("customizeCardDetailButton")
+                        }
+                        Button {
+                            model.openEntry(for: book.id)
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(ink)
+                        }
+                        .accessibilityLabel("Add Expense")
+                        .accessibilityIdentifier("addExpenseButton")
                     }
-                    .accessibilityLabel("Add Expense")
-                    .accessibilityIdentifier("addExpenseButton")
                 }
             }
             .sheet(isPresented: $model.showEntry, onDismiss: {
