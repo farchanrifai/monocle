@@ -808,6 +808,31 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(filterButton.exists)
     }
 
+    @MainActor
+    func testCycleThroughDeckWithRecording() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        let filterButton = app.buttons["activityFilterButton"]
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 10))
+
+        let coord = filterButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+
+        // Phase 1: Normal cycling with 1.0s between each tap to record full transitions
+        for _ in 1...5 {
+            coord.tap()
+            Thread.sleep(forTimeInterval: 1.0)
+        }
+
+        // Phase 2: Rapid tapping with 140ms interval
+        for _ in 1...6 {
+            coord.tap()
+            usleep(140_000)
+        }
+        Thread.sleep(forTimeInterval: 1.5)
+
+        XCTAssertTrue(filterButton.exists)
+    }
 }
-
-

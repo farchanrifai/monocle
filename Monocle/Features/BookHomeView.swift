@@ -327,6 +327,7 @@ struct BookHomeView: View {
         let isSelected = selectedID != nil
         let isCurrent = selectedID == book.id
         let selectedIdx = selectedIndex
+        let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
 
         return Button {
             focus(isCurrent ? nil : book.id)
@@ -336,6 +337,7 @@ struct BookHomeView: View {
                 .frame(height: cardHeight)
         }
         .buttonStyle(.plain)
+        .offset(y: collapseOffset)
         .contextMenu {
             Button {
                 openCustomizer(for: book)
@@ -345,7 +347,7 @@ struct BookHomeView: View {
         }
         .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
         .accessibilityIdentifier("stack-book-\(book.id)")
-        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion, stackCollapseProgress, stripHeight] content, proxy in
+        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion] content, proxy in
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
@@ -359,11 +361,10 @@ struct BookHomeView: View {
             }
 
             let fan: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
-            let collapseOffset = -CGFloat(index) * stripHeight * stackCollapseProgress
 
             return content
                 .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
-                .offset(y: isSelected ? pushOffset : (fan + collapseOffset))
+                .offset(y: isSelected ? pushOffset : fan)
         }
     }
 
@@ -395,12 +396,12 @@ struct BookHomeView: View {
             if isAlreadyCompressed {
                 // If cards are already compressed from an immediate prior tap:
                 if frontCardChanges {
-                    withAnimation(.easeInOut(duration: 0.08)) {
+                    withAnimation(.easeInOut(duration: 0.09)) {
                         displayedBooks = newBooks
                         displayedFilterScope = model.filterScope
                         displayedStackID = model.activeStackID
                     }
-                    try? await Task.sleep(for: .milliseconds(80))
+                    try? await Task.sleep(for: .milliseconds(90))
                     guard !Task.isCancelled else { return }
                 } else {
                     var noAnim = Transaction()
@@ -413,35 +414,35 @@ struct BookHomeView: View {
                 }
 
                 // Spring fan down to rest positions
-                withAnimation(.spring(response: 0.20, dampingFraction: 0.86)) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                     stackCollapseProgress = 0.0
                 }
 
-                try? await Task.sleep(for: .milliseconds(140))
+                try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled else { return }
 
                 currentStackKey = targetKey
                 transitionTask = nil
             } else {
-                // Phase 1: Continuous Gather / Compress to top (80ms)
-                withAnimation(.easeOut(duration: 0.08)) {
+                // Phase 1: Smooth kinetic gather / compress to top (150ms)
+                withAnimation(.easeInOut(duration: 0.15)) {
                     stackCollapseProgress = 1.0
                 }
 
-                try? await Task.sleep(for: .milliseconds(80))
+                try? await Task.sleep(for: .milliseconds(150))
                 guard !Task.isCancelled else { return }
 
                 // Peak Compression Morph:
-                // If the frontmost card changes, smoothly cross-dissolve at y=0 (100ms)
+                // If the frontmost card changes, smoothly cross-dissolve at y=0 (110ms)
                 // so the card face doesn't abruptly blink!
                 if frontCardChanges {
-                    withAnimation(.easeInOut(duration: 0.10)) {
+                    withAnimation(.easeInOut(duration: 0.11)) {
                         displayedBooks = newBooks
                         displayedFilterScope = model.filterScope
                         displayedStackID = model.activeStackID
                     }
 
-                    try? await Task.sleep(for: .milliseconds(100))
+                    try? await Task.sleep(for: .milliseconds(110))
                     guard !Task.isCancelled else { return }
                 } else {
                     // Front card is identical: silent swap with 0ms delay!
@@ -454,12 +455,12 @@ struct BookHomeView: View {
                     }
                 }
 
-                // Phase 2: Fluid Spring Fan-out to rest positions (140ms)
-                withAnimation(.spring(response: 0.20, dampingFraction: 0.86)) {
+                // Phase 2: Fluid Spring Fan-out to rest positions (200ms)
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                     stackCollapseProgress = 0.0
                 }
 
-                try? await Task.sleep(for: .milliseconds(140))
+                try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled else { return }
 
                 currentStackKey = targetKey
