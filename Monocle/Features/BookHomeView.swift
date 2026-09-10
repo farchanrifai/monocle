@@ -7,12 +7,6 @@ struct ScrollInfo: Equatable {
     var minY: CGFloat = 0
 }
 
-struct StackPlaceholderInfo: Equatable {
-    let name: String
-    let icon: String
-    let count: Int
-}
-
 /// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-book persistence.
 struct BookHomeView: View {
     @Bindable var model: AppModel
@@ -36,8 +30,6 @@ struct BookHomeView: View {
     @State private var currentStackKey: String = ""
     @State private var targetStackKey: String = ""
     @State private var stackCollapseProgress: CGFloat = 0.0
-    @State private var showPlaceholder: Bool = false
-    @State private var placeholderInfo: StackPlaceholderInfo? = nil
     @State private var transitionTask: Task<Void, Never>? = nil
 
     private var stackKey: String {
@@ -96,7 +88,7 @@ struct BookHomeView: View {
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 24) {
                     stack
-                    if displayedBooks.isEmpty && !showPlaceholder {
+                    if displayedBooks.isEmpty {
                         ContentUnavailableView {
                             Label("Your stack is empty", systemImage: "rectangle.stack")
                         } description: {
@@ -322,20 +314,9 @@ struct BookHomeView: View {
     }
 
     private var stack: some View {
-        ZStack(alignment: .top) {
-            VStack(spacing: -(cardHeight - stripHeight)) {
-                ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
-                    cardItem(book, index: index)
-                }
-            }
-
-            if showPlaceholder, let info = placeholderInfo {
-                stackPlaceholderCard(name: info.name, icon: info.icon, count: info.count)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: cardHeight)
-                    .accessibilityIdentifier("stackPlaceholderCard")
-                    .transition(.opacity)
-                    .zIndex(100)
+        VStack(spacing: -(cardHeight - stripHeight)) {
+            ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
+                cardItem(book, index: index)
             }
         }
         .compositingGroup()
@@ -389,114 +370,27 @@ struct BookHomeView: View {
         displayedBooks.firstIndex { $0.id == selectedID } ?? displayedBooks.count
     }
 
-    private func stackPlaceholderCard(name: String, icon: String, count: Int) -> some View {
-        let isAllCards = model.filterScope == .allCards
-        let accent = isAllCards ? Color.primary : MC.red
-
-        return VStack(spacing: 14) {
-            HStack {
-                HStack(spacing: 6) {
-                    Image(systemName: icon)
-                        .font(.caption.weight(.bold))
-                    Text(isAllCards ? "ALL CARDS" : "STACK")
-                        .font(.caption.weight(.heavy))
-                        .tracking(1.0)
-                }
-                .foregroundStyle(accent)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(accent.opacity(0.12), in: Capsule())
-
-                Spacer()
-
-                Text("\(count) \(count == 1 ? "CARD" : "CARDS")")
-                    .font(.caption.monospaced().weight(.semibold))
-                    .foregroundStyle(Color.secondary)
-            }
-
-            Spacer(minLength: 0)
-
-            ZStack {
-                Circle()
-                    .fill(accent.opacity(0.14))
-                    .frame(width: 58, height: 58)
-                Image(systemName: icon)
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(accent)
-            }
-
-            VStack(spacing: 4) {
-                Text(name)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                Text(isAllCards ? "Viewing all active cards" : "Active stack collection")
-                    .font(.caption)
-                    .foregroundStyle(Color.secondary)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.black.opacity(colorScheme == .dark ? 0.25 : 0.12), lineWidth: 0.5)
-        )
-        .accessibilityIdentifier("stackPlaceholderCard")
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Switched to stack \(name), \(count) cards")
-    }
-
     private func performStackTransition(to targetKey: String) {
         targetStackKey = targetKey
 
-        let isAllCards = model.filterScope == .allCards
-        let targetName: String
-        let targetIcon: String
-        let targetCount: Int
-
-        if isAllCards {
-            targetName = "All Active Cards"
-            targetIcon = "rectangle.stack"
-            targetCount = model.unhiddenBooks.count
-        } else if let stack = model.stacks.first(where: { $0.id == model.activeStackID }) ?? model.currentStack {
-            targetName = stack.name
-            targetIcon = stack.icon
-            targetCount = stack.cardIDs.count
-        } else {
-            targetName = "Stack"
-            targetIcon = "square.stack.3d.up.fill"
-            targetCount = model.visibleBooks.count
-        }
-
         if reduceMotion {
-            withAnimation(.easeInOut(duration: 0.16)) {
+            withAnimation(.easeInOut(duration: 0.14)) {
                 displayedBooks = model.visibleBooks
                 displayedFilterScope = model.filterScope
                 displayedStackID = model.activeStackID
                 currentStackKey = targetKey
                 stackCollapseProgress = 0.0
-                showPlaceholder = false
             }
             return
         }
 
-        let newInfo = StackPlaceholderInfo(name: targetName, icon: targetIcon, count: targetCount)
-        let isAlreadyMidTransition = (transitionTask != nil) || showPlaceholder || (stackCollapseProgress > 0.4)
+        let isAlreadyCompressed = (transitionTask != nil) && (stackCollapseProgress > 0.4)
 
         transitionTask?.cancel()
         transitionTask = Task { @MainActor in
-            if isAlreadyMidTransition {
-                // If cards are already stacked/collapsing to top, update placeholder immediately
-                // and swap underlying books with 0ms delay!
-                withAnimation(.snappy(duration: 0.15)) {
-                    placeholderInfo = newInfo
-                    showPlaceholder = true
-                    stackCollapseProgress = 1.0
-                }
+            if isAlreadyCompressed {
+                // If cards are already compressed from an immediate prior tap,
+                // swap the underlying data silently at peak compression with 0ms delay!
                 var noAnim = Transaction()
                 noAnim.disablesAnimations = true
                 withTransaction(noAnim) {
@@ -505,54 +399,26 @@ struct BookHomeView: View {
                     displayedStackID = model.activeStackID
                 }
 
-                // Debounce pause: wait for rapid taps to settle (180ms)
-                try? await Task.sleep(for: .milliseconds(180))
-                guard !Task.isCancelled else { return }
-
-                // Fade out placeholder card
-                withAnimation(.easeInOut(duration: 0.10)) {
-                    showPlaceholder = false
-                }
-
-                try? await Task.sleep(for: .milliseconds(100))
-                guard !Task.isCancelled else { return }
-
-                // Fan down new cards smoothly to their rest positions
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                // Spring fan down to rest positions
+                withAnimation(.spring(response: 0.20, dampingFraction: 0.86)) {
                     stackCollapseProgress = 0.0
-                }
-
-                try? await Task.sleep(for: .milliseconds(180))
-                guard !Task.isCancelled else { return }
-
-                currentStackKey = targetKey
-                placeholderInfo = nil
-                transitionTask = nil
-            } else {
-                // Fresh single tap transition:
-                placeholderInfo = newInfo
-
-                // Step 1: Swiftly stack up all cards to top (140ms)
-                withAnimation(.spring(response: 0.20, dampingFraction: 0.90)) {
-                    stackCollapseProgress = 1.0
                 }
 
                 try? await Task.sleep(for: .milliseconds(140))
                 guard !Task.isCancelled else { return }
 
-                // Step 2: Reveal placeholder card with the new Stack name (100ms)
-                withAnimation(.easeInOut(duration: 0.10)) {
-                    showPlaceholder = true
+                currentStackKey = targetKey
+                transitionTask = nil
+            } else {
+                // Phase 1: Continuous Gather / Compress to top (80ms)
+                withAnimation(.easeOut(duration: 0.08)) {
+                    stackCollapseProgress = 1.0
                 }
 
-                try? await Task.sleep(for: .milliseconds(100))
+                try? await Task.sleep(for: .milliseconds(80))
                 guard !Task.isCancelled else { return }
 
-                // Step 3: Hold placeholder card so user can comfortably register stack name (180ms)
-                try? await Task.sleep(for: .milliseconds(180))
-                guard !Task.isCancelled else { return }
-
-                // Step 4: Silently swap cards and filter scope behind the opaque placeholder card
+                // Silent Re-index / Swap at peak compression
                 var noAnim = Transaction()
                 noAnim.disablesAnimations = true
                 withTransaction(noAnim) {
@@ -561,27 +427,15 @@ struct BookHomeView: View {
                     displayedStackID = model.activeStackID
                 }
 
-                try? await Task.sleep(for: .milliseconds(16))
-                guard !Task.isCancelled else { return }
-
-                // Step 5: Fade out placeholder card to reveal new stacked cards (100ms)
-                withAnimation(.easeInOut(duration: 0.10)) {
-                    showPlaceholder = false
-                }
-
-                try? await Task.sleep(for: .milliseconds(100))
-                guard !Task.isCancelled else { return }
-
-                // Step 6: Fan down new cards smoothly to their rest positions (180ms)
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                // Phase 2: Fluid Spring Fan-out to rest positions (140ms)
+                withAnimation(.spring(response: 0.20, dampingFraction: 0.86)) {
                     stackCollapseProgress = 0.0
                 }
 
-                try? await Task.sleep(for: .milliseconds(180))
+                try? await Task.sleep(for: .milliseconds(140))
                 guard !Task.isCancelled else { return }
 
                 currentStackKey = targetKey
-                placeholderInfo = nil
                 transitionTask = nil
             }
         }
