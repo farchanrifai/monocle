@@ -24,10 +24,8 @@
 		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
 		671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */; };
 		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
-		694FC3702BE496718FC0F365 /* BookHomePrototype.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC9AF96E53A1B711F386903 /* BookHomePrototype.swift */; };
 		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
 		9321C8B23F73EED9EA109E04 /* LocalStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */; };
-		975C80EE5A9E4DB240BA73FF /* PrototypeBookSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = E977F1EDBCA155B67ADD7082 /* PrototypeBookSamples.swift */; };
 		ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */; };
 		B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82F954B55004100EBACB8D /* AppModel.swift */; };
 		B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D433FF1198DE03E544B102E2 /* BudgetsView.swift */; };
@@ -97,9 +95,7 @@
 		BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryValidation.swift; sourceTree = "<group>"; };
 		BFAB59F8D69B863E198985F9 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
 		D433FF1198DE03E544B102E2 /* BudgetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetsView.swift; sourceTree = "<group>"; };
-		DEC9AF96E53A1B711F386903 /* BookHomePrototype.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookHomePrototype.swift; sourceTree = "<group>"; };
 		E88A8115A260295093DD9EEA /* MonocleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		E977F1EDBCA155B67ADD7082 /* PrototypeBookSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrototypeBookSamples.swift; sourceTree = "<group>"; };
 		EAE6B2EDE434F3EAB4F40462 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EC82F954B55004100EBACB8D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		EE369F72DE2591D9D60E1B77 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
@@ -229,7 +225,6 @@
 			children = (
 				EE369F72DE2591D9D60E1B77 /* BackupView.swift */,
 				BFAB59F8D69B863E198985F9 /* BillsView.swift */,
-				DEC9AF96E53A1B711F386903 /* BookHomePrototype.swift */,
 				5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */,
 				0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */,
 				D433FF1198DE03E544B102E2 /* BudgetsView.swift */,
@@ -238,7 +233,6 @@
 				6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
-				E977F1EDBCA155B67ADD7082 /* PrototypeBookSamples.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
 				CC0000012D75000100000003 /* StockDesignViews.swift */,
 				CC0000012D75000100000005 /* StackCustomizerView.swift */,
@@ -400,7 +394,6 @@
 				C8E13ADF4E646F830D5BC69A /* BackupView.swift in Sources */,
 				ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */,
 				E802991A6C68D4C9D4C7C56E /* BookBackup.swift in Sources */,
-				694FC3702BE496718FC0F365 /* BookHomePrototype.swift in Sources */,
 				31E1C2727B36CA6DDE0FB01A /* BookHomeView.swift in Sources */,
 				ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */,
 				B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */,
@@ -417,7 +410,6 @@
 				66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */,
 				3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */,
 				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
-				975C80EE5A9E4DB240BA73FF /* PrototypeBookSamples.swift in Sources */,
 				B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */,
 				DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */,
 				CC0000022D75000100000001 /* CardCustomization.swift in Sources */,
