@@ -177,6 +177,8 @@ final class FoundationTests: XCTestCase {
 private final class TestExpenseStore: ExpenseStore {
     var values: [Expense] = []
     var budgetValues: [BudgetVersion] = []
+    var billValues: [BillRule] = []
+    var occurrenceValues: [BillOccurrence] = []
     var failWrites = false
     var failReads = false
     func books() throws -> [BookProfile] { [BookProfile.sample] }
@@ -187,8 +189,14 @@ private final class TestExpenseStore: ExpenseStore {
     func categories(in bookID: UUID) throws -> [ExpenseCategory] { try categories() }
     func expenses(in bookID: UUID) throws -> [Expense] { try expenses() }
     func budgets(in bookID: UUID) throws -> [BudgetVersion] { try budgets() }
+    func bills(in bookID: UUID) throws -> [BillRule] { try bills() }
+    func billOccurrences(in bookID: UUID) throws -> [BillOccurrence] { try billOccurrences() }
     func save(_ expense: Expense, in bookID: UUID) throws { try save(expense) }
     func save(_ budget: BudgetVersion, in bookID: UUID) throws { try save(budget) }
+    func saveBill(_ bill: BillRule, in bookID: UUID) throws { try saveBill(bill) }
+    func deleteBill(_ id: UUID, in bookID: UUID) throws { try deleteBill(id) }
+    func saveOccurrence(_ occurrence: BillOccurrence, in bookID: UUID) throws { try saveOccurrence(occurrence) }
+    func deleteOccurrence(_ id: UUID, in bookID: UUID) throws { try deleteOccurrence(id) }
     func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws { try saveCategory(category) }
     func deleteCategory(_ id: UUID, in bookID: UUID) throws { try deleteCategory(id) }
 
@@ -204,6 +212,14 @@ private final class TestExpenseStore: ExpenseStore {
         if failReads { throw EntryError.corruptStore }
         return budgetValues
     }
+    func bills() throws -> [BillRule] {
+        if failReads { throw EntryError.corruptStore }
+        return billValues
+    }
+    func billOccurrences() throws -> [BillOccurrence] {
+        if failReads { throw EntryError.corruptStore }
+        return occurrenceValues
+    }
     func save(_ expense: Expense) throws {
         if failWrites { throw EntryError.corruptStore }
         values.removeAll { $0.id == expense.id }
@@ -213,6 +229,24 @@ private final class TestExpenseStore: ExpenseStore {
         if failWrites { throw EntryError.corruptStore }
         budgetValues.removeAll { $0.id == budget.id || $0.effectiveDay == budget.effectiveDay }
         budgetValues.append(budget)
+    }
+    func saveBill(_ bill: BillRule) throws {
+        if failWrites { throw EntryError.corruptStore }
+        billValues.removeAll { $0.id == bill.id }
+        billValues.append(bill)
+    }
+    func deleteBill(_ id: UUID) throws {
+        if failWrites { throw EntryError.corruptStore }
+        billValues.removeAll { $0.id == id }
+    }
+    func saveOccurrence(_ occurrence: BillOccurrence) throws {
+        if failWrites { throw EntryError.corruptStore }
+        occurrenceValues.removeAll { $0.id == occurrence.id }
+        occurrenceValues.append(occurrence)
+    }
+    func deleteOccurrence(_ id: UUID) throws {
+        if failWrites { throw EntryError.corruptStore }
+        occurrenceValues.removeAll { $0.id == id }
     }
     func saveCategory(_ category: ExpenseCategory) throws { throw CategoryError.invalidName }
     func deleteCategory(_ id: UUID) throws { throw CategoryError.inUse }

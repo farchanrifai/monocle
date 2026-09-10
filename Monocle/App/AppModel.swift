@@ -39,6 +39,8 @@ final class AppModel {
     static var shared: AppModel { AppEnvironment.shared.model }
     var expenses: [Expense] { expenseService?.expenses ?? [] }
     var categories: [ExpenseCategory] { expenseService?.categories ?? [] }
+    var bills: [BillRule] { expenseService?.bills ?? [] }
+    var billOccurrences: [BillOccurrence] { expenseService?.billOccurrences ?? [] }
     var activeCategories: [ExpenseCategory] { categories.filter { !settings.archivedCategoryIDs.contains($0.id) } }
     var draft = ExpenseDraft()
     var settings = PrototypeSettings()
@@ -231,6 +233,7 @@ final class AppModel {
             self.alwaysHiddenBookIDs = Set(prefs.alwaysHiddenBookIDs)
         }
         ensureDefaultStack()
+        try? expenses.reconcileBills()
     }
 
     init(startupFailure: String) {
@@ -260,6 +263,7 @@ final class AppModel {
     func reload() throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.reload()
+        try? expenseService.reconcileBills()
         ensureDefaultStack()
     }
     func category(_ id: UUID?) -> ExpenseCategory? { categories.first { $0.id == id } }
@@ -595,6 +599,48 @@ final class AppModel {
         guard let undoExpense else { return }
         do { try save(undoExpense); self.undoExpense = nil; showToast("Expense restored") }
         catch { self.error = error.localizedDescription }
+    }
+    func saveBill(_ bill: BillRule, in bookID: UUID? = nil) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.saveBill(bill, in: bookID)
+        invalidateExpenseCaches()
+        showToast("Bill saved")
+    }
+    func deleteBill(_ id: UUID, in bookID: UUID? = nil) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.deleteBill(id, in: bookID)
+        invalidateExpenseCaches()
+        showToast("Bill deleted")
+    }
+    @discardableResult
+    func confirmBillOccurrence(
+        _ occurrenceID: UUID,
+        customDate: Date? = nil,
+        customAmount: Int64? = nil,
+        customNote: String? = nil,
+        in bookID: UUID? = nil
+    ) throws -> Expense {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let expense = try expenseService.confirmBillOccurrence(
+            occurrenceID,
+            customDate: customDate,
+            customAmount: customAmount,
+            customNote: customNote,
+            in: bookID
+        )
+        invalidateExpenseCaches()
+        showToast("Bill recorded")
+        return expense
+    }
+    func skipBillOccurrence(_ occurrenceID: UUID, in bookID: UUID? = nil) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        try expenseService.skipBillOccurrence(occurrenceID, in: bookID)
+        showToast("Bill skipped")
+    }
+    func reconcileBills(asOf date: Date = .now, in bookID: UUID? = nil) {
+        guard let expenseService else { return }
+        try? expenseService.reconcileBills(asOf: date, in: bookID)
+        invalidateExpenseCaches()
     }
     func repeatExpense(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }

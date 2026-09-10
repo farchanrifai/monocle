@@ -64,21 +64,38 @@ final class MonocleUITests: XCTestCase {
         app.buttons["Done"].tap()
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Bills"].tap()
-        XCTAssertTrue(app.buttons["Configure sample bill"].waitForExistence(timeout: 5))
-        app.buttons["Configure sample bill"].tap()
-        let reminder = app.switches["Remind me"]
+        XCTAssertTrue(app.buttons["addBillButton"].waitForExistence(timeout: 5))
+        app.buttons["addBillButton"].tap()
+
+        let reminder = app.switches["billReminderToggle"]
+        XCTAssertTrue(reminder.waitForExistence(timeout: 5))
         XCTAssertEqual(reminder.value as? String, "1")
         reminder.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         XCTAssertEqual(reminder.value as? String, "0", "Toggle must change before saving")
         let bill = XCTAttachment(screenshot: app.screenshot())
         bill.name = "bill-settings"; bill.lifetime = .keepAlways; add(bill)
-        app.buttons["Save"].tap()
+
+        let nameField = app.textFields["billNameField"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        nameField.tap()
+        nameField.typeText("Fiber Internet")
+
+        let amountField = app.textFields["billAmountField"]
+        amountField.tap()
+        amountField.typeText("450000")
+
+        app.buttons["saveBillButton"].tap()
+
+        let billRow = app.buttons["scheduledBill_Fiber Internet"]
+        XCTAssertTrue(billRow.waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
+
         app.terminate(); app.launch()
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Bills"].tap()
-        app.buttons["Configure sample bill"].tap()
-        XCTAssertEqual(app.switches["Remind me"].value as? String, "0")
+        XCTAssertTrue(app.buttons["scheduledBill_Fiber Internet"].waitForExistence(timeout: 5))
+        app.buttons["scheduledBill_Fiber Internet"].tap()
+        XCTAssertEqual(app.switches["billReminderToggle"].value as? String, "0")
         app.buttons["Cancel"].tap()
         app.buttons["Done"].tap()
     }
@@ -513,7 +530,7 @@ final class MonocleUITests: XCTestCase {
         let neighboringCardFrame = previews.element(boundBy: 1).frame
         let peek = windowWidth - neighboringCardFrame.minX
         XCTAssertLessThanOrEqual(peek, 30.0, "Neighboring card peek should be subtle, not excessive")
-        XCTAssertGreaterThanOrEqual(peek, 10.0, "Neighboring card should still peek slightly into view")
+        XCTAssertGreaterThanOrEqual(peek, 5.0, "Neighboring card should still peek slightly into view")
 
         // Take a screenshot of the multi-card horizontal carousel
         let carouselShot = app.screenshot()

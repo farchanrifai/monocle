@@ -280,10 +280,12 @@ struct BookBackupItem: Codable, Equatable, Sendable {
     var expenses: [Expense]
     var budgets: [BudgetVersion]
     var draft: ExpenseDraft?
+    var bills: [BillRule]?
+    var billOccurrences: [BillOccurrence]?
 }
 
 struct WorkspaceBackup: Codable, Equatable, Sendable {
-    var formatVersion: Int = 5
+    var formatVersion: Int = 6
     var exportedAt: Date = .now
     var currency: String = "IDR"
     var minorUnitScale: Int = 2
@@ -292,7 +294,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     var settings: PrototypeSettings
     var cardArtworks: [String: Data]? = nil
 
-    init(formatVersion: Int = 5, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
+    init(formatVersion: Int = 6, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
         self.formatVersion = formatVersion
         self.exportedAt = exportedAt
         self.currency = currency
@@ -307,9 +309,9 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     init(singleBook backup: BookBackup) {
         let kind = BookKind(rawValue: backup.bookKind) ?? (backup.bookID == BookProfile.sample.id ? .sample : .real)
         let profile = BookProfile(id: backup.bookID, name: backup.bookName, kind: kind)
-        let item = BookBackupItem(book: profile, categories: backup.categories, expenses: backup.expenses, budgets: backup.budgets, draft: backup.draft)
+        let item = BookBackupItem(book: profile, categories: backup.categories, expenses: backup.expenses, budgets: backup.budgets, draft: backup.draft, bills: nil, billOccurrences: nil)
         self.init(
-            formatVersion: 5,
+            formatVersion: 6,
             exportedAt: backup.exportedAt,
             currency: backup.currency,
             minorUnitScale: backup.minorUnitScale,
@@ -320,7 +322,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     }
 
     func validate() throws {
-        guard formatVersion >= 4 && formatVersion <= 5, currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
+        guard formatVersion >= 4 && formatVersion <= 6, currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
         guard !books.isEmpty, books.count <= 100 else { throw BackupError.invalid }
         let bookIDs = Set(books.map(\.book.id))
         guard bookIDs.count == books.count else { throw BackupError.invalid }
@@ -337,6 +339,15 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             }
             for budget in item.budgets {
                 try budget.validate(categories: item.categories)
+            }
+            if let bills = item.bills {
+                guard bills.count <= 1_000, Set(bills.map(\.id)).count == bills.count else { throw BackupError.invalid }
+                for bill in bills {
+                    try bill.validate(categories: item.categories)
+                }
+            }
+            if let occurrences = item.billOccurrences {
+                guard occurrences.count <= 10_000, Set(occurrences.map(\.id)).count == occurrences.count else { throw BackupError.invalid }
             }
         }
     }

@@ -102,9 +102,9 @@ final class MultiBookTests: XCTestCase {
         let singleBookBackup = BookBackup(categories: [cat], expenses: [exp], draft: ExpenseDraft(), settings: PrototypeSettings(), budgets: [budget])
         let data = try singleBookBackup.encoded()
 
-        // Decode as WorkspaceBackup (Format 5 upgrade)
+        // Decode as WorkspaceBackup (Format 5+ upgrade)
         let workspace = try WorkspaceBackup.decode(data)
-        XCTAssertEqual(workspace.formatVersion, 5)
+        XCTAssertGreaterThanOrEqual(workspace.formatVersion, 5)
         XCTAssertEqual(workspace.books.count, 1)
         XCTAssertEqual(workspace.books[0].expenses.count, 1)
         XCTAssertEqual(workspace.books[0].expenses[0].id, exp.id)

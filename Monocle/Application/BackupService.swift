@@ -37,8 +37,10 @@ final class BackupService {
             let cats = try repository.categories(in: book.id)
             let exps = try repository.expenses(in: book.id)
             let budgets = try repository.budgets(in: book.id)
+            let bills = try repository.bills(in: book.id)
+            let occurrences = try repository.billOccurrences(in: book.id)
             let draft = (book.id == settings.book.id) ? currentDraft : (try? state.loadDraft(for: book.id))
-            items.append(BookBackupItem(book: book, categories: cats, expenses: exps, budgets: budgets, draft: draft))
+            items.append(BookBackupItem(book: book, categories: cats, expenses: exps, budgets: budgets, draft: draft, bills: bills, billOccurrences: occurrences))
         }
         let prefs = (try? state.loadWorkspacePreferences()) ?? WorkspacePreferences(visibleBookIDs: allBooks.map(\.id), bookOrder: allBooks.map(\.id))
         var artworks: [String: Data] = [:]
@@ -48,7 +50,7 @@ final class BackupService {
                 artworks[filename] = data
             }
         }
-        let workspace = WorkspaceBackup(formatVersion: 5, exportedAt: exportedAt, currency: "IDR", minorUnitScale: 2,
+        let workspace = WorkspaceBackup(formatVersion: 6, exportedAt: exportedAt, currency: "IDR", minorUnitScale: 2,
                                         books: items, preferences: prefs, settings: settings,
                                         cardArtworks: artworks.isEmpty ? nil : artworks)
         try workspace.validate()

@@ -12,16 +12,28 @@ protocol ExpenseStore {
     func categories(in bookID: UUID) throws -> [ExpenseCategory]
     func expenses(in bookID: UUID) throws -> [Expense]
     func budgets(in bookID: UUID) throws -> [BudgetVersion]
+    func bills(in bookID: UUID) throws -> [BillRule]
+    func billOccurrences(in bookID: UUID) throws -> [BillOccurrence]
     func save(_ expense: Expense, in bookID: UUID) throws
     func save(_ budget: BudgetVersion, in bookID: UUID) throws
+    func saveBill(_ bill: BillRule, in bookID: UUID) throws
+    func deleteBill(_ id: UUID, in bookID: UUID) throws
+    func saveOccurrence(_ occurrence: BillOccurrence, in bookID: UUID) throws
+    func deleteOccurrence(_ id: UUID, in bookID: UUID) throws
     func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws
     func deleteCategory(_ id: UUID, in bookID: UUID) throws
 
     func categories() throws -> [ExpenseCategory]
     func expenses() throws -> [Expense]
     func budgets() throws -> [BudgetVersion]
+    func bills() throws -> [BillRule]
+    func billOccurrences() throws -> [BillOccurrence]
     func save(_ expense: Expense) throws
     func save(_ budget: BudgetVersion) throws
+    func saveBill(_ bill: BillRule) throws
+    func deleteBill(_ id: UUID) throws
+    func saveOccurrence(_ occurrence: BillOccurrence) throws
+    func deleteOccurrence(_ id: UUID) throws
     func delete(_ id: UUID) throws
     func saveCategory(_ category: ExpenseCategory) throws
     func deleteCategory(_ id: UUID) throws
@@ -37,6 +49,8 @@ final class ExpenseService {
     private(set) var expenses: [Expense] = []
     private(set) var categories: [ExpenseCategory] = []
     private(set) var budgets: [BudgetVersion] = []
+    private(set) var bills: [BillRule] = []
+    private(set) var billOccurrences: [BillOccurrence] = []
     private var categoryRules: [CategoryRule] = []
     private var archivedCategoryIDs: Set<UUID> = []
 
@@ -70,9 +84,23 @@ final class ExpenseService {
         } else {
             budgets = try store.budgets()
         }
+        let bills: [BillRule]
+        if let scoped = try? store.bills(in: activeBookID) {
+            bills = scoped
+        } else {
+            bills = (try? store.bills()) ?? []
+        }
+        let occurrences: [BillOccurrence]
+        if let scoped = try? store.billOccurrences(in: activeBookID) {
+            occurrences = scoped
+        } else {
+            occurrences = (try? store.billOccurrences()) ?? []
+        }
         self.categories = categories
         self.expenses = expenses
         self.budgets = budgets
+        self.bills = bills
+        self.billOccurrences = occurrences
     }
 
     func selectBook(_ id: UUID) throws {
@@ -110,6 +138,145 @@ final class ExpenseService {
 
     func budgets(for bookID: UUID) throws -> [BudgetVersion] {
         try store.budgets(in: bookID)
+    }
+
+    func bills(for bookID: UUID) throws -> [BillRule] {
+        try store.bills(in: bookID)
+    }
+
+    func billOccurrences(for bookID: UUID) throws -> [BillOccurrence] {
+        try store.billOccurrences(in: bookID)
+    }
+
+    func saveBill(_ bill: BillRule, in bookID: UUID? = nil) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        let targetID = bookID ?? bill.bookID
+        var bill = bill
+        bill.bookID = targetID
+        let cats = (targetID == activeBookID) ? categories : try store.categories(in: targetID)
+        try bill.validate(categories: cats)
+        try store.saveBill(bill, in: targetID)
+
+        let existing = (try? store.billOccurrences(in: targetID)) ?? []
+        let result = BillReconciliationEngine.reconcile(rule: bill, existingOccurrences: existing)
+        for expense in result.autoExpenses {
+            try store.save(expense, in: targetID)
+        }
+        for occ in result.newOccurrences {
+            try store.saveOccurrence(occ, in: targetID)
+            if bill.hasReminder && occ.status == .pending {
+                Task {
+                    await BillNotificationService.shared.scheduleReminder(for: occ, rule: bill)
+                }
+            }
+        }
+        try reload()
+    }
+
+    func deleteBill(_ id: UUID, in bookID: UUID? = nil) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        let targetID = bookID ?? activeBookID
+        let existingOccurrences = (try? store.billOccurrences(in: targetID)) ?? []
+        BillNotificationService.shared.cancelAllReminders(for: id, occurrences: existingOccurrences)
+        try store.deleteBill(id, in: targetID)
+        try reload()
+    }
+
+    func reconcileBills(asOf date: Date = .now, in bookID: UUID? = nil) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        let targetID = bookID ?? activeBookID
+        let currentBills = try store.bills(in: targetID)
+        let existingOccurrences = try store.billOccurrences(in: targetID)
+
+        var hasChanges = false
+        for bill in currentBills where bill.isActive {
+            let result = BillReconciliationEngine.reconcile(
+                rule: bill,
+                existingOccurrences: existingOccurrences,
+                asOf: date
+            )
+            for expense in result.autoExpenses {
+                try store.save(expense, in: targetID)
+                hasChanges = true
+            }
+            for occ in result.newOccurrences {
+                try store.saveOccurrence(occ, in: targetID)
+                hasChanges = true
+                if bill.hasReminder && occ.status == .pending {
+                    Task {
+                        await BillNotificationService.shared.scheduleReminder(for: occ, rule: bill)
+                    }
+                }
+            }
+        }
+        if hasChanges {
+            try reload()
+        }
+    }
+
+    @discardableResult
+    func confirmBillOccurrence(
+        _ occurrenceID: UUID,
+        customDate: Date? = nil,
+        customAmount: Int64? = nil,
+        customNote: String? = nil,
+        in bookID: UUID? = nil
+    ) throws -> Expense {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        let targetID = bookID ?? activeBookID
+        let occurrences = try store.billOccurrences(in: targetID)
+        guard var occurrence = occurrences.first(where: { $0.id == occurrenceID }) else {
+            throw BillError.occurrenceNotFound
+        }
+        let allBills = try store.bills(in: targetID)
+        guard let rule = allBills.first(where: { $0.id == occurrence.billRuleID }) else {
+            throw BillError.ruleNotFound
+        }
+
+        let expenseID = UUID()
+        let expenseDate = customDate ?? Day.date(occurrence.dueDay) ?? .now
+        let expenseAmount = customAmount ?? rule.amount
+        let expenseNote = customNote ?? rule.name
+
+        let expense = Expense(
+            id: expenseID,
+            amount: expenseAmount,
+            day: Day.string(expenseDate),
+            note: expenseNote,
+            allocations: [.init(categoryID: rule.categoryID, amount: expenseAmount)],
+            source: "bill-confirmed",
+            createdAt: expenseDate,
+            bookID: targetID
+        )
+
+        try store.save(expense, in: targetID)
+
+        occurrence.status = .recorded
+        occurrence.expenseID = expenseID
+        occurrence.updatedAt = .now
+        try store.saveOccurrence(occurrence, in: targetID)
+
+        BillNotificationService.shared.cancelReminder(for: occurrenceID)
+
+        try reload()
+        return expense
+    }
+
+    func skipBillOccurrence(_ occurrenceID: UUID, in bookID: UUID? = nil) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        let targetID = bookID ?? activeBookID
+        let occurrences = try store.billOccurrences(in: targetID)
+        guard var occurrence = occurrences.first(where: { $0.id == occurrenceID }) else {
+            throw BillError.occurrenceNotFound
+        }
+
+        occurrence.status = .skipped
+        occurrence.updatedAt = .now
+        try store.saveOccurrence(occurrence, in: targetID)
+
+        BillNotificationService.shared.cancelReminder(for: occurrenceID)
+
+        try reload()
     }
 
     func configure(categoryRules: [CategoryRule], archivedCategoryIDs: Set<UUID>) {

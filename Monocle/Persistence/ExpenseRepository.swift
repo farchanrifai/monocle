@@ -146,6 +146,175 @@ final class ExpenseRepository: ExpenseStore {
         try budgets(in: defaultBookID())
     }
 
+    func bills(in bookID: UUID) throws -> [BillRule] {
+        let book = try bookRow(for: bookID)
+        let set = (book.value(forKey: "bills") as? Set<NSManagedObject>) ?? []
+        return try set.map { row in
+            guard let id = row.value(forKey: "id") as? UUID,
+                  let name = row.value(forKey: "name") as? String,
+                  let amount = row.value(forKey: "amount") as? Int64,
+                  let categoryID = row.value(forKey: "categoryID") as? UUID,
+                  let createdAt = row.value(forKey: "createdAt") as? Date else { throw EntryError.corruptStore }
+            let recurrenceType = row.value(forKey: "recurrenceType") as? String ?? "monthly"
+            let recurrenceDay = (row.value(forKey: "recurrenceDay") as? NSNumber)?.intValue ?? 1
+            let recurrenceMonth = (row.value(forKey: "recurrenceMonth") as? NSNumber)?.intValue ?? 1
+            let recurrence: BillRecurrence
+            switch recurrenceType {
+            case "weekly": recurrence = .weekly(weekday: recurrenceDay)
+            case "yearly": recurrence = .yearly(month: recurrenceMonth, day: recurrenceDay)
+            default: recurrence = .monthly(day: recurrenceDay)
+            }
+            let isAutomatic = (row.value(forKey: "isAutomatic") as? NSNumber)?.boolValue ?? false
+            let hasReminder = (row.value(forKey: "hasReminder") as? NSNumber)?.boolValue ?? true
+            let reminderLeadDays = (row.value(forKey: "reminderLeadDays") as? NSNumber)?.intValue ?? 0
+            let isActive = (row.value(forKey: "isActive") as? NSNumber)?.boolValue ?? true
+            return BillRule(
+                id: id,
+                bookID: bookID,
+                name: name,
+                amount: amount,
+                categoryID: categoryID,
+                recurrence: recurrence,
+                recordingMode: isAutomatic ? .automatic : .pending,
+                hasReminder: hasReminder,
+                reminderLeadDays: reminderLeadDays,
+                createdAt: createdAt,
+                isActive: isActive
+            )
+        }.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    func bills() throws -> [BillRule] {
+        try bills(in: defaultBookID())
+    }
+
+    func billOccurrences(in bookID: UUID) throws -> [BillOccurrence] {
+        let book = try bookRow(for: bookID)
+        let billRules = (book.value(forKey: "bills") as? Set<NSManagedObject>) ?? []
+        var occurrences: [BillOccurrence] = []
+        for rule in billRules {
+            guard let ruleID = rule.value(forKey: "id") as? UUID else { continue }
+            let occSet = (rule.value(forKey: "occurrences") as? Set<NSManagedObject>) ?? []
+            for row in occSet {
+                guard let id = row.value(forKey: "id") as? UUID,
+                      let dueDay = row.value(forKey: "dueDay") as? String,
+                      let statusStr = row.value(forKey: "status") as? String,
+                      let status = BillOccurrenceStatus(rawValue: statusStr),
+                      let createdAt = row.value(forKey: "createdAt") as? Date,
+                      let updatedAt = row.value(forKey: "updatedAt") as? Date else { continue }
+                let expenseID = row.value(forKey: "expenseID") as? UUID
+                occurrences.append(BillOccurrence(
+                    id: id,
+                    billRuleID: ruleID,
+                    bookID: bookID,
+                    dueDay: dueDay,
+                    status: status,
+                    expenseID: expenseID,
+                    createdAt: createdAt,
+                    updatedAt: updatedAt
+                ))
+            }
+        }
+        return occurrences.sorted { $0.dueDay < $1.dueDay }
+    }
+
+    func billOccurrences() throws -> [BillOccurrence] {
+        try billOccurrences(in: defaultBookID())
+    }
+
+    func saveBill(_ bill: BillRule, in bookID: UUID) throws {
+        let book = try bookRow(for: bookID)
+        try bill.validate(categories: categories(in: bookID))
+        do {
+            let existing = try findBillRule("BillRuleRecord", id: bill.id, in: book)
+            if existing == nil, let globalExisting = try find("BillRuleRecord", id: bill.id),
+               let existingBook = globalExisting.value(forKey: "book") as? NSManagedObject,
+               let existingID = existingBook.value(forKey: "id") as? UUID, existingID != bookID {
+                throw EntryError.corruptStore
+            }
+            let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: "BillRuleRecord", into: context)
+            row.setValue(bill.id, forKey: "id")
+            row.setValue(bill.name, forKey: "name")
+            row.setValue(bill.amount, forKey: "amount")
+            row.setValue(bill.categoryID, forKey: "categoryID")
+            switch bill.recurrence {
+            case .monthly(let day):
+                row.setValue("monthly", forKey: "recurrenceType")
+                row.setValue(Int16(day), forKey: "recurrenceDay")
+                row.setValue(Int16(1), forKey: "recurrenceMonth")
+            case .weekly(let weekday):
+                row.setValue("weekly", forKey: "recurrenceType")
+                row.setValue(Int16(weekday), forKey: "recurrenceDay")
+                row.setValue(Int16(1), forKey: "recurrenceMonth")
+            case .yearly(let month, let day):
+                row.setValue("yearly", forKey: "recurrenceType")
+                row.setValue(Int16(day), forKey: "recurrenceDay")
+                row.setValue(Int16(month), forKey: "recurrenceMonth")
+            }
+            row.setValue(bill.recordingMode == .automatic, forKey: "isAutomatic")
+            row.setValue(bill.hasReminder, forKey: "hasReminder")
+            row.setValue(Int16(bill.reminderLeadDays), forKey: "reminderLeadDays")
+            row.setValue(bill.isActive, forKey: "isActive")
+            row.setValue(bill.createdAt, forKey: "createdAt")
+            row.setValue(book, forKey: "book")
+            try context.save()
+        } catch { context.rollback(); throw error }
+    }
+
+    func saveBill(_ bill: BillRule) throws {
+        try saveBill(bill, in: bill.bookID)
+    }
+
+    func deleteBill(_ id: UUID, in bookID: UUID) throws {
+        do {
+            let book = try bookRow(for: bookID)
+            if let row = try findBillRule("BillRuleRecord", id: id, in: book) {
+                context.delete(row)
+                try context.save()
+            }
+        } catch { context.rollback(); throw error }
+    }
+
+    func deleteBill(_ id: UUID) throws {
+        try deleteBill(id, in: defaultBookID())
+    }
+
+    func saveOccurrence(_ occurrence: BillOccurrence, in bookID: UUID) throws {
+        let book = try bookRow(for: bookID)
+        guard let ruleRow = try findBillRule("BillRuleRecord", id: occurrence.billRuleID, in: book) else {
+            throw BillError.ruleNotFound
+        }
+        do {
+            let existing = try findOccurrence("BillOccurrenceRecord", id: occurrence.id, in: ruleRow)
+            let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: "BillOccurrenceRecord", into: context)
+            row.setValue(occurrence.id, forKey: "id")
+            row.setValue(occurrence.dueDay, forKey: "dueDay")
+            row.setValue(occurrence.status.rawValue, forKey: "status")
+            row.setValue(occurrence.expenseID, forKey: "expenseID")
+            row.setValue(occurrence.createdAt, forKey: "createdAt")
+            row.setValue(occurrence.updatedAt, forKey: "updatedAt")
+            row.setValue(ruleRow, forKey: "rule")
+            try context.save()
+        } catch { context.rollback(); throw error }
+    }
+
+    func saveOccurrence(_ occurrence: BillOccurrence) throws {
+        try saveOccurrence(occurrence, in: occurrence.bookID)
+    }
+
+    func deleteOccurrence(_ id: UUID, in bookID: UUID) throws {
+        do {
+            if let row = try find("BillOccurrenceRecord", id: id) {
+                context.delete(row)
+                try context.save()
+            }
+        } catch { context.rollback(); throw error }
+    }
+
+    func deleteOccurrence(_ id: UUID) throws {
+        try deleteOccurrence(id, in: defaultBookID())
+    }
+
     func prepareInitialBudget(settings: PrototypeSettings, in bookID: UUID? = nil) throws {
         let targetID = try bookID ?? defaultBookID()
         guard try budgets(in: targetID).isEmpty else { return }
@@ -281,7 +450,7 @@ final class ExpenseRepository: ExpenseStore {
     func replace(with workspace: WorkspaceBackup) throws {
         try workspace.validate()
         do {
-            for entity in ["AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
+            for entity in ["BillOccurrenceRecord", "BillRuleRecord", "AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
                 for row in try objects(entity) { context.delete(row) }
             }
             for item in workspace.books {
@@ -325,6 +494,51 @@ final class ExpenseRepository: ExpenseStore {
                         value.setValue(categoryLimit.categoryID, forKey: "categoryID")
                         value.setValue(categoryLimit.limit, forKey: "limit")
                         value.setValue(row, forKey: "budget")
+                    }
+                }
+                var billRows: [UUID: NSManagedObject] = [:]
+                if let bills = item.bills {
+                    for bill in bills {
+                        try bill.validate(categories: item.categories)
+                        let row = NSEntityDescription.insertNewObject(forEntityName: "BillRuleRecord", into: context)
+                        row.setValue(bill.id, forKey: "id")
+                        row.setValue(bill.name, forKey: "name")
+                        row.setValue(bill.amount, forKey: "amount")
+                        row.setValue(bill.categoryID, forKey: "categoryID")
+                        switch bill.recurrence {
+                        case .monthly(let day):
+                            row.setValue("monthly", forKey: "recurrenceType")
+                            row.setValue(Int16(day), forKey: "recurrenceDay")
+                            row.setValue(Int16(1), forKey: "recurrenceMonth")
+                        case .weekly(let weekday):
+                            row.setValue("weekly", forKey: "recurrenceType")
+                            row.setValue(Int16(weekday), forKey: "recurrenceDay")
+                            row.setValue(Int16(1), forKey: "recurrenceMonth")
+                        case .yearly(let month, let day):
+                            row.setValue("yearly", forKey: "recurrenceType")
+                            row.setValue(Int16(day), forKey: "recurrenceDay")
+                            row.setValue(Int16(month), forKey: "recurrenceMonth")
+                        }
+                        row.setValue(bill.recordingMode == .automatic, forKey: "isAutomatic")
+                        row.setValue(bill.hasReminder, forKey: "hasReminder")
+                        row.setValue(Int16(bill.reminderLeadDays), forKey: "reminderLeadDays")
+                        row.setValue(bill.isActive, forKey: "isActive")
+                        row.setValue(bill.createdAt, forKey: "createdAt")
+                        row.setValue(book, forKey: "book")
+                        billRows[bill.id] = row
+                    }
+                }
+                if let occurrences = item.billOccurrences {
+                    for occ in occurrences {
+                        guard let ruleRow = billRows[occ.billRuleID] else { continue }
+                        let row = NSEntityDescription.insertNewObject(forEntityName: "BillOccurrenceRecord", into: context)
+                        row.setValue(occ.id, forKey: "id")
+                        row.setValue(occ.dueDay, forKey: "dueDay")
+                        row.setValue(occ.status.rawValue, forKey: "status")
+                        row.setValue(occ.expenseID, forKey: "expenseID")
+                        row.setValue(occ.createdAt, forKey: "createdAt")
+                        row.setValue(occ.updatedAt, forKey: "updatedAt")
+                        row.setValue(ruleRow, forKey: "rule")
                     }
                 }
             }
@@ -383,6 +597,20 @@ final class ExpenseRepository: ExpenseStore {
     private func findBudget(_ entity: String, id: UUID, in book: NSManagedObject) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
         request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, book)
+        request.fetchLimit = 1
+        return try context.fetch(request).first
+    }
+
+    private func findBillRule(_ entity: String, id: UUID, in book: NSManagedObject) throws -> NSManagedObject? {
+        let request = NSFetchRequest<NSManagedObject>(entityName: entity)
+        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, book)
+        request.fetchLimit = 1
+        return try context.fetch(request).first
+    }
+
+    private func findOccurrence(_ entity: String, id: UUID, in rule: NSManagedObject) throws -> NSManagedObject? {
+        let request = NSFetchRequest<NSManagedObject>(entityName: entity)
+        request.predicate = NSPredicate(format: "id == %@ AND rule == %@", id as NSUUID, rule)
         request.fetchLimit = 1
         return try context.fetch(request).first
     }

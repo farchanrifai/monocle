@@ -1,0 +1,381 @@
+import XCTest
+@testable import Monocle
+
+@MainActor
+final class BillTests: XCTestCase {
+
+    func testBillRuleValidation() throws {
+        let bookID = UUID()
+        let catID = UUID()
+        let categories = [ExpenseCategory(id: catID, name: "Bills", symbol: "bolt")]
+
+        // Valid monthly bill
+        let validRule = BillRule(
+            bookID: bookID,
+            name: "Internet",
+            amount: 350_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: 15)
+        )
+        XCTAssertNoThrow(try validRule.validate(categories: categories))
+
+        // Empty name
+        var invalidNameRule = validRule
+        invalidNameRule.name = "   "
+        XCTAssertThrowsError(try invalidNameRule.validate(categories: categories)) { error in
+            XCTAssertEqual(error as? BillError, .invalidName)
+        }
+
+        // Name too long (> 40 chars)
+        var longNameRule = validRule
+        longNameRule.name = String(repeating: "A", count: 41)
+        XCTAssertThrowsError(try longNameRule.validate(categories: categories)) { error in
+            XCTAssertEqual(error as? BillError, .invalidName)
+        }
+
+        // Amount <= 0
+        var zeroAmountRule = validRule
+        zeroAmountRule.amount = 0
+        XCTAssertThrowsError(try zeroAmountRule.validate(categories: categories)) { error in
+            XCTAssertEqual(error as? BillError, .invalidAmount)
+        }
+
+        // Category not in book
+        var missingCatRule = validRule
+        missingCatRule.categoryID = UUID()
+        XCTAssertThrowsError(try missingCatRule.validate(categories: categories)) { error in
+            XCTAssertEqual(error as? BillError, .missingCategory)
+        }
+
+        // Invalid recurrence: day > 31
+        var invalidDayRule = validRule
+        invalidDayRule.recurrence = .monthly(day: 32)
+        XCTAssertThrowsError(try invalidDayRule.validate(categories: categories)) { error in
+            XCTAssertEqual(error as? BillError, .invalidRecurrence)
+        }
+
+        // Invalid reminder: > 30 lead days
+        var invalidReminderRule = validRule
+        invalidReminderRule.reminderLeadDays = 31
+        XCTAssertThrowsError(try invalidReminderRule.validate(categories: categories)) { error in
+            XCTAssertEqual(error as? BillError, .invalidReminder)
+        }
+    }
+
+    func testReconciliationEngineDueDaysCalculation() throws {
+        let bookID = UUID()
+        let catID = UUID()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let start = try XCTUnwrap(Day.date("2026-01-01", calendar: calendar))
+        let end = try XCTUnwrap(Day.date("2026-03-31", calendar: calendar))
+
+        // Test Monthly on day 15
+        let monthlyRule = BillRule(
+            bookID: bookID,
+            name: "Gym",
+            amount: 500_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: 15),
+            createdAt: start
+        )
+        let monthlyDays = BillReconciliationEngine.dueDays(for: monthlyRule, from: start, to: end, calendar: calendar)
+        XCTAssertEqual(monthlyDays, ["2026-01-15", "2026-02-15", "2026-03-15"])
+
+        // Test Month-end clamping (day 31 in February)
+        let monthEndRule = BillRule(
+            bookID: bookID,
+            name: "Rent",
+            amount: 5_000_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: 31),
+            createdAt: start
+        )
+        let monthEndDays = BillReconciliationEngine.dueDays(for: monthEndRule, from: start, to: end, calendar: calendar)
+        XCTAssertEqual(monthEndDays, ["2026-01-31", "2026-02-28", "2026-03-31"])
+
+        // Test Weekly on Mondays (weekday: 2)
+        let weekStart = try XCTUnwrap(Day.date("2026-09-01", calendar: calendar))
+        let weekEnd = try XCTUnwrap(Day.date("2026-09-22", calendar: calendar))
+        let weeklyRule = BillRule(
+            bookID: bookID,
+            name: "Weekly Allowance",
+            amount: 200_000_00,
+            categoryID: catID,
+            recurrence: .weekly(weekday: 2),
+            createdAt: weekStart
+        )
+        let weeklyDays = BillReconciliationEngine.dueDays(for: weeklyRule, from: weekStart, to: weekEnd, calendar: calendar)
+        XCTAssertEqual(weeklyDays, ["2026-09-07", "2026-09-14", "2026-09-21"])
+    }
+
+    func testReconciliationIdempotency() throws {
+        let bookID = UUID()
+        let catID = UUID()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let asOf = try XCTUnwrap(Day.date("2026-09-10", calendar: calendar))
+        let created = try XCTUnwrap(Day.date("2026-09-01", calendar: calendar))
+
+        let rule = BillRule(
+            bookID: bookID,
+            name: "Streaming",
+            amount: 150_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: 5),
+            recordingMode: .automatic,
+            createdAt: created
+        )
+
+        // First reconciliation: missed day 2026-09-05 produces 1 occurrence and 1 expense
+        let firstResult = BillReconciliationEngine.reconcile(
+            rule: rule,
+            existingOccurrences: [],
+            asOf: asOf,
+            lookaheadDays: 14,
+            calendar: calendar
+        )
+
+        XCTAssertFalse(firstResult.newOccurrences.isEmpty)
+        XCTAssertEqual(firstResult.autoExpenses.count, 1)
+        XCTAssertEqual(firstResult.autoExpenses.first?.day, "2026-09-05")
+
+        // Second reconciliation with existing occurrences produces 0 new occurrences and 0 expenses
+        let secondResult = BillReconciliationEngine.reconcile(
+            rule: rule,
+            existingOccurrences: firstResult.newOccurrences,
+            asOf: asOf,
+            lookaheadDays: 14,
+            calendar: calendar
+        )
+
+        XCTAssertTrue(secondResult.newOccurrences.isEmpty)
+        XCTAssertTrue(secondResult.autoExpenses.isEmpty)
+    }
+
+    func testAutomaticModeCreatesExpenseAndMarksOccurrenceRecorded() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let bookID = service.activeBookID
+        let catID = try XCTUnwrap(service.categories.first?.id)
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        let yesterdayDay = Calendar.current.component(.day, from: yesterday)
+
+        let bill = BillRule(
+            bookID: bookID,
+            name: "Cloud Storage",
+            amount: 45_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: yesterdayDay),
+            recordingMode: .automatic,
+            createdAt: yesterday
+        )
+
+        try service.saveBill(bill)
+
+        // Verify occurrence is recorded and linked to an auto expense
+        let occurrences = service.billOccurrences
+        let recordedOcc = occurrences.first { $0.billRuleID == bill.id && $0.dueDay == Day.string(yesterday) }
+        XCTAssertNotNil(recordedOcc)
+        XCTAssertEqual(recordedOcc?.status, .recorded)
+        XCTAssertNotNil(recordedOcc?.expenseID)
+
+        // Verify expense is present in store
+        let matchingExpense = service.expenses.first { $0.id == recordedOcc?.expenseID }
+        XCTAssertNotNil(matchingExpense)
+        XCTAssertEqual(matchingExpense?.amount, 45_000_00)
+        XCTAssertEqual(matchingExpense?.source, "bill-automatic")
+    }
+
+    func testPendingModeRequiresConfirmationAndSkippingWorks() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let bookID = service.activeBookID
+        let catID = try XCTUnwrap(service.categories.first?.id)
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        let yesterdayDay = Calendar.current.component(.day, from: yesterday)
+
+        let bill = BillRule(
+            bookID: bookID,
+            name: "Electricity",
+            amount: 850_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: yesterdayDay),
+            recordingMode: .pending,
+            createdAt: yesterday
+        )
+
+        try service.saveBill(bill)
+
+        // Pending mode should NOT produce an expense immediately
+        XCTAssertTrue(service.expenses.isEmpty)
+
+        let pendingOcc = try XCTUnwrap(service.billOccurrences.first { $0.billRuleID == bill.id })
+        XCTAssertEqual(pendingOcc.status, .pending)
+        XCTAssertNil(pendingOcc.expenseID)
+
+        // Confirm occurrence
+        let expense = try service.confirmBillOccurrence(pendingOcc.id)
+        XCTAssertEqual(expense.amount, 850_000_00)
+        XCTAssertEqual(expense.source, "bill-confirmed")
+        XCTAssertEqual(service.expenses.count, 1)
+
+        let updatedOcc = try XCTUnwrap(service.billOccurrences.first { $0.id == pendingOcc.id })
+        XCTAssertEqual(updatedOcc.status, .recorded)
+        XCTAssertEqual(updatedOcc.expenseID, expense.id)
+
+        // Test Skipping another bill occurrence
+        let bill2 = BillRule(
+            bookID: bookID,
+            name: "Magazine",
+            amount: 50_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: yesterdayDay),
+            recordingMode: .pending,
+            createdAt: yesterday
+        )
+        try service.saveBill(bill2)
+
+        let occ2 = try XCTUnwrap(service.billOccurrences.first { $0.billRuleID == bill2.id })
+        XCTAssertEqual(occ2.status, .pending)
+
+        try service.skipBillOccurrence(occ2.id)
+
+        let skippedOcc = try XCTUnwrap(service.billOccurrences.first { $0.id == occ2.id })
+        XCTAssertEqual(skippedOcc.status, .skipped)
+
+        // Re-reconcile to ensure skipped occurrence remains skipped and is not re-created
+        try service.reconcileBills()
+        let postReconcileOcc = try XCTUnwrap(service.billOccurrences.first { $0.id == occ2.id })
+        XCTAssertEqual(postReconcileOcc.status, .skipped)
+    }
+
+    func testMultiBookBillIsolation() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let bookA = try store.createBook(named: "Book A")
+        let bookB = try store.createBook(named: "Book B")
+
+        let catA = try XCTUnwrap(try store.categories(in: bookA.id).first)
+        let catB = try XCTUnwrap(try store.categories(in: bookB.id).first)
+
+        let billA = BillRule(
+            bookID: bookA.id,
+            name: "Bill in A",
+            amount: 100_000_00,
+            categoryID: catA.id,
+            recurrence: .monthly(day: 1)
+        )
+        let billB = BillRule(
+            bookID: bookB.id,
+            name: "Bill in B",
+            amount: 200_000_00,
+            categoryID: catB.id,
+            recurrence: .monthly(day: 15)
+        )
+
+        try store.saveBill(billA, in: bookA.id)
+        try store.saveBill(billB, in: bookB.id)
+
+        let billsInA = try store.bills(in: bookA.id)
+        let billsInB = try store.bills(in: bookB.id)
+
+        XCTAssertEqual(billsInA.count, 1)
+        XCTAssertEqual(billsInA.first?.name, "Bill in A")
+        XCTAssertEqual(billsInB.count, 1)
+        XCTAssertEqual(billsInB.first?.name, "Bill in B")
+
+        // Deleting book A removes bill A
+        try store.deleteBook(id: bookA.id)
+        let remainingBillsInB = try store.bills(in: bookB.id)
+        XCTAssertEqual(remainingBillsInB.count, 1)
+        XCTAssertEqual(remainingBillsInB.first?.name, "Bill in B")
+    }
+
+    func testWorkspaceBackupFormatSixRoundTrip() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let bookID = service.activeBookID
+        let catID = try XCTUnwrap(service.categories.first?.id)
+
+        let bill = BillRule(
+            bookID: bookID,
+            name: "Water Utility",
+            amount: 120_000_00,
+            categoryID: catID,
+            recurrence: .monthly(day: 20),
+            recordingMode: .pending
+        )
+        try service.saveBill(bill)
+
+        let occ = BillOccurrence(
+            billRuleID: bill.id,
+            bookID: bookID,
+            dueDay: "2026-09-20",
+            status: .pending
+        )
+        try store.saveOccurrence(occ, in: bookID)
+
+        let backupService = BackupService(
+            directory: FileManager.default.temporaryDirectory,
+            repository: store,
+            state: FileLocalStateStore(directory: FileManager.default.temporaryDirectory),
+            expenses: service
+        )
+
+        let snapshot = try backupService.workspaceSnapshot(currentDraft: ExpenseDraft(), settings: PrototypeSettings())
+        XCTAssertEqual(snapshot.formatVersion, 6)
+
+        // Encode and decode
+        let encodedData = try snapshot.encoded()
+        let decoded = try WorkspaceBackup.decode(encodedData)
+        XCTAssertEqual(decoded.formatVersion, 6)
+
+        let restoredBook = try XCTUnwrap(decoded.books.first { $0.book.id == bookID })
+        XCTAssertEqual(restoredBook.bills?.count, 1)
+        XCTAssertEqual(restoredBook.bills?.first?.name, "Water Utility")
+
+        // Restore into clean repository
+        let newStore = try ExpenseRepository(inMemory: true)
+        try newStore.replace(with: decoded)
+
+        let restoredBills = try newStore.bills(in: bookID)
+        let restoredOccurrences = try newStore.billOccurrences(in: bookID)
+
+        XCTAssertEqual(restoredBills.count, 1)
+        XCTAssertEqual(restoredBills.first?.name, "Water Utility")
+        XCTAssertFalse(restoredOccurrences.isEmpty)
+    }
+
+    func testFormatFiveBackupBackwardCompatibility() throws {
+        // Construct a legacy Format 5 WorkspaceBackup (which had no bills)
+        let book = BookProfile(id: UUID(), name: "Legacy Book")
+        let item = BookBackupItem(
+            book: book,
+            categories: ExpenseCategory.defaults,
+            expenses: [],
+            budgets: [],
+            draft: nil,
+            bills: nil,
+            billOccurrences: nil
+        )
+        let legacyBackup = WorkspaceBackup(
+            formatVersion: 5,
+            exportedAt: .now,
+            currency: "IDR",
+            minorUnitScale: 2,
+            books: [item]
+        )
+
+        let encoded = try legacyBackup.encoded()
+        let decoded = try WorkspaceBackup.decode(encoded)
+        XCTAssertEqual(decoded.formatVersion, 5)
+        XCTAssertEqual(decoded.books.first?.bills, nil)
+    }
+}

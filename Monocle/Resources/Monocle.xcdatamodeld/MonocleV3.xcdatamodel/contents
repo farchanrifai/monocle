@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24000" systemVersion="26" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="3">
+    <entity name="Book" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <relationship name="expenses" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ExpenseRecord" inverseName="book" inverseEntity="ExpenseRecord"/>
+        <relationship name="categories" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="CategoryRecord" inverseName="book" inverseEntity="CategoryRecord"/>
+        <relationship name="budgets" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="BudgetRecord" inverseName="book" inverseEntity="BudgetRecord"/>
+        <relationship name="bills" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="BillRuleRecord" inverseName="book" inverseEntity="BillRuleRecord"/>
+    </entity>
+    <entity name="CategoryRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="symbol" optional="YES" attributeType="String"/>
+        <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="categories" inverseEntity="Book"/>
+        <relationship name="allocations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="AllocationRecord" inverseName="category" inverseEntity="AllocationRecord"/>
+    </entity>
+    <entity name="ExpenseRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="amount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="day" optional="YES" attributeType="String"/>
+        <attribute name="note" optional="YES" attributeType="String"/>
+        <attribute name="source" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="expenses" inverseEntity="Book"/>
+        <relationship name="allocations" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="AllocationRecord" inverseName="expense" inverseEntity="AllocationRecord"/>
+    </entity>
+    <entity name="AllocationRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="amount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="expense" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="ExpenseRecord" inverseName="allocations" inverseEntity="ExpenseRecord"/>
+        <relationship name="category" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="CategoryRecord" inverseName="allocations" inverseEntity="CategoryRecord"/>
+    </entity>
+    <entity name="BudgetRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="effectiveDay" optional="YES" attributeType="String"/>
+        <attribute name="overallLimit" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="startDay" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="transitionEndDay" optional="YES" attributeType="String"/>
+        <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="budgets" inverseEntity="Book"/>
+        <relationship name="categoryLimits" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="BudgetCategoryRecord" inverseName="budget" inverseEntity="BudgetCategoryRecord"/>
+    </entity>
+    <entity name="BudgetCategoryRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="categoryID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="limit" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="budget" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="BudgetRecord" inverseName="categoryLimits" inverseEntity="BudgetRecord"/>
+    </entity>
+    <entity name="BillRuleRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="amount" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="categoryID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="recurrenceType" optional="YES" attributeType="String"/>
+        <attribute name="recurrenceDay" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="recurrenceMonth" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="isAutomatic" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="hasReminder" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="reminderLeadDays" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="book" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Book" inverseName="bills" inverseEntity="Book"/>
+        <relationship name="occurrences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="BillOccurrenceRecord" inverseName="rule" inverseEntity="BillOccurrenceRecord"/>
+    </entity>
+    <entity name="BillOccurrenceRecord" representedClassName="NSManagedObject" syncable="YES">
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="dueDay" optional="YES" attributeType="String"/>
+        <attribute name="status" optional="YES" attributeType="String"/>
+        <attribute name="expenseID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="rule" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="BillRuleRecord" inverseName="occurrences" inverseEntity="BillRuleRecord"/>
+    </entity>
+</model>

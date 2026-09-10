@@ -23,6 +23,7 @@
 		5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C095F291D89DF974579CA6 /* AppEnvironment.swift */; };
 		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
 		671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */; };
+		B1117E575000000000000001 /* BillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1117E575000000000000002 /* BillTests.swift */; };
 		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
 		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
 		9321C8B23F73EED9EA109E04 /* LocalStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */; };
@@ -44,6 +45,9 @@
 		CC0000022D75000100000003 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000003 /* StockDesignViews.swift */; };
 		CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000004 /* CardCustomizerView.swift */; };
 		CC0000022D75000100000005 /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000005 /* StackCustomizerView.swift */; };
+		CC0000022D75000100000011 /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000011 /* Bill.swift */; };
+		CC0000022D75000100000012 /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000012 /* BillReconciliationEngine.swift */; };
+		CC0000022D75000100000013 /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000013 /* BillNotificationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +73,7 @@
 		15119B5A62BE722F4E6FA3B4 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		259DC603F39D197686C31B1F /* MonocleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleTests.swift; sourceTree = "<group>"; };
 		3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiBookTests.swift; sourceTree = "<group>"; };
+		B1117E575000000000000002 /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
 		41C095F291D89DF974579CA6 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
 		55C6F2F7E78348046E865E34 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
@@ -106,6 +111,10 @@
 		CC0000012D75000100000003 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
 		CC0000012D75000100000004 /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
 		CC0000012D75000100000005 /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000010 /* MonocleV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV3.xcdatamodel; sourceTree = "<group>"; };
+		CC0000012D75000100000011 /* Bill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bill.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000012 /* BillReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillReconciliationEngine.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000013 /* BillNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillNotificationService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -148,6 +157,7 @@
 		408D30AC2E99AD73FEC1E498 /* Integrations */ = {
 			isa = PBXGroup;
 			children = (
+				CC0000012D75000100000013 /* BillNotificationService.swift */,
 				6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */,
 			);
 			path = Integrations;
@@ -202,6 +212,8 @@
 		A07D2AE17C967AD64F16123F /* Domain */ = {
 			isa = PBXGroup;
 			children = (
+				CC0000012D75000100000011 /* Bill.swift */,
+				CC0000012D75000100000012 /* BillReconciliationEngine.swift */,
 				5917E02740846F6B5ED016CC /* BookBackup.swift */,
 				CC0000012D75000100000001 /* CardCustomization.swift */,
 				BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */,
@@ -248,6 +260,7 @@
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
 				259DC603F39D197686C31B1F /* MonocleTests.swift */,
 				3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */,
+				B1117E575000000000000002 /* BillTests.swift */,
 			);
 			path = MonocleTests;
 			sourceTree = "<group>";
@@ -372,6 +385,7 @@
 				E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */,
 				2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */,
 				671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */,
+				B1117E575000000000000001 /* BillTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -417,6 +431,9 @@
 				CC0000022D75000100000003 /* StockDesignViews.swift in Sources */,
 				CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */,
 				CC0000022D75000100000005 /* StackCustomizerView.swift in Sources */,
+				CC0000022D75000100000011 /* Bill.swift in Sources */,
+				CC0000022D75000100000012 /* BillReconciliationEngine.swift in Sources */,
+				CC0000022D75000100000013 /* BillNotificationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -487,7 +504,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -508,7 +525,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.2.5;
+				MARKETING_VERSION = 0.3.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -596,7 +613,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -611,7 +628,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.2.5;
+				MARKETING_VERSION = 0.3.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -728,8 +745,9 @@
 			children = (
 				5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */,
 				FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */,
+				CC0000012D75000100000010 /* MonocleV3.xcdatamodel */,
 			);
-			currentVersion = FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */;
+			currentVersion = CC0000012D75000100000010 /* MonocleV3.xcdatamodel */;
 			path = Monocle.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
