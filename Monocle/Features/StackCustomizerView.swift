@@ -416,6 +416,22 @@ struct StackCustomizerView: View {
 
                             Spacer(minLength: 4)
 
+                            // Move to Top Button (if not already top)
+                            if index > 0 {
+                                Button {
+                                    moveCardToTop(at: index)
+                                } label: {
+                                    Image(systemName: "arrow.up.to.line")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(Color.primary)
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color.primary.opacity(0.06)))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Move \(book.name) to top")
+                                .accessibilityIdentifier("moveToTop-\(book.name)")
+                            }
+
                             // Up Button
                             Button {
                                 moveCardUp(at: index)
@@ -465,6 +481,20 @@ struct StackCustomizerView: View {
                             RoundedRectangle(cornerRadius: 14)
                                 .fill(Color.primary.opacity(0.04))
                         )
+                        .contextMenu {
+                            if index > 0 {
+                                Button {
+                                    moveCardToTop(at: index)
+                                } label: {
+                                    Label("Move to Top", systemImage: "arrow.up.to.line")
+                                }
+                            }
+                            Button(role: .destructive) {
+                                removeCard(book.id)
+                            } label: {
+                                Label("Remove from Stack", systemImage: "minus.circle")
+                            }
+                        }
                     }
                 }
             }
@@ -627,6 +657,19 @@ struct StackCustomizerView: View {
         workingStacks.removeAll { $0.id == toDelete }
         if let next = workingStacks.first {
             selectStack(next.id)
+        }
+    }
+
+    private func moveCardToTop(at index: Int) {
+        guard let sIdx = currentStackIndex else { return }
+        var cardIDs = workingStacks[sIdx].cardIDs
+        guard index > 0 && index < cardIDs.count else { return }
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        withAnimation(.snappy(duration: 0.24)) {
+            let item = cardIDs.remove(at: index)
+            cardIDs.insert(item, at: 0)
+            workingStacks[sIdx].cardIDs = cardIDs
         }
     }
 

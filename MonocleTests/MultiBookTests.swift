@@ -449,4 +449,36 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(reorderedIDs, [b3.id, b1.id, b2.id])
         XCTAssertEqual(model.cardsInCurrentStack.first?.id, b3.id)
     }
+
+    func testMoveBookToFrontAndReorderCards() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let b1 = try store.createBook(named: "Card 1")
+        let b2 = try store.createBook(named: "Card 2")
+        let b3 = try store.createBook(named: "Card 3")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let expenseService = try ExpenseService(store: store)
+        let model = AppModel(expenses: expenseService, state: state)
+
+        let stack = model.createStack(name: "Test Stack", icon: "folder", cardIDs: [b1.id, b2.id, b3.id])
+        model.setActiveStack(id: stack.id)
+        model.filterScope = .activeStack
+
+        // In active stack: move b3 to front
+        model.moveBookToFront(b3.id)
+        XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b3.id, b1.id, b2.id])
+        XCTAssertEqual(model.visibleBooks.first?.id, b3.id)
+
+        // In active stack: reorder cards
+        model.reorderCardsInCurrentStack(fromOffsets: IndexSet(integer: 2), toOffset: 0)
+        XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b2.id, b3.id, b1.id])
+
+        // In allCards mode: move b1 to front
+        model.filterScope = .allCards
+        model.moveBookToFront(b1.id)
+        XCTAssertEqual(model.orderedBooks.first?.id, b1.id)
+    }
 }

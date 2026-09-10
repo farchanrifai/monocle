@@ -27,6 +27,21 @@ if [ -e "$delivery_path" ]; then
 fi
 /usr/bin/ditto "$output_path" "$delivery_path"
 printf 'Unsigned IPA: %s\nSHA-256: %s\nDelivery copy: %s\n' "$output_path" "$sha256" "$delivery_path"
+changelog_notes=""
+if [ -f "$project_root/CHANGELOG.md" ]; then
+  changelog_notes=$(awk -v ver="$version" '
+    BEGIN { found=0 }
+    $0 ~ "^## \\[" ver "\\]" || $0 ~ "^## " ver { found=1; next }
+    found && /^## / { exit }
+    found { print }
+  ' "$project_root/CHANGELOG.md" | sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba')
+fi
+
+release_notes="${1:-$changelog_notes}"
+if [ -z "$release_notes" ]; then
+  release_notes="Monocle $version ($build_number)"
+fi
+
 if [ "${SKIP_SIDESTORE_PUBLISH:-0}" != "1" ]; then
-  "$project_root/scripts/publish-sidestore.sh" "$output_path" "${1:-Monocle $version ($build_number)}"
+  "$project_root/scripts/publish-sidestore.sh" "$output_path" "$release_notes"
 fi

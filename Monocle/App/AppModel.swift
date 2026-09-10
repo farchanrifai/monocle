@@ -487,6 +487,32 @@ final class AppModel {
         showToast("Stack deleted")
     }
 
+    func moveBookToFront(_ bookID: UUID) {
+        if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
+            var cardIDs = stacks[idx].cardIDs.filter { $0 != bookID }
+            cardIDs.insert(bookID, at: 0)
+            stacks[idx].cardIDs = cardIDs
+            persistWorkspacePreferences()
+        } else {
+            var currentOrder = orderedBooks.map(\.id).filter { $0 != bookID }
+            currentOrder.insert(bookID, at: 0)
+            workspacePreferences.bookOrder = currentOrder
+            persistWorkspacePreferences()
+        }
+        showToast("Moved to front")
+    }
+
+    func reorderCardsInCurrentStack(fromOffsets: IndexSet, toOffset: Int) {
+        if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
+            var cardIDs = stacks[idx].cardIDs
+            cardIDs.move(fromOffsets: fromOffsets, toOffset: toOffset)
+            stacks[idx].cardIDs = cardIDs
+            persistWorkspacePreferences()
+        } else {
+            reorderBooks(fromOffsets: fromOffsets, toOffset: toOffset)
+        }
+    }
+
     func reorderBooks(fromOffsets: IndexSet, toOffset: Int) {
         var currentOrder = orderedBooks.map(\.id)
         currentOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)

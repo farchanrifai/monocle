@@ -843,4 +843,51 @@ final class MonocleUITests: XCTestCase {
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testCardReorderingAndBringToFront() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Verify card stack is present
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
+
+        if cards.count > 1 {
+            // Long press the second card to open context menu
+            let secondCard = cards.element(boundBy: 1)
+            secondCard.press(forDuration: 1.0)
+
+            let bringToFrontButton = app.buttons["Bring to Front"]
+            if bringToFrontButton.waitForExistence(timeout: 3) {
+                bringToFrontButton.tap()
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+
+        // 2. Open Stack Customizer
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let manageStacks = app.buttons["Stacks & Card Visibility"]
+        XCTAssertTrue(manageStacks.waitForExistence(timeout: 5))
+        manageStacks.tap()
+
+        XCTAssertTrue(app.navigationBars["Manage Stacks"].waitForExistence(timeout: 5))
+
+        // Find any move to top button
+        let moveToTopButtons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'moveToTop-'"))
+        if moveToTopButtons.count > 0 {
+            moveToTopButtons.firstMatch.tap()
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+
+        let saveButton = app.buttons["saveStackCustomizer"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        saveButton.tap()
+
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
 }
