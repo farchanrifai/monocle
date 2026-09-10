@@ -105,8 +105,11 @@ struct BookHomeView: View {
                             }
                         }
                     }
+                    let collapseDelta = (reduceMotion || selectedID != nil) ? 0 : (CGFloat(max(0, displayedBooks.count - 1)) * stripHeight * stackCollapseProgress)
+                    let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
+
                     activitySection(bookID: nil)
-                        .offset(y: (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90)))
+                        .offset(y: pullDelta - collapseDelta)
                         .opacity(selectedID == nil ? 1 : 0)
                 }
                 .padding(.horizontal, 16)
@@ -316,10 +319,7 @@ struct BookHomeView: View {
             if showPlaceholder, let info = placeholderInfo {
                 stackPlaceholderCard(name: info.name, icon: info.icon, count: info.count)
                     .frame(height: cardHeight)
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.94)),
-                        removal: .opacity.combined(with: .scale(scale: 1.04))
-                    ))
+                    .transition(.opacity)
                     .zIndex(100)
             }
         }
@@ -355,7 +355,7 @@ struct BookHomeView: View {
             let collapseOffset = -CGFloat(index) * stripHeight * stackCollapseProgress
 
             return content
-                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : (1.0 - (CGFloat(index) * 0.015 * stackCollapseProgress)), anchor: .top)
+                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
                 .offset(y: isSelected ? pushOffset : (fan + collapseOffset))
         }
     }
@@ -461,26 +461,27 @@ struct BookHomeView: View {
             placeholderInfo = StackPlaceholderInfo(name: targetName, icon: targetIcon, count: targetCount)
 
             // Step 1: Stacks up all cards to top
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                 stackCollapseProgress = 1.0
             }
 
-            try? await Task.sleep(for: .milliseconds(200))
+            try? await Task.sleep(for: .milliseconds(220))
             guard !Task.isCancelled else { return }
 
             // Step 2: Show placeholder card with the new Stack name (fade in)
-            withAnimation(.easeIn(duration: 0.18)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 showPlaceholder = true
             }
 
-            try? await Task.sleep(for: .milliseconds(260))
+            // Hold placeholder so user can comfortably read the stack name and card count
+            try? await Task.sleep(for: .milliseconds(750))
             guard !Task.isCancelled else { return }
 
             // Step 3: Swap cards under placeholder and fan down new cards
             displayedBooks = model.visibleBooks
             stackCollapseProgress = 1.0
 
-            withAnimation(.easeOut(duration: 0.18)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 showPlaceholder = false
             }
 
@@ -488,7 +489,7 @@ struct BookHomeView: View {
                 stackCollapseProgress = 0.0
             }
 
-            try? await Task.sleep(for: .milliseconds(450))
+            try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
 
             currentStackKey = targetKey
