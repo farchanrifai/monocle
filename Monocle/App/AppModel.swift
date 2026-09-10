@@ -48,6 +48,8 @@ final class AppModel {
     var showSettings = false
     var showStackCustomizer = false
     var stackCustomizerMode: StackCustomizerMode = .manage
+    var showCSVInterchange = false
+    var csvInterchangeInitialTab = 0
     var selectedTab = 0
     var error: String?
     var startupError: String?
@@ -594,7 +596,60 @@ final class AppModel {
         invalidateExpenseCaches()
         showToast("Book renamed")
     }
-    private func showToast(_ text: String) { toast = text; toastID = UUID() }
+
+    func showToast(_ text: String) { toast = text; toastID = UUID() }
+
+    func importExpenses(_ batch: [Expense], to bookID: UUID) throws {
+        try expenseService?.saveExpenses(batch, in: bookID)
+        invalidateExpenseCaches()
+        showToast("Imported \(batch.count) \(batch.count == 1 ? "expense" : "expenses")")
+    }
+
+    func csvExportText(
+        for bookID: UUID?,
+        dateRange: CSVDateRangeScope,
+        customStartDate: Date = .now,
+        customEndDate: Date = .now
+    ) -> String {
+        let calendar = Calendar.current
+        var targetExpenses: [Expense]
+        if let bookID {
+            targetExpenses = expenses(for: bookID)
+        } else {
+            var all: [Expense] = []
+            for b in books {
+                all.append(contentsOf: expenses(for: b.id))
+            }
+            targetExpenses = all
+        }
+
+        let now = Date.now
+        switch dateRange {
+        case .allTime:
+            break
+        case .thisMonth:
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
+            let startDay = Day.string(start)
+            targetExpenses = targetExpenses.filter { $0.day >= startDay }
+        case .lastMonth:
+            guard let prevMonth = calendar.date(byAdding: .month, value: -1, to: now) else { break }
+            let comps = calendar.dateComponents([.year, .month], from: prevMonth)
+            guard let startOfLast = calendar.date(from: comps),
+                  let startOfThis = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) else { break }
+            let startDay = Day.string(startOfLast)
+            let endDay = Day.string(startOfThis)
+            targetExpenses = targetExpenses.filter { $0.day >= startDay && $0.day < endDay }
+        case .custom:
+            let startDay = Day.string(min(customStartDate, customEndDate))
+            let endDay = Day.string(max(customStartDate, customEndDate))
+            targetExpenses = targetExpenses.filter { $0.day >= startDay && $0.day <= endDay }
+        }
+
+        targetExpenses.sort { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+        let allCats = categories
+        return CSVExportGenerator.generate(expenses: targetExpenses, categories: allCats, books: books)
+    }
+
     func saveDraft() {
         do {
             var expense = try draft.expense()

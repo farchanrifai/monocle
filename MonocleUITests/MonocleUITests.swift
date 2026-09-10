@@ -890,4 +890,45 @@ final class MonocleUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testCSVExportAndImportFlow() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Open Options Menu
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        // 2. Open CSV Data -> Export CSV
+        let csvMenu = app.buttons["CSV Data"]
+        XCTAssertTrue(csvMenu.waitForExistence(timeout: 5))
+        csvMenu.tap()
+
+        let exportButton = app.buttons["Export CSV"]
+        XCTAssertTrue(exportButton.waitForExistence(timeout: 5))
+        exportButton.tap()
+
+        // 3. Verify CSV Data modal presented
+        XCTAssertTrue(app.navigationBars["CSV Data"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls["csvModePicker"].exists)
+
+        // 4. Verify Export tab elements
+        XCTAssertTrue(app.buttons["exportCSVButton"].exists)
+
+        // 5. Switch to Import tab
+        app.segmentedControls["csvModePicker"].buttons["Import"].tap()
+        XCTAssertTrue(app.buttons["selectCSVButton"].waitForExistence(timeout: 5))
+
+        // 6. Switch back to Export tab
+        app.segmentedControls["csvModePicker"].buttons["Export"].tap()
+        XCTAssertTrue(app.buttons["exportCSVButton"].waitForExistence(timeout: 5))
+
+        // 7. Dismiss modal
+        app.buttons["dismissCSVView"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
 }
+

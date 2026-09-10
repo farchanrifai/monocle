@@ -299,6 +299,19 @@ final class ExpenseService {
         }
     }
 
+    func saveExpenses(_ batch: [Expense], in bookID: UUID? = nil) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        let targetID = bookID ?? activeBookID
+        let cats = (targetID == activeBookID) ? categories : try store.categories(in: targetID)
+        for expense in batch {
+            var exp = expense
+            exp.bookID = targetID
+            try exp.validate(categories: cats)
+            try store.save(exp, in: targetID)
+        }
+        try reload()
+    }
+
     func save(_ budget: BudgetVersion, in bookID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = bookID ?? budget.bookID ?? activeBookID

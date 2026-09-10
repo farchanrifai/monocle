@@ -693,6 +693,7 @@ struct SettingsView: View {
                 }
                 Section {
                     NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
+                    NavigationLink("CSV export & import") { CSVInterchangeView(model: model) }.accessibilityIdentifier("csvInterchangeSettings")
                     NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
                     NavigationLink("App lock") { AppLockSettingsView(model: model) }.accessibilityIdentifier("appLockSettings")
                     if model.settings.book.kind == .sample {

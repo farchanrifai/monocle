@@ -234,6 +234,9 @@ struct BookHomeView: View {
                     }
             }
         }
+        .sheet(isPresented: $model.showCSVInterchange) {
+            CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
+        }
         .onAppear {
             if displayedBooks.isEmpty {
                 displayedBooks = model.visibleBooks
@@ -661,6 +664,27 @@ struct BookHomeView: View {
                 Label("Bills", systemImage: "calendar")
             }
             .accessibilityIdentifier("menuBills")
+
+            Menu {
+                Button {
+                    model.csvInterchangeInitialTab = 0
+                    model.showCSVInterchange = true
+                } label: {
+                    Label("Export CSV", systemImage: "square.and.arrow.up")
+                }
+                .accessibilityIdentifier("menuExportCSV")
+
+                Button {
+                    model.csvInterchangeInitialTab = 1
+                    model.showCSVInterchange = true
+                } label: {
+                    Label("Import CSV", systemImage: "square.and.arrow.down")
+                }
+                .accessibilityIdentifier("menuImportCSV")
+            } label: {
+                Label("CSV Data", systemImage: "tablecells")
+            }
+            .accessibilityIdentifier("menuCSVData")
 
             if selectedID != nil {
                 Button("Return to stack") { focus(nil) }
