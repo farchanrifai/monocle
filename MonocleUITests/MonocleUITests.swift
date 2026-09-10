@@ -835,4 +835,42 @@ final class MonocleUITests: XCTestCase {
 
         XCTAssertTrue(filterButton.exists)
     }
+
+    @MainActor
+    func testCardCustomizerCarouselSnappingAndTransitions() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let customizeButton = app.buttons["Customize card"]
+        XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
+        customizeButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
+
+        let initialShot = app.screenshot()
+        try? initialShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_customizer_initial.png"))
+
+        // Swipe left on the card carousel to snap to the next card
+        let window = app.windows.firstMatch
+        let center = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.32))
+        let leftTarget = window.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.32))
+        center.press(forDuration: 0.05, thenDragTo: leftTarget)
+
+        Thread.sleep(forTimeInterval: 0.8)
+        let snappedShot = app.screenshot()
+        try? snappedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_customizer_snapped.png"))
+
+        // Swipe back right to re-center the first card
+        leftTarget.press(forDuration: 0.05, thenDragTo: center)
+        Thread.sleep(forTimeInterval: 0.8)
+
+        XCTAssertTrue(app.buttons["Cancel"].exists)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
 }

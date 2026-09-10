@@ -9,17 +9,6 @@ enum CustomizerTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct CarouselScrollTargetBehavior: ScrollTargetBehavior {
-    let step: CGFloat
-    let count: Int
-
-    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        let proposedX = target.rect.origin.x
-        let maxIndex = CGFloat(max(0, count - 1))
-        let targetIndex = min(maxIndex, max(0, round(proposedX / max(1, step))))
-        target.rect.origin.x = targetIndex * step
-    }
-}
 
 struct CardCustomizerView: View {
     @Bindable var model: AppModel
@@ -252,8 +241,9 @@ struct CardCustomizerView: View {
                 guard let newItem else { return }
                 loadSelectedPhoto(newItem)
             }
-            .onChange(of: activeBookID) { _, newID in
-                if let newID {
+            .onChange(of: activeBookID) { oldID, newID in
+                if let newID, newID != oldID {
+                    UISelectionFeedbackGenerator().selectionChanged()
                     settledBookID = newID
                     if let editingID = editingBookNameID, editingID != newID {
                         commitEditingName(for: editingID)
@@ -328,10 +318,8 @@ struct CardCustomizerView: View {
     // MARK: - Card Carousel
     private func cardCarousel(width: CGFloat) -> some View {
         let sideInset: CGFloat = 36
-        let spacing: CGFloat = 12
+        let spacing: CGFloat = 14
         let cardWidth = max(240, width - (sideInset * 2))
-        let step = cardWidth + spacing
-        let totalCount = customizerBooks.count + 1
 
         return VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -339,6 +327,11 @@ struct CardCustomizerView: View {
                     ForEach(customizerBooks) { book in
                         previewCard(for: book)
                             .frame(width: cardWidth)
+                            .scrollTransition(.interactive) { content, phase in
+                                content
+                                    .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
+                                    .opacity(phase.isIdentity ? 1.0 : 0.65)
+                            }
                             .id(book.id)
                             .onTapGesture {
                                 if currentBookID != book.id {
@@ -352,12 +345,17 @@ struct CardCustomizerView: View {
 
                     placeholderCard(cardWidth: cardWidth)
                         .frame(width: cardWidth)
+                        .scrollTransition(.interactive) { content, phase in
+                            content
+                                .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
+                                .opacity(phase.isIdentity ? 1.0 : 0.65)
+                        }
                         .id(placeholderID)
                 }
                 .scrollTargetLayout()
             }
             .contentMargins(.horizontal, sideInset, for: .scrollContent)
-            .scrollTargetBehavior(CarouselScrollTargetBehavior(step: step, count: totalCount))
+            .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $activeBookID)
             .frame(height: 204)
 
@@ -442,7 +440,6 @@ struct CardCustomizerView: View {
                     )
             )
             .shadow(color: Color.black.opacity(isActive ? 0.08 : 0.02), radius: isActive ? 8 : 3, y: isActive ? 3 : 1)
-            .opacity(isActive ? 1.0 : 0.72)
             .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
         }
         .buttonStyle(.plain)
@@ -608,7 +605,6 @@ struct CardCustomizerView: View {
                 .strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
-        .opacity(isActive ? 1.0 : 0.72)
         .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("customizer-preview-\(book.id)")
