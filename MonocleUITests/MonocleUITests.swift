@@ -780,5 +780,34 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(filterButton.exists)
     }
 
+    @MainActor
+    func testStressTappingFilterButton() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        let filterButton = app.buttons["activityFilterButton"]
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 10))
+
+        let coord = filterButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // Stress test: rapid taps with 100ms interval (simulating rapid finger tapping)
+        for i in 1...10 {
+            coord.tap()
+            usleep(120_000) // 120ms
+            if i % 3 == 0 {
+                let shot = app.screenshot()
+                try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stress_tap_\(i).png"))
+            }
+        }
+
+        // Wait 1.5s for final settle
+        Thread.sleep(forTimeInterval: 1.5)
+        let finalShot = app.screenshot()
+        try? finalShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stress_tap_final.png"))
+        XCTAssertTrue(filterButton.exists)
+    }
+
 }
+
 

@@ -70,10 +70,11 @@ struct BottomNavigation: View {
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(model.filterScope == .activeStack ? MC.red : Color.primary)
                             .frame(width: 56, height: 56)
+                            .contentTransition(.symbolEffect(.replace))
                     } primaryAction: {
                         model.toggleFilterScope()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressFeedbackStyle())
                     .glassEffect(.regular.interactive(), in: .circle)
                     .accessibilityLabel(model.filterScope == .activeStack ? "Filter active: \(model.currentStack?.name ?? "Stack")" : "All cards")
                     .accessibilityIdentifier("activityFilterButton")
@@ -89,7 +90,7 @@ struct BottomNavigation: View {
                             .foregroundStyle(.white)
                             .frame(width: 56, height: 56)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressFeedbackStyle())
                     .glassEffect(.regular.tint(MC.red.opacity(0.85)).interactive(), in: .circle)
                     .environment(\.colorScheme, .dark)
                     .accessibilityLabel(model.draft.hasContent ? "Continue expense" : "Add expense")
@@ -103,6 +104,7 @@ struct BottomNavigation: View {
         .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: model.filterScope)
         .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: model.toast)
         .sensoryFeedback(.selection, trigger: model.filterScope)
+        .sensoryFeedback(.selection, trigger: model.activeStackID)
         .task(id: model.toastID) {
             guard model.toast != nil, model.undoExpense == nil else { return }
             do { try await Task.sleep(for: .seconds(2.8)) } catch { return }

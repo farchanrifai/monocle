@@ -415,11 +415,29 @@ final class AppModel {
     }
 
     func toggleFilterScope() {
-        switch filterScope {
-        case .activeStack:
-            filterScope = .allCards
-        case .allCards:
-            filterScope = .activeStack
+        cycleFilterOrStack()
+    }
+
+    func cycleFilterOrStack() {
+        if filterScope == .allCards {
+            if let first = stacks.first {
+                activeStackID = first.id
+                filterScope = .activeStack
+            } else {
+                filterScope = .activeStack
+            }
+        } else {
+            if stacks.count > 1, let currentID = activeStackID, let currentIndex = stacks.firstIndex(where: { $0.id == currentID }) {
+                let nextIndex = currentIndex + 1
+                if nextIndex < stacks.count {
+                    activeStackID = stacks[nextIndex].id
+                    filterScope = .activeStack
+                } else {
+                    filterScope = .allCards
+                }
+            } else {
+                filterScope = .allCards
+            }
         }
     }
 
