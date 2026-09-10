@@ -764,22 +764,19 @@ final class MonocleUITests: XCTestCase {
         // Tap filter button to toggle stack scope
         filterButton.tap()
 
-        // Check for stackPlaceholderCard appearance during transition
-        let placeholderCard = app.otherElements["stackPlaceholderCard"]
-        let appeared = placeholderCard.waitForExistence(timeout: 1.5)
-        if appeared {
-            let transitionShot = app.screenshot()
-            try? transitionShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_transition_placeholder.png"))
-        }
+        // Wait 0.6s for Phase 1 to stack up and Phase 2/3 (placeholder reveal) to be on screen
+        Thread.sleep(forTimeInterval: 0.6)
+        let transitionShot = app.screenshot()
+        try? transitionShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_transition_placeholder.png"))
 
         // Wait for transition to settle
-        Thread.sleep(forTimeInterval: 1.5)
+        Thread.sleep(forTimeInterval: 2.0)
         let settledShot = app.screenshot()
         try? settledShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_settled.png"))
 
         // Switch back
         filterButton.tap()
-        Thread.sleep(forTimeInterval: 1.5)
+        Thread.sleep(forTimeInterval: 2.0)
         XCTAssertTrue(filterButton.exists)
     }
 
