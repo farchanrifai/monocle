@@ -31,6 +31,8 @@ struct BookHomeView: View {
     @AccessibilityFocusState private var headingFocused: Bool
 
     @State private var displayedBooks: [BookProfile] = []
+    @State private var displayedFilterScope: StackFilterScope? = nil
+    @State private var displayedStackID: UUID? = nil
     @State private var currentStackKey: String = ""
     @State private var stackCollapseProgress: CGFloat = 0.0
     @State private var showPlaceholder: Bool = false
@@ -242,6 +244,12 @@ struct BookHomeView: View {
             if displayedBooks.isEmpty {
                 displayedBooks = model.visibleBooks
             }
+            if displayedFilterScope == nil {
+                displayedFilterScope = model.filterScope
+            }
+            if displayedStackID == nil {
+                displayedStackID = model.activeStackID
+            }
             if currentStackKey.isEmpty {
                 currentStackKey = stackKey
             }
@@ -351,7 +359,7 @@ struct BookHomeView: View {
         }
         .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
         .accessibilityIdentifier("stack-book-\(book.id)")
-        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion, stackCollapseProgress] content, proxy in
+        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion, stackCollapseProgress, stripHeight] content, proxy in
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
@@ -459,8 +467,10 @@ struct BookHomeView: View {
         }
 
         if reduceMotion {
-            withAnimation(.easeInOut(duration: 0.22)) {
+            withAnimation(.easeInOut(duration: 0.16)) {
                 displayedBooks = model.visibleBooks
+                displayedFilterScope = model.filterScope
+                displayedStackID = model.activeStackID
                 currentStackKey = targetKey
                 stackCollapseProgress = 0.0
                 showPlaceholder = false
@@ -472,50 +482,52 @@ struct BookHomeView: View {
         transitionTask = Task { @MainActor in
             placeholderInfo = StackPlaceholderInfo(name: targetName, icon: targetIcon, count: targetCount)
 
-            // Step 1: Stacks up all cards cleanly to top
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+            // Step 1: Swiftly stack up all cards to top
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.90)) {
                 stackCollapseProgress = 1.0
             }
 
-            try? await Task.sleep(for: .milliseconds(320))
+            try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else { return }
 
-            // Step 2: Show placeholder card with the new Stack name (fade in)
-            withAnimation(.easeInOut(duration: 0.20)) {
+            // Step 2: Reveal placeholder card with the new Stack name
+            withAnimation(.easeInOut(duration: 0.12)) {
                 showPlaceholder = true
             }
 
-            try? await Task.sleep(for: .milliseconds(200))
+            try? await Task.sleep(for: .milliseconds(120))
             guard !Task.isCancelled else { return }
 
-            // Step 3: Hold placeholder card so user can comfortably read stack name and card count
-            try? await Task.sleep(for: .milliseconds(650))
+            // Step 3: Hold placeholder card so user can comfortably register stack name
+            try? await Task.sleep(for: .milliseconds(260))
             guard !Task.isCancelled else { return }
 
-            // Step 4: Silently swap cards behind the opaque placeholder card
+            // Step 4: Silently swap cards and filter scope behind the opaque placeholder card
             var noAnim = Transaction()
             noAnim.disablesAnimations = true
             withTransaction(noAnim) {
                 displayedBooks = model.visibleBooks
+                displayedFilterScope = model.filterScope
+                displayedStackID = model.activeStackID
             }
 
-            try? await Task.sleep(for: .milliseconds(40))
+            try? await Task.sleep(for: .milliseconds(20))
             guard !Task.isCancelled else { return }
 
             // Step 5: Fade out placeholder card to reveal new stacked cards
-            withAnimation(.easeInOut(duration: 0.20)) {
+            withAnimation(.easeInOut(duration: 0.12)) {
                 showPlaceholder = false
             }
 
-            try? await Task.sleep(for: .milliseconds(200))
+            try? await Task.sleep(for: .milliseconds(120))
             guard !Task.isCancelled else { return }
 
             // Step 6: Fan down new cards smoothly to their rest positions
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.85)) {
                 stackCollapseProgress = 0.0
             }
 
-            try? await Task.sleep(for: .milliseconds(400))
+            try? await Task.sleep(for: .milliseconds(240))
             guard !Task.isCancelled else { return }
 
             currentStackKey = targetKey
@@ -580,7 +592,9 @@ struct BookHomeView: View {
     }
 
     private func activitySection(bookID: UUID?) -> some View {
-        let isAllCards = model.filterScope == .allCards
+        let activeScope = displayedFilterScope ?? model.filterScope
+        let isAllCards = activeScope == .allCards
+        let activeStack = model.stacks.first { $0.id == (displayedStackID ?? model.activeStackID) } ?? model.currentStack
         let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -591,9 +605,9 @@ struct BookHomeView: View {
 
                 if bookID == nil {
                     HStack(spacing: 4) {
-                        Image(systemName: isAllCards ? "rectangle.stack" : (model.currentStack?.icon ?? "square.stack.3d.up.fill"))
+                        Image(systemName: isAllCards ? "rectangle.stack" : (activeStack?.icon ?? "square.stack.3d.up.fill"))
                             .font(.caption2.weight(.bold))
-                        Text(isAllCards ? "All cards · \(model.unhiddenBooks.count)" : "\(model.currentStack?.name ?? "Stack") · \(model.cardsInCurrentStack.count)")
+                        Text(isAllCards ? "All cards · \(model.unhiddenBooks.count)" : "\(activeStack?.name ?? "Stack") · \(activeStack?.cardIDs.count ?? 0)")
                             .font(.caption2.weight(.semibold))
                     }
                     .foregroundStyle(isAllCards ? Color.secondary : MC.red)

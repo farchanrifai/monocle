@@ -770,13 +770,13 @@ final class MonocleUITests: XCTestCase {
         try? transitionShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_transition_placeholder.png"))
 
         // Wait for transition to settle
-        Thread.sleep(forTimeInterval: 2.0)
+        Thread.sleep(forTimeInterval: 1.2)
         let settledShot = app.screenshot()
         try? settledShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_settled.png"))
 
         // Switch back
         filterButton.tap()
-        Thread.sleep(forTimeInterval: 2.0)
+        Thread.sleep(forTimeInterval: 1.2)
         XCTAssertTrue(filterButton.exists)
     }
 

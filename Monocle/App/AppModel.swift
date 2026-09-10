@@ -418,10 +418,8 @@ final class AppModel {
         switch filterScope {
         case .activeStack:
             filterScope = .allCards
-            showToast("All cards")
         case .allCards:
             filterScope = .activeStack
-            showToast(currentStack.map { "Stack: \($0.name)" } ?? "Active stack")
         }
     }
 
@@ -429,9 +427,6 @@ final class AppModel {
         guard stacks.contains(where: { $0.id == id }) else { return }
         activeStackID = id
         filterScope = .activeStack
-        if let stack = stacks.first(where: { $0.id == id }) {
-            showToast("Switched to \(stack.name)")
-        }
     }
 
     @discardableResult
@@ -483,34 +478,57 @@ final class AppModel {
         try? state?.saveWorkspacePreferences(workspacePreferences)
     }
 
+    private var expensesCache: [UUID: [Expense]] = [:]
+    private var spentCache: [UUID: Int64] = [:]
+    private var memoizedActivities: [Expense]? = nil
+    private var memoizedActivitiesKey: String = ""
+
+    func invalidateExpenseCaches() {
+        expensesCache.removeAll()
+        spentCache.removeAll()
+        memoizedActivities = nil
+        memoizedActivitiesKey = ""
+    }
+
     func expenses(for bookID: UUID) -> [Expense] {
         if bookID == activeBookID {
             return expenses
         }
-        return (try? expenseService?.expenses(for: bookID)) ?? []
+        if let cached = expensesCache[bookID] {
+            return cached
+        }
+        let result = (try? expenseService?.expenses(for: bookID)) ?? []
+        expensesCache[bookID] = result
+        return result
     }
 
     func spent(for bookID: UUID) -> Int64 {
-        expenses(for: bookID).reduce(0) { $0 + $1.amount }
+        if let cached = spentCache[bookID] {
+            return cached
+        }
+        let total = expenses(for: bookID).reduce(0) { $0 + $1.amount }
+        spentCache[bookID] = total
+        return total
     }
 
     func activities(selectedBookID: UUID?, allBooks: Bool) -> [Expense] {
         if let selectedBookID {
             return expenses(for: selectedBookID)
         }
-        if allBooks {
-            var all: [Expense] = []
-            for b in unhiddenBooks {
-                all.append(contentsOf: expenses(for: b.id))
-            }
-            return all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
-        } else {
-            var all: [Expense] = []
-            for b in homeDeckCards {
-                all.append(contentsOf: expenses(for: b.id))
-            }
-            return all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+        let key = "\(allBooks)-\(filterScope.rawValue)-\(activeStackID?.uuidString ?? "nil")-\(unhiddenBooks.count)-\(homeDeckCards.count)"
+        if memoizedActivitiesKey == key, let cached = memoizedActivities {
+            return cached
         }
+
+        var all: [Expense] = []
+        let targetBooks = allBooks ? unhiddenBooks : homeDeckCards
+        for b in targetBooks {
+            all.append(contentsOf: expenses(for: b.id))
+        }
+        let sorted = all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+        memoizedActivities = sorted
+        memoizedActivitiesKey = key
+        return sorted
     }
 
     func startEmptyRealBook(named name: String) throws {
@@ -519,11 +537,13 @@ final class AppModel {
         self.settings = settings
         draft = ExpenseDraft()
         undoExpense = nil; pendingEntry = nil
+        invalidateExpenseCaches()
         showToast("Your real book is ready")
     }
     func renameRealBook(to name: String) throws {
         guard let backups else { throw BackupError.unsupported }
         settings = try backups.renameRealBook(to: name, currentDraft: draft, settings: settings)
+        invalidateExpenseCaches()
         showToast("Book renamed")
     }
     private func showToast(_ text: String) { toast = text; toastID = UUID() }
@@ -543,11 +563,13 @@ final class AppModel {
     func save(_ expense: Expense) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.save(expense)
+        invalidateExpenseCaches()
     }
     func delete(_ expense: Expense) {
         do {
             guard let expenseService else { throw EntryError.corruptStore }
             try expenseService.delete(expense.id)
+            invalidateExpenseCaches()
             undoExpense = expense; showToast("Expense deleted")
         } catch { self.error = error.localizedDescription }
     }

@@ -84,8 +84,8 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Book", value: model.settings.book.name)
                     LabeledContent("Currency", value: "IDR")
-                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.9"
-                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "25"
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0"
+                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "26"
                     LabeledContent("Version", value: "\(version) (\(build))")
                 }
                 Section {

@@ -24,19 +24,7 @@ struct BottomNavigation: View {
             GlassEffectContainer(spacing: 8) {
                 HStack {
                     // Left Bubble: Filter & Stack Switcher
-                    Button {
-                        model.toggleFilterScope()
-                    } label: {
-                        Image(systemName: model.filterScope == .activeStack ? "square.stack.3d.up.fill" : "rectangle.stack")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(model.filterScope == .activeStack ? MC.red : Color.primary)
-                            .frame(width: 56, height: 56)
-                    }
-                    .buttonStyle(.plain)
-                    .glassEffect(.regular.interactive(), in: .circle)
-                    .accessibilityLabel(model.filterScope == .activeStack ? "Filter active: \(model.currentStack?.name ?? "Stack")" : "All cards")
-                    .accessibilityIdentifier("activityFilterButton")
-                    .contextMenu {
+                    Menu {
                         Section("Stacks") {
                             ForEach(model.stacks) { stack in
                                 Button {
@@ -77,7 +65,18 @@ struct BottomNavigation: View {
                                 Label("Manage Stacks & Cards…", systemImage: "slider.horizontal.3")
                             }
                         }
+                    } label: {
+                        Image(systemName: model.filterScope == .activeStack ? "square.stack.3d.up.fill" : "rectangle.stack")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(model.filterScope == .activeStack ? MC.red : Color.primary)
+                            .frame(width: 56, height: 56)
+                    } primaryAction: {
+                        model.toggleFilterScope()
                     }
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .accessibilityLabel(model.filterScope == .activeStack ? "Filter active: \(model.currentStack?.name ?? "Stack")" : "All cards")
+                    .accessibilityIdentifier("activityFilterButton")
 
                     Spacer()
 
