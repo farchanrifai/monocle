@@ -419,4 +419,34 @@ final class MultiBookTests: XCTestCase {
         XCTAssertFalse(model.stacks.contains(where: { $0.id == travelStack.id }))
         XCTAssertTrue(model.books.contains(where: { $0.id == travel.id })) // Book itself still exists!
     }
+
+    func testStackCardReorderingAndFrontCard() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let b1 = try store.createBook(named: "Card 1")
+        let b2 = try store.createBook(named: "Card 2")
+        let b3 = try store.createBook(named: "Card 3")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let expenseService = try ExpenseService(store: store)
+        let model = AppModel(expenses: expenseService, state: state)
+
+        let stack = model.createStack(name: "Test Stack", icon: "folder", cardIDs: [b1.id, b2.id, b3.id])
+        model.setActiveStack(id: stack.id)
+
+        let initialIDs: [UUID] = model.cardsInCurrentStack.map { $0.id }
+        XCTAssertEqual(initialIDs, [b1.id, b2.id, b3.id])
+        XCTAssertEqual(model.cardsInCurrentStack.first?.id, b1.id)
+
+        if let idx = model.stacks.firstIndex(where: { $0.id == stack.id }) {
+            model.stacks[idx].cardIDs = [b3.id, b1.id, b2.id]
+            model.persistWorkspacePreferences()
+        }
+
+        let reorderedIDs: [UUID] = model.cardsInCurrentStack.map { $0.id }
+        XCTAssertEqual(reorderedIDs, [b3.id, b1.id, b2.id])
+        XCTAssertEqual(model.cardsInCurrentStack.first?.id, b3.id)
+    }
 }

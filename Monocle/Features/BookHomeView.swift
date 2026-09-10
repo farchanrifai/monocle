@@ -317,6 +317,7 @@ struct BookHomeView: View {
         VStack(spacing: -(cardHeight - stripHeight)) {
             ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
                 cardItem(book, index: index)
+                    .transition(.opacity)
             }
         }
         .compositingGroup()
@@ -388,15 +389,27 @@ struct BookHomeView: View {
 
         transitionTask?.cancel()
         transitionTask = Task { @MainActor in
+            let newBooks = model.visibleBooks
+            let frontCardChanges = (newBooks.first?.id != displayedBooks.first?.id)
+
             if isAlreadyCompressed {
-                // If cards are already compressed from an immediate prior tap,
-                // swap the underlying data silently at peak compression with 0ms delay!
-                var noAnim = Transaction()
-                noAnim.disablesAnimations = true
-                withTransaction(noAnim) {
-                    displayedBooks = model.visibleBooks
-                    displayedFilterScope = model.filterScope
-                    displayedStackID = model.activeStackID
+                // If cards are already compressed from an immediate prior tap:
+                if frontCardChanges {
+                    withAnimation(.easeInOut(duration: 0.08)) {
+                        displayedBooks = newBooks
+                        displayedFilterScope = model.filterScope
+                        displayedStackID = model.activeStackID
+                    }
+                    try? await Task.sleep(for: .milliseconds(80))
+                    guard !Task.isCancelled else { return }
+                } else {
+                    var noAnim = Transaction()
+                    noAnim.disablesAnimations = true
+                    withTransaction(noAnim) {
+                        displayedBooks = newBooks
+                        displayedFilterScope = model.filterScope
+                        displayedStackID = model.activeStackID
+                    }
                 }
 
                 // Spring fan down to rest positions
@@ -418,13 +431,27 @@ struct BookHomeView: View {
                 try? await Task.sleep(for: .milliseconds(80))
                 guard !Task.isCancelled else { return }
 
-                // Silent Re-index / Swap at peak compression
-                var noAnim = Transaction()
-                noAnim.disablesAnimations = true
-                withTransaction(noAnim) {
-                    displayedBooks = model.visibleBooks
-                    displayedFilterScope = model.filterScope
-                    displayedStackID = model.activeStackID
+                // Peak Compression Morph:
+                // If the frontmost card changes, smoothly cross-dissolve at y=0 (100ms)
+                // so the card face doesn't abruptly blink!
+                if frontCardChanges {
+                    withAnimation(.easeInOut(duration: 0.10)) {
+                        displayedBooks = newBooks
+                        displayedFilterScope = model.filterScope
+                        displayedStackID = model.activeStackID
+                    }
+
+                    try? await Task.sleep(for: .milliseconds(100))
+                    guard !Task.isCancelled else { return }
+                } else {
+                    // Front card is identical: silent swap with 0ms delay!
+                    var noAnim = Transaction()
+                    noAnim.disablesAnimations = true
+                    withTransaction(noAnim) {
+                        displayedBooks = newBooks
+                        displayedFilterScope = model.filterScope
+                        displayedStackID = model.activeStackID
+                    }
                 }
 
                 // Phase 2: Fluid Spring Fan-out to rest positions (140ms)

@@ -198,10 +198,21 @@ struct StackCustomizerView: View {
         }
     }
 
+    private func assignedCards(for stack: CardStack) -> [BookProfile] {
+        var result: [BookProfile] = []
+        let books = model.books
+        for id in stack.cardIDs {
+            if !alwaysHiddenIDs.contains(id), let book = books.first(where: { $0.id == id }) {
+                result.append(book)
+            }
+        }
+        return result
+    }
+
     private func stackCardPreview(for stack: CardStack) -> some View {
         let isSelected = stack.id == currentStackID
-        let assignedCards = model.books.filter { stack.cardIDs.contains($0.id) && !alwaysHiddenIDs.contains($0.id) }
-        let layers = miniCardLayers(for: assignedCards)
+        let assigned = assignedCards(for: stack)
+        let layers = miniCardLayers(for: assigned)
 
         return VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topLeading) {
@@ -241,7 +252,7 @@ struct StackCustomizerView: View {
                     .lineLimit(1)
             }
 
-            Text("\(assignedCards.count) \(assignedCards.count == 1 ? "card" : "cards")")
+            Text("\(assigned.count) \(assigned.count == 1 ? "card" : "cards")")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -255,7 +266,7 @@ struct StackCustomizerView: View {
                 )
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Stack \(stack.name), \(assignedCards.count) cards")
+        .accessibilityLabel("Stack \(stack.name), \(assigned.count) cards")
         .accessibilityIdentifier("stackPreview-\(stack.name)")
     }
 
@@ -338,71 +349,182 @@ struct StackCustomizerView: View {
 
     // MARK: - Cards in Stack Section
     private var cardsInStackSection: some View {
-        let availableCards = model.books.filter { !alwaysHiddenIDs.contains($0.id) }
+        let currentAssigned = assignedCards(for: activeStack)
+        let unassignedCards = model.books.filter { !alwaysHiddenIDs.contains($0.id) && !activeStack.cardIDs.contains($0.id) }
 
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Cards in This Stack")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                 Spacer()
-                Text("\(activeStack.cardIDs.count) selected")
+                Text("\(currentAssigned.count) \(currentAssigned.count == 1 ? "card" : "cards")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            if availableCards.isEmpty {
-                Text("No active cards available. Create cards first or unarchive existing ones.")
+            Text("The top card (#1) is the front face of this stack. Tap arrows to reorder.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            if currentAssigned.isEmpty {
+                Text("No cards in this stack yet. Tap + below to add cards.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
             } else {
                 VStack(spacing: 8) {
-                    ForEach(availableCards) { book in
-                        let isInStack = activeStack.cardIDs.contains(book.id)
+                    ForEach(Array(currentAssigned.enumerated()), id: \.element.id) { index, book in
                         let cardCol = cardColor(for: book)
 
-                        Button {
-                            toggleCard(book.id)
-                        } label: {
-                            HStack(spacing: 12) {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(cardCol)
-                                    .frame(width: 38, height: 26)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5)
-                                    )
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(book.name)
-                                        .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.primary)
-                                    Text(Money.format(model.spent(for: book.id)))
-                                        .font(.caption.monospacedDigit())
+                        HStack(spacing: 10) {
+                            // Rank / Front badge
+                            HStack(spacing: 4) {
+                                if index == 0 {
+                                    Text("FRONT")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(MC.red)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(Capsule().fill(MC.red.opacity(0.12)))
+                                } else {
+                                    Text("#\(index + 1)")
+                                        .font(.caption2.monospacedDigit().weight(.semibold))
                                         .foregroundStyle(.secondary)
                                 }
-
-                                Spacer()
-
-                                Image(systemName: isInStack ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
-                                    .foregroundStyle(isInStack ? MC.red : Color.secondary.opacity(0.5))
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(isInStack ? MC.red.opacity(0.06) : Color.primary.opacity(0.04))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .strokeBorder(isInStack ? MC.red.opacity(0.4) : Color.clear, lineWidth: 1)
-                                    )
-                            )
+                            .frame(width: 44, alignment: .leading)
+
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(cardCol)
+                                .frame(width: 36, height: 24)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(book.name)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Text(Money.format(model.spent(for: book.id)))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 4)
+
+                            // Up Button
+                            Button {
+                                moveCardUp(at: index)
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(index > 0 ? Color.primary : Color.secondary.opacity(0.25))
+                                    .frame(width: 28, height: 28)
+                                    .background(Circle().fill(Color.primary.opacity(index > 0 ? 0.06 : 0.02)))
+                            }
+                            .disabled(index == 0)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Move \(book.name) up")
+                            .accessibilityIdentifier("moveUp-\(book.name)")
+
+                            // Down Button
+                            Button {
+                                moveCardDown(at: index)
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(index < currentAssigned.count - 1 ? Color.primary : Color.secondary.opacity(0.25))
+                                    .frame(width: 28, height: 28)
+                                    .background(Circle().fill(Color.primary.opacity(index < currentAssigned.count - 1 ? 0.06 : 0.02)))
+                            }
+                            .disabled(index >= currentAssigned.count - 1)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Move \(book.name) down")
+                            .accessibilityIdentifier("moveDown-\(book.name)")
+
+                            // Remove Button
+                            Button {
+                                removeCard(book.id)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(MC.red)
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove \(book.name) from stack")
+                            .accessibilityIdentifier("removeCard-\(book.name)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("cardToggle-\(book.name)")
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.primary.opacity(0.04))
+                        )
+                    }
+                }
+            }
+
+            // Available Cards (to add)
+            if !unassignedCards.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Add Available Cards")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .padding(.top, 6)
+
+                    ForEach(unassignedCards) { book in
+                        let cardCol = cardColor(for: book)
+
+                        HStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(cardCol)
+                                .frame(width: 36, height: 24)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(book.name)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Text(Money.format(model.spent(for: book.id)))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 4)
+
+                            Button {
+                                addCard(book.id)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Add")
+                                }
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MC.red)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Capsule().fill(MC.red.opacity(0.10)))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Add \(book.name) to stack")
+                            .accessibilityIdentifier("addCard-\(book.name)")
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.primary.opacity(0.02))
+                        )
                     }
                 }
             }
@@ -508,15 +630,48 @@ struct StackCustomizerView: View {
         }
     }
 
-    private func toggleCard(_ bookID: UUID) {
-        guard let idx = currentStackIndex else { return }
-        var cardIDs = workingStacks[idx].cardIDs
-        if let existingIdx = cardIDs.firstIndex(of: bookID) {
-            cardIDs.remove(at: existingIdx)
-        } else {
-            cardIDs.append(bookID)
+    private func moveCardUp(at index: Int) {
+        guard let sIdx = currentStackIndex else { return }
+        var cardIDs = workingStacks[sIdx].cardIDs
+        guard index > 0 && index < cardIDs.count else { return }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        withAnimation(.snappy(duration: 0.22)) {
+            cardIDs.swapAt(index, index - 1)
+            workingStacks[sIdx].cardIDs = cardIDs
         }
-        workingStacks[idx].cardIDs = cardIDs
+    }
+
+    private func moveCardDown(at index: Int) {
+        guard let sIdx = currentStackIndex else { return }
+        var cardIDs = workingStacks[sIdx].cardIDs
+        guard index >= 0 && index < cardIDs.count - 1 else { return }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        withAnimation(.snappy(duration: 0.22)) {
+            cardIDs.swapAt(index, index + 1)
+            workingStacks[sIdx].cardIDs = cardIDs
+        }
+    }
+
+    private func removeCard(_ bookID: UUID) {
+        guard let sIdx = currentStackIndex else { return }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        withAnimation(.snappy(duration: 0.22)) {
+            workingStacks[sIdx].cardIDs.removeAll { $0 == bookID }
+        }
+    }
+
+    private func addCard(_ bookID: UUID) {
+        guard let sIdx = currentStackIndex else { return }
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        withAnimation(.snappy(duration: 0.22)) {
+            if !workingStacks[sIdx].cardIDs.contains(bookID) {
+                workingStacks[sIdx].cardIDs.append(bookID)
+            }
+        }
     }
 
     private func toggleAlwaysHidden(for bookID: UUID, isHidden: Bool) {
