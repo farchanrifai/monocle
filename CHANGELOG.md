@@ -2,6 +2,14 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.2] - 2026-09-11
+### Refined & Rebuilt
+- **Apple Wallet Card Transition Physics**: Completely re-engineered card opening and closing animations adopting authentic Apple Wallet kinematics inspired by Kavsoft's SwiftUI 2026 reference architecture.
+- **Viewport-Aware Geometry & Offscreen Push**: Powered by `.visualEffect`, selected cards smoothly glide to the top of the viewport with comfortable top breathing clearance (`14pt`), background cards above tuck behind at `0.95` scale, and lower cards smoothly slide down off the bottom of the screen.
+- **Weighted `.interactiveSpring` Motion**: Tuned spring physics to `.interactiveSpring(response: 0.55, dampingFraction: 0.90)` for buttery smooth, natural gliding motion with zero jitter, stutter, or artificial bouncing.
+- **Interactive Below-Card Presentation**: Adjusted bottom transactions sheet detents dynamically based on card geometry, allowing full touch interaction with the card at the top (3D drag tilt, flip to telemetry, quick actions) while transactions remain visible below.
+- **One-Tap Close Transition**: Seamless dismissal via the top navigation bar `xmark` button or sheet dismiss, reversing the entire deck smoothly back into its resting stack slots.
+
 ## [0.6.1] - 2026-09-11
 ### Refined & Fixed
 - **Direct In-Card Analytics & Artwork Presentation**: Tapping "Trends & Analytics" or "Artwork" on the flipped card now presents sheets directly on top of the active card without closing the card or kicking the user back to the home page. Dismissing either sheet returns directly to the flipped card.

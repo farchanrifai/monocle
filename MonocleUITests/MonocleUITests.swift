@@ -1031,5 +1031,31 @@ final class MonocleUITests: XCTestCase {
         flipBackButton.tap()
         XCTAssertTrue(flipButton.waitForExistence(timeout: 5))
     }
+
+    func testAppleWalletCardOpeningAndClosingAnimation() {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 1. Find a card in the stack and tap to open
+        let firstCard = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'")).firstMatch
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 10))
+        firstCard.tap()
+
+        // 2. Verify close button exists in top header
+        let closeButton = app.buttons["closeBookDetail"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+
+        // Capture screenshot of opened card state
+        let openedShot = app.screenshot()
+        try? openedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_opened.png"))
+
+        // 3. Tap close button to return to stack
+        closeButton.tap()
+
+        // 4. Verify stack returns to resting state
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
+        let closedShot = app.screenshot()
+        try? closedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_closed.png"))
+    }
 }
 

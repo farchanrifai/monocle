@@ -163,7 +163,8 @@ struct BookHomeView: View {
         }
         .sheet(item: selectedBookBinding) { book in
             let spacing: CGFloat = 20
-            let minSheetHeight: CGFloat = max(180, info.containerSize.height - cardHeight - spacing)
+            let topCardBottom = info.minY + 14 + cardHeight + spacing
+            let minSheetHeight: CGFloat = max(180, info.containerSize.height - topCardBottom)
             BookDetailSheet(
                 model: model,
                 book: book,
@@ -333,29 +334,28 @@ struct BookHomeView: View {
         let isSelected = selectedID != nil
         let isCurrent = selectedID == book.id
         let selectedIdx = selectedIndex
+        let isFlipped = flippedCardID != nil
         let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
         let isSwipingThis = (swipingCardID == book.id)
         let horizontalOffset: CGFloat = isSwipingThis ? swipeOffset : 0
-
-        let pushOffset: CGFloat
-        if isSelected {
-            if isCurrent {
-                pushOffset = -CGFloat(selectedIdx) * stripHeight + 6
-            } else if index < selectedIdx {
-                pushOffset = -CGFloat(index) * stripHeight
-            } else {
-                pushOffset = 60
-            }
-        } else {
-            pushOffset = 0
-        }
-
         let fanOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
-        let totalYOffset = collapseOffset + pushOffset + fanOffset
 
         let cardContent = cardView(book, index: index)
             .frame(maxWidth: .infinity)
             .frame(height: cardHeight)
+
+        let cardOpacity: Double
+        if isSelected {
+            if isCurrent {
+                cardOpacity = 1.0
+            } else if isFlipped {
+                cardOpacity = 0.0
+            } else {
+                cardOpacity = 1.0
+            }
+        } else {
+            cardOpacity = 1.0
+        }
 
         return Group {
             if isCurrent {
@@ -371,9 +371,8 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("stack-book-\(book.id)")
             }
         }
-        .offset(x: horizontalOffset, y: totalYOffset)
-        .scaleEffect(isSelected ? (isCurrent ? 1.0 : 0.95) : 1.0, anchor: .top)
-        .opacity(isSelected ? (isCurrent ? 1.0 : 0.0) : 1.0)
+        .offset(x: horizontalOffset, y: collapseOffset)
+        .opacity(cardOpacity)
         .allowsHitTesting(!isSelected || isCurrent)
         .accessibilityHidden(isSelected && !isCurrent)
         .simultaneousGesture(
@@ -428,6 +427,32 @@ struct BookHomeView: View {
         }
         .accessibilityAction(named: "Flip card") {
             toggleFlip(for: book.id)
+        }
+        .visualEffect { [info, isSelected, selectedIdx, isCurrent, index, fanOffset, reduceMotion] content, proxy in
+            let rect = proxy.frame(in: .scrollView)
+            let bounds = info.containerSize
+
+            let pushOffset: CGFloat
+            let scale: CGFloat
+            if isSelected {
+                if index == selectedIdx {
+                    pushOffset = (info.scrollOffset - rect.minY) + 14
+                    scale = 1.0
+                } else if index < selectedIdx {
+                    pushOffset = (info.scrollOffset - rect.minY) + 14
+                    scale = (reduceMotion ? 1.0 : 0.95)
+                } else {
+                    pushOffset = bounds.height + info.scrollOffset - rect.minY
+                    scale = 1.0
+                }
+            } else {
+                pushOffset = 0
+                scale = 1.0
+            }
+
+            return content
+                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
+                .offset(y: isSelected ? pushOffset : fanOffset)
         }
     }
 
@@ -888,7 +913,7 @@ struct BookHomeView: View {
             flippedCardID = nil
             dragTilt = .zero
         }
-        withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.82)) {
+        withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.55, dampingFraction: 0.90)) {
             selectedID = id
             model.selectedBookID = id
             if let id {
