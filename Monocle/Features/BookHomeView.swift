@@ -7,6 +7,13 @@ struct ScrollInfo: Equatable {
     var minY: CGFloat = 0
 }
 
+/// Zero-highlight button style for card stack to prevent touch-down white flashing.
+struct CardDeckButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+    }
+}
+
 /// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-book persistence.
 struct BookHomeView: View {
     @Bindable var model: AppModel
@@ -77,67 +84,66 @@ struct BookHomeView: View {
         CardPalette.color(for: book.colorIndex)
     }
 
-    private var selectedBookBinding: Binding<BookProfile?> {
-        Binding(
-            get: { current },
-            set: { newBook in
-                focus(newBook?.id)
-            }
-        )
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             header
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 24) {
-                    stack
-                    if displayedBooks.isEmpty {
-                        ContentUnavailableView {
-                            Label("Your stack is empty", systemImage: "rectangle.stack")
-                        } description: {
-                            Text("Add cards to this stack or switch stacks with the filter button.")
-                        } actions: {
-                            Button("Manage Stacks & Cards") {
-                                model.stackCustomizerMode = .manage
-                                model.showStackCustomizer = true
+            ScrollViewReader { scrollProxy in
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Color.clear.frame(height: 0).id("deckTop")
+                        stack
+                        if displayedBooks.isEmpty {
+                            ContentUnavailableView {
+                                Label("Your stack is empty", systemImage: "rectangle.stack")
+                            } description: {
+                                Text("Add cards to this stack or switch stacks with the filter button.")
+                            } actions: {
+                                Button("Manage Stacks & Cards") {
+                                    model.stackCustomizerMode = .manage
+                                    model.showStackCustomizer = true
+                                }
                             }
                         }
-                    }
-                    let collapseDelta = (reduceMotion || selectedID != nil) ? 0 : (animatedCardCount * stripHeight * stackCollapseProgress)
-                    let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
+                        let collapseDelta = (reduceMotion || selectedID != nil) ? 0 : (animatedCardCount * stripHeight * stackCollapseProgress)
+                        let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
 
-                    activitySection(bookID: nil)
-                        .offset(y: pullDelta - collapseDelta)
-                        .opacity(selectedID == nil ? 1 : 0)
+                        activitySection(bookID: selectedID)
+                            .offset(y: pullDelta - collapseDelta)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 96)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 32)
-            }
-            .scrollBounceBehavior(.always)
-            .scrollDisabled(selectedID != nil)
-            .scrollClipDisabled()
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top
-            } action: { _, value in
-                info.scrollOffset = value
-                pull = reduceMotion ? 0 : max(0, -value)
-            }
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.frame(in: .global).minY
-            } action: { newValue in
-                info.minY = newValue - info.safeArea.top
-            }
-            .onGeometryChange(for: CGSize.self) { proxy in
-                proxy.size
-            } action: { newValue in
-                info.containerSize = newValue
-            }
-            .onGeometryChange(for: EdgeInsets.self) { proxy in
-                proxy.safeAreaInsets
-            } action: { newValue in
-                info.safeArea = newValue
+                .scrollBounceBehavior(.always)
+                .scrollClipDisabled()
+                .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                    geometry.contentOffset.y + geometry.contentInsets.top
+                } action: { _, value in
+                    info.scrollOffset = value
+                    pull = reduceMotion ? 0 : max(0, -value)
+                }
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.frame(in: .global).minY
+                } action: { newValue in
+                    info.minY = newValue - info.safeArea.top
+                }
+                .onGeometryChange(for: CGSize.self) { proxy in
+                    proxy.size
+                } action: { newValue in
+                    info.containerSize = newValue
+                }
+                .onGeometryChange(for: EdgeInsets.self) { proxy in
+                    proxy.safeAreaInsets
+                } action: { newValue in
+                    info.safeArea = newValue
+                }
+                .onChange(of: selectedID) { _, newID in
+                    if newID != nil {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) {
+                            scrollProxy.scrollTo("deckTop", anchor: .top)
+                        }
+                    }
+                }
             }
         }
         .background(paper).foregroundStyle(ink)
@@ -161,26 +167,6 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("addExpenseButton")
             }
         }
-        .sheet(item: selectedBookBinding) { book in
-            let spacing: CGFloat = 20
-            let topCardBottom = info.minY + 14 + cardHeight + spacing
-            let minSheetHeight: CGFloat = max(180, info.containerSize.height - topCardBottom)
-            BookDetailSheet(
-                model: model,
-                book: book,
-                paper: paper,
-                ink: ink,
-                onDismiss: { focus(nil) },
-                onCustomize: {
-                    openCustomizer(for: book)
-                }
-            )
-            .presentationDetents([.height(minSheetHeight), .large])
-            .presentationBackgroundInteraction(.enabled(upThrough: .large))
-            .interactiveDismissDisabled()
-            .presentationDragIndicator(.visible)
-            .presentationBackground(paper)
-        }
         .sheet(isPresented: $managing) {
             manageStackSheet
         }
@@ -189,10 +175,7 @@ struct BookHomeView: View {
                 model.showStackCustomizer = false
             }
         }
-        .sheet(item: Binding(
-            get: { selectedID == nil ? model.customizerTarget : nil },
-            set: { model.customizerTarget = $0 }
-        )) { target in
+        .sheet(item: $model.customizerTarget) { target in
             switch target {
             case .existing(let book):
                 CardCustomizerView(
@@ -237,10 +220,7 @@ struct BookHomeView: View {
         .sheet(isPresented: $model.showCSVInterchange) {
             CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
         }
-        .sheet(isPresented: Binding(
-            get: { model.showAnalytics && selectedID == nil },
-            set: { model.showAnalytics = $0 }
-        )) {
+        .sheet(isPresented: $model.showAnalytics) {
             AnalyticsView(model: model)
         }
         .onAppear {
@@ -288,15 +268,22 @@ struct BookHomeView: View {
 
     private var header: some View {
         HStack {
-            if current != nil {
-                Button { focus(nil) } label: {
-                    Image(systemName: "xmark")
-                        .font(.headline.weight(.semibold))
-                        .frame(width: 44, height: 44)
+            if let current {
+                HStack(spacing: 8) {
+                    Button { focus(nil) } label: {
+                        Image(systemName: "xmark")
+                            .font(.headline.weight(.semibold))
+                            .frame(width: 44, height: 44)
+                            .foregroundStyle(ink)
+                    }
+                    .accessibilityLabel("All book cards")
+                    .accessibilityIdentifier("closeBookDetail")
+
+                    Text(current.name)
+                        .font(.title3.weight(.bold))
                         .foregroundStyle(ink)
+                        .lineLimit(1)
                 }
-                .accessibilityLabel("All book cards")
-                .accessibilityIdentifier("closeBookDetail")
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("monocle").font(.system(size: 28, weight: .semibold, design: .rounded)).tracking(-1.2)
@@ -321,6 +308,14 @@ struct BookHomeView: View {
         .padding(.bottom, 8)
     }
 
+    private var restingStackHeight: CGFloat {
+        CGFloat(cardHeight) + CGFloat(max(0, displayedBooks.count - 1)) * stripHeight
+    }
+
+    private var focusedDeckHeight: CGFloat {
+        10 + CGFloat(selectedIndex) * 12 + 6 + CGFloat(cardHeight)
+    }
+
     private var stack: some View {
         VStack(spacing: -(cardHeight - stripHeight)) {
             ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
@@ -328,6 +323,7 @@ struct BookHomeView: View {
                     .transition(.opacity)
             }
         }
+        .frame(height: selectedID != nil ? focusedDeckHeight : restingStackHeight, alignment: .top)
     }
 
     private func cardItem(_ book: BookProfile, index: Int) -> some View {
@@ -335,6 +331,8 @@ struct BookHomeView: View {
         let isCurrent = selectedID == book.id
         let selectedIdx = selectedIndex
         let isFlipped = flippedCardID != nil
+        let isTucked = isSelected && index < selectedIdx
+        let isLower = isSelected && index > selectedIdx
         let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
         let isSwipingThis = (swipingCardID == book.id)
         let horizontalOffset: CGFloat = isSwipingThis ? swipeOffset : 0
@@ -348,7 +346,7 @@ struct BookHomeView: View {
         if isSelected {
             if isCurrent {
                 cardOpacity = 1.0
-            } else if isFlipped {
+            } else if isFlipped || isLower {
                 cardOpacity = 0.0
             } else {
                 cardOpacity = 1.0
@@ -366,15 +364,15 @@ struct BookHomeView: View {
                 } label: {
                     cardContent
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(CardDeckButtonStyle())
                 .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
                 .accessibilityIdentifier("stack-book-\(book.id)")
             }
         }
         .offset(x: horizontalOffset, y: collapseOffset)
         .opacity(cardOpacity)
-        .allowsHitTesting(!isSelected || isCurrent)
-        .accessibilityHidden(isSelected && !isCurrent)
+        .allowsHitTesting(!isLower)
+        .accessibilityHidden(isLower)
         .simultaneousGesture(
             (index > 0 && selectedID == nil) ?
                 DragGesture(minimumDistance: 20)
@@ -428,21 +426,21 @@ struct BookHomeView: View {
         .accessibilityAction(named: "Flip card") {
             toggleFlip(for: book.id)
         }
-        .visualEffect { [info, isSelected, selectedIdx, isCurrent, index, fanOffset, reduceMotion] content, proxy in
-            let rect = proxy.frame(in: .scrollView)
-            let bounds = info.containerSize
-
+        .visualEffect { [stripHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, reduceMotion] content, _ in
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
-                if index == selectedIdx {
-                    pushOffset = (info.scrollOffset - rect.minY) + 14
+                if index < selectedIdx {
+                    let targetY = 10 + CGFloat(index) * 12
+                    pushOffset = targetY - CGFloat(index) * stripHeight
+                    scale = reduceMotion ? 1.0 : max(0.90, 1.0 - CGFloat(selectedIdx - index) * 0.02)
+                } else if index == selectedIdx {
+                    let targetY = 10 + CGFloat(selectedIdx) * 12 + 6
+                    pushOffset = targetY - CGFloat(selectedIdx) * stripHeight
                     scale = 1.0
-                } else if index < selectedIdx {
-                    pushOffset = (info.scrollOffset - rect.minY) + 14
-                    scale = (reduceMotion ? 1.0 : 0.95)
                 } else {
-                    pushOffset = bounds.height + info.scrollOffset - rect.minY
+                    let targetY: CGFloat = 1000
+                    pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.0
                 }
             } else {
@@ -614,7 +612,7 @@ struct BookHomeView: View {
                                 .padding(5)
                                 .background(textStyle.opacity(0.12), in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(CardDeckButtonStyle())
                         .accessibilityLabel("Flip card")
                         .accessibilityIdentifier("cardFlipButton")
                     }
@@ -694,9 +692,10 @@ struct BookHomeView: View {
         let isAllCards = activeScope == .allCards
         let activeStack = model.stacks.first { $0.id == (displayedStackID ?? model.activeStackID) } ?? model.currentStack
         let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
+        let selectedBook = model.books.first { $0.id == bookID }
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text(bookID != nil ? (model.books.first { $0.id == bookID }?.name ?? "Book Activities") : "Recent Activities")
+                Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
                     .font(.title2.bold())
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
@@ -716,15 +715,40 @@ struct BookHomeView: View {
                             .fill(isAllCards ? Color.primary.opacity(0.06) : MC.red.opacity(0.12))
                     )
                     .accessibilityIdentifier("activityScopeBadge")
-                }
+                    Spacer()
+                } else if let selectedBook {
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Button {
+                            openCustomizer(for: selectedBook)
+                        } label: {
+                            Image(systemName: "paintbrush")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(ink)
+                        }
+                        .accessibilityLabel("Customize Card")
+                        .accessibilityIdentifier("customizeCardDetailButton")
 
-                Spacer()
+                        Button {
+                            model.openEntry(for: selectedBook.id)
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(ink)
+                        }
+                        .accessibilityLabel("Add Expense")
+                        .accessibilityIdentifier("addExpenseButton")
+                    }
+                }
             }
 
             if activities.isEmpty {
-                ContentUnavailableView("Nothing recorded yet", systemImage: "text.book.closed",
-                                       description: Text("Tap Add Expense below to record your first transaction."))
-                    .padding(.vertical, 24)
+                ContentUnavailableView(
+                    "Nothing recorded yet",
+                    systemImage: "text.book.closed",
+                    description: Text(bookID != nil ? "Tap + above to record your first transaction for this card." : "Tap Add Expense below to record your first transaction.")
+                )
+                .padding(.vertical, 24)
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(activities) { row in
@@ -980,159 +1004,6 @@ struct BookHomeView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { managing = false }
                 }
-            }
-        }
-    }
-}
-
-struct BookDetailSheet: View {
-    @Bindable var model: AppModel
-    let book: BookProfile
-    var paper: Color = MC.paper
-    var ink: Color = MC.ink
-    var onDismiss: () -> Void
-    var onCustomize: (() -> Void)? = nil
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Latest Transactions")
-                        .font(.headline)
-                        .foregroundStyle(ink)
-                        .padding(.top, 8)
-
-                    let activities = model.activities(selectedBookID: book.id, allBooks: false)
-                    if activities.isEmpty {
-                        ContentUnavailableView("Nothing recorded yet", systemImage: "text.book.closed",
-                                               description: Text("Tap + above to record your first transaction."))
-                            .padding(.vertical, 24)
-                    } else {
-                        LazyVStack(spacing: 0) {
-                            ForEach(activities) { expense in
-                                activityRow(expense)
-                                Rectangle()
-                                    .fill(ink.opacity(paper == MC.paper ? 0.08 : 0.15))
-                                    .frame(height: 0.5)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 32)
-            }
-            .scrollBounceBehavior(.always)
-            .background(paper)
-            .navigationTitle(book.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        onDismiss()
-                    }
-                    .foregroundStyle(ink)
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    HStack(spacing: 12) {
-                        if let onCustomize {
-                            Button {
-                                onCustomize()
-                            } label: {
-                                Image(systemName: "paintbrush")
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(ink)
-                            }
-                            .accessibilityLabel("Customize Card")
-                            .accessibilityIdentifier("customizeCardDetailButton")
-                        }
-                        Button {
-                            model.openEntry(for: book.id)
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(ink)
-                        }
-                        .accessibilityLabel("Add Expense")
-                        .accessibilityIdentifier("addExpenseButton")
-                    }
-                }
-            }
-            .sheet(isPresented: $model.showEntry, onDismiss: {
-                if !model.draftNeedsConfirmation { model.discardDraft() }
-            }) {
-                EntryView(model: model)
-            }
-            .sheet(item: $model.customizerTarget) { target in
-                switch target {
-                case .existing(let targetBook):
-                    CardCustomizerView(
-                        model: model,
-                        initialBook: targetBook,
-                        books: model.unhiddenBooks,
-                        isCreatingNewBook: false
-                    ) {
-                        model.customizerTarget = nil
-                    }
-                case .newBook:
-                    CardCustomizerView(
-                        model: model,
-                        initialBook: book,
-                        books: model.unhiddenBooks,
-                        isCreatingNewBook: true
-                    ) {
-                        model.customizerTarget = nil
-                    }
-                }
-            }
-            .sheet(isPresented: $model.showAnalytics) {
-                AnalyticsView(model: model)
-            }
-        }
-    }
-
-    private func activityRow(_ expense: Expense) -> some View {
-        Button {
-            model.edit(expense)
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(expense.day)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(ink.opacity(0.6))
-                ViewThatFits(in: .horizontal) {
-                    HStack {
-                        Text(model.title(expense))
-                            .foregroundStyle(ink)
-                        Spacer()
-                        Text(Money.format(expense.amount))
-                            .monospacedDigit()
-                            .foregroundStyle(ink)
-                    }
-                    VStack(alignment: .leading) {
-                        Text(model.title(expense))
-                            .foregroundStyle(ink)
-                        Text(Money.format(expense.amount))
-                            .monospacedDigit()
-                            .foregroundStyle(ink)
-                    }
-                }
-                .font(.body.weight(.medium))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("expense-\(expense.note)")
-        .contextMenu {
-            Button("Edit", systemImage: "pencil") {
-                model.edit(expense)
-            }
-            Button("Repeat", systemImage: "repeat") {
-                model.repeatExpense(expense)
-            }
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                model.delete(expense)
             }
         }
     }

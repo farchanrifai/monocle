@@ -2,6 +2,15 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.3] - 2026-09-11
+### Refined & Redesigned
+- **In-Line Scrollable Transaction List**: Replaced the detached modal sheet with an in-line scrollable transaction section styled identically to the home screen directly inside the main scroll view. Begins precisely 16pt beneath the active card with zero dead space or sheet disconnect.
+- **Tactile Wallet Pocket Fanning & Stacking**: Upper cards above the selected card compress into a true physical wallet-pocket fan at `CGFloat(index) * 12pt` with depth perspective scaling (`0.98`, `0.96`...). Headers peek out neatly and remain fully interactive to switch active cards.
+- **Offscreen Push with Smooth Fade**: Cards below the selected card glide smoothly offscreen past the viewport with a soft fade-out.
+- **Zero Tap Flash**: Introduced `CardDeckButtonStyle` to eliminate the iOS touch-down white highlight overlay when tapping cards.
+- **Unified Clean Modal Architecture**: Opening Trends & Analytics or the Artwork Customizer from the card's telemetry back face now presents cleanly as top-level sheets without competing modal presentations.
+- **Seamless Dismiss Motion**: Tapping the top navigation bar `xmark` button smoothly collapses the entire deck back to its resting stacked slots.
+
 ## [0.6.2] - 2026-09-11
 ### Refined & Rebuilt
 - **Apple Wallet Card Transition Physics**: Completely re-engineered card opening and closing animations adopting authentic Apple Wallet kinematics inspired by Kavsoft's SwiftUI 2026 reference architecture.

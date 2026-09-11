@@ -1045,14 +1045,20 @@ final class MonocleUITests: XCTestCase {
         let closeButton = app.buttons["closeBookDetail"]
         XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
 
-        // Capture screenshot of opened card state
+        // 3. Verify in-line Latest Transactions section exists directly below the card
+        let latestTransactions = app.staticTexts["Latest Transactions"]
+        XCTAssertTrue(latestTransactions.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["customizeCardDetailButton"].exists)
+        XCTAssertTrue(app.buttons["addExpenseButton"].exists)
+
+        // Capture screenshot of opened card state with in-line transactions
         let openedShot = app.screenshot()
         try? openedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_opened.png"))
 
-        // 3. Tap close button to return to stack
+        // 4. Tap close button to return to stack
         closeButton.tap()
 
-        // 4. Verify stack returns to resting state
+        // 5. Verify stack returns to resting state
         XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
         let closedShot = app.screenshot()
         try? closedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_closed.png"))
