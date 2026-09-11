@@ -46,6 +46,9 @@ struct BookHomeView: View {
     @State private var hideCardsBehindTask: Task<Void, Never>? = nil
     @State private var isDippingLowerCards = false
     @State private var lowerCardDipTask: Task<Void, Never>? = nil
+    @State private var hasLowerCardsPassed = false
+    @State private var showTransactionList = true
+    @State private var dismissTransitionTask: Task<Void, Never>? = nil
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -113,6 +116,9 @@ struct BookHomeView: View {
 
                         activitySection(bookID: selectedID)
                             .offset(y: pullDelta - collapseDelta)
+                            .opacity(showTransactionList ? 1.0 : 0.0)
+                            .offset(y: showTransactionList ? 0 : 12)
+                            .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showTransactionList)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -319,14 +325,24 @@ struct BookHomeView: View {
     }
 
     private var focusedDeckHeight: CGFloat {
-        10 + (CGFloat(cardHeight) * 1.04)
+        CGFloat(cardHeight) * 1.04
+    }
+
+    private func cardZIndex(index: Int, bookID: UUID) -> Double {
+        guard let selectedID else {
+            return Double(index)
+        }
+        if bookID == selectedID {
+            return hasLowerCardsPassed ? 100 : Double(index)
+        }
+        return Double(index)
     }
 
     private var stack: some View {
         VStack(spacing: -(cardHeight - stripHeight)) {
             ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
                 cardItem(book, index: index)
-                    .zIndex(selectedID == book.id ? 100 : Double(index))
+                    .zIndex(cardZIndex(index: index, bookID: book.id))
                     .transition(.opacity)
             }
         }
@@ -428,26 +444,26 @@ struct BookHomeView: View {
         .accessibilityAction(named: "Flip card") {
             toggleFlip(for: book.id)
         }
-        .visualEffect { [stripHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, isDippingLowerCards, reduceMotion] content, _ in
+        .visualEffect { [stripHeight, cardHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, isDippingLowerCards, reduceMotion] content, _ in
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
                 if isCurrent {
-                    let targetY: CGFloat = 10
+                    let targetY: CGFloat = 0
                     pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.04
                 } else if index < selectedIdx {
-                    let targetY: CGFloat = 10
+                    let targetY: CGFloat = 0
                     pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.0
                 } else {
                     if isDippingLowerCards {
-                        let dipOffset: CGFloat = 45
-                        let targetY: CGFloat = CGFloat(index) * stripHeight + dipOffset
+                        let step = CGFloat(index - selectedIdx - 1) * 16
+                        let targetY: CGFloat = CGFloat(cardHeight) + 20 + step
                         pushOffset = targetY - CGFloat(index) * stripHeight
                         scale = 1.0
                     } else {
-                        let targetY: CGFloat = 10
+                        let targetY: CGFloat = 0
                         pushOffset = targetY - CGFloat(index) * stripHeight
                         scale = 1.0
                     }
@@ -944,55 +960,134 @@ struct BookHomeView: View {
     private func focus(_ id: UUID?) {
         lowerCardDipTask?.cancel()
         lowerCardDipTask = nil
+        dismissTransitionTask?.cancel()
+        dismissTransitionTask = nil
         hideCardsBehindTask?.cancel()
         hideCardsBehindTask = nil
 
         if let id {
+            let selectedIdx = displayedBooks.firstIndex { $0.id == id } ?? 0
+            let hasLowerCards = selectedIdx < displayedBooks.count - 1
+
             flippedCardID = nil
             dragTilt = .zero
             cardsBehindHidden = false
-            isDippingLowerCards = true
+            showTransactionList = false
 
             let haptic = UIImpactFeedbackGenerator(style: .medium)
             haptic.impactOccurred()
 
-            // Phase 1: Selected card zooms in & glides to top, lower cards dip down
-            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.82)) {
-                selectedID = id
-                model.selectedBookID = id
-                model.selectBook(id)
-            }
-            headingFocused = true
+            if hasLowerCards {
+                hasLowerCardsPassed = false
+                isDippingLowerCards = true
 
-            // Phase 2: Lower cards slide smoothly up behind the selected card into the compact stack
-            lowerCardDipTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 120_000_000)
-                guard !Task.isCancelled, selectedID == id else { return }
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.44, dampingFraction: 0.85)) {
-                    isDippingLowerCards = false
+                // Phase 1: Selected card zooms in & glides to top (targetY = 0);
+                // lower cards slide down in full height in front of the selected card
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.34, dampingFraction: 0.82)) {
+                    selectedID = id
+                    model.selectedBookID = id
+                    model.selectBook(id)
                 }
-            }
+                headingFocused = true
 
-            // Phase 3: Hide cards behind for isolated 3D flip after deck has fully settled
-            hideCardsBehindTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                guard !Task.isCancelled, selectedID == id else { return }
-                cardsBehindHidden = true
+                // Phase 2: Once lower cards have cleared selected card, surface selected card and slide lower cards back up behind it
+                lowerCardDipTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 160_000_000)
+                    guard !Task.isCancelled, selectedID == id else { return }
+                    hasLowerCardsPassed = true
+                    withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.40, dampingFraction: 0.84)) {
+                        isDippingLowerCards = false
+                    }
+
+                    // Phase 3: Transition done (~380ms after tap) -> reveal transaction list
+                    try? await Task.sleep(nanoseconds: 220_000_000)
+                    guard !Task.isCancelled, selectedID == id else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                        showTransactionList = true
+                    }
+
+                    // Phase 4: Hide cards behind for isolated 3D flip
+                    try? await Task.sleep(nanoseconds: 80_000_000)
+                    guard !Task.isCancelled, selectedID == id else { return }
+                    cardsBehindHidden = true
+                }
+            } else {
+                hasLowerCardsPassed = true
+                isDippingLowerCards = false
+
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.84)) {
+                    selectedID = id
+                    model.selectedBookID = id
+                    model.selectBook(id)
+                }
+                headingFocused = true
+
+                lowerCardDipTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 360_000_000)
+                    guard !Task.isCancelled, selectedID == id else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                        showTransactionList = true
+                    }
+
+                    try? await Task.sleep(nanoseconds: 80_000_000)
+                    guard !Task.isCancelled, selectedID == id else { return }
+                    cardsBehindHidden = true
+                }
             }
         } else {
             flippedCardID = nil
             dragTilt = .zero
             cardsBehindHidden = false
-            isDippingLowerCards = false
+            showTransactionList = false
 
             let haptic = UIImpactFeedbackGenerator(style: .light)
             haptic.impactOccurred()
 
-            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.46, dampingFraction: 0.86)) {
-                selectedID = nil
-                model.selectedBookID = nil
+            let currentIdx = selectedIndex
+            let hasLowerCards = currentIdx < displayedBooks.count - 1
+
+            if hasLowerCards {
+                isDippingLowerCards = true
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.84)) {
+                    // Lower cards move down to clear selected card
+                }
+
+                dismissTransitionTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    guard !Task.isCancelled else { return }
+                    hasLowerCardsPassed = false
+                    isDippingLowerCards = false
+
+                    withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.40, dampingFraction: 0.84)) {
+                        selectedID = nil
+                        model.selectedBookID = nil
+                    }
+                    headingFocused = true
+
+                    try? await Task.sleep(nanoseconds: 260_000_000)
+                    guard !Task.isCancelled, selectedID == nil else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                        showTransactionList = true
+                    }
+                }
+            } else {
+                hasLowerCardsPassed = false
+                isDippingLowerCards = false
+
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.42, dampingFraction: 0.86)) {
+                    selectedID = nil
+                    model.selectedBookID = nil
+                }
+                headingFocused = true
+
+                dismissTransitionTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 280_000_000)
+                    guard !Task.isCancelled, selectedID == nil else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                        showTransactionList = true
+                    }
+                }
             }
-            headingFocused = true
         }
     }
 

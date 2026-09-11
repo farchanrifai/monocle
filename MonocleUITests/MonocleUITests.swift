@@ -1036,11 +1036,11 @@ final class MonocleUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // 1. Find cards in the stack and tap middle card to test both upper and lower card shuffle
-        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
-        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
-        let targetCard = cards.count > 1 ? cards.element(boundBy: 1) : cards.firstMatch
-        targetCard.tap()
+        // 1. Find cards in the stack and tap Card 01 (Sample book) to test lower card full-height shuffle
+        let sampleCard = app.buttons["stack-book-20000000-0000-0000-0000-000000000001"]
+        XCTAssertTrue(sampleCard.waitForExistence(timeout: 10))
+        let targetCard = sampleCard
+        targetCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
 
         // 2. Verify close button exists in top header
         let closeButton = app.buttons["closeBookDetail"]

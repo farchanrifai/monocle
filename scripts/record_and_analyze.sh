@@ -9,7 +9,7 @@ rm -f "$VIDEO_PATH"
 rm -rf "$FRAMES_DIR"/*
 
 echo "Starting screen recording on $SIM_ID..."
-xcrun simctl io "$SIM_ID" recordVideo --force "$VIDEO_PATH" &
+xcrun simctl io "$SIM_ID" recordVideo --codec=h264 --force "$VIDEO_PATH" &
 REC_PID=$!
 sleep 2
 
@@ -17,7 +17,7 @@ echo "Running UI test to trigger transition..."
 xcodebuild test -scheme Monocle -destination "platform=iOS Simulator,id=$SIM_ID" -only-testing:MonocleUITests/MonocleUITests/testAppleWalletCardOpeningAndClosingAnimation
 
 echo "Stopping recording (PID $REC_PID)..."
-kill -2 "$REC_PID" 2>/dev/null || true
+kill -INT "$REC_PID" 2>/dev/null || true
 wait "$REC_PID" 2>/dev/null || true
 sleep 3
 

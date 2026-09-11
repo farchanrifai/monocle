@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.8] - 2026-09-11
+### Refined & Perfected
+- **Full-Height Deck Shuffle Clearance**: Lower cards now slide down past the selected card in full height (`cardHeight + 20pt`) in front of the active card before surfacing it, creating an authentic physical deck cut with zero mid-flight popping.
+- **Top-Aligned Hero Placement**: The selected card in the transaction view now top-aligns directly with `targetY = 0`, matching the resting deck's top edge exactly so the card feels like it slides right to the top of the deck.
+- **Deferred Transaction Appearance**: Hidden the transaction list during card shuffling, gracefully fading it in only once the deck transition has settled, keeping the entire screen dedicated to fluid physical motion.
+- **Symmetric Reversible Reassembly**: On dismiss, lower cards slide down from behind the active card to clear it, restore front z-order, and smoothly glide up into resting fanned slots.
+
 ## [0.6.7] - 2026-09-11
 ### Refined & Perfected
 - **In-Place Deck Shuffle & Hero Zoom**: Replaced offscreen card ejection with an authentic in-place deck cut & shuffle. When opened, the selected card glides to the top-most position (`targetY = 10`) and zooms in (`scale = 1.04`), matching Apple Wallet's larger hero card layout in the transaction view.
