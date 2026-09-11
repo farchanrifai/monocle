@@ -1,11 +1,5 @@
 import SwiftUI
-
-struct ScrollInfo: Equatable {
-    var scrollOffset: CGFloat = 0
-    var containerSize: CGSize = .zero
-    var safeArea: EdgeInsets = .init()
-    var minY: CGFloat = 0
-}
+import UIKit
 
 /// Zero-highlight button style for card stack to prevent touch-down white flashing.
 struct CardDeckButtonStyle: ButtonStyle {
@@ -14,42 +8,301 @@ struct CardDeckButtonStyle: ButtonStyle {
     }
 }
 
+// Shared coordinate anchors preserve the home scroll position and the return slot.
+struct CardFrames: PreferenceKey {
+    static var defaultValue: [String: Anchor<CGRect>] { [:] }
+    static func reduce(value: inout [String: Anchor<CGRect>], nextValue: () -> [String: Anchor<CGRect>]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+// A single directional recognizer owns dismissal. Upward pans and pans within
+// scrolled history remain UIScrollView gestures, with native momentum/bounce.
+struct CardDismissPan: UIGestureRecognizerRepresentable {
+    var enabled: Bool
+    var changed: (CGPoint) -> Void
+    var ended: (CGPoint, Bool) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        pan.maximumNumberOfTouches = 1
+        pan.isEnabled = enabled
+        context.coordinator.enabled = enabled
+        return pan
+    }
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        context.coordinator.enabled = enabled
+        recognizer.isEnabled = enabled
+    }
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        switch pan.state {
+        case .began, .changed: changed(pan.translation(in: pan.view))
+        case .ended: ended(pan.velocity(in: pan.view), false)
+        case .cancelled, .failed: ended(.zero, true)
+        default: break
+        }
+    }
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var enabled = false
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard enabled, let pan = gestureRecognizer as? UIPanGestureRecognizer else {
+                return false
+            }
+            let velocity = pan.velocity(in: pan.view)
+            return velocity.y > 0 && velocity.y > abs(velocity.x)
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            otherGestureRecognizer is UIPanGestureRecognizer
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+}
+
+// MARK: - Card View Modifiers
+struct CardSpringModifier: ViewModifier {
+    let isSelected: Bool
+    let expanded: Bool
+    let reduceMotion: Bool
+    let releaseVelocity: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .transaction {
+                if reduceMotion {
+                    $0.animation = nil
+                } else if isSelected && !expanded, $0.animation != nil {
+                    let frequency = 2 * Double.pi / 0.47
+                    $0.animation = .interpolatingSpring(
+                        mass: 1,
+                        stiffness: frequency * frequency,
+                        damping: 2 * 0.74 * frequency,
+                        initialVelocity: releaseVelocity
+                    )
+                }
+            }
+    }
+}
+
+struct CardAccessibilityModifier: ViewModifier {
+    let book: BookProfile
+    let expenseCount: Int
+    let isSelected: Bool
+    let expanded: Bool
+    let onOpen: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityElement(children: isSelected ? .contain : .combine)
+            .accessibilityLabel(isSelected ? book.name + " selected card" : "Open \(book.name), \(expenseCount) transactions")
+            .accessibilityIdentifier("stack-book-\(book.id)")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHidden(expanded && !isSelected)
+            .accessibilityAction {
+                if !expanded { onOpen() }
+            }
+            .onTapGesture {
+                if !expanded { onOpen() }
+            }
+    }
+}
+
+struct CardGesturesModifier: ViewModifier {
+    let book: BookProfile
+    let index: Int
+    let isSelected: Bool
+    let expanded: Bool
+    let detailScroll: CGFloat
+    let displayedBooksCount: Int
+    let onDismissChanged: (CGPoint) -> Void
+    let onDismissEnded: (CGPoint, Bool) -> Void
+    let onFlip: () -> Void
+    let onCustomize: () -> Void
+    let onMoveToFront: () -> Void
+    let onDragAmountChanged: (CGFloat) -> Void
+    let onDragCardIDChanged: (UUID?) -> Void
+    let onDragEnded: (DragGesture.Value) -> Void
+    let onSwipeOffsetChanged: (CGFloat) -> Void
+    let onSwipingCardIDChanged: (UUID?) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .allowsHitTesting(!expanded || isSelected)
+            .gesture(CardDismissPan(
+                enabled: isSelected && expanded && detailScroll <= 1,
+                changed: onDismissChanged,
+                ended: onDismissEnded
+            ))
+            .gesture(
+                !expanded ?
+                DragGesture(minimumDistance: 7)
+                    .onChanged { value in
+                        guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                        onDragCardIDChanged(book.id)
+                        let amount = value.translation.height > 0
+                            ? pow(value.translation.height, 0.92) * 0.95 : value.translation.height * 0.72
+                        onDragAmountChanged(amount)
+                    }
+                    .onEnded { value in
+                        onDragEnded(value)
+                    }
+                : nil
+            )
+            .simultaneousGesture(
+                (index > 0 && !expanded) ?
+                DragGesture(minimumDistance: 20)
+                    .onChanged { value in
+                        if value.translation.width > 12 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
+                            onSwipeOffsetChanged(min(70, value.translation.width))
+                            onSwipingCardIDChanged(book.id)
+                        }
+                    }
+                    .onEnded { value in
+                        if value.translation.width > 45 {
+                            onMoveToFront()
+                        }
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                            onSwipeOffsetChanged(0)
+                            onSwipingCardIDChanged(nil)
+                        }
+                    }
+                : nil
+            )
+            .contextMenu {
+                if displayedBooksCount > 1 && index > 0 {
+                    Button {
+                        onMoveToFront()
+                    } label: {
+                        Label("Bring to Front", systemImage: "arrow.up.to.line")
+                    }
+                }
+                Button {
+                    onFlip()
+                } label: {
+                    Label("Flip", systemImage: "arrow.triangle.2.circlepath")
+                }
+                Button {
+                    onCustomize()
+                } label: {
+                    Label("Customize card", systemImage: "paintbrush")
+                }
+            }
+    }
+}
+
+// MARK: - Stack Layout
+struct WalletStackLayout: Layout {
+    var step: CGFloat
+    var cardHeight: CGFloat
+    var activeIndex: Int
+    var displacement: CGFloat
+    var animatableData: CGFloat {
+        get { displacement }
+        set { displacement = newValue }
+    }
+
+    static func fanningOffset(for index: Int, totalCount: Int, activeIndex: Int, displacement: CGFloat) -> CGFloat {
+        guard displacement != 0, totalCount > 1 else { return 0 }
+        
+        if displacement > 0 {
+            // Dragging / pulling DOWN -> Fan open (accordion expansion)
+            if activeIndex < 0 {
+                // General stack pull or overscroll pull:
+                // Every card below expands progressively
+                let stepExpansion = displacement * 0.28
+                return CGFloat(index) * stepExpansion + (index == 0 ? displacement * 0.12 : 0)
+            } else if index <= activeIndex {
+                // Cards at or above the active card:
+                // Fan out smoothly from near top (index 0) to activeIndex
+                let k = CGFloat(activeIndex)
+                let i = CGFloat(index)
+                // Elastic factor so even index 0 has a subtle give (15%)
+                let progress = (i + 0.15) / (k + 0.15)
+                return displacement * progress
+            } else {
+                // Cards below the active card:
+                // Move with active card plus additional cascading fanning
+                let stepsBelow = CGFloat(index - activeIndex)
+                let cascade = displacement * 0.15 * stepsBelow
+                return displacement + cascade
+            }
+        } else {
+            // Swiping / pushing UP -> Elastic compression / lifting
+            if activeIndex < 0 {
+                let compression = displacement * 0.20
+                return CGFloat(index) * compression
+            } else if index <= activeIndex {
+                let k = max(1, CGFloat(activeIndex))
+                let i = CGFloat(index)
+                let progress = (i + 0.10) / (k + 0.10)
+                return displacement * progress
+            } else {
+                let stepsBelow = CGFloat(index - activeIndex)
+                let follow = max(0.25, 1.0 - stepsBelow * 0.22)
+                return displacement * follow
+            }
+        }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxExtra: CGFloat
+        if displacement > 0 && subviews.count > 0 {
+            maxExtra = WalletStackLayout.fanningOffset(for: subviews.count - 1, totalCount: subviews.count, activeIndex: activeIndex, displacement: displacement)
+        } else {
+            maxExtra = 0
+        }
+        return CGSize(width: proposal.width ?? 362, height: cardHeight + CGFloat(max(0, subviews.count - 1)) * step + max(0, maxExtra))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (index, subview) in subviews.enumerated() {
+            let offset = WalletStackLayout.fanningOffset(for: index, totalCount: subviews.count, activeIndex: activeIndex, displacement: displacement)
+            subview.place(at: CGPoint(x: bounds.minX, y: bounds.minY + CGFloat(index) * step + offset), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: cardHeight))
+        }
+    }
+}
+
 /// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-book persistence.
 struct BookHomeView: View {
     @Bindable var model: AppModel
     var showsBottomBar: Bool = false
+
+    private let settle = Animation.spring(response: 0.47, dampingFraction: 0.74)
+    // Fitted to the supplied 60 fps recording, not a generic sheet spring.
+    private let opening = Animation.spring(response: 0.48, dampingFraction: 0.66)
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @AccessibilityFocusState private var headingFocused: Bool
+
+    @State private var expanded = false
     @State private var selectedID: UUID?
     @State private var managing = false
     @State private var showingBudgets = false
     @State private var showingBills = false
-    @State private var pull: CGFloat = 0
-    @State private var info = ScrollInfo()
-    @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
-    @ScaledMetric(relativeTo: .title) private var cardHeight = 224
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-    @AccessibilityFocusState private var headingFocused: Bool
+    @State private var draggedCardID: UUID?
+    @State private var dragAmount: CGFloat = 0
+    @State private var dismissAmount: CGFloat = 0
+    @State private var dismissX: CGFloat = 0
+    @State private var returnDistance: CGFloat = 0
+    @State private var releaseVelocity: Double = 0
+    @State private var detailScroll: CGFloat = 0
+    @State private var scrollOverscroll: CGFloat = 0
 
     @State private var displayedBooks: [BookProfile] = []
     @State private var displayedFilterScope: StackFilterScope? = nil
     @State private var displayedStackID: UUID? = nil
     @State private var currentStackKey: String = ""
     @State private var targetStackKey: String = ""
-    @State private var stackCollapseProgress: CGFloat = 0.0
-    @State private var animatedCardCount: CGFloat = 0.0
-    @State private var transitionTask: Task<Void, Never>? = nil
     @State private var flippedCardID: UUID? = nil
     @State private var dragTilt: CGSize = .zero
     @State private var swipingCardID: UUID? = nil
     @State private var swipeOffset: CGFloat = 0.0
-    @State private var cardsBehindHidden = false
-    @State private var hideCardsBehindTask: Task<Void, Never>? = nil
-    @State private var isDippingLowerCards = false
-    @State private var lowerCardDipTask: Task<Void, Never>? = nil
-    @State private var hasLowerCardsPassed = false
-    @State private var showTransactionList = true
-    @State private var dismissTransitionTask: Task<Void, Never>? = nil
-    @State private var isTransitioning = false
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -88,83 +341,43 @@ struct BookHomeView: View {
         }
     }
 
-    private func cardColor(for book: BookProfile) -> Color {
-        CardPalette.color(for: book.colorIndex)
-    }
-
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollViewReader { scrollProxy in
-                ScrollView(.vertical) {
-                    VStack(spacing: 0) {
-                        Color.clear
-                            .frame(height: 1)
-                            .id("scrollTopAnchor")
+        GeometryReader { geometry in
+            ZStack(alignment: .top) {
+                paper.ignoresSafeArea()
 
-                        VStack(alignment: .leading, spacing: 16) {
-                            stack
-                            if displayedBooks.isEmpty {
-                                ContentUnavailableView {
-                                    Label("Your stack is empty", systemImage: "rectangle.stack")
-                                } description: {
-                                    Text("Add cards to this stack or switch stacks with the filter button.")
-                                } actions: {
-                                    Button("Manage Stacks & Cards") {
-                                        model.stackCustomizerMode = .manage
-                                        model.showStackCustomizer = true
-                                    }
-                                }
-                            }
-                            let collapseDelta = (reduceMotion || selectedID != nil) ? 0 : (animatedCardCount * stripHeight * stackCollapseProgress)
-                            let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
+                home(width: geometry.size.width, height: geometry.size.height)
+                    .allowsHitTesting(selectedID == nil)
+                    .accessibilityHidden(selectedID != nil)
 
-                            activitySection(bookID: selectedID)
-                                .id(selectedID)
-                                .offset(y: pullDelta - collapseDelta)
-                                .opacity(showTransactionList ? 1.0 : 0.0)
-                                .offset(y: showTransactionList ? 0 : 6)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .padding(.bottom, 96)
-                    }
+                if let current {
+                    detail(current, width: geometry.size.width)
+                        .transition(.identity)
                 }
-                .scrollBounceBehavior(.always)
-                .scrollClipDisabled()
-                .scrollDisabled(isTransitioning)
-                .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                    geometry.contentOffset.y + geometry.contentInsets.top
-                } action: { _, value in
-                    info.scrollOffset = value
-                    pull = reduceMotion ? 0 : max(0, -value)
+            }
+            .overlayPreferenceValue(CardFrames.self) { frames in
+                GeometryReader { proxy in
+                    cardPlane(frames: frames, geometry: proxy)
                 }
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.frame(in: .global).minY
-                } action: { newValue in
-                    info.minY = newValue - info.safeArea.top
-                }
-                .onGeometryChange(for: CGSize.self) { proxy in
-                    proxy.size
-                } action: { newValue in
-                    info.containerSize = newValue
-                }
-                .onGeometryChange(for: EdgeInsets.self) { proxy in
-                    proxy.safeAreaInsets
-                } action: { newValue in
-                    info.safeArea = newValue
-                }
-                .onChange(of: selectedID) { _, _ in
-                    if abs(info.scrollOffset) > 2 {
-                        withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.95)) {
-                            scrollProxy.scrollTo("scrollTopAnchor", anchor: .top)
-                        }
-                    }
+            }
+            .overlay(alignment: .top) {
+                header
+                    .background(
+                        paper
+                            .opacity(selectedID == nil ? 0.96 : (detailScroll > 15 ? 0.96 : 0.0))
+                            .ignoresSafeArea(edges: .top)
+                    )
+                    .zIndex(1000)
+            }
+            .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1,
+                                    changed: updateDismiss, ended: endDismiss))
+            .onChange(of: selectedID) { _, id in
+                guard id != nil else { return }
+                withAnimation(reduceMotion ? .easeOut(duration: 0.15) : opening) {
+                    expanded = true
                 }
             }
         }
-        .background(paper).foregroundStyle(ink)
-        .preferredColorScheme(model.preferredColorScheme)
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
@@ -256,11 +469,9 @@ struct BookHomeView: View {
             if targetStackKey.isEmpty {
                 targetStackKey = stackKey
             }
-            if animatedCardCount == 0 {
-                animatedCardCount = CGFloat(max(0, model.visibleBooks.count - 1))
-            }
-            if let active = model.selectedBookID {
+            if let active = model.selectedBookID, let book = displayedBooks.first(where: { $0.id == active }) {
                 selectedID = active
+                expanded = true
             }
         }
         .onChange(of: stackKey) { _, newKey in
@@ -269,16 +480,17 @@ struct BookHomeView: View {
             }
         }
         .onChange(of: model.visibleBooks) { _, newVisible in
-            if transitionTask == nil {
+            withAnimation(settle) {
                 displayedBooks = newVisible
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) {
-                    animatedCardCount = CGFloat(max(0, newVisible.count - 1))
-                }
             }
         }
         .onChange(of: model.selectedBookID) { _, newID in
             if selectedID != newID {
-                focus(newID)
+                if let newID, let book = displayedBooks.first(where: { $0.id == newID }) {
+                    openCard(book)
+                } else if newID == nil && expanded {
+                    closeCard()
+                }
             }
         }
     }
@@ -287,7 +499,9 @@ struct BookHomeView: View {
         HStack {
             if let current {
                 HStack(spacing: 8) {
-                    Button { focus(nil) } label: {
+                    Button {
+                        closeCard()
+                    } label: {
                         Image(systemName: "xmark")
                             .font(.headline.weight(.semibold))
                             .frame(width: 44, height: 44)
@@ -309,6 +523,8 @@ struct BookHomeView: View {
                 }
                 .fixedSize(horizontal: true, vertical: false)
                 .accessibilityElement(children: .combine)
+                .accessibilityLabel("monocle")
+                .accessibilityIdentifier("homeLogo")
             }
             Spacer()
             Button { model.showSettings = true } label: {
@@ -323,172 +539,273 @@ struct BookHomeView: View {
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 8)
-        .background(paper.ignoresSafeArea(edges: .top))
-        .zIndex(10)
+        .frame(height: 52)
     }
 
-    private var restingStackHeight: CGFloat {
-        CGFloat(cardHeight) + CGFloat(max(0, displayedBooks.count - 1)) * stripHeight
-    }
+    private func home(width: CGFloat, height: CGFloat) -> some View {
+        let cardWidth = width - 40
+        let cardHeight = cardWidth * 0.63
+        let step = cardWidth * 0.152
+        let restingHeight = CGFloat(max(0, displayedBooks.count - 1)) * step + cardHeight
 
-    private var focusedDeckHeight: CGFloat {
-        CGFloat(cardHeight) * 1.035
-    }
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                stackView(width: cardWidth, height: cardHeight, step: step)
+                    .frame(height: restingHeight + stackExpansion(displayedBooks), alignment: .top)
 
-    private func cardZIndex(index: Int, bookID: UUID) -> Double {
-        guard let selectedID else {
-            return Double(index)
-        }
-        if bookID == selectedID {
-            return hasLowerCardsPassed ? 100 : Double(index)
-        }
-        return Double(index)
-    }
-
-    private var stack: some View {
-        VStack(spacing: -(cardHeight - stripHeight)) {
-            ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
-                cardItem(book, index: index)
-                    .zIndex(cardZIndex(index: index, bookID: book.id))
-                    .transition(.opacity)
-            }
-        }
-        .frame(height: selectedID != nil ? focusedDeckHeight : restingStackHeight, alignment: .top)
-    }
-
-    private func cardItem(_ book: BookProfile, index: Int) -> some View {
-        let isSelected = selectedID != nil
-        let isCurrent = selectedID == book.id
-        let selectedIdx = selectedIndex
-        let isFlipped = flippedCardID != nil
-        let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
-        let isSwipingThis = (swipingCardID == book.id)
-        let horizontalOffset: CGFloat = isSwipingThis ? swipeOffset : 0
-        let fanOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
-
-        let cardContent = cardView(book, index: index)
-            .frame(maxWidth: .infinity)
-            .frame(height: cardHeight)
-            .shadow(
-                color: isCurrent ? Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16) : Color.clear,
-                radius: isCurrent ? 14 : 0,
-                x: 0,
-                y: isCurrent ? 8 : 0
-            )
-
-        let isBehind = isSelected && !isCurrent
-        let isBehindGone = isBehind && (cardsBehindHidden || isFlipped)
-        let cardOpacity: Double = isBehindGone ? 0.0 : 1.0
-
-        return Group {
-            if isCurrent {
-                cardContent
-            } else {
-                Button {
-                    focus(book.id)
-                } label: {
-                    cardContent
+                if displayedBooks.isEmpty {
+                    ContentUnavailableView {
+                        Label("Your stack is empty", systemImage: "rectangle.stack")
+                    } description: {
+                        Text("Add cards to this stack or switch stacks with the filter button.")
+                    } actions: {
+                        Button("Manage Stacks & Cards") {
+                            model.stackCustomizerMode = .manage
+                            model.showStackCustomizer = true
+                        }
+                    }
+                    .offset(y: expanded && !reduceMotion ? height : 0)
+                    .opacity(expanded ? 0.0 : 1.0)
+                    .blur(radius: expanded && !reduceMotion ? 10 : 0)
                 }
-                .buttonStyle(CardDeckButtonStyle())
-                .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
-                .accessibilityIdentifier("stack-book-\(book.id)")
+
+                activitySection(bookID: nil)
+                    .padding(.bottom, 96)
+                    .offset(y: expanded && !reduceMotion ? height : 0)
+                    .opacity(expanded ? 0.0 : 1.0)
+                    .blur(radius: expanded && !reduceMotion ? 10 : 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 68)
+        }
+        .scrollClipDisabled()
+        .scrollIndicators(.hidden)
+        .onScrollGeometryChange(for: CGFloat.self) { geo in
+            geo.contentOffset.y + geo.contentInsets.top
+        } action: { _, value in
+            if value < 0 {
+                scrollOverscroll = -value
+            } else if scrollOverscroll > 0 {
+                scrollOverscroll = 0
             }
         }
-        .offset(x: horizontalOffset, y: collapseOffset)
-        .opacity(cardOpacity)
-        .allowsHitTesting(!isSelected || isCurrent)
-        .accessibilityHidden(isSelected && !isCurrent)
-        .simultaneousGesture(
-            (index > 0 && selectedID == nil) ?
-                DragGesture(minimumDistance: 20)
-                    .onChanged { value in
-                        if value.translation.width > 12 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
-                            swipeOffset = min(70, value.translation.width)
-                            swipingCardID = book.id
-                        }
-                    }
-                    .onEnded { value in
-                        if swipingCardID == book.id && value.translation.width > 45 {
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                                model.moveBookToFront(book.id)
-                            }
-                        }
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
-                            swipeOffset = 0
-                            swipingCardID = nil
-                        }
-                    }
-                : nil
-        )
-        .contextMenu {
-            if displayedBooks.count > 1 && index > 0 {
-                Button {
+    }
+
+    private func stackExpansion(_ group: [BookProfile]) -> CGFloat {
+        let isDraggedGroup = group.contains(where: { $0.id == draggedCardID })
+        guard isDraggedGroup || (draggedCardID == nil && scrollOverscroll > 0) else { return 0 }
+        let disp = isDraggedGroup ? dragAmount : (pow(scrollOverscroll, 0.88) * 0.45)
+        let activeIdx = isDraggedGroup ? (group.firstIndex(where: { $0.id == draggedCardID }) ?? 0) : -1
+        return max(0, WalletStackLayout.fanningOffset(for: group.count - 1, totalCount: group.count, activeIndex: activeIdx, displacement: disp))
+    }
+
+    private func stackView(width: CGFloat, height: CGFloat, step: CGFloat) -> some View {
+        let isDragged = displayedBooks.contains(where: { $0.id == draggedCardID })
+        let activeIdx = isDragged ? (displayedBooks.firstIndex(where: { $0.id == draggedCardID }) ?? displayedBooks.count) : (draggedCardID == nil && scrollOverscroll > 0 ? -1 : displayedBooks.count)
+        let effectiveDisp = isDragged ? dragAmount : ((draggedCardID == nil && scrollOverscroll > 0) ? (pow(scrollOverscroll, 0.88) * 0.45) : 0)
+
+        return WalletStackLayout(step: step, cardHeight: height, activeIndex: activeIdx, displacement: effectiveDisp) {
+            ForEach(displayedBooks) { book in
+                Color.clear.frame(width: width, height: height)
+                    .anchorPreference(key: CardFrames.self, value: .bounds) { [book.id.uuidString: $0] }
+            }
+        }
+    }
+
+    private func detail(_ book: BookProfile, width: CGFloat) -> some View {
+        let heroWidth = width - 32
+        let heroHeight = heroWidth * 0.63
+        let progress = min(max(dismissAmount / 280, 0), 1)
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                Color.clear
+                    .frame(width: heroWidth, height: heroHeight)
+                    .anchorPreference(key: CardFrames.self, value: .bounds) { ["detail": $0] }
+                    .allowsHitTesting(false)
+
+                activitySection(bookID: book.id)
+                    .padding(.top, 16)
+                    .padding(.bottom, 100)
+                    .opacity(expanded ? 1 - progress : 0)
+                    .blur(radius: reduceMotion ? 0 : (expanded ? progress * 12 : 12))
+                    .offset(y: reduceMotion ? 0 : (expanded ? dismissAmount : 80))
+                    .allowsHitTesting(expanded && dismissAmount == 0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 64)
+        }
+        .scrollIndicators(.hidden)
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, value in
+            detailScroll = value
+        }
+        .accessibilityHidden(!expanded)
+    }
+
+    // One persistent artwork view per card. Both screens supply its coordinate anchor.
+    // Dismissal smoothly follows finger travel and returns with release velocity.
+    private func cardPlane(frames: [String: Anchor<CGRect>], geometry: GeometryProxy) -> some View {
+        ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
+            if let anchor = frames[book.id.uuidString] {
+                let homeFrame = geometry[anchor]
+                let isSelected = selectedID == book.id
+                let selectedIndex = displayedBooks.firstIndex { $0.id == selectedID } ?? displayedBooks.count
+                let below = index > selectedIndex
+                let detailFrame = frames["detail"].map { geometry[$0] } ?? homeFrame
+                let target = isSelected && expanded ? detailFrame : homeFrame
+
+                cardPlaneItem(
+                    index: index,
+                    book: book,
+                    target: target,
+                    homeFrame: homeFrame,
+                    detailFrame: detailFrame,
+                    isSelected: isSelected,
+                    below: below,
+                    selectedIndex: selectedIndex,
+                    geometryHeight: geometry.size.height
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func cardPlaneItem(
+        index: Int,
+        book: BookProfile,
+        target: CGRect,
+        homeFrame: CGRect,
+        detailFrame: CGRect,
+        isSelected: Bool,
+        below: Bool,
+        selectedIndex: Int,
+        geometryHeight: CGFloat
+    ) -> some View {
+        let otherOffset: CGFloat = expanded && !isSelected && below && !reduceMotion
+            ? geometryHeight - homeFrame.minY + CGFloat(index - selectedIndex) * 54 : 0
+        let horizontalOffset: CGFloat = (swipingCardID == book.id) ? swipeOffset : 0
+
+        cardView(book, index: index, isCurrent: isSelected)
+            .frame(width: target.width, height: target.height)
+            .shadow(
+                color: isSelected && expanded
+                    ? Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16)
+                    : Color.black.opacity(0.04),
+                radius: isSelected && expanded ? 14 : 3,
+                x: 0,
+                y: isSelected && expanded ? 8 : 2
+            )
+            .blur(radius: expanded && !isSelected && !reduceMotion ? 12 : 0)
+            .opacity(expanded && !isSelected ? 0 : 1)
+            .position(
+                x: target.midX + horizontalOffset + (isSelected && expanded && !reduceMotion ? dismissX : 0),
+                y: target.midY + otherOffset + (isSelected && expanded && !reduceMotion ? dismissAmount : 0)
+            )
+            .modifier(CardSpringModifier(
+                isSelected: isSelected,
+                expanded: expanded,
+                reduceMotion: reduceMotion,
+                releaseVelocity: releaseVelocity
+            ))
+            .onChange(of: homeFrame.midY - detailFrame.midY, initial: true) { _, distance in
+                if isSelected {
+                    returnDistance = distance
+                }
+            }
+            .zIndex(Double(index))
+            .modifier(CardAccessibilityModifier(
+                book: book,
+                expenseCount: model.expenses(for: book.id).count,
+                isSelected: isSelected,
+                expanded: expanded,
+                onOpen: { openCard(book) }
+            ))
+            .modifier(CardGesturesModifier(
+                book: book,
+                index: index,
+                isSelected: isSelected,
+                expanded: expanded,
+                detailScroll: detailScroll,
+                displayedBooksCount: displayedBooks.count,
+                onDismissChanged: updateDismiss,
+                onDismissEnded: endDismiss,
+                onFlip: {
+                    if selectedID != book.id { openCard(book) }
+                    toggleFlip(for: book.id)
+                },
+                onCustomize: { openCustomizer(for: book) },
+                onMoveToFront: {
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                         model.moveBookToFront(book.id)
                     }
-                } label: {
-                    Label("Bring to Front", systemImage: "arrow.up.to.line")
-                }
-            }
-            Button {
-                if selectedID != book.id {
-                    focus(book.id)
-                }
-                toggleFlip(for: book.id)
-            } label: {
-                Label(flippedCardID == book.id ? "Flip to Front" : "Flip to Telemetry", systemImage: "arrow.triangle.2.circlepath")
-            }
-            Button {
-                openCustomizer(for: book)
-            } label: {
-                Label("Customize card", systemImage: "paintbrush")
-            }
-        }
-        .accessibilityAction(named: "Flip card") {
-            toggleFlip(for: book.id)
-        }
-        .visualEffect { [stripHeight, cardHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, isDippingLowerCards, reduceMotion] content, _ in
-            let pushOffset: CGFloat
-            let scale: CGFloat
-            let centerLiftDelta: CGFloat = (CGFloat(cardHeight) * (1.035 - 1.0)) / 2.0
-            if isSelected {
-                if isCurrent {
-                    let targetY: CGFloat = centerLiftDelta
-                    pushOffset = targetY - CGFloat(index) * stripHeight
-                    scale = 1.035
-                } else if index < selectedIdx {
-                    let targetY: CGFloat = centerLiftDelta + 3.0
-                    pushOffset = targetY - CGFloat(index) * stripHeight
-                    scale = 1.0
-                } else {
-                    if isDippingLowerCards {
-                        let step = CGFloat(index - selectedIdx - 1) * 16
-                        let targetY: CGFloat = CGFloat(cardHeight) + 20 + step
-                        pushOffset = targetY - CGFloat(index) * stripHeight
-                        scale = 1.0
-                    } else {
-                        let targetY: CGFloat = centerLiftDelta + 3.0
-                        pushOffset = targetY - CGFloat(index) * stripHeight
-                        scale = 1.0
+                },
+                onDragAmountChanged: { val in dragAmount = val },
+                onDragCardIDChanged: { id in draggedCardID = id },
+                onDragEnded: { val in
+                    if val.translation.height < -55 || val.predictedEndTranslation.height < -110 {
+                        openCard(book)
                     }
-                }
-            } else {
-                pushOffset = 0
-                scale = 1.0
-            }
+                    withAnimation(reduceMotion ? nil : settle, completionCriteria: .removed) {
+                        dragAmount = 0
+                    } completion: {
+                        if dragAmount == 0 { draggedCardID = nil }
+                    }
+                },
+                onSwipeOffsetChanged: { offset in swipeOffset = offset },
+                onSwipingCardIDChanged: { id in swipingCardID = id }
+            ))
+    }
 
-            return content
-                .scaleEffect(isSelected ? (isCurrent ? 1.035 : scale) : 1.0, anchor: .center)
-                .offset(y: isSelected ? pushOffset : fanOffset)
+    private func updateDismiss(_ translation: CGPoint) {
+        withAnimation(nil) {
+            dismissAmount = max(0, translation.y)
+            dismissX = translation.x * 0.12
         }
     }
 
-    private var selectedIndex: Int {
-        displayedBooks.firstIndex { $0.id == selectedID } ?? displayedBooks.count
+    private func endDismiss(_ velocity: CGPoint, _ cancelled: Bool) {
+        if !cancelled && dismissAmount > 10 && velocity.y > -120 &&
+            (dismissAmount > 96 || dismissAmount + velocity.y * 0.18 > 150) {
+            closeCard(velocity: velocity.y)
+        } else {
+            withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle) {
+                dismissAmount = 0
+                dismissX = 0
+            }
+        }
+    }
+
+    private func openCard(_ book: BookProfile) {
+        guard selectedID == nil else { return }
+        let haptic = UIImpactFeedbackGenerator(style: .medium)
+        haptic.impactOccurred()
+        dismissAmount = 0
+        dismissX = 0
+        detailScroll = 0
+        selectedID = book.id
+        model.selectedBookID = book.id
+        model.selectBook(book.id)
+    }
+
+    private func closeCard(velocity: CGFloat = 0) {
+        guard selectedID != nil, expanded else { return }
+        let haptic = UIImpactFeedbackGenerator(style: .light)
+        haptic.impactOccurred()
+        let travel = returnDistance - dismissAmount
+        releaseVelocity = abs(travel) > 1 ? Double(min(max(velocity / travel, -8), 8)) : 0
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle, completionCriteria: .removed) {
+            expanded = false
+        } completion: {
+            guard !expanded else { return }
+            selectedID = nil
+            model.selectedBookID = nil
+            dismissAmount = 0
+            dismissX = 0
+            detailScroll = 0
+            flippedCardID = nil
+        }
     }
 
     private func performStackTransition(to targetKey: String) {
@@ -500,69 +817,23 @@ struct BookHomeView: View {
                 displayedFilterScope = model.filterScope
                 displayedStackID = model.activeStackID
                 currentStackKey = targetKey
-                stackCollapseProgress = 0.0
-                animatedCardCount = CGFloat(max(0, model.visibleBooks.count - 1))
             }
             return
         }
 
-        let isAlreadyCompressed = (transitionTask != nil) && (stackCollapseProgress > 0.4)
-
-        transitionTask?.cancel()
-        transitionTask = Task { @MainActor in
-            let newBooks = model.visibleBooks
-
-            if isAlreadyCompressed {
-                // If cards are already compressed from an immediate prior tap:
-                displayedBooks = newBooks
-                displayedFilterScope = model.filterScope
-                displayedStackID = model.activeStackID
-
-                // Spring fan down to rest positions
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) {
-                    stackCollapseProgress = 0.0
-                    animatedCardCount = CGFloat(max(0, newBooks.count - 1))
-                }
-
-                try? await Task.sleep(for: .milliseconds(220))
-                guard !Task.isCancelled else { return }
-
-                currentStackKey = targetKey
-                transitionTask = nil
-            } else {
-                // Phase 1: Swift kinetic gather / compress to top (100ms)
-                withAnimation(.easeIn(duration: 0.10)) {
-                    stackCollapseProgress = 1.0
-                }
-
-                try? await Task.sleep(for: .milliseconds(100))
-                guard !Task.isCancelled else { return }
-
-                // Phase 2: Instant swap of cards + spring fan down in one fluid motion
-                displayedBooks = newBooks
-                displayedFilterScope = model.filterScope
-                displayedStackID = model.activeStackID
-
-                withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) {
-                    stackCollapseProgress = 0.0
-                    animatedCardCount = CGFloat(max(0, newBooks.count - 1))
-                }
-
-                try? await Task.sleep(for: .milliseconds(220))
-                guard !Task.isCancelled else { return }
-
-                currentStackKey = targetKey
-                transitionTask = nil
-            }
+        withAnimation(settle) {
+            displayedBooks = model.visibleBooks
+            displayedFilterScope = model.filterScope
+            displayedStackID = model.activeStackID
+            currentStackKey = targetKey
         }
     }
 
-    private func cardView(_ book: BookProfile, index: Int) -> some View {
+    private func cardView(_ book: BookProfile, index: Int, isCurrent: Bool) -> some View {
         let isFlipped = (flippedCardID == book.id)
-        let isCurrent = (selectedID == book.id)
 
-        let tiltX = (isCurrent && !reduceMotion) ? min(max(-dragTilt.height / 14, -12), 12) : 0
-        let tiltY = (isCurrent && !reduceMotion) ? min(max(dragTilt.width / 14, -12), 12) : 0
+        let tiltX = (isCurrent && !reduceMotion && dismissAmount == 0) ? min(max(-dragTilt.height / 14, -12), 12) : 0
+        let tiltY = (isCurrent && !reduceMotion && dismissAmount == 0) ? min(max(dragTilt.width / 14, -12), 12) : 0
 
         return ZStack {
             cardFrontView(book, index: index, isCurrent: isCurrent)
@@ -607,10 +878,12 @@ struct BookHomeView: View {
             perspective: 0.8
         )
         .simultaneousGesture(
-            isCurrent ?
-                DragGesture(minimumDistance: 4)
+            (isCurrent && dismissAmount == 0) ?
+                DragGesture(minimumDistance: 8)
                     .onChanged { value in
-                        dragTilt = value.translation
+                        if abs(value.translation.width) > abs(value.translation.height) * 1.3 {
+                            dragTilt = value.translation
+                        }
                     }
                     .onEnded { _ in
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
@@ -655,7 +928,7 @@ struct BookHomeView: View {
                         .foregroundStyle(textStyle.opacity(0.8))
                 }
             }
-            .frame(minHeight: max(16, stripHeight - 24), alignment: .top)
+            .frame(minHeight: 28, alignment: .top)
 
             Spacer(minLength: 0)
 
@@ -675,16 +948,15 @@ struct BookHomeView: View {
                 specularSheen(isCurrent: isCurrent)
             }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
-        .accessibilityElement(children: isCurrent ? .contain : .combine)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
     }
 
     @ViewBuilder
     private func specularSheen(isCurrent: Bool) -> some View {
         if !reduceMotion {
-            let shiftX = isCurrent ? (dragTilt.width / 350) : (pull * 0.002)
-            let shiftY = isCurrent ? (dragTilt.height / 350) : (pull * 0.003)
+            let shiftX = isCurrent ? (dragTilt.width / 350) : (scrollOverscroll * 0.002)
+            let shiftY = isCurrent ? (dragTilt.height / 350) : (scrollOverscroll * 0.003)
 
             LinearGradient(
                 colors: [
@@ -926,13 +1198,22 @@ struct BookHomeView: View {
             .accessibilityIdentifier("menuCSVData")
 
             if selectedID != nil {
-                Button("Return to stack") { focus(nil) }
+                Button("Return to stack") { closeCard() }
             }
 
             Section("Active cards") {
                 ForEach(model.unhiddenBooks) { book in
                     Button(book.name) {
-                        focus(book.id)
+                        if selectedID != book.id {
+                            if selectedID != nil {
+                                closeCard()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    openCard(book)
+                                }
+                            } else {
+                                openCard(book)
+                            }
+                        }
                     }
                 }
             }
@@ -942,7 +1223,16 @@ struct BookHomeView: View {
                 Section("Archived cards") {
                     ForEach(archived) { book in
                         Button(book.name) {
-                            focus(book.id)
+                            if selectedID != book.id {
+                                if selectedID != nil {
+                                    closeCard()
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        openCard(book)
+                                    }
+                                } else {
+                                    openCard(book)
+                                }
+                            }
                         }
                     }
                 }
@@ -963,154 +1253,6 @@ struct BookHomeView: View {
         }
         .accessibilityLabel("Book options")
         .accessibilityIdentifier("bookOptionsMenu")
-    }
-
-    private func focus(_ id: UUID?) {
-        lowerCardDipTask?.cancel()
-        lowerCardDipTask = nil
-        dismissTransitionTask?.cancel()
-        dismissTransitionTask = nil
-        hideCardsBehindTask?.cancel()
-        hideCardsBehindTask = nil
-
-        if let id {
-            let selectedIdx = displayedBooks.firstIndex { $0.id == id } ?? 0
-            let hasLowerCards = selectedIdx < displayedBooks.count - 1
-
-            flippedCardID = nil
-            dragTilt = .zero
-            cardsBehindHidden = false
-            showTransactionList = false
-            isTransitioning = true
-
-            let haptic = UIImpactFeedbackGenerator(style: .medium)
-            haptic.impactOccurred()
-
-            if hasLowerCards {
-                hasLowerCardsPassed = false
-                isDippingLowerCards = true
-
-                // Phase 1: Selected card zooms in naturally & glides to top alignment;
-                // lower cards slide down in full height in front of the selected card
-                withAnimation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.92)) {
-                    selectedID = id
-                    model.selectedBookID = id
-                    model.selectBook(id)
-                }
-                headingFocused = true
-
-                // Phase 2: Once lower cards have cleared selected card, surface selected card and slide lower cards back up behind it
-                // Using critically damped spring (dampingFraction: 0.98) guarantees zero overshoot past the active card
-                lowerCardDipTask = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 160_000_000)
-                    guard !Task.isCancelled, selectedID == id else { return }
-                    hasLowerCardsPassed = true
-                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.98)) {
-                        isDippingLowerCards = false
-                    }
-
-                    // Phase 3: Transition done (~390ms after tap) -> reveal transaction list onto settled layout
-                    try? await Task.sleep(nanoseconds: 230_000_000)
-                    guard !Task.isCancelled, selectedID == id else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
-                        showTransactionList = true
-                    }
-                    isTransitioning = false
-
-                    // Phase 4: Hide cards behind for isolated 3D flip
-                    try? await Task.sleep(nanoseconds: 80_000_000)
-                    guard !Task.isCancelled, selectedID == id else { return }
-                    cardsBehindHidden = true
-                }
-            } else {
-                hasLowerCardsPassed = true
-                isDippingLowerCards = false
-
-                withAnimation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.92)) {
-                    selectedID = id
-                    model.selectedBookID = id
-                    model.selectBook(id)
-                }
-                headingFocused = true
-
-                lowerCardDipTask = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 360_000_000)
-                    guard !Task.isCancelled, selectedID == id else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
-                        showTransactionList = true
-                    }
-                    isTransitioning = false
-
-                    try? await Task.sleep(nanoseconds: 80_000_000)
-                    guard !Task.isCancelled, selectedID == id else { return }
-                    cardsBehindHidden = true
-                }
-            }
-        } else {
-            flippedCardID = nil
-            dragTilt = .zero
-            cardsBehindHidden = false
-            showTransactionList = false
-            isTransitioning = true
-
-            let haptic = UIImpactFeedbackGenerator(style: .light)
-            haptic.impactOccurred()
-
-            let currentIdx = selectedIndex
-            let hasLowerCards = currentIdx < displayedBooks.count - 1
-
-            if hasLowerCards {
-                // Phase 1 (Dismiss Start, 0ms): Lower cards slide DOWN behind the active card
-                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.94)) {
-                    isDippingLowerCards = true
-                }
-
-                dismissTransitionTask = Task { @MainActor in
-                    // Phase 2 (160ms): Lower cards have cleared the bottom of the active card
-                    try? await Task.sleep(nanoseconds: 160_000_000)
-                    guard !Task.isCancelled else { return }
-                    hasLowerCardsPassed = false
-
-                    // Simultaneously animate cards back into their resting fanned slots:
-                    // - Lower cards slide UP (in front of active card)
-                    // - Active card slides down to resting slot and un-scales to 1.0
-                    // - Upper cards slide down to resting slots
-                    // - Stack frame expands to restingStackHeight
-                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.94)) {
-                        isDippingLowerCards = false
-                        selectedID = nil
-                        model.selectedBookID = nil
-                    }
-                    headingFocused = true
-
-                    // Phase 3 (380ms total): Deck has settled -> reveal home transactions
-                    try? await Task.sleep(nanoseconds: 220_000_000)
-                    guard !Task.isCancelled, selectedID == nil else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
-                        showTransactionList = true
-                    }
-                    isTransitioning = false
-                }
-            } else {
-                hasLowerCardsPassed = false
-                isDippingLowerCards = false
-
-                withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.94)) {
-                    selectedID = nil
-                    model.selectedBookID = nil
-                }
-                headingFocused = true
-
-                dismissTransitionTask = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 280_000_000)
-                    guard !Task.isCancelled, selectedID == nil else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
-                        showTransactionList = true
-                    }
-                    isTransitioning = false
-                }
-            }
-        }
     }
 
     private func toggleFlip(for bookID: UUID) {
@@ -1174,4 +1316,3 @@ struct BookHomeView: View {
         }
     }
 }
-

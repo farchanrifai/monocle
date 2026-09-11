@@ -1074,5 +1074,36 @@ final class MonocleUITests: XCTestCase {
         closeButton.tap()
         sleep(1)
     }
+
+    @MainActor
+    func testInteractiveCardPullDismissAndVelocityRelease() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
+        let firstCard = cards.element(boundBy: 0)
+        let originalFrame = firstCard.frame
+
+        // 1. Open card
+        firstCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        let closeButton = app.buttons["closeBookDetail"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        sleep(1)
+
+        // 2. Test short slow pull (28pt) -> cancel dismissal
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 28)),
+                    withVelocity: .slow, thenHoldForDuration: 0.3)
+        XCTAssertTrue(closeButton.exists, "A short slow pull under threshold must cancel dismissal")
+
+        // 3. Test committed pull -> commit dismissal and return to slot
+        start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.48)))
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
+        sleep(1)
+        XCTAssertEqual(firstCard.frame.minY, originalFrame.minY, accuracy: 3.0)
+        XCTAssertEqual(firstCard.frame.width, originalFrame.width, accuracy: 3.0)
+    }
 }
 

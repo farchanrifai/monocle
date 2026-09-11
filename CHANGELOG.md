@@ -2,6 +2,14 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.11] - 2026-09-11
+### Refined & Perfected
+- **Apple Wallet Coordinate-Anchored Persistent Card Plane**: Adopted the exact architecture from the reference Apple Wallet repository (`farchanrifai/wallet`). Built a single persistent artwork view per card whose spatial destination is driven by coordinate anchors (`CardFrames` preference key), eliminating matched-geometry artifacts, coordinate mismatch, and mid-transition view resets.
+- **Custom `WalletStackLayout` & Physical Kinematics**: Implemented custom `Layout` engine providing accordion fanning, progressive step expansion (`displacement * 0.28`), and scroll overscroll elasticity.
+- **Authentic Apple Wallet Springs**: Opening spring tuned to `.spring(response: 0.48, dampingFraction: 0.66)`, settle spring to `.spring(response: 0.47, dampingFraction: 0.74)`, and release spring to an interpolating spring with natural angular frequency (`frequency = 2 * .pi / 0.47`) carrying finger release velocity directly back to the resting slot.
+- **Interactive Pull-to-Dismiss Gesture**: Implemented `CardDismissPan` (`UIGestureRecognizerRepresentable`) coordinating vertical drag with 1:1 finger tracking (`dismissAmount`), threshold evaluation (`> 96pt` or velocity forward projection), and release momentum returning seamlessly into the deck slot.
+- **Modular View Modifiers**: Extracted `CardSpringModifier`, `CardAccessibilityModifier`, and `CardGesturesModifier` for instant compilation, clean gesture separation, and zero type-checker overhead.
+
 ## [0.6.10] - 2026-09-11
 ### Refined & Perfected
 - **Critically Damped Deck Shuffling (Zero Overshoot)**: Retuned lower cards' return spring behind the hero card to a critically damped curve (`dampingFraction: 0.98`), mathematically preventing any overshoot past the active card. Lower cards are recessed by 3.0pt below the hero card's top edge, guaranteeing they never peek above the active card during transitions.
