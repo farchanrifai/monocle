@@ -18,8 +18,9 @@ xcodebuild test -scheme Monocle -destination "platform=iOS Simulator,id=$SIM_ID"
 
 echo "Stopping recording (PID $REC_PID)..."
 kill -INT "$REC_PID" 2>/dev/null || true
+pkill -INT -f "simctl io" 2>/dev/null || true
 wait "$REC_PID" 2>/dev/null || true
-sleep 3
+sleep 4
 
 echo "Extracting frames at 15 fps..."
 swift scripts/extract_frames.swift "$VIDEO_PATH" "$FRAMES_DIR" 15

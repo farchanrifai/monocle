@@ -120,10 +120,10 @@ struct BookHomeView: View {
                             let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
 
                             activitySection(bookID: selectedID)
+                                .id(selectedID)
                                 .offset(y: pullDelta - collapseDelta)
                                 .opacity(showTransactionList ? 1.0 : 0.0)
-                                .offset(y: showTransactionList ? 0 : 12)
-                                .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showTransactionList)
+                                .offset(y: showTransactionList ? 0 : 6)
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
@@ -156,7 +156,7 @@ struct BookHomeView: View {
                 }
                 .onChange(of: selectedID) { _, _ in
                     if abs(info.scrollOffset) > 2 {
-                        withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.95)) {
                             scrollProxy.scrollTo("scrollTopAnchor", anchor: .top)
                         }
                     }
@@ -332,7 +332,7 @@ struct BookHomeView: View {
     }
 
     private var focusedDeckHeight: CGFloat {
-        CGFloat(cardHeight) * 1.04
+        CGFloat(cardHeight) * 1.035
     }
 
     private func cardZIndex(index: Int, bookID: UUID) -> Double {
@@ -454,13 +454,14 @@ struct BookHomeView: View {
         .visualEffect { [stripHeight, cardHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, isDippingLowerCards, reduceMotion] content, _ in
             let pushOffset: CGFloat
             let scale: CGFloat
+            let centerLiftDelta: CGFloat = (CGFloat(cardHeight) * (1.035 - 1.0)) / 2.0
             if isSelected {
                 if isCurrent {
-                    let targetY: CGFloat = 0
+                    let targetY: CGFloat = centerLiftDelta
                     pushOffset = targetY - CGFloat(index) * stripHeight
-                    scale = 1.04
+                    scale = 1.035
                 } else if index < selectedIdx {
-                    let targetY: CGFloat = 0
+                    let targetY: CGFloat = centerLiftDelta + 3.0
                     pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.0
                 } else {
@@ -470,7 +471,7 @@ struct BookHomeView: View {
                         pushOffset = targetY - CGFloat(index) * stripHeight
                         scale = 1.0
                     } else {
-                        let targetY: CGFloat = 0
+                        let targetY: CGFloat = centerLiftDelta + 3.0
                         pushOffset = targetY - CGFloat(index) * stripHeight
                         scale = 1.0
                     }
@@ -481,7 +482,7 @@ struct BookHomeView: View {
             }
 
             return content
-                .scaleEffect(isSelected ? (isCurrent ? 1.04 : scale) : 1.0, anchor: .top)
+                .scaleEffect(isSelected ? (isCurrent ? 1.035 : scale) : 1.0, anchor: .center)
                 .offset(y: isSelected ? pushOffset : fanOffset)
         }
     }
@@ -989,9 +990,9 @@ struct BookHomeView: View {
                 hasLowerCardsPassed = false
                 isDippingLowerCards = true
 
-                // Phase 1: Selected card zooms in & glides to top (targetY = 0);
+                // Phase 1: Selected card zooms in naturally & glides to top alignment;
                 // lower cards slide down in full height in front of the selected card
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.34, dampingFraction: 0.82)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.92)) {
                     selectedID = id
                     model.selectedBookID = id
                     model.selectBook(id)
@@ -999,18 +1000,19 @@ struct BookHomeView: View {
                 headingFocused = true
 
                 // Phase 2: Once lower cards have cleared selected card, surface selected card and slide lower cards back up behind it
+                // Using critically damped spring (dampingFraction: 0.98) guarantees zero overshoot past the active card
                 lowerCardDipTask = Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 160_000_000)
                     guard !Task.isCancelled, selectedID == id else { return }
                     hasLowerCardsPassed = true
-                    withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.40, dampingFraction: 0.84)) {
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.98)) {
                         isDippingLowerCards = false
                     }
 
-                    // Phase 3: Transition done (~380ms after tap) -> reveal transaction list
-                    try? await Task.sleep(nanoseconds: 220_000_000)
+                    // Phase 3: Transition done (~390ms after tap) -> reveal transaction list onto settled layout
+                    try? await Task.sleep(nanoseconds: 230_000_000)
                     guard !Task.isCancelled, selectedID == id else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
                         showTransactionList = true
                     }
                     isTransitioning = false
@@ -1024,7 +1026,7 @@ struct BookHomeView: View {
                 hasLowerCardsPassed = true
                 isDippingLowerCards = false
 
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.84)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.92)) {
                     selectedID = id
                     model.selectedBookID = id
                     model.selectBook(id)
@@ -1034,7 +1036,7 @@ struct BookHomeView: View {
                 lowerCardDipTask = Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 360_000_000)
                     guard !Task.isCancelled, selectedID == id else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
                         showTransactionList = true
                     }
                     isTransitioning = false
@@ -1059,7 +1061,7 @@ struct BookHomeView: View {
 
             if hasLowerCards {
                 // Phase 1 (Dismiss Start, 0ms): Lower cards slide DOWN behind the active card
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.32, dampingFraction: 0.84)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.94)) {
                     isDippingLowerCards = true
                 }
 
@@ -1074,7 +1076,7 @@ struct BookHomeView: View {
                     // - Active card slides down to resting slot and un-scales to 1.0
                     // - Upper cards slide down to resting slots
                     // - Stack frame expands to restingStackHeight
-                    withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.84)) {
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.94)) {
                         isDippingLowerCards = false
                         selectedID = nil
                         model.selectedBookID = nil
@@ -1084,7 +1086,7 @@ struct BookHomeView: View {
                     // Phase 3 (380ms total): Deck has settled -> reveal home transactions
                     try? await Task.sleep(nanoseconds: 220_000_000)
                     guard !Task.isCancelled, selectedID == nil else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
                         showTransactionList = true
                     }
                     isTransitioning = false
@@ -1093,16 +1095,16 @@ struct BookHomeView: View {
                 hasLowerCardsPassed = false
                 isDippingLowerCards = false
 
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.84)) {
+                withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.94)) {
                     selectedID = nil
                     model.selectedBookID = nil
                 }
                 headingFocused = true
 
                 dismissTransitionTask = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 260_000_000)
+                    try? await Task.sleep(nanoseconds: 280_000_000)
                     guard !Task.isCancelled, selectedID == nil else { return }
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
                         showTransactionList = true
                     }
                     isTransitioning = false

@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.10] - 2026-09-11
+### Refined & Perfected
+- **Critically Damped Deck Shuffling (Zero Overshoot)**: Retuned lower cards' return spring behind the hero card to a critically damped curve (`dampingFraction: 0.98`), mathematically preventing any overshoot past the active card. Lower cards are recessed by 3.0pt below the hero card's top edge, guaranteeing they never peek above the active card during transitions.
+- **Natural Symmetrical Hero Card Pop**: Selected card pop now scales organically from `.center` (`scale = 1.035`) with authentic elevation depth and soft lighting shadow, while keeping its top edge strictly top-aligned with the resting deck.
+- **Zero List Jumping & Instant Clean Transition**: Removed implicit animation on the activity section so home transactions disappear instantly (0ms) upon card tap rather than lingering or bouncing with container frame oscillations. The transaction list smoothly fades and glides in only once all cards have settled.
+- **Transition View Hierarchy Isolation**: Attached `.id(selectedID)` to the activity container to ensure clean, instant view replacement without ghost text cross-fading.
+
 ## [0.6.9] - 2026-09-11
 ### Refined & Perfected
 - **Consistent Opened Card Placement**: Fixed ScrollView anchoring and eliminated content offset jitter across all cards. Every card (Card 01, 02, 03) now opens to the exact same top-aligned pixel coordinate matching the home deck's resting position.
