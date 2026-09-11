@@ -1050,6 +1050,9 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(latestTransactions.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["customizeCardDetailButton"].exists)
         XCTAssertTrue(app.buttons["addExpenseButton"].exists)
+        XCTAssertTrue(app.buttons["cardFlipButton"].exists, "Active card flip button should exist")
+        let backgroundDeckCards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertEqual(backgroundDeckCards.count, 0, "No background cards should be visible or accessible when a card is open")
 
         // Capture screenshot of opened card state with in-line transactions
         let openedShot = app.screenshot()

@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.4] - 2026-09-11
+### Refined & Perfected
+- **Single-Card Transaction Page**: Opening any card now displays strictly that 1 opened card at the top, parting all other cards out of view. Cards above smoothly part upward and fade out; cards below smoothly part downward and fade out.
+- **Consistent Top Clearance & Spacing**: Unified `focusedDeckHeight` across all cards, guaranteeing an identical top hero position and an exact 16pt gap to the transaction list regardless of card index.
+- **Buttery Smooth Parting & Reassembly**: Tuned spring parameters to `.interactiveSpring(response: 0.48, dampingFraction: 0.88)` for crisp, natural opening and closing transitions without frame drops or jitter.
+- **Frame-by-Frame Simulator Verified**: Recorded the transition on iPhone 17 Pro simulator and verified frame-by-frame that only 1 card is displayed during transaction review and that the deck seamlessly reassembles upon dismiss.
+
 ## [0.6.3] - 2026-09-11
 ### Refined & Redesigned
 - **In-Line Scrollable Transaction List**: Replaced the detached modal sheet with an in-line scrollable transaction section styled identically to the home screen directly inside the main scroll view. Begins precisely 16pt beneath the active card with zero dead space or sheet disconnect.

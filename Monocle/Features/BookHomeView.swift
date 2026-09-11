@@ -306,6 +306,8 @@ struct BookHomeView: View {
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 8)
+        .background(paper.ignoresSafeArea(edges: .top))
+        .zIndex(10)
     }
 
     private var restingStackHeight: CGFloat {
@@ -313,7 +315,7 @@ struct BookHomeView: View {
     }
 
     private var focusedDeckHeight: CGFloat {
-        10 + CGFloat(selectedIndex) * 12 + 6 + CGFloat(cardHeight)
+        10 + CGFloat(cardHeight)
     }
 
     private var stack: some View {
@@ -331,8 +333,6 @@ struct BookHomeView: View {
         let isCurrent = selectedID == book.id
         let selectedIdx = selectedIndex
         let isFlipped = flippedCardID != nil
-        let isTucked = isSelected && index < selectedIdx
-        let isLower = isSelected && index > selectedIdx
         let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
         let isSwipingThis = (swipingCardID == book.id)
         let horizontalOffset: CGFloat = isSwipingThis ? swipeOffset : 0
@@ -344,13 +344,7 @@ struct BookHomeView: View {
 
         let cardOpacity: Double
         if isSelected {
-            if isCurrent {
-                cardOpacity = 1.0
-            } else if isFlipped || isLower {
-                cardOpacity = 0.0
-            } else {
-                cardOpacity = 1.0
-            }
+            cardOpacity = isCurrent ? 1.0 : 0.0
         } else {
             cardOpacity = 1.0
         }
@@ -371,8 +365,8 @@ struct BookHomeView: View {
         }
         .offset(x: horizontalOffset, y: collapseOffset)
         .opacity(cardOpacity)
-        .allowsHitTesting(!isLower)
-        .accessibilityHidden(isLower)
+        .allowsHitTesting(!isSelected || isCurrent)
+        .accessibilityHidden(isSelected && !isCurrent)
         .simultaneousGesture(
             (index > 0 && selectedID == nil) ?
                 DragGesture(minimumDistance: 20)
@@ -430,14 +424,14 @@ struct BookHomeView: View {
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
-                if index < selectedIdx {
-                    let targetY = 10 + CGFloat(index) * 12
+                if isCurrent {
+                    let targetY: CGFloat = 10
                     pushOffset = targetY - CGFloat(index) * stripHeight
-                    scale = reduceMotion ? 1.0 : max(0.90, 1.0 - CGFloat(selectedIdx - index) * 0.02)
-                } else if index == selectedIdx {
-                    let targetY = 10 + CGFloat(selectedIdx) * 12 + 6
-                    pushOffset = targetY - CGFloat(selectedIdx) * stripHeight
                     scale = 1.0
+                } else if index < selectedIdx {
+                    let targetY: CGFloat = -100 - CGFloat(selectedIdx - index) * 50
+                    pushOffset = targetY - CGFloat(index) * stripHeight
+                    scale = reduceMotion ? 1.0 : 0.94
                 } else {
                     let targetY: CGFloat = 1000
                     pushOffset = targetY - CGFloat(index) * stripHeight
@@ -937,7 +931,7 @@ struct BookHomeView: View {
             flippedCardID = nil
             dragTilt = .zero
         }
-        withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.55, dampingFraction: 0.90)) {
+        withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.48, dampingFraction: 0.88)) {
             selectedID = id
             model.selectedBookID = id
             if let id {
