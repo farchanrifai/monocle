@@ -20,6 +20,33 @@ struct BudgetsView: View {
                             Text("of \(Money.format(model.activeBudget.overallLimit))")
                         }.font(.caption).foregroundStyle(.secondary)
                     }.padding(22).background(MC.surface, in: RoundedRectangle(cornerRadius: 22))
+
+                    Button {
+                        model.showAnalytics = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.title3)
+                                .foregroundStyle(MC.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Spending Trends & Charts")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Text("Burn-up curves, velocity, and daily rhythm")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(16)
+                        .background(MC.surface, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                    .buttonStyle(PressFeedbackStyle())
+                    .accessibilityIdentifier("openAnalyticsFromBudgets")
+
                     HStack {
                         Text("Where it went").font(.title3.weight(.semibold))
                         Spacer()
@@ -72,6 +99,7 @@ struct BudgetsView: View {
                 .navigationTitle("Budgets").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Edit", systemImage: "slider.horizontal.3") { editing = true } } }
                 .sheet(isPresented: $editing) { BudgetEditor(model: model) }
+                .sheet(isPresented: $model.showAnalytics) { AnalyticsView(model: model) }
         }
     }
 }

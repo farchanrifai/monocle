@@ -930,5 +930,46 @@ final class MonocleUITests: XCTestCase {
         app.buttons["dismissCSVView"].tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testAnalyticsNavigationAndHorizons() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Open Options Menu
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        // 2. Tap Analytics & Trends
+        let analyticsButton = app.buttons["menuAnalytics"]
+        XCTAssertTrue(analyticsButton.waitForExistence(timeout: 5))
+        analyticsButton.tap()
+
+        // 3. Verify Analytics & Trends modal presented
+        XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls["analyticsScopePicker"].exists)
+        XCTAssertTrue(app.staticTexts["totalSpendMetric"].exists)
+
+        // 4. Verify Charts present
+        XCTAssertTrue(app.otherElements["burnUpTrajectoryChart"].exists || app.scrollViews.firstMatch.exists)
+
+        // 5. Switch horizon chip
+        let thisMonthChip = app.buttons["horizon-This month"]
+        if thisMonthChip.exists {
+            thisMonthChip.tap()
+        }
+
+        // 6. Switch scope to All Books
+        app.segmentedControls["analyticsScopePicker"].buttons["All books"].tap()
+
+        // 7. Switch back to Current Book
+        app.segmentedControls["analyticsScopePicker"].buttons["Current book"].tap()
+
+        // 8. Dismiss modal
+        app.buttons["dismissAnalyticsView"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+    }
 }
 

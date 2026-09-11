@@ -51,6 +51,9 @@
 		CC0000022D75000100000021 /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000021 /* CSVEngine.swift */; };
 		CC0000022D75000100000022 /* CSVInterchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000022 /* CSVInterchangeView.swift */; };
 		CC0000022D75000100000023 /* CSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000023 /* CSVTests.swift */; };
+		CC0000022D75000100000024 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000024 /* AnalyticsEngine.swift */; };
+		CC0000022D75000100000025 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000025 /* AnalyticsView.swift */; };
+		CC0000022D75000100000026 /* AnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000026 /* AnalyticsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,6 +124,9 @@
 		CC0000012D75000100000021 /* CSVEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVEngine.swift; sourceTree = "<group>"; };
 		CC0000012D75000100000022 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
 		CC0000012D75000100000023 /* CSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVTests.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000024 /* AnalyticsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEngine.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000025 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
+		CC0000012D75000100000026 /* AnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -224,6 +230,7 @@
 				CC0000012D75000100000001 /* CardCustomization.swift */,
 				BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */,
 				CC0000012D75000100000021 /* CSVEngine.swift */,
+				CC0000012D75000100000024 /* AnalyticsEngine.swift */,
 				AB0C913F4994169E78CFEEF8 /* Expense.swift */,
 			);
 			path = Domain;
@@ -251,6 +258,7 @@
 				6C573062CE2769892729F737 /* CategoryManager.swift */,
 				6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */,
 				CC0000012D75000100000022 /* CSVInterchangeView.swift */,
+				CC0000012D75000100000025 /* AnalyticsView.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
@@ -266,6 +274,7 @@
 				7626BE09A6EE4CB31A47D198 /* BackupTests.swift */,
 				AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */,
 				CC0000012D75000100000023 /* CSVTests.swift */,
+				CC0000012D75000100000026 /* AnalyticsTests.swift */,
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
 				259DC603F39D197686C31B1F /* MonocleTests.swift */,
 				3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */,
@@ -396,6 +405,7 @@
 				671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */,
 				B1117E575000000000000001 /* BillTests.swift in Sources */,
 				CC0000022D75000100000023 /* CSVTests.swift in Sources */,
+				CC0000022D75000100000026 /* AnalyticsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -446,6 +456,8 @@
 				CC0000022D75000100000013 /* BillNotificationService.swift in Sources */,
 				CC0000022D75000100000021 /* CSVEngine.swift in Sources */,
 				CC0000022D75000100000022 /* CSVInterchangeView.swift in Sources */,
+				CC0000022D75000100000024 /* AnalyticsEngine.swift in Sources */,
+				CC0000022D75000100000025 /* AnalyticsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -516,7 +528,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 34;
+				CURRENT_PROJECT_VERSION = 35;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -537,7 +549,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -625,7 +637,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 34;
+				CURRENT_PROJECT_VERSION = 35;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -640,7 +652,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

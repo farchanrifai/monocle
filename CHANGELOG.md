@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.5.0] - 2026-09-11
+### Added
+- **Visual Analytics & Spending Trends**: Pure native SwiftUI + Swift Charts spending analytics suite accessible from the Book Home options menu and Budgets screen.
+- **Cumulative Trajectory Curve**: Burn-up cumulative area and line chart tracking daily spend progression against linear monthly budget pacing, complete with interactive `.chartXSelection` date scrubbing and precise point callouts.
+- **Daily Spending Rhythm**: High-density daily expense bar chart highlighting peak spending days alongside period average reference rule lines.
+- **Month-over-Month Velocity Comparison**: Day-by-day velocity curves comparing current month spending velocity against the prior month's trajectory on an aligned calendar timeline.
+- **Category Donut Breakdown**: Interactive SectorMark donut chart with center totals, dynamic slice expansion, category proportion percentages, and ranked expenditure cards with progress indicators.
+- **Cross-Book Distribution**: Consolidated portfolio breakdown utilizing book card palette color coding when analyzing "All books" scope.
+- **Flexible Time Horizons & Multi-Book Scoping**: Seamless horizon toggling across This Cycle, This Month, Last Month, Last 30 Days, Last 90 Days, and Year-to-Date, with instant switching between Current Book and All Books.
+- **Spending Pace KPIs**: Real-time spending pace status (Under Budget, On Pace, Ahead of Pace, Over Budget) with daily average metrics and projected period end calculations.
+
 ## [0.4.0] - 2026-09-11
 ### Added
 - **RFC 4180 CSV Export & Import Engine**: Robust RFC 4180-compliant CSV engine supporting quoted fields, escaped quotes, multiline notes, and CRLF line endings without proprietary dependencies.

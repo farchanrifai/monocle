@@ -50,6 +50,7 @@ final class AppModel {
     var stackCustomizerMode: StackCustomizerMode = .manage
     var showCSVInterchange = false
     var csvInterchangeInitialTab = 0
+    var showAnalytics = false
     var selectedTab = 0
     var error: String?
     var startupError: String?
@@ -559,6 +560,22 @@ final class AppModel {
         let total = expenses(for: bookID).reduce(0) { $0 + $1.amount }
         spentCache[bookID] = total
         return total
+    }
+
+    func allExpenses() -> [Expense] {
+        var result: [Expense] = []
+        for book in books {
+            result.append(contentsOf: expenses(for: book.id))
+        }
+        return result
+    }
+
+    func allExpensesByBook() -> [UUID: [Expense]] {
+        var map: [UUID: [Expense]] = [:]
+        for book in books {
+            map[book.id] = expenses(for: book.id)
+        }
+        return map
     }
 
     func activities(selectedBookID: UUID?, allBooks: Bool) -> [Expense] {

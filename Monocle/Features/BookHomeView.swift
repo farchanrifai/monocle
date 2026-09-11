@@ -237,6 +237,9 @@ struct BookHomeView: View {
         .sheet(isPresented: $model.showCSVInterchange) {
             CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
         }
+        .sheet(isPresented: $model.showAnalytics) {
+            AnalyticsView(model: model)
+        }
         .onAppear {
             if displayedBooks.isEmpty {
                 displayedBooks = model.visibleBooks
@@ -657,6 +660,13 @@ struct BookHomeView: View {
                 Label("Budgets", systemImage: "chart.bar.xaxis")
             }
             .accessibilityIdentifier("menuBudgets")
+
+            Button {
+                model.showAnalytics = true
+            } label: {
+                Label("Analytics & Trends", systemImage: "chart.line.uptrend.xyaxis")
+            }
+            .accessibilityIdentifier("menuAnalytics")
 
             Button {
                 showingBills = true
