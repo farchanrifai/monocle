@@ -42,6 +42,8 @@ struct BookHomeView: View {
     @State private var dragTilt: CGSize = .zero
     @State private var swipingCardID: UUID? = nil
     @State private var swipeOffset: CGFloat = 0.0
+    @State private var cardsBehindHidden = false
+    @State private var hideCardsBehindTask: Task<Void, Never>? = nil
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -322,6 +324,7 @@ struct BookHomeView: View {
         VStack(spacing: -(cardHeight - stripHeight)) {
             ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
                 cardItem(book, index: index)
+                    .zIndex(selectedID == book.id ? 100 : Double(index))
                     .transition(.opacity)
             }
         }
@@ -342,12 +345,9 @@ struct BookHomeView: View {
             .frame(maxWidth: .infinity)
             .frame(height: cardHeight)
 
-        let cardOpacity: Double
-        if isSelected {
-            cardOpacity = isCurrent ? 1.0 : 0.0
-        } else {
-            cardOpacity = 1.0
-        }
+        let isBehind = isSelected && index < selectedIdx
+        let isBehindGone = isBehind && (cardsBehindHidden || isFlipped)
+        let cardOpacity: Double = isBehindGone ? 0.0 : 1.0
 
         return Group {
             if isCurrent {
@@ -424,16 +424,12 @@ struct BookHomeView: View {
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
-                if isCurrent {
+                if index <= selectedIdx {
                     let targetY: CGFloat = 10
                     pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.0
-                } else if index < selectedIdx {
-                    let targetY: CGFloat = -100 - CGFloat(selectedIdx - index) * 50
-                    pushOffset = targetY - CGFloat(index) * stripHeight
-                    scale = reduceMotion ? 1.0 : 0.94
                 } else {
-                    let targetY: CGFloat = 1000
+                    let targetY: CGFloat = 1200
                     pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.0
                 }
@@ -927,18 +923,35 @@ struct BookHomeView: View {
     }
 
     private func focus(_ id: UUID?) {
-        if id != selectedID {
+        hideCardsBehindTask?.cancel()
+        hideCardsBehindTask = nil
+
+        if let id {
             flippedCardID = nil
             dragTilt = .zero
-        }
-        withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.48, dampingFraction: 0.88)) {
-            selectedID = id
-            model.selectedBookID = id
-            if let id {
+            cardsBehindHidden = false
+            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.48, dampingFraction: 0.88)) {
+                selectedID = id
+                model.selectedBookID = id
                 model.selectBook(id)
             }
+            headingFocused = true
+            hideCardsBehindTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 380_000_000)
+                if !Task.isCancelled && selectedID == id {
+                    cardsBehindHidden = true
+                }
+            }
+        } else {
+            flippedCardID = nil
+            dragTilt = .zero
+            cardsBehindHidden = false
+            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.48, dampingFraction: 0.88)) {
+                selectedID = nil
+                model.selectedBookID = nil
+            }
+            headingFocused = true
         }
-        headingFocused = true
     }
 
     private func toggleFlip(for bookID: UUID) {

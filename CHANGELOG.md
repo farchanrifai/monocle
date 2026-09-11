@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.5] - 2026-09-11
+### Refined & Perfected
+- **Physical Card Stacking**: Opening any card now physically stacks the opened card directly on top of the cards above it (`targetY = 10`), covering them completely with authentic mechanical motion (no fade animation).
+- **Lower Cards Ejection**: Cards below the selected card are thrown out of the screen towards the bottom (`targetY = 1200`) at full opacity (`opacity = 1.0`), and slide smoothly back up when dismissed.
+- **Isolated 3D Card Flip**: Once fully covered, upper cards are hidden behind the active card so 3D rotation reveals clean empty space without background cards peeking through.
+- **Seamless Reassembly on Dismiss**: When returning to the home page, covered cards are restored right before the closing spring begins, allowing all cards to un-stack and slide back down into their resting positions.
+
 ## [0.6.4] - 2026-09-11
 ### Refined & Perfected
 - **Single-Card Transaction Page**: Opening any card now displays strictly that 1 opened card at the top, parting all other cards out of view. Cards above smoothly part upward and fade out; cards below smoothly part downward and fade out.

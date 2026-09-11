@@ -1058,10 +1058,20 @@ final class MonocleUITests: XCTestCase {
         let openedShot = app.screenshot()
         try? openedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_opened.png"))
 
-        // 4. Tap close button to return to stack
+        // 4. Test 3D card flip to telemetry back face
+        let flipButton = app.buttons["cardFlipButton"]
+        XCTAssertTrue(flipButton.exists)
+        flipButton.tap()
+
+        let backArtworkButton = app.buttons["cardBackCustomizeButton"]
+        XCTAssertTrue(backArtworkButton.waitForExistence(timeout: 5), "Telemetry back face should appear on flip")
+        let flippedBackgroundCards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertEqual(flippedBackgroundCards.count, 0, "No background cards should appear when card is flipped")
+
+        // 5. Tap close button to un-flip and return to stack
         closeButton.tap()
 
-        // 5. Verify stack returns to resting state
+        // 7. Verify stack returns to resting state
         XCTAssertTrue(firstCard.waitForExistence(timeout: 5))
         let closedShot = app.screenshot()
         try? closedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_closed.png"))
