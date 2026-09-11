@@ -66,7 +66,9 @@ struct EntryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: requestClose) { Image(systemName: "xmark") }.accessibilityLabel("Close entry")
+                    Button(action: requestClose) { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close entry")
+                        .accessibilityIdentifier("closeEntry")
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()

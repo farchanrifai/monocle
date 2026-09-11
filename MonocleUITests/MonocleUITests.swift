@@ -1157,5 +1157,70 @@ final class MonocleUITests: XCTestCase {
         XCTAssertFalse(app.buttons["closeBookDetail"].exists)
         XCTAssertFalse(app.buttons["cardFlipButton"].exists, "Home stack cards must not show flip button")
     }
+
+    @MainActor
+    func testTransactionPageLiquidGlassAddButtonAndPlatter() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 1. On Home screen, filter button exists on left, add button on right
+        let filterButton = app.buttons["activityFilterButton"]
+        let addButton = app.buttons["addExpense"]
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 10))
+        XCTAssertTrue(addButton.exists)
+
+        let homeAddFrame = addButton.frame
+        let screenWidth = app.windows.firstMatch.frame.width
+        XCTAssertGreaterThan(homeAddFrame.midX, screenWidth * 0.6, "Home add button must be on the right side")
+
+        // 2. Open first card
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        cards.firstMatch.tap()
+
+        // 3. Detail header & title
+        XCTAssertTrue(app.buttons["closeBookDetail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
+
+        // 4. Header buttons next to title must be removed
+        XCTAssertFalse(app.buttons["addExpenseButton"].exists, "Add button next to list title must be removed")
+        XCTAssertFalse(app.buttons["customizeCardDetailButton"].exists, "Customize button next to list title must be removed")
+
+        // 5. Filter button must be removed on transaction page
+        XCTAssertFalse(filterButton.exists, "Filter button must be hidden on transaction page")
+
+        // 6. Floating red add button must morph to the middle bottom
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        sleep(1) // Wait for spring animation to settle
+        let detailAddFrame = addButton.frame
+        let expectedCenterX = screenWidth / 2.0
+        XCTAssertEqual(detailAddFrame.midX, expectedCenterX, accuracy: 15.0, "Add button must be centered in the middle bottom")
+        XCTAssertGreaterThan(detailAddFrame.width, 100, "Add button should expand its width with label")
+
+        // Capture screenshot of transaction page
+        let shot = app.screenshot()
+        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/transaction_page_liquid_glass.png"))
+
+        // 7. Tap centered add button -> entry modal opens
+        addButton.tap()
+        XCTAssertTrue(app.buttons["recordExpense"].waitForExistence(timeout: 5), "Tapping centered add button must open expense entry")
+        
+        // Dismiss entry
+        let closeEntry = app.buttons["closeEntry"].exists ? app.buttons["closeEntry"] : app.buttons["Close entry"]
+        XCTAssertTrue(closeEntry.waitForExistence(timeout: 5), "Close entry button must exist")
+        closeEntry.tap()
+        sleep(1) // Allow modal sheet dismissal to complete
+
+        // 8. Close card detail -> returns to home
+        let closeDetail = app.buttons["closeBookDetail"]
+        XCTAssertTrue(closeDetail.waitForExistence(timeout: 5))
+        closeDetail.tap()
+
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
+        sleep(1) // Wait for spring animation to settle
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 5), "Filter button must reappear on home screen")
+        let returnedAddFrame = addButton.frame
+        XCTAssertGreaterThan(returnedAddFrame.midX, screenWidth * 0.6, "Add button must return to right side on home")
+    }
 }
 

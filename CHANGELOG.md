@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.13] - 2026-09-12
+### Refined & Perfected
+- **Native Apple Wallet Inset Transaction Platter**: Rendered transaction activity in an authentic inset continuous rounded platter (`RoundedRectangle(cornerRadius: 24, style: .continuous)`) filled with `MC.surface`, completely eliminating row divider lines for a clean, distraction-free Apple Wallet aesthetic.
+- **Clean Transaction Detail Header**: Removed the redundant inline `+` add button and paintbrush customizer button adjacent to "Latest Transactions", and cleanly hid the home filter menu button while viewing card transaction details.
+- **Fluid Liquid Glass Centered Add Button Morph**: Re-architected the bottom navigation bar so the floating red add button dynamically animates and morphs between a bottom-right circular action button (`56x56`) on the home screen and a centered, expanded pill button (`+ Add Expense`) at the bottom of the card transaction page using `.glassEffect(.regular.tint(MC.red.opacity(0.85)).interactive(), in: .capsule)`. Tapping pre-populates the currently opened book, and dismissing the card reverses the morph seamlessly.
+- **Automated UI Testing Suite**: Added `testTransactionPageLiquidGlassAddButtonAndPlatter` verifying button positions, morphing geometry, header cleanliness, modal presentation, and reverse transitions.
+
 ## [0.6.12] - 2026-09-12
 ### Fixed & Refined
 - **Discrete Card Context Menu Targeting**: Repositioned `CardGesturesModifier` (and `.contextMenu`) and `CardAccessibilityModifier` directly onto the discrete card artwork (`width` x `height` with continuous 16pt rounded rectangle) *prior* to parent `.position(x:y:)`. This prevents `UIContextMenuInteraction` from targeting the full-screen container, eliminating the semi-transparent box artifact and anchoring context menus directly adjacent to the touched card.

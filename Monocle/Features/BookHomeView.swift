@@ -628,7 +628,7 @@ struct BookHomeView: View {
 
                 activitySection(bookID: book.id)
                     .padding(.top, 16)
-                    .padding(.bottom, 100)
+                    .padding(.bottom, 130)
                     .opacity(expanded ? 1 - progress : 0)
                     .blur(radius: reduceMotion ? 0 : (expanded ? progress * 12 : 12))
                     .offset(y: reduceMotion ? 0 : (expanded ? dismissAmount : 80))
@@ -1025,7 +1025,7 @@ struct BookHomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
-                    .font(.title2.bold())
+                    .font(bookID != nil ? .system(size: 20, weight: .bold) : .title2.bold())
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
 
@@ -1045,91 +1045,83 @@ struct BookHomeView: View {
                     )
                     .accessibilityIdentifier("activityScopeBadge")
                     Spacer()
-                } else if let selectedBook {
-                    Spacer()
-                    HStack(spacing: 12) {
-                        Button {
-                            openCustomizer(for: selectedBook)
-                        } label: {
-                            Image(systemName: "paintbrush")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(ink)
-                        }
-                        .accessibilityLabel("Customize Card")
-                        .accessibilityIdentifier("customizeCardDetailButton")
-
-                        Button {
-                            model.openEntry(for: selectedBook.id)
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(ink)
-                        }
-                        .accessibilityLabel("Add Expense")
-                        .accessibilityIdentifier("addExpenseButton")
-                    }
                 }
             }
 
             if activities.isEmpty {
-                ContentUnavailableView(
-                    "Nothing recorded yet",
-                    systemImage: "text.book.closed",
-                    description: Text(bookID != nil ? "Tap + above to record your first transaction for this card." : "Tap Add Expense below to record your first transaction.")
-                )
-                .padding(.vertical, 24)
+                if bookID != nil {
+                    VStack(spacing: 10) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 32))
+                            .foregroundStyle(ink.opacity(0.35))
+                        Text("No Transactions Yet")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(ink)
+                        Text("Transactions recorded for this card will appear here.")
+                            .font(.footnote)
+                            .foregroundStyle(ink.opacity(0.6))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 36)
+                    .padding(.horizontal, 20)
+                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                } else {
+                    ContentUnavailableView(
+                        "Nothing recorded yet",
+                        systemImage: "text.book.closed",
+                        description: Text("Tap Add Expense below to record your first transaction.")
+                    )
+                    .padding(.vertical, 24)
+                }
             } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(activities) { row in
-                        activityRow(row, showBookLabel: bookID == nil)
-                        Rectangle()
-                            .fill(ink.opacity(direction == .light ? 0.08 : 0.15))
-                            .frame(height: 0.5)
-                            .accessibilityHidden(true)
+                if bookID != nil {
+                    VStack(spacing: 0) {
+                        ForEach(activities) { row in
+                            activityRow(row, showBookLabel: false, isPlatter: true)
+                        }
+                    }
+                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(activities) { row in
+                            activityRow(row, showBookLabel: true, isPlatter: false)
+                        }
                     }
                 }
             }
         }
     }
 
-    private func activityRow(_ expense: Expense, showBookLabel: Bool) -> some View {
+    private func activityRow(_ expense: Expense, showBookLabel: Bool, isPlatter: Bool = false) -> some View {
         Button {
             model.edit(expense)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(expense.day)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(ink.opacity(0.6))
-                ViewThatFits(in: .horizontal) {
-                    HStack {
-                        Text(model.title(expense))
-                            .foregroundStyle(ink)
-                        Spacer()
-                        Text(Money.format(expense.amount))
-                            .monospacedDigit()
-                            .foregroundStyle(ink)
-                    }
-                    VStack(alignment: .leading) {
-                        Text(model.title(expense))
-                            .foregroundStyle(ink)
-                        Text(Money.format(expense.amount))
-                            .monospacedDigit()
-                            .foregroundStyle(ink)
-                    }
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(model.title(expense))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(ink)
+                        .lineLimit(1)
+                    Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(ink.opacity(0.55))
+                        .lineLimit(1)
                 }
-                .font(.body.weight(.medium))
-
-                if showBookLabel, let bID = expense.bookID, let b = model.books.first(where: { $0.id == bID }) {
-                    Text(b.name)
-                        .font(.caption)
-                        .foregroundStyle(ink.opacity(0.6))
-                }
+                Spacer(minLength: 8)
+                Text(Money.format(expense.amount))
+                    .font(.system(size: 15, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 14)
+            .padding(.horizontal, isPlatter ? 16 : 0)
+            .padding(.vertical, isPlatter ? 14 : 12)
+            .frame(minHeight: isPlatter ? 68 : 56)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedbackStyle())
         .accessibilityIdentifier("expense-\(expense.note)")
         .contextMenu {
             Button("Edit", systemImage: "pencil") {
