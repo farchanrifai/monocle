@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.1] - 2026-09-11
+### Refined & Fixed
+- **Direct In-Card Analytics & Artwork Presentation**: Tapping "Trends & Analytics" or "Artwork" on the flipped card now presents sheets directly on top of the active card without closing the card or kicking the user back to the home page. Dismissing either sheet returns directly to the flipped card.
+- **Isolated Card Flip (Hidden Background Cards)**: All background stacked cards now smoothly cross-fade to 0 opacity when any card is opened, completely preventing background cards from showing or peeking through during 3D card flips.
+- **Fluid 120 FPS Card Transitions**: Eliminated frame-querying layout feedback loops and offscreen compositing bottlenecks, replacing dynamic frame queries with deterministic stack slot math for buttery smooth opening and closing animations.
+- **Header Bar Breathing Room**: Added `.scrollClipDisabled()` and increased resting top margin to 14pt, ensuring the card never collides with or tucks behind the header bar or `xmark` button during perspective tilt.
+
 ## [0.6.0] - 2026-09-11
 ### Added
 - **Interactive 3D Card Flip**: Realistic 3D card rotation revealing a technical telemetry back-face with a single tap on the card's flip button or background tap-to-flip.

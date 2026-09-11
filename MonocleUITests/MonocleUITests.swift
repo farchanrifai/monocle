@@ -998,12 +998,36 @@ final class MonocleUITests: XCTestCase {
         // 5. Verify back face telemetry view elements
         let flipBackButton = app.buttons["cardFlipBackButton"]
         XCTAssertTrue(flipBackButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["cardBackAnalyticsButton"].exists)
-        XCTAssertTrue(app.buttons["cardBackCustomizeButton"].exists)
+        let analyticsButton = app.buttons["cardBackAnalyticsButton"]
+        let customizeButton = app.buttons["cardBackCustomizeButton"]
+        XCTAssertTrue(analyticsButton.exists)
+        XCTAssertTrue(customizeButton.exists)
         let backShot = app.screenshot()
         try? backShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_telemetry.png"))
 
-        // 6. Tap flip back button to return to front face
+        // 6. Test opening Trends & Analytics directly from flipped card
+        analyticsButton.tap()
+        let dismissAnalyticsButton = app.buttons["dismissAnalyticsView"]
+        XCTAssertTrue(dismissAnalyticsButton.waitForExistence(timeout: 5))
+        let analyticsShot = app.screenshot()
+        try? analyticsShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_analytics_opened.png"))
+        dismissAnalyticsButton.tap()
+
+        // Verify we returned directly to the flipped card without leaving
+        XCTAssertTrue(flipBackButton.waitForExistence(timeout: 5))
+
+        // 7. Test opening Artwork Customizer directly from flipped card
+        customizeButton.tap()
+        let cancelCustomizerButton = app.buttons["cancelCardCustomization"]
+        XCTAssertTrue(cancelCustomizerButton.waitForExistence(timeout: 5))
+        let customizerShot = app.screenshot()
+        try? customizerShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_customizer_opened.png"))
+        cancelCustomizerButton.tap()
+
+        // Verify we returned directly to the flipped card without leaving
+        XCTAssertTrue(flipBackButton.waitForExistence(timeout: 5))
+
+        // 8. Tap flip back button to return to front face
         flipBackButton.tap()
         XCTAssertTrue(flipButton.waitForExistence(timeout: 5))
     }

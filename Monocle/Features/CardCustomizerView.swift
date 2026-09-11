@@ -188,6 +188,7 @@ struct CardCustomizerView: View {
                     Button("Cancel") {
                         onDismiss()
                     }
+                    .accessibilityIdentifier("cancelCardCustomization")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {

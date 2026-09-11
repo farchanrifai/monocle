@@ -15,7 +15,6 @@ struct BookHomeView: View {
     @State private var managing = false
     @State private var showingBudgets = false
     @State private var showingBills = false
-    @State private var pendingCustomizerTarget: CustomizerTarget? = nil
     @State private var pull: CGFloat = 0
     @State private var info = ScrollInfo()
     @ScaledMetric(relativeTo: .headline) private var stripHeight = 44
@@ -111,7 +110,6 @@ struct BookHomeView: View {
                     activitySection(bookID: nil)
                         .offset(y: pullDelta - collapseDelta)
                         .opacity(selectedID == nil ? 1 : 0)
-                        .compositingGroup()
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -119,6 +117,7 @@ struct BookHomeView: View {
             }
             .scrollBounceBehavior(.always)
             .scrollDisabled(selectedID != nil)
+            .scrollClipDisabled()
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
                 geometry.contentOffset.y + geometry.contentInsets.top
             } action: { _, value in
@@ -162,15 +161,8 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("addExpenseButton")
             }
         }
-        .sheet(item: selectedBookBinding, onDismiss: {
-            if let pending = pendingCustomizerTarget {
-                pendingCustomizerTarget = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    model.customizerTarget = pending
-                }
-            }
-        }) { book in
-            let spacing: CGFloat = 16
+        .sheet(item: selectedBookBinding) { book in
+            let spacing: CGFloat = 20
             let minSheetHeight: CGFloat = max(180, info.containerSize.height - cardHeight - spacing)
             BookDetailSheet(
                 model: model,
@@ -196,7 +188,10 @@ struct BookHomeView: View {
                 model.showStackCustomizer = false
             }
         }
-        .sheet(item: $model.customizerTarget) { target in
+        .sheet(item: Binding(
+            get: { selectedID == nil ? model.customizerTarget : nil },
+            set: { model.customizerTarget = $0 }
+        )) { target in
             switch target {
             case .existing(let book):
                 CardCustomizerView(
@@ -241,7 +236,10 @@ struct BookHomeView: View {
         .sheet(isPresented: $model.showCSVInterchange) {
             CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
         }
-        .sheet(isPresented: $model.showAnalytics) {
+        .sheet(isPresented: Binding(
+            get: { model.showAnalytics && selectedID == nil },
+            set: { model.showAnalytics = $0 }
+        )) {
             AnalyticsView(model: model)
         }
         .onAppear {
@@ -283,14 +281,6 @@ struct BookHomeView: View {
         .onChange(of: model.selectedBookID) { _, newID in
             if selectedID != newID {
                 focus(newID)
-            }
-        }
-        .onChange(of: selectedID) { _, newID in
-            if newID == nil, let pending = pendingCustomizerTarget {
-                pendingCustomizerTarget = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    model.customizerTarget = pending
-                }
             }
         }
     }
@@ -337,7 +327,6 @@ struct BookHomeView: View {
                     .transition(.opacity)
             }
         }
-        .compositingGroup()
     }
 
     private func cardItem(_ book: BookProfile, index: Int) -> some View {
@@ -347,6 +336,22 @@ struct BookHomeView: View {
         let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
         let isSwipingThis = (swipingCardID == book.id)
         let horizontalOffset: CGFloat = isSwipingThis ? swipeOffset : 0
+
+        let pushOffset: CGFloat
+        if isSelected {
+            if isCurrent {
+                pushOffset = -CGFloat(selectedIdx) * stripHeight + 6
+            } else if index < selectedIdx {
+                pushOffset = -CGFloat(index) * stripHeight
+            } else {
+                pushOffset = 60
+            }
+        } else {
+            pushOffset = 0
+        }
+
+        let fanOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
+        let totalYOffset = collapseOffset + pushOffset + fanOffset
 
         let cardContent = cardView(book, index: index)
             .frame(maxWidth: .infinity)
@@ -366,7 +371,11 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("stack-book-\(book.id)")
             }
         }
-        .offset(x: horizontalOffset, y: collapseOffset)
+        .offset(x: horizontalOffset, y: totalYOffset)
+        .scaleEffect(isSelected ? (isCurrent ? 1.0 : 0.95) : 1.0, anchor: .top)
+        .opacity(isSelected ? (isCurrent ? 1.0 : 0.0) : 1.0)
+        .allowsHitTesting(!isSelected || isCurrent)
+        .accessibilityHidden(isSelected && !isCurrent)
         .simultaneousGesture(
             (index > 0 && selectedID == nil) ?
                 DragGesture(minimumDistance: 20)
@@ -419,25 +428,6 @@ struct BookHomeView: View {
         }
         .accessibilityAction(named: "Flip card") {
             toggleFlip(for: book.id)
-        }
-        .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion] content, proxy in
-            let pushOffset: CGFloat
-            let scale: CGFloat
-            if isSelected {
-                let rect = proxy.frame(in: .scrollView)
-                let bounds = info.containerSize
-                pushOffset = selectedIdx < index ? (bounds.height - rect.minY) : -rect.minY
-                scale = (reduceMotion || selectedIdx < index) ? 1.0 : 0.95
-            } else {
-                pushOffset = 0
-                scale = 1.0
-            }
-
-            let fan: CGFloat = (reduceMotion || isSelected) ? 0 : (CGFloat(index) * (pull * 0.22) - (pull * 0.90))
-
-            return content
-                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
-                .offset(y: isSelected ? pushOffset : fan)
         }
     }
 
@@ -898,7 +888,7 @@ struct BookHomeView: View {
             flippedCardID = nil
             dragTilt = .zero
         }
-        withAnimation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.86)) {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.82)) {
             selectedID = id
             model.selectedBookID = id
             if let id {
@@ -921,21 +911,11 @@ struct BookHomeView: View {
     }
 
     private func openCustomizer(for book: BookProfile) {
-        if selectedID != nil {
-            pendingCustomizerTarget = .existing(book)
-            focus(nil)
-        } else {
-            model.customizerTarget = .existing(book)
-        }
+        model.customizerTarget = .existing(book)
     }
 
     private func openCustomizerForNewBook() {
-        if selectedID != nil {
-            pendingCustomizerTarget = .newBook
-            focus(nil)
-        } else {
-            model.customizerTarget = .newBook
-        }
+        model.customizerTarget = .newBook
     }
 
     private var manageStackSheet: some View {
@@ -1057,6 +1037,31 @@ struct BookDetailSheet: View {
                 if !model.draftNeedsConfirmation { model.discardDraft() }
             }) {
                 EntryView(model: model)
+            }
+            .sheet(item: $model.customizerTarget) { target in
+                switch target {
+                case .existing(let targetBook):
+                    CardCustomizerView(
+                        model: model,
+                        initialBook: targetBook,
+                        books: model.unhiddenBooks,
+                        isCreatingNewBook: false
+                    ) {
+                        model.customizerTarget = nil
+                    }
+                case .newBook:
+                    CardCustomizerView(
+                        model: model,
+                        initialBook: book,
+                        books: model.unhiddenBooks,
+                        isCreatingNewBook: true
+                    ) {
+                        model.customizerTarget = nil
+                    }
+                }
+            }
+            .sheet(isPresented: $model.showAnalytics) {
+                AnalyticsView(model: model)
             }
         }
     }
