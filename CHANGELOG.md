@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.7] - 2026-09-11
+### Refined & Perfected
+- **In-Place Deck Shuffle & Hero Zoom**: Replaced offscreen card ejection with an authentic in-place deck cut & shuffle. When opened, the selected card glides to the top-most position (`targetY = 10`) and zooms in (`scale = 1.04`), matching Apple Wallet's larger hero card layout in the transaction view.
+- **Two-Phase Lower Card Cut & Gather**: Cards below the selected card dip down momentarily (`+45pt`) to open the deck, then smoothly slide back up into the stack directly behind the enlarged hero card.
+- **Zero-Peek Hero Coverage**: Because the active card is larger (`scale = 1.04`) and elevated at `zIndex = 100`, it naturally covers the squared cards behind it with zero visible edge peek.
+- **Fluid Reassembly**: Dismissing the card view smoothly un-squares the deck, zooms the active card back to standard size (`scale = 1.0`), and restores all cards into their resting fanned slots.
+
 ## [0.6.5] - 2026-09-11
 ### Refined & Perfected
 - **Physical Card Stacking**: Opening any card now physically stacks the opened card directly on top of the cards above it (`targetY = 10`), covering them completely with authentic mechanical motion (no fade animation).

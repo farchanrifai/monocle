@@ -44,6 +44,8 @@ struct BookHomeView: View {
     @State private var swipeOffset: CGFloat = 0.0
     @State private var cardsBehindHidden = false
     @State private var hideCardsBehindTask: Task<Void, Never>? = nil
+    @State private var isDippingLowerCards = false
+    @State private var lowerCardDipTask: Task<Void, Never>? = nil
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -317,7 +319,7 @@ struct BookHomeView: View {
     }
 
     private var focusedDeckHeight: CGFloat {
-        10 + CGFloat(cardHeight)
+        10 + (CGFloat(cardHeight) * 1.04)
     }
 
     private var stack: some View {
@@ -344,8 +346,14 @@ struct BookHomeView: View {
         let cardContent = cardView(book, index: index)
             .frame(maxWidth: .infinity)
             .frame(height: cardHeight)
+            .shadow(
+                color: isCurrent ? Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16) : Color.clear,
+                radius: isCurrent ? 14 : 0,
+                x: 0,
+                y: isCurrent ? 8 : 0
+            )
 
-        let isBehind = isSelected && index < selectedIdx
+        let isBehind = isSelected && !isCurrent
         let isBehindGone = isBehind && (cardsBehindHidden || isFlipped)
         let cardOpacity: Double = isBehindGone ? 0.0 : 1.0
 
@@ -420,18 +428,29 @@ struct BookHomeView: View {
         .accessibilityAction(named: "Flip card") {
             toggleFlip(for: book.id)
         }
-        .visualEffect { [stripHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, reduceMotion] content, _ in
+        .visualEffect { [stripHeight, isSelected, selectedIdx, isCurrent, index, fanOffset, isDippingLowerCards, reduceMotion] content, _ in
             let pushOffset: CGFloat
             let scale: CGFloat
             if isSelected {
-                if index <= selectedIdx {
+                if isCurrent {
+                    let targetY: CGFloat = 10
+                    pushOffset = targetY - CGFloat(index) * stripHeight
+                    scale = 1.04
+                } else if index < selectedIdx {
                     let targetY: CGFloat = 10
                     pushOffset = targetY - CGFloat(index) * stripHeight
                     scale = 1.0
                 } else {
-                    let targetY: CGFloat = 1200
-                    pushOffset = targetY - CGFloat(index) * stripHeight
-                    scale = 1.0
+                    if isDippingLowerCards {
+                        let dipOffset: CGFloat = 45
+                        let targetY: CGFloat = CGFloat(index) * stripHeight + dipOffset
+                        pushOffset = targetY - CGFloat(index) * stripHeight
+                        scale = 1.0
+                    } else {
+                        let targetY: CGFloat = 10
+                        pushOffset = targetY - CGFloat(index) * stripHeight
+                        scale = 1.0
+                    }
                 }
             } else {
                 pushOffset = 0
@@ -439,7 +458,7 @@ struct BookHomeView: View {
             }
 
             return content
-                .scaleEffect(isSelected ? (isCurrent ? 1.0 : scale) : 1.0, anchor: .top)
+                .scaleEffect(isSelected ? (isCurrent ? 1.04 : scale) : 1.0, anchor: .top)
                 .offset(y: isSelected ? pushOffset : fanOffset)
         }
     }
@@ -923,6 +942,8 @@ struct BookHomeView: View {
     }
 
     private func focus(_ id: UUID?) {
+        lowerCardDipTask?.cancel()
+        lowerCardDipTask = nil
         hideCardsBehindTask?.cancel()
         hideCardsBehindTask = nil
 
@@ -930,23 +951,44 @@ struct BookHomeView: View {
             flippedCardID = nil
             dragTilt = .zero
             cardsBehindHidden = false
-            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.48, dampingFraction: 0.88)) {
+            isDippingLowerCards = true
+
+            let haptic = UIImpactFeedbackGenerator(style: .medium)
+            haptic.impactOccurred()
+
+            // Phase 1: Selected card zooms in & glides to top, lower cards dip down
+            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.82)) {
                 selectedID = id
                 model.selectedBookID = id
                 model.selectBook(id)
             }
             headingFocused = true
-            hideCardsBehindTask = Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 380_000_000)
-                if !Task.isCancelled && selectedID == id {
-                    cardsBehindHidden = true
+
+            // Phase 2: Lower cards slide smoothly up behind the selected card into the compact stack
+            lowerCardDipTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                guard !Task.isCancelled, selectedID == id else { return }
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.44, dampingFraction: 0.85)) {
+                    isDippingLowerCards = false
                 }
+            }
+
+            // Phase 3: Hide cards behind for isolated 3D flip after deck has fully settled
+            hideCardsBehindTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                guard !Task.isCancelled, selectedID == id else { return }
+                cardsBehindHidden = true
             }
         } else {
             flippedCardID = nil
             dragTilt = .zero
             cardsBehindHidden = false
-            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.48, dampingFraction: 0.88)) {
+            isDippingLowerCards = false
+
+            let haptic = UIImpactFeedbackGenerator(style: .light)
+            haptic.impactOccurred()
+
+            withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.46, dampingFraction: 0.86)) {
                 selectedID = nil
                 model.selectedBookID = nil
             }
