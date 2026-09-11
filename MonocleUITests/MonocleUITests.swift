@@ -224,13 +224,29 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
     }
 
+    private func openSettings(_ app: XCUIApplication) {
+        if app.buttons["homeSettings"].exists && app.buttons["homeSettings"].isHittable {
+            app.buttons["homeSettings"].tap()
+            return
+        }
+        let options = app.buttons["bookOptionsMenu"]
+        XCTAssertTrue(options.waitForExistence(timeout: 5))
+        options.tap()
+        let settings = app.buttons["Settings"]
+        if settings.waitForExistence(timeout: 3) {
+            settings.tap()
+        } else {
+            app.buttons["homeSettings"].tap()
+        }
+    }
+
     @MainActor
     func testCategoryEditorPersistsAndSelectionDoesNotJump() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        app.buttons["homeSettings"].tap()
+        openSettings(app)
         app.buttons["manageCategories"].tap()
         app.buttons["newCategory"].tap()
         app.textFields["categoryName"].tap()
@@ -257,7 +273,7 @@ final class MonocleUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launch()
-        app.buttons["homeSettings"].tap()
+        openSettings(app)
         app.buttons["backupSettings"].tap()
         XCTAssertTrue(app.buttons["exportBackup"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["importBackup"].exists)
@@ -274,7 +290,7 @@ final class MonocleUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launch()
-        app.buttons["homeSettings"].tap()
+        openSettings(app)
         app.buttons["backupSettings"].tap()
         app.buttons["exportBackup"].tap()
         XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
@@ -347,8 +363,7 @@ final class MonocleUITests: XCTestCase {
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 10))
-        app.buttons["homeSettings"].tap()
+        openSettings(app)
 
         XCTAssertTrue(app.switches["autoAppearanceToggle"].waitForExistence(timeout: 5))
         let autoToggle = app.switches["autoAppearanceToggle"]
@@ -364,7 +379,7 @@ final class MonocleUITests: XCTestCase {
 
         // Dismiss settings
         app.buttons["Done"].tap()
-        XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -380,7 +395,7 @@ final class MonocleUITests: XCTestCase {
         let shot = app.screenshot()
         try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/prod_card_detail.png"))
         app.buttons["closeBookDetail"].tap()
-        XCTAssertTrue(app.buttons["homeSettings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -1279,22 +1294,22 @@ final class MonocleUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // 1. Verify Home Screen Native Platter & Navigation Bar
+        // 1. Verify Home Screen Native Platter, Stacks Indicator & Navigation Bar
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 10))
         let optionsButton = app.buttons["bookOptionsMenu"]
         XCTAssertTrue(optionsButton.waitForExistence(timeout: 5))
-        let settingsButton = app.buttons["homeSettings"]
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["activityScopeBadge"].waitForExistence(timeout: 5))
 
         // Capture Home Screen with progressive blur and platter
         let homeShot = app.screenshot()
         try? homeShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/home_platter_progressive_blur.png"))
 
-        // 2. Open options menu and verify collapsible submenus
+        // 2. Open options menu and verify collapsible submenus + Settings
         optionsButton.tap()
         XCTAssertTrue(app.buttons["Cards & Stacks"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Tools & Insights"].exists)
         XCTAssertTrue(app.buttons["Data & Backup"].exists)
+        XCTAssertTrue(app.buttons["Settings"].exists || app.buttons["homeSettings"].exists)
 
         // 3. Open sub-menu: Tools & Insights
         app.buttons["Tools & Insights"].tap()

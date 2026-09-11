@@ -344,9 +344,11 @@ struct BookHomeView: View {
     }
 
     @ViewBuilder
-    private var progressiveBlurHeaderBackground: some View {
-        let showBlur = selectedID == nil || detailScroll > 10
-        let progress: CGFloat = selectedID == nil ? 1.0 : min(max((detailScroll - 10) / 30, 0), 1.0)
+    private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
+        let showBlur = selectedID == nil || detailScroll > 5
+        let progress: CGFloat = selectedID == nil ? 1.0 : min(max((detailScroll - 5) / 25, 0), 1.0)
+        let totalHeight = safeAreaTop + 52 + 28
+        let solidFraction = min(max((safeAreaTop + 48) / totalHeight, 0.1), 0.95)
 
         ZStack(alignment: .top) {
             Rectangle()
@@ -355,9 +357,9 @@ struct BookHomeView: View {
                     LinearGradient(
                         stops: [
                             .init(color: .black, location: 0.0),
-                            .init(color: .black, location: 0.55),
-                            .init(color: .black.opacity(0.85), location: 0.75),
-                            .init(color: .black.opacity(0.35), location: 0.90),
+                            .init(color: .black, location: solidFraction),
+                            .init(color: .black.opacity(0.85), location: min(solidFraction + (1.0 - solidFraction) * 0.35, 0.98)),
+                            .init(color: .black.opacity(0.35), location: min(solidFraction + (1.0 - solidFraction) * 0.70, 0.99)),
                             .init(color: .clear, location: 1.0)
                         ],
                         startPoint: .top,
@@ -367,9 +369,9 @@ struct BookHomeView: View {
 
             LinearGradient(
                 stops: [
-                    .init(color: paper.opacity(0.88), location: 0.0),
-                    .init(color: paper.opacity(0.70), location: 0.55),
-                    .init(color: paper.opacity(0.35), location: 0.80),
+                    .init(color: paper.opacity(0.92), location: 0.0),
+                    .init(color: paper.opacity(0.92), location: solidFraction),
+                    .init(color: paper.opacity(0.40), location: min(solidFraction + (1.0 - solidFraction) * 0.50, 0.98)),
                     .init(color: paper.opacity(0.0), location: 1.0)
                 ],
                 startPoint: .top,
@@ -377,10 +379,21 @@ struct BookHomeView: View {
             )
         }
         .opacity(showBlur ? progress : 0.0)
-        .frame(height: 72)
+        .frame(height: totalHeight)
         .ignoresSafeArea(edges: .top)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: showBlur)
         .allowsHitTesting(false)
+    }
+
+    private func topBar(safeAreaTop: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: safeAreaTop)
+            header
+        }
+        .background(alignment: .top) {
+            progressiveBlurHeaderBackground(safeAreaTop: safeAreaTop)
+        }
+        .ignoresSafeArea(edges: .top)
     }
 
     var body: some View {
@@ -403,10 +416,7 @@ struct BookHomeView: View {
                 }
             }
             .overlay(alignment: .top) {
-                header
-                    .background(alignment: .top) {
-                        progressiveBlurHeaderBackground
-                    }
+                topBar(safeAreaTop: geometry.safeAreaInsets.top)
                     .zIndex(1000)
             }
             .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1,
@@ -567,14 +577,6 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("homeLogo")
             }
             Spacer()
-            Button { model.showSettings = true } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 44, height: 44)
-                    .foregroundStyle(ink)
-            }
-            .accessibilityLabel("Settings")
-            .accessibilityIdentifier("homeSettings")
             optionsMenu
         }
         .padding(.horizontal, 20)
@@ -1056,11 +1058,13 @@ struct BookHomeView: View {
         let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
         let selectedBook = model.books.first { $0.id == bookID }
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center) {
                 Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
                     .font(.system(size: 15, weight: .semibold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
+
+                Spacer()
 
                 if bookID == nil {
                     HStack(spacing: 4) {
@@ -1070,14 +1074,13 @@ struct BookHomeView: View {
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(isAllCards ? Color.secondary : MC.red)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(
                         Capsule()
                             .fill(isAllCards ? Color.primary.opacity(0.06) : MC.red.opacity(0.12))
                     )
                     .accessibilityIdentifier("activityScopeBadge")
-                    Spacer()
                 }
             }
 

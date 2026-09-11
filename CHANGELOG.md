@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.16] - 2026-09-12
+### Refined & Perfected
+- **Streamlined Minimal Top Toolbar**: Removed the dedicated Settings button from the top navigation bar, leaving an uncluttered, distraction-free header featuring only the brand logo / card close button and the `⋯` options menu (Settings is directly accessible as an action inside the options menu).
+- **True Full-Coverage Progressive Material Blur**: Pinned the progressive blur container to `y = 0` (`ignoresSafeArea(edges: .top)`), guaranteeing complete 100% solid `.ultraThinMaterial` and theme tint coverage across the entire status bar, dynamic island, and toolbar icons, with a progressive feathering transition smoothly softening over 28pt below the header.
+- **Right-Aligned & Vertically Centered Stacks Indicator**: Repositioned the stacks filter badge (`activityScopeBadge`) to the far right of the activity section, aligned with perfect vertical centering against the section title ("All Transactions" / "Recent Activities"), eliminating baseline offset and visual clutter.
+- **Robust UI Test Coverage**: Updated test automation suite to verify the minimal toolbar layout, right-aligned stacks indicator, and seamless options-menu navigation to Settings.
+
 ## [0.6.15] - 2026-09-12
 ### Refined & Perfected
 - **Collapsible Hierarchical Options Submenus**: Reorganized the top-right options menu into clean, logically grouped collapsible submenus: `Cards & Stacks` (`Create New Book`, `Customize Card`, `Stacks & Card Visibility`), `Tools & Insights` (`Budgets`, `Analytics & Trends`, `Recurring Bills`), and `Data & Backup` (`Export CSV`, `Import CSV`), plus a direct `Settings` item. Eliminated redundant visual direction controls, duplicate stack manager entry points, return-to-stack actions, and raw cards dumps for a fast, uncluttered menu interaction.
