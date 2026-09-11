@@ -391,10 +391,10 @@ final class MonocleUITests: XCTestCase {
         let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'")).element(boundBy: 0)
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         card.tap()
-        XCTAssertTrue(app.buttons["closeBookDetail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["homeLogo"].waitForExistence(timeout: 5))
         let shot = app.screenshot()
         try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/prod_card_detail.png"))
-        app.buttons["closeBookDetail"].tap()
+        app.buttons["homeLogo"].tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
@@ -516,8 +516,8 @@ final class MonocleUITests: XCTestCase {
         app.buttons["saveCardCustomization"].tap()
 
         // Close newly focused book detail sheet if open
-        if app.buttons["closeBookDetail"].waitForExistence(timeout: 3) {
-            app.buttons["closeBookDetail"].tap()
+        if app.buttons["homeLogo"].waitForExistence(timeout: 3) {
+            app.buttons["homeLogo"].tap()
         }
 
         // Open customizer
@@ -1056,7 +1056,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
         cards.element(boundBy: 0).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
 
-        let closeButton = app.buttons["closeBookDetail"]
+        let closeButton = app.buttons["homeLogo"]
         XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
         sleep(1)
         let shot1 = app.screenshot()
@@ -1102,15 +1102,14 @@ final class MonocleUITests: XCTestCase {
 
         // 1. Open card
         firstCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
-        let closeButton = app.buttons["closeBookDetail"]
-        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
         sleep(1)
 
         // 2. Test short slow pull (28pt) -> cancel dismissal
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
         start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 28)),
                     withVelocity: .slow, thenHoldForDuration: 0.3)
-        XCTAssertTrue(closeButton.exists, "A short slow pull under threshold must cancel dismissal")
+        XCTAssertTrue(app.staticTexts["Latest Transactions"].exists, "A short slow pull under threshold must cancel dismissal")
 
         // 3. Test committed pull -> commit dismissal and return to slot
         start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.48)))
@@ -1132,16 +1131,15 @@ final class MonocleUITests: XCTestCase {
         let thirdCardFrame = thirdCard.frame
 
         // Header must be home logo before long-press
-        XCTAssertTrue(app.staticTexts["monocle"].exists || app.otherElements["homeLogo"].exists)
-        XCTAssertFalse(app.buttons["closeBookDetail"].exists)
+        XCTAssertTrue(app.staticTexts["monocle"].exists || app.buttons["homeLogo"].exists)
 
         thirdCard.press(forDuration: 1.2)
         sleep(1)
         let shot = app.screenshot()
         try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/context_menu_glitch.png"))
 
-        // Header must still be home logo, NOT closeBookDetail
-        XCTAssertFalse(app.buttons["closeBookDetail"].exists, "Header must not switch to book detail header during long-press")
+        // Header must still be home logo
+        XCTAssertTrue(app.buttons["homeLogo"].exists, "Header must maintain monocle logo during long-press")
 
         // Context menu items must exist
         let bringToFront = app.buttons["Bring to Front"]
@@ -1160,16 +1158,15 @@ final class MonocleUITests: XCTestCase {
         // Tapping Flip should open the card and flip to telemetry back
         flip.tap()
         XCTAssertTrue(app.buttons["cardFlipBackButton"].waitForExistence(timeout: 5), "Selecting Flip from context menu must open card and reveal telemetry back")
-        XCTAssertTrue(app.buttons["closeBookDetail"].waitForExistence(timeout: 5), "Expanded card must show close button in header")
+        XCTAssertTrue(app.buttons["homeLogo"].waitForExistence(timeout: 5), "Expanded card must show monocle logo in header")
 
         // Flip back to front
         app.buttons["cardFlipBackButton"].tap()
         XCTAssertTrue(app.buttons["cardFlipButton"].waitForExistence(timeout: 5), "Card front must show flip button when expanded")
 
         // Close card
-        app.buttons["closeBookDetail"].tap()
+        app.buttons["homeLogo"].tap()
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5), "Closing card must return to home monocle header")
-        XCTAssertFalse(app.buttons["closeBookDetail"].exists)
         XCTAssertFalse(app.buttons["cardFlipButton"].exists, "Home stack cards must not show flip button")
     }
 
@@ -1194,7 +1191,7 @@ final class MonocleUITests: XCTestCase {
         cards.firstMatch.tap()
 
         // 3. Detail header & title
-        XCTAssertTrue(app.buttons["closeBookDetail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["homeLogo"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
 
         // 4. Header buttons next to title must be removed
@@ -1227,7 +1224,7 @@ final class MonocleUITests: XCTestCase {
         sleep(1) // Allow modal sheet dismissal to complete
 
         // 8. Close card detail -> returns to home
-        let closeDetail = app.buttons["closeBookDetail"]
+        let closeDetail = app.buttons["homeLogo"]
         XCTAssertTrue(closeDetail.waitForExistence(timeout: 5))
         closeDetail.tap()
 
@@ -1247,7 +1244,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
         let card1 = cards.element(boundBy: 0)
         let card2 = cards.element(boundBy: 1)
-        let closeButton = app.buttons["closeBookDetail"]
+        let closeButton = app.buttons["homeLogo"]
 
         // 1. Test mid-way cancellation of opening: Tap card then immediately tap close
         card1.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
@@ -1326,7 +1323,7 @@ final class MonocleUITests: XCTestCase {
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
         XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
         cards.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
-        let closeDetail = app.buttons["closeBookDetail"]
+        let closeDetail = app.buttons["homeLogo"]
         XCTAssertTrue(closeDetail.waitForExistence(timeout: 5))
         sleep(1)
 

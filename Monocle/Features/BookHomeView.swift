@@ -547,35 +547,23 @@ struct BookHomeView: View {
 
     private var header: some View {
         HStack {
-            if expanded, let current {
-                HStack(spacing: 8) {
-                    Button {
-                        closeCard()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.headline.weight(.semibold))
-                            .frame(width: 44, height: 44)
-                            .foregroundStyle(ink)
-                    }
-                    .accessibilityLabel("All book cards")
-                    .accessibilityIdentifier("closeBookDetail")
-
-                    Text(current.name)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(ink)
-                        .lineLimit(1)
+            Button {
+                if expanded {
+                    closeCard()
                 }
-            } else {
+            } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("monocle").font(.system(size: 24, weight: .semibold, design: .rounded)).tracking(-1.0)
                         .foregroundStyle(ink)
                     Text(".").font(.system(size: 26, weight: .bold)).foregroundStyle(MC.red)
                 }
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("monocle")
-                .accessibilityIdentifier("homeLogo")
             }
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: false)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("monocle")
+            .accessibilityIdentifier("homeLogo")
+
             Spacer()
             optionsMenu
         }

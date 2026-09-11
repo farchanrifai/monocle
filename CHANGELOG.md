@@ -2,6 +2,12 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.17] - 2026-09-12
+### Refined & Perfected
+- **Persistent Monocle Brand Logo Across All Views**: Unlocked complete top toolbar consistency between the resting home deck and the card transaction page. The `monocle.` brand logo remains permanently anchored on the left across both views, eliminating unnecessary view switches and title transitions.
+- **Pure Gesture-Driven Card Dismissal**: Completely removed the `✕` close button from the card transaction header, fully leveraging Apple Wallet's 1:1 physical interactive pull-to-dismiss gesture and spring momentum release. Tapping the brand logo also serves as an intuitive alternate dismiss trigger.
+- **Uncluttered Identity Hierarchy**: Removed redundant stack title text from the navigation bar, allowing the hero card's native artwork to serve as the singular, clear identity focal point.
+
 ## [0.6.16] - 2026-09-12
 ### Refined & Perfected
 - **Streamlined Minimal Top Toolbar**: Removed the dedicated Settings button from the top navigation bar, leaving an uncluttered, distraction-free header featuring only the brand logo / card close button and the `⋯` options menu (Settings is directly accessible as an action inside the options menu).
