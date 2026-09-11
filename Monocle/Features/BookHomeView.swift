@@ -32,6 +32,10 @@ struct BookHomeView: View {
     @State private var stackCollapseProgress: CGFloat = 0.0
     @State private var animatedCardCount: CGFloat = 0.0
     @State private var transitionTask: Task<Void, Never>? = nil
+    @State private var flippedCardID: UUID? = nil
+    @State private var dragTilt: CGSize = .zero
+    @State private var swipingCardID: UUID? = nil
+    @State private var swipeOffset: CGFloat = 0.0
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -341,16 +345,52 @@ struct BookHomeView: View {
         let isCurrent = selectedID == book.id
         let selectedIdx = selectedIndex
         let collapseOffset: CGFloat = (reduceMotion || isSelected) ? 0 : (-CGFloat(index) * stripHeight * stackCollapseProgress)
+        let isSwipingThis = (swipingCardID == book.id)
+        let horizontalOffset: CGFloat = isSwipingThis ? swipeOffset : 0
 
-        return Button {
-            focus(isCurrent ? nil : book.id)
-        } label: {
-            cardView(book, index: index)
-                .frame(maxWidth: .infinity)
-                .frame(height: cardHeight)
+        let cardContent = cardView(book, index: index)
+            .frame(maxWidth: .infinity)
+            .frame(height: cardHeight)
+
+        return Group {
+            if isCurrent {
+                cardContent
+            } else {
+                Button {
+                    focus(book.id)
+                } label: {
+                    cardContent
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
+                .accessibilityIdentifier("stack-book-\(book.id)")
+            }
         }
-        .buttonStyle(.plain)
-        .offset(y: collapseOffset)
+        .offset(x: horizontalOffset, y: collapseOffset)
+        .simultaneousGesture(
+            (index > 0 && selectedID == nil) ?
+                DragGesture(minimumDistance: 20)
+                    .onChanged { value in
+                        if value.translation.width > 12 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
+                            swipeOffset = min(70, value.translation.width)
+                            swipingCardID = book.id
+                        }
+                    }
+                    .onEnded { value in
+                        if swipingCardID == book.id && value.translation.width > 45 {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                                model.moveBookToFront(book.id)
+                            }
+                        }
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                            swipeOffset = 0
+                            swipingCardID = nil
+                        }
+                    }
+                : nil
+        )
         .contextMenu {
             if displayedBooks.count > 1 && index > 0 {
                 Button {
@@ -364,13 +404,22 @@ struct BookHomeView: View {
                 }
             }
             Button {
+                if selectedID != book.id {
+                    focus(book.id)
+                }
+                toggleFlip(for: book.id)
+            } label: {
+                Label(flippedCardID == book.id ? "Flip to Front" : "Flip to Telemetry", systemImage: "arrow.triangle.2.circlepath")
+            }
+            Button {
                 openCustomizer(for: book)
             } label: {
                 Label("Customize card", systemImage: "paintbrush")
             }
         }
-        .accessibilityLabel("Open \(book.name), \(model.expenses(for: book.id).count) transactions")
-        .accessibilityIdentifier("stack-book-\(book.id)")
+        .accessibilityAction(named: "Flip card") {
+            toggleFlip(for: book.id)
+        }
         .visualEffect { [info, isSelected, selectedIdx, isCurrent, pull, reduceMotion] content, proxy in
             let pushOffset: CGFloat
             let scale: CGFloat
@@ -463,6 +512,70 @@ struct BookHomeView: View {
     }
 
     private func cardView(_ book: BookProfile, index: Int) -> some View {
+        let isFlipped = (flippedCardID == book.id)
+        let isCurrent = (selectedID == book.id)
+
+        let tiltX = (isCurrent && !reduceMotion) ? min(max(-dragTilt.height / 14, -12), 12) : 0
+        let tiltY = (isCurrent && !reduceMotion) ? min(max(dragTilt.width / 14, -12), 12) : 0
+
+        return ZStack {
+            cardFrontView(book, index: index, isCurrent: isCurrent)
+                .rotation3DEffect(
+                    .degrees(isFlipped ? 180 : 0),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.7
+                )
+                .opacity(isFlipped ? 0 : 1)
+                .accessibilityHidden(isFlipped)
+
+            CardBackTelemetryView(
+                model: model,
+                book: book,
+                index: index,
+                onFlipBack: {
+                    toggleFlip(for: book.id)
+                },
+                onOpenAnalytics: {
+                    model.showAnalytics = true
+                },
+                onCustomize: {
+                    openCustomizer(for: book)
+                }
+            )
+            .rotation3DEffect(
+                .degrees(isFlipped ? 0 : -180),
+                axis: (x: 0, y: 1, z: 0),
+                perspective: 0.7
+            )
+            .opacity(isFlipped ? 1 : 0)
+            .accessibilityHidden(!isFlipped)
+        }
+        .rotation3DEffect(
+            .degrees(tiltX),
+            axis: (x: 1, y: 0, z: 0),
+            perspective: 0.8
+        )
+        .rotation3DEffect(
+            .degrees(tiltY),
+            axis: (x: 0, y: 1, z: 0),
+            perspective: 0.8
+        )
+        .simultaneousGesture(
+            isCurrent ?
+                DragGesture(minimumDistance: 4)
+                    .onChanged { value in
+                        dragTilt = value.translation
+                    }
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                            dragTilt = .zero
+                        }
+                    }
+                : nil
+        )
+    }
+
+    private func cardFrontView(_ book: BookProfile, index: Int, isCurrent: Bool) -> some View {
         let bookExpenses = model.expenses(for: book.id)
         let total = model.spent(for: book.id)
         let customization = model.customization(for: book.id)
@@ -474,8 +587,27 @@ struct BookHomeView: View {
                     .font(.headline)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                Text(String(format: "%02d", index + 1))
-                    .font(.caption.monospaced())
+
+                HStack(spacing: 6) {
+                    if isCurrent {
+                        Button {
+                            toggleFlip(for: book.id)
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(textStyle)
+                                .padding(5)
+                                .background(textStyle.opacity(0.12), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Flip card")
+                        .accessibilityIdentifier("cardFlipButton")
+                    }
+
+                    Text(String(format: "%02d", index + 1))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(textStyle.opacity(0.8))
+                }
             }
             .frame(minHeight: max(16, stripHeight - 24), alignment: .top)
 
@@ -491,10 +623,35 @@ struct BookHomeView: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .foregroundStyle(textStyle)
-        .background(cardBackground(for: customization, book: book))
+        .background(
+            ZStack {
+                cardBackground(for: customization, book: book)
+                specularSheen(isCurrent: isCurrent)
+            }
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: isCurrent ? .contain : .combine)
+    }
+
+    @ViewBuilder
+    private func specularSheen(isCurrent: Bool) -> some View {
+        if !reduceMotion {
+            let shiftX = isCurrent ? (dragTilt.width / 350) : (pull * 0.002)
+            let shiftY = isCurrent ? (dragTilt.height / 350) : (pull * 0.003)
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.24),
+                    Color.white.opacity(0.06),
+                    Color.clear
+                ],
+                startPoint: UnitPoint(x: max(0, min(1, 0.2 + shiftX)), y: max(0, min(1, 0.1 + shiftY))),
+                endPoint: UnitPoint(x: max(0, min(1, 0.8 + shiftX)), y: max(0, min(1, 0.9 + shiftY)))
+            )
+            .blendMode(.screen)
+            .allowsHitTesting(false)
+        }
     }
 
     @ViewBuilder
@@ -737,6 +894,10 @@ struct BookHomeView: View {
     }
 
     private func focus(_ id: UUID?) {
+        if id != selectedID {
+            flippedCardID = nil
+            dragTilt = .zero
+        }
         withAnimation(reduceMotion ? nil : .spring(response: 0.48, dampingFraction: 0.86)) {
             selectedID = id
             model.selectedBookID = id
@@ -745,6 +906,18 @@ struct BookHomeView: View {
             }
         }
         headingFocused = true
+    }
+
+    private func toggleFlip(for bookID: UUID) {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.42, dampingFraction: 0.80)) {
+            if flippedCardID == bookID {
+                flippedCardID = nil
+            } else {
+                flippedCardID = bookID
+            }
+        }
     }
 
     private func openCustomizer(for book: BookProfile) {

@@ -2,6 +2,15 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.0] - 2026-09-11
+### Added
+- **Interactive 3D Card Flip**: Realistic 3D card rotation revealing a technical telemetry back-face with a single tap on the card's flip button or background tap-to-flip.
+- **Teenage Engineering Telemetry Back-Face**: Industrial monospace card reverse view featuring technical serial stamp (`MONO-01 // #...`), real-time budget cycle & pace status indicator, daily burn average vs daily budget target, remaining cycle allowance, and next commitment banner for upcoming bills.
+- **Back-Face Quick Actions**: Direct shortcuts to "Trends & Analytics" and "Artwork" card customization straight from the back of any focused card.
+- **Specular Sheen & Perspective Drag Tilt**: Dynamic 3D tilt response ($\pm 12^\circ$) tracking continuous drag gestures with a moving white specular reflection sheen that shifts across the card surface during touch manipulation and scroll pull.
+- **Swipe-to-Shuffle Card Promotion**: Horizontal drag-to-promote gesture on background cards in the deck, allowing quick slide-out and promotion of stacked cards to the front with tactile haptics.
+- **Accessible Card Deck Controls**: Full accessibility support with custom "Flip card" accessibility actions, dedicated front and back buttons, and context menu shortcuts.
+
 ## [0.5.0] - 2026-09-11
 ### Added
 - **Visual Analytics & Spending Trends**: Pure native SwiftUI + Swift Charts spending analytics suite accessible from the Book Home options menu and Budgets screen.

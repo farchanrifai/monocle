@@ -971,5 +971,41 @@ final class MonocleUITests: XCTestCase {
         app.buttons["dismissAnalyticsView"].tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testCardDeckFlipAndBackActions() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Locate the front card
+        let firstCard = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'")).firstMatch
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 10))
+
+        // 2. Tap to focus the card
+        firstCard.tap()
+
+        // 3. Verify the flip button exists on the focused card
+        let flipButton = app.buttons["cardFlipButton"]
+        XCTAssertTrue(flipButton.waitForExistence(timeout: 5))
+        let frontShot = app.screenshot()
+        try? frontShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_front_focused.png"))
+
+        // 4. Tap flip button to rotate to back face
+        flipButton.tap()
+
+        // 5. Verify back face telemetry view elements
+        let flipBackButton = app.buttons["cardFlipBackButton"]
+        XCTAssertTrue(flipBackButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["cardBackAnalyticsButton"].exists)
+        XCTAssertTrue(app.buttons["cardBackCustomizeButton"].exists)
+        let backShot = app.screenshot()
+        try? backShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_telemetry.png"))
+
+        // 6. Tap flip back button to return to front face
+        flipBackButton.tap()
+        XCTAssertTrue(flipButton.waitForExistence(timeout: 5))
+    }
 }
 
