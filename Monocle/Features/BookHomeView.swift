@@ -335,12 +335,52 @@ struct BookHomeView: View {
     private var amountFont: Font {
         switch direction {
         case .light, .signal:
-            return .title.bold()
+            return .system(size: 22, weight: .bold)
         case .ledger:
-            return .system(.title, design: .serif, weight: .semibold)
+            return .system(size: 22, weight: .semibold, design: .serif)
         case .instrument:
-            return .system(.title, design: .monospaced, weight: .bold)
+            return .system(size: 22, weight: .bold, design: .monospaced)
         }
+    }
+
+    @ViewBuilder
+    private var progressiveBlurHeaderBackground: some View {
+        let showBlur = selectedID == nil || detailScroll > 10
+        let progress: CGFloat = selectedID == nil ? 1.0 : min(max((detailScroll - 10) / 30, 0), 1.0)
+
+        ZStack(alignment: .top) {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .mask {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .black, location: 0.0),
+                            .init(color: .black, location: 0.55),
+                            .init(color: .black.opacity(0.85), location: 0.75),
+                            .init(color: .black.opacity(0.35), location: 0.90),
+                            .init(color: .clear, location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+
+            LinearGradient(
+                stops: [
+                    .init(color: paper.opacity(0.88), location: 0.0),
+                    .init(color: paper.opacity(0.70), location: 0.55),
+                    .init(color: paper.opacity(0.35), location: 0.80),
+                    .init(color: paper.opacity(0.0), location: 1.0)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .opacity(showBlur ? progress : 0.0)
+        .frame(height: 72)
+        .ignoresSafeArea(edges: .top)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: showBlur)
+        .allowsHitTesting(false)
     }
 
     var body: some View {
@@ -364,11 +404,9 @@ struct BookHomeView: View {
             }
             .overlay(alignment: .top) {
                 header
-                    .background(
-                        paper
-                            .opacity(selectedID == nil ? 0.96 : (detailScroll > 15 ? 0.96 : 0.0))
-                            .ignoresSafeArea(edges: .top)
-                    )
+                    .background(alignment: .top) {
+                        progressiveBlurHeaderBackground
+                    }
                     .zIndex(1000)
             }
             .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1,
@@ -513,15 +551,15 @@ struct BookHomeView: View {
                     .accessibilityIdentifier("closeBookDetail")
 
                     Text(current.name)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(ink)
                         .lineLimit(1)
                 }
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("monocle").font(.system(size: 28, weight: .semibold, design: .rounded)).tracking(-1.2)
+                    Text("monocle").font(.system(size: 24, weight: .semibold, design: .rounded)).tracking(-1.0)
                         .foregroundStyle(ink)
-                    Text(".").font(.system(size: 30, weight: .bold)).foregroundStyle(MC.red)
+                    Text(".").font(.system(size: 26, weight: .bold)).foregroundStyle(MC.red)
                 }
                 .fixedSize(horizontal: true, vertical: false)
                 .accessibilityElement(children: .combine)
@@ -530,8 +568,8 @@ struct BookHomeView: View {
             }
             Spacer()
             Button { model.showSettings = true } label: {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.title3)
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .semibold))
                     .frame(width: 44, height: 44)
                     .foregroundStyle(ink)
             }
@@ -1020,20 +1058,20 @@ struct BookHomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
-                    .font(bookID != nil ? .system(size: 17, weight: .semibold) : .system(size: 18, weight: .bold))
+                    .font(.system(size: 15, weight: .semibold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
 
                 if bookID == nil {
                     HStack(spacing: 4) {
                         Image(systemName: isAllCards ? "rectangle.stack" : (activeStack?.icon ?? "square.stack.3d.up.fill"))
-                            .font(.caption2.weight(.bold))
+                            .font(.system(size: 10, weight: .bold))
                         Text(isAllCards ? "All cards · \(model.unhiddenBooks.count)" : "\(activeStack?.name ?? "Stack") · \(activeStack?.cardIDs.count ?? 0)")
-                            .font(.caption2.weight(.semibold))
+                            .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(isAllCards ? Color.secondary : MC.red)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
                     .background(
                         Capsule()
                             .fill(isAllCards ? Color.primary.opacity(0.06) : MC.red.opacity(0.12))
@@ -1044,47 +1082,30 @@ struct BookHomeView: View {
             }
 
             if activities.isEmpty {
-                if bookID != nil {
-                    VStack(spacing: 10) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 28))
-                            .foregroundStyle(ink.opacity(0.35))
-                        Text("No Transactions Yet")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(ink)
-                        Text("Transactions recorded for this card will appear here.")
-                            .font(.system(size: 13))
-                            .foregroundStyle(ink.opacity(0.6))
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 36)
-                    .padding(.horizontal, 20)
-                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                } else {
-                    ContentUnavailableView(
-                        "Nothing recorded yet",
-                        systemImage: "text.book.closed",
-                        description: Text("Tap Add Expense below to record your first transaction.")
-                    )
-                    .padding(.vertical, 24)
+                VStack(spacing: 10) {
+                    Image(systemName: bookID != nil ? "tray" : "text.book.closed")
+                        .font(.system(size: 26))
+                        .foregroundStyle(ink.opacity(0.35))
+                    Text(bookID != nil ? "No Transactions Yet" : "Nothing Recorded Yet")
+                        .font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(ink)
+                    Text(bookID != nil ? "Transactions recorded for this card will appear here." : "Tap the floating add button below to record your first transaction.")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(ink.opacity(0.6))
+                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+                .padding(.horizontal, 20)
+                .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             } else {
-                if bookID != nil {
-                    VStack(spacing: 0) {
-                        ForEach(activities) { row in
-                            activityRow(row, showBookLabel: false, isPlatter: true)
-                        }
-                    }
-                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(activities) { row in
-                            activityRow(row, showBookLabel: true, isPlatter: false)
-                        }
+                VStack(spacing: 0) {
+                    ForEach(activities) { row in
+                        activityRow(row, showBookLabel: bookID == nil, isPlatter: true)
                     }
                 }
+                .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
         }
     }
@@ -1094,26 +1115,26 @@ struct BookHomeView: View {
             model.edit(expense)
         } label: {
             HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2.5) {
                     Text(model.title(expense))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(ink)
                         .lineLimit(1)
                     Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
-                        .font(.system(size: 12, weight: .regular))
+                        .font(.system(size: 11.5, weight: .regular))
                         .foregroundStyle(ink.opacity(0.55))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Text(Money.format(expense.amount))
-                    .font(.system(size: 14.5, weight: .semibold))
+                    .font(.system(size: 13.5, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, isPlatter ? 16 : 0)
-            .padding(.vertical, isPlatter ? 11 : 10)
-            .frame(minHeight: isPlatter ? 60 : 50)
+            .padding(.vertical, isPlatter ? 10 : 8)
+            .frame(minHeight: isPlatter ? 54 : 46)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressFeedbackStyle())
@@ -1133,60 +1154,62 @@ struct BookHomeView: View {
 
     private var optionsMenu: some View {
         Menu {
-            Picker("Visual direction", selection: $model.visualDirection) {
-                ForEach(BookVisualDirection.allCases) { dir in
-                    Text(dir.rawValue).tag(dir)
-                }
-            }
-
-            Button {
-                openCustomizerForNewBook()
-            } label: {
-                Label("Create new book", systemImage: "plus.rectangle.on.rectangle")
-            }
-
-            if let targetBook = current ?? visible.first ?? model.books.first {
+            // Cards & Stacks
+            Menu {
                 Button {
-                    openCustomizer(for: targetBook)
+                    openCustomizerForNewBook()
                 } label: {
-                    Label("Customize card", systemImage: "paintbrush")
+                    Label("Create New Book", systemImage: "plus.rectangle.on.rectangle")
                 }
-            }
+                .accessibilityIdentifier("menuNewBook")
 
-            Button {
-                model.stackCustomizerMode = .manage
-                model.showStackCustomizer = true
+                if let targetBook = current ?? visible.first ?? model.books.first {
+                    Button {
+                        openCustomizer(for: targetBook)
+                    } label: {
+                        Label("Customize Card", systemImage: "paintbrush")
+                    }
+                    .accessibilityIdentifier("menuCustomizeCard")
+                }
+
+                Button {
+                    model.stackCustomizerMode = .manage
+                    model.showStackCustomizer = true
+                } label: {
+                    Label("Stacks & Card Visibility", systemImage: "square.stack.3d.up")
+                }
+                .accessibilityIdentifier("menuManageStacks")
             } label: {
-                Label("Stacks & Card Visibility", systemImage: "square.stack.3d.up")
+                Label("Cards & Stacks", systemImage: "square.stack.3d.up")
             }
 
-            Button {
-                managing = true
+            // Tools & Insights
+            Menu {
+                Button {
+                    showingBudgets = true
+                } label: {
+                    Label("Budgets", systemImage: "chart.bar.xaxis")
+                }
+                .accessibilityIdentifier("menuBudgets")
+
+                Button {
+                    model.showAnalytics = true
+                } label: {
+                    Label("Analytics & Trends", systemImage: "chart.line.uptrend.xyaxis")
+                }
+                .accessibilityIdentifier("menuAnalytics")
+
+                Button {
+                    showingBills = true
+                } label: {
+                    Label("Recurring Bills", systemImage: "calendar")
+                }
+                .accessibilityIdentifier("menuBills")
             } label: {
-                Label("Manage stack order", systemImage: "slider.horizontal.3")
+                Label("Tools & Insights", systemImage: "chart.bar.xaxis")
             }
 
-            Button {
-                showingBudgets = true
-            } label: {
-                Label("Budgets", systemImage: "chart.bar.xaxis")
-            }
-            .accessibilityIdentifier("menuBudgets")
-
-            Button {
-                model.showAnalytics = true
-            } label: {
-                Label("Analytics & Trends", systemImage: "chart.line.uptrend.xyaxis")
-            }
-            .accessibilityIdentifier("menuAnalytics")
-
-            Button {
-                showingBills = true
-            } label: {
-                Label("Bills", systemImage: "calendar")
-            }
-            .accessibilityIdentifier("menuBills")
-
+            // Data & Backup
             Menu {
                 Button {
                     model.csvInterchangeInitialTab = 0
@@ -1204,65 +1227,26 @@ struct BookHomeView: View {
                 }
                 .accessibilityIdentifier("menuImportCSV")
             } label: {
-                Label("CSV Data", systemImage: "tablecells")
+                Label("Data & Backup", systemImage: "tablecells")
             }
             .accessibilityIdentifier("menuCSVData")
 
-            if selectedID != nil {
-                Button("Return to stack") { closeCard() }
-            }
+            Divider()
 
-            Section("Active cards") {
-                ForEach(model.unhiddenBooks) { book in
-                    Button(book.name) {
-                        if selectedID != book.id {
-                            if selectedID != nil {
-                                closeCard()
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    openCard(book)
-                                }
-                            } else {
-                                openCard(book)
-                            }
-                        }
-                    }
-                }
+            // Settings
+            Button {
+                model.showSettings = true
+            } label: {
+                Label("Settings", systemImage: "gearshape")
             }
-
-            let archived = model.books.filter { model.alwaysHiddenBookIDs.contains($0.id) }
-            if !archived.isEmpty {
-                Section("Archived cards") {
-                    ForEach(archived) { book in
-                        Button(book.name) {
-                            if selectedID != book.id {
-                                if selectedID != nil {
-                                    closeCard()
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        openCard(book)
-                                    }
-                                } else {
-                                    openCard(book)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Section {
-                Button {
-                    model.showSettings = true
-                } label: {
-                    Label("Settings", systemImage: "gearshape")
-                }
-            }
+            .accessibilityIdentifier("homeSettings")
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.title2)
+                .font(.system(size: 20, weight: .semibold))
                 .frame(width: 44, height: 44)
                 .foregroundStyle(ink)
         }
-        .accessibilityLabel("Book options")
+        .accessibilityLabel("Options")
         .accessibilityIdentifier("bookOptionsMenu")
     }
 

@@ -2,6 +2,14 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.15] - 2026-09-12
+### Refined & Perfected
+- **Collapsible Hierarchical Options Submenus**: Reorganized the top-right options menu into clean, logically grouped collapsible submenus: `Cards & Stacks` (`Create New Book`, `Customize Card`, `Stacks & Card Visibility`), `Tools & Insights` (`Budgets`, `Analytics & Trends`, `Recurring Bills`), and `Data & Backup` (`Export CSV`, `Import CSV`), plus a direct `Settings` item. Eliminated redundant visual direction controls, duplicate stack manager entry points, return-to-stack actions, and raw cards dumps for a fast, uncluttered menu interaction.
+- **Distinct Top Toolbar & Progressive Material Blur**: Replaced the hard-stop full-opacity navigation header with an authentic progressive variable material blur (`.ultraThinMaterial` and tint gradient smoothly feathered with a 5-stop linear gradient across 72pt depth). Separated navigation into a distinct Settings button (`gearshape`) and Options menu button (`ellipsis.circle`).
+- **Native Inset Platter for Home Screen Transactions**: Brought the exact native Apple Wallet continuous rounded inset platter container (`24pt` corner radius, `MC.surface`, zero row divider lines) to the main home screen activity section, creating seamless aesthetic parity between resting stack browsing and opened card inspection.
+- **Physical Device Scaled-Down Typography**: Visually scaled and balanced typography across all card and transaction surfaces for iPhone 15 Pro: card amount reduced from 28pt bold to 22pt bold (`.system(size: 22, weight: .bold)`), section titles scaled to 15pt semibold, navigation bar book title to 16pt semibold, monocle brand logo to 24pt/26pt, transaction row titles to 14pt semibold, dates to 11.5pt, amounts to 13.5pt semibold, and floating add button labels to 14.5pt semibold with 17pt symbol.
+- **Automated UI Testing Suite**: Added `testOptionsCollapsibleMenuAndHomePlatter` validating home platter presence, progressive blur header rendering, hierarchical submenu navigation, Budgets screen routing, and transaction platter continuity.
+
 ## [0.6.14] - 2026-09-12
 ### Refined & Perfected
 - **Scaled-Down Typography Hierarchy**: Refined typographic balance across the detail view and bottom navigation. Reduced the navigation bar book title from 20pt bold to 17pt semibold (`.system(size: 17, weight: .semibold)`). Scaled down the "Latest Transactions" section title to 17pt semibold, transaction row titles to 15pt semibold, dates to 12pt, amounts to 14.5pt semibold, empty state title to 15pt, and floating button text to 15pt semibold with 18pt symbol. Decreased row vertical padding and minimum height for a sleek, compact Apple Wallet aesthetic.

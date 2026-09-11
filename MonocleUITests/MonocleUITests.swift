@@ -1273,6 +1273,54 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["activityFilterButton"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["addExpense"].exists)
     }
+
+    @MainActor
+    func testOptionsCollapsibleMenuAndHomePlatter() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // 1. Verify Home Screen Native Platter & Navigation Bar
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 10))
+        let optionsButton = app.buttons["bookOptionsMenu"]
+        XCTAssertTrue(optionsButton.waitForExistence(timeout: 5))
+        let settingsButton = app.buttons["homeSettings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
+
+        // Capture Home Screen with progressive blur and platter
+        let homeShot = app.screenshot()
+        try? homeShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/home_platter_progressive_blur.png"))
+
+        // 2. Open options menu and verify collapsible submenus
+        optionsButton.tap()
+        XCTAssertTrue(app.buttons["Cards & Stacks"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Tools & Insights"].exists)
+        XCTAssertTrue(app.buttons["Data & Backup"].exists)
+
+        // 3. Open sub-menu: Tools & Insights
+        app.buttons["Tools & Insights"].tap()
+        XCTAssertTrue(app.buttons["Budgets"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Analytics & Trends"].exists)
+        XCTAssertTrue(app.buttons["Recurring Bills"].exists)
+
+        // Tap Budgets
+        app.buttons["Budgets"].tap()
+        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+
+        // 4. Open card and capture updated transaction page
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        cards.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        let closeDetail = app.buttons["closeBookDetail"]
+        XCTAssertTrue(closeDetail.waitForExistence(timeout: 5))
+        sleep(1)
+
+        let detailShot = app.screenshot()
+        try? detailShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/transaction_page_scaled_fonts_v2.png"))
+
+        closeDetail.tap()
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
+    }
 }
 
 
