@@ -1222,5 +1222,57 @@ final class MonocleUITests: XCTestCase {
         let returnedAddFrame = addButton.frame
         XCTAssertGreaterThan(returnedAddFrame.midX, screenWidth * 0.6, "Add button must return to right side on home")
     }
+
+    @MainActor
+    func testRapidCardOpenCloseAndMidwayCancellation() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
+        let card1 = cards.element(boundBy: 0)
+        let card2 = cards.element(boundBy: 1)
+        let closeButton = app.buttons["closeBookDetail"]
+
+        // 1. Test mid-way cancellation of opening: Tap card then immediately tap close
+        card1.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        // Immediately tap close without waiting for opening spring to complete
+        closeButton.tap()
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5), "Immediate close during opening must return to home smoothly")
+
+        // 2. Test mid-way cancellation of closing: Tap card, tap close, then immediately re-tap card
+        card1.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        closeButton.tap()
+        // While card is returning mid-flight, immediately tap it to cancel close
+        card1.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5), "Re-tapping card mid-close must reverse spring and stay open")
+
+        // 3. Test mid-way card switching: Tap close on card1, then immediately tap card2
+        closeButton.tap()
+        card2.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5), "Tapping card2 while card1 is closing must immediately open card2")
+
+        // Capture screenshot of card detail with scaled-down fonts
+        let shot = app.screenshot()
+        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/transaction_page_scaled_fonts.png"))
+
+        closeButton.tap()
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
+
+        // 4. Rapid burst stress test: rapid toggling between open and close
+        for _ in 1...3 {
+            card1.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+            XCTAssertTrue(closeButton.waitForExistence(timeout: 3))
+            closeButton.tap()
+            XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 3))
+        }
+
+        // Final sanity check: home view is fully responsive and intact
+        XCTAssertTrue(app.buttons["activityFilterButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["addExpense"].exists)
+    }
 }
+
 

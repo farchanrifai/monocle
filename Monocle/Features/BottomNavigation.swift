@@ -125,10 +125,10 @@ struct BottomNavigation: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                 if isDetail {
                     Text("Add Expense")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .lineLimit(1)
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }

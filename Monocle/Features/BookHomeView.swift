@@ -513,7 +513,7 @@ struct BookHomeView: View {
                     .accessibilityIdentifier("closeBookDetail")
 
                     Text(current.name)
-                        .font(.title3.weight(.bold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(ink)
                         .lineLimit(1)
                 }
@@ -791,42 +791,37 @@ struct BookHomeView: View {
     }
 
     private func openCard(_ book: BookProfile) {
-        guard selectedID == nil else { return }
         let haptic = UIImpactFeedbackGenerator(style: .medium)
         haptic.impactOccurred()
         dismissAmount = 0
         dismissX = 0
         detailScroll = 0
+        releaseVelocity = 0
         selectedID = book.id
         model.selectedBookID = book.id
         model.selectBook(book.id)
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : opening) {
+            expanded = true
+        }
     }
 
     private func closeCard(velocity: CGFloat = 0) {
         guard selectedID != nil else { return }
-        if !expanded {
-            selectedID = nil
-            model.selectedBookID = nil
-            dismissAmount = 0
-            dismissX = 0
-            detailScroll = 0
-            flippedCardID = nil
-            return
-        }
         let haptic = UIImpactFeedbackGenerator(style: .light)
         haptic.impactOccurred()
         let travel = returnDistance - dismissAmount
         releaseVelocity = abs(travel) > 1 ? Double(min(max(velocity / travel, -8), 8)) : 0
         withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle) {
             expanded = false
+            model.selectedBookID = nil
         } completion: {
             guard !expanded else { return }
             selectedID = nil
-            model.selectedBookID = nil
             dismissAmount = 0
             dismissX = 0
             detailScroll = 0
             flippedCardID = nil
+            releaseVelocity = 0
         }
     }
 
@@ -927,7 +922,7 @@ struct BookHomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 Text(book.name)
-                    .font(.headline)
+                    .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                 Spacer(minLength: 8)
 
@@ -961,7 +956,7 @@ struct BookHomeView: View {
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
             Text("\(bookExpenses.count) TRANSACTIONS")
-                .font(.caption.monospaced())
+                .font(.system(size: 11, weight: .medium).monospaced())
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1025,7 +1020,7 @@ struct BookHomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
-                    .font(bookID != nil ? .system(size: 20, weight: .bold) : .title2.bold())
+                    .font(bookID != nil ? .system(size: 17, weight: .semibold) : .system(size: 18, weight: .bold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
 
@@ -1052,13 +1047,13 @@ struct BookHomeView: View {
                 if bookID != nil {
                     VStack(spacing: 10) {
                         Image(systemName: "tray")
-                            .font(.system(size: 32))
+                            .font(.system(size: 28))
                             .foregroundStyle(ink.opacity(0.35))
                         Text("No Transactions Yet")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(ink)
                         Text("Transactions recorded for this card will appear here.")
-                            .font(.footnote)
+                            .font(.system(size: 13))
                             .foregroundStyle(ink.opacity(0.6))
                             .multilineTextAlignment(.center)
                     }
@@ -1101,24 +1096,24 @@ struct BookHomeView: View {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(model.title(expense))
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(ink)
                         .lineLimit(1)
                     Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
-                        .font(.system(size: 13, weight: .regular))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(ink.opacity(0.55))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Text(Money.format(expense.amount))
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14.5, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, isPlatter ? 16 : 0)
-            .padding(.vertical, isPlatter ? 14 : 12)
-            .frame(minHeight: isPlatter ? 68 : 56)
+            .padding(.vertical, isPlatter ? 11 : 10)
+            .frame(minHeight: isPlatter ? 60 : 50)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressFeedbackStyle())

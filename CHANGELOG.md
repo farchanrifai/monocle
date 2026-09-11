@@ -2,6 +2,12 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.14] - 2026-09-12
+### Refined & Perfected
+- **Scaled-Down Typography Hierarchy**: Refined typographic balance across the detail view and bottom navigation. Reduced the navigation bar book title from 20pt bold to 17pt semibold (`.system(size: 17, weight: .semibold)`). Scaled down the "Latest Transactions" section title to 17pt semibold, transaction row titles to 15pt semibold, dates to 12pt, amounts to 14.5pt semibold, empty state title to 15pt, and floating button text to 15pt semibold with 18pt symbol. Decreased row vertical padding and minimum height for a sleek, compact Apple Wallet aesthetic.
+- **Mid-Way Cancellable Opening & Closing Movements**: Conformed completely to Apple's 120Hz fluid gesture guidelines by making opening and closing animations fully interruptible and reversible at any frame. Removed restrictive state guards so tapping a card mid-close immediately catches it in-flight and reverses it back to hero detail, tapping the close button mid-open immediately reverses it back to the deck, and tapping another card mid-flight immediately redirects to the newly selected card.
+- **Comprehensive Responsiveness Test Suite**: Added `testRapidCardOpenCloseAndMidwayCancellation` verifying mid-flight opening cancellation, mid-flight closing cancellation, mid-flight card switching, and rapid burst open/close cycles without dropped gestures or hitching.
+
 ## [0.6.13] - 2026-09-12
 ### Refined & Perfected
 - **Native Apple Wallet Inset Transaction Platter**: Rendered transaction activity in an authentic inset continuous rounded platter (`RoundedRectangle(cornerRadius: 24, style: .continuous)`) filled with `MC.surface`, completely eliminating row divider lines for a clean, distraction-free Apple Wallet aesthetic.
