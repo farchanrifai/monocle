@@ -49,6 +49,7 @@ struct BookHomeView: View {
     @State private var hasLowerCardsPassed = false
     @State private var showTransactionList = true
     @State private var dismissTransitionTask: Task<Void, Never>? = nil
+    @State private var isTransitioning = false
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -96,36 +97,42 @@ struct BookHomeView: View {
             header
             ScrollViewReader { scrollProxy in
                 ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Color.clear.frame(height: 0).id("deckTop")
-                        stack
-                        if displayedBooks.isEmpty {
-                            ContentUnavailableView {
-                                Label("Your stack is empty", systemImage: "rectangle.stack")
-                            } description: {
-                                Text("Add cards to this stack or switch stacks with the filter button.")
-                            } actions: {
-                                Button("Manage Stacks & Cards") {
-                                    model.stackCustomizerMode = .manage
-                                    model.showStackCustomizer = true
+                    VStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: 1)
+                            .id("scrollTopAnchor")
+
+                        VStack(alignment: .leading, spacing: 16) {
+                            stack
+                            if displayedBooks.isEmpty {
+                                ContentUnavailableView {
+                                    Label("Your stack is empty", systemImage: "rectangle.stack")
+                                } description: {
+                                    Text("Add cards to this stack or switch stacks with the filter button.")
+                                } actions: {
+                                    Button("Manage Stacks & Cards") {
+                                        model.stackCustomizerMode = .manage
+                                        model.showStackCustomizer = true
+                                    }
                                 }
                             }
-                        }
-                        let collapseDelta = (reduceMotion || selectedID != nil) ? 0 : (animatedCardCount * stripHeight * stackCollapseProgress)
-                        let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
+                            let collapseDelta = (reduceMotion || selectedID != nil) ? 0 : (animatedCardCount * stripHeight * stackCollapseProgress)
+                            let pullDelta = (reduceMotion || selectedID != nil) ? 0 : (pull * (CGFloat(max(0, displayedBooks.count - 1)) * 0.22 - 0.90))
 
-                        activitySection(bookID: selectedID)
-                            .offset(y: pullDelta - collapseDelta)
-                            .opacity(showTransactionList ? 1.0 : 0.0)
-                            .offset(y: showTransactionList ? 0 : 12)
-                            .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showTransactionList)
+                            activitySection(bookID: selectedID)
+                                .offset(y: pullDelta - collapseDelta)
+                                .opacity(showTransactionList ? 1.0 : 0.0)
+                                .offset(y: showTransactionList ? 0 : 12)
+                                .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: showTransactionList)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 96)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 96)
                 }
                 .scrollBounceBehavior(.always)
                 .scrollClipDisabled()
+                .scrollDisabled(isTransitioning)
                 .onScrollGeometryChange(for: CGFloat.self) { geometry in
                     geometry.contentOffset.y + geometry.contentInsets.top
                 } action: { _, value in
@@ -147,10 +154,10 @@ struct BookHomeView: View {
                 } action: { newValue in
                     info.safeArea = newValue
                 }
-                .onChange(of: selectedID) { _, newID in
-                    if newID != nil {
+                .onChange(of: selectedID) { _, _ in
+                    if abs(info.scrollOffset) > 2 {
                         withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) {
-                            scrollProxy.scrollTo("deckTop", anchor: .top)
+                            scrollProxy.scrollTo("scrollTopAnchor", anchor: .top)
                         }
                     }
                 }
@@ -973,6 +980,7 @@ struct BookHomeView: View {
             dragTilt = .zero
             cardsBehindHidden = false
             showTransactionList = false
+            isTransitioning = true
 
             let haptic = UIImpactFeedbackGenerator(style: .medium)
             haptic.impactOccurred()
@@ -1005,6 +1013,7 @@ struct BookHomeView: View {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
                         showTransactionList = true
                     }
+                    isTransitioning = false
 
                     // Phase 4: Hide cards behind for isolated 3D flip
                     try? await Task.sleep(nanoseconds: 80_000_000)
@@ -1028,6 +1037,7 @@ struct BookHomeView: View {
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
                         showTransactionList = true
                     }
+                    isTransitioning = false
 
                     try? await Task.sleep(nanoseconds: 80_000_000)
                     guard !Task.isCancelled, selectedID == id else { return }
@@ -1039,6 +1049,7 @@ struct BookHomeView: View {
             dragTilt = .zero
             cardsBehindHidden = false
             showTransactionList = false
+            isTransitioning = true
 
             let haptic = UIImpactFeedbackGenerator(style: .light)
             haptic.impactOccurred()
@@ -1047,45 +1058,54 @@ struct BookHomeView: View {
             let hasLowerCards = currentIdx < displayedBooks.count - 1
 
             if hasLowerCards {
-                isDippingLowerCards = true
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.84)) {
-                    // Lower cards move down to clear selected card
+                // Phase 1 (Dismiss Start, 0ms): Lower cards slide DOWN behind the active card
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.32, dampingFraction: 0.84)) {
+                    isDippingLowerCards = true
                 }
 
                 dismissTransitionTask = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    // Phase 2 (160ms): Lower cards have cleared the bottom of the active card
+                    try? await Task.sleep(nanoseconds: 160_000_000)
                     guard !Task.isCancelled else { return }
                     hasLowerCardsPassed = false
-                    isDippingLowerCards = false
 
-                    withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.40, dampingFraction: 0.84)) {
+                    // Simultaneously animate cards back into their resting fanned slots:
+                    // - Lower cards slide UP (in front of active card)
+                    // - Active card slides down to resting slot and un-scales to 1.0
+                    // - Upper cards slide down to resting slots
+                    // - Stack frame expands to restingStackHeight
+                    withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.84)) {
+                        isDippingLowerCards = false
                         selectedID = nil
                         model.selectedBookID = nil
                     }
                     headingFocused = true
 
-                    try? await Task.sleep(nanoseconds: 260_000_000)
+                    // Phase 3 (380ms total): Deck has settled -> reveal home transactions
+                    try? await Task.sleep(nanoseconds: 220_000_000)
                     guard !Task.isCancelled, selectedID == nil else { return }
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
                         showTransactionList = true
                     }
+                    isTransitioning = false
                 }
             } else {
                 hasLowerCardsPassed = false
                 isDippingLowerCards = false
 
-                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.42, dampingFraction: 0.86)) {
+                withAnimation(reduceMotion ? nil : .interactiveSpring(response: 0.38, dampingFraction: 0.84)) {
                     selectedID = nil
                     model.selectedBookID = nil
                 }
                 headingFocused = true
 
                 dismissTransitionTask = Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 280_000_000)
+                    try? await Task.sleep(nanoseconds: 260_000_000)
                     guard !Task.isCancelled, selectedID == nil else { return }
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
                         showTransactionList = true
                     }
+                    isTransitioning = false
                 }
             }
         }

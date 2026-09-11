@@ -2,6 +2,12 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.9] - 2026-09-11
+### Refined & Perfected
+- **Consistent Opened Card Placement**: Fixed ScrollView anchoring and eliminated content offset jitter across all cards. Every card (Card 01, 02, 03) now opens to the exact same top-aligned pixel coordinate matching the home deck's resting position.
+- **Symmetrical Reverse Close Animation**: Dismissing a card now strictly and cleanly mirrors the opening sequence. Lower cards slide down behind the active card, hand z-index back below the bottom edge, and smoothly slide up in front into their resting fanned slots while the active card glides down and un-scales to 1.0.
+- **Transition Scroll Locking**: Scroll interactions are securely locked during the 380ms transition window, preventing touch gestures from disrupting the physical kinematics.
+
 ## [0.6.8] - 2026-09-11
 ### Refined & Perfected
 - **Full-Height Deck Shuffle Clearance**: Lower cards now slide down past the selected card in full height (`cardHeight + 20pt`) in front of the active card before surfacing it, creating an authentic physical deck cut with zero mid-flight popping.

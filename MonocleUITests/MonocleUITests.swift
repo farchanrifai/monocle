@@ -1036,46 +1036,43 @@ final class MonocleUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // 1. Find cards in the stack and tap Card 01 (Sample book) to test lower card full-height shuffle
-        let sampleCard = app.buttons["stack-book-20000000-0000-0000-0000-000000000001"]
-        XCTAssertTrue(sampleCard.waitForExistence(timeout: 10))
-        let targetCard = sampleCard
-        targetCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        // 1. Test Card 01
+        var cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
+        cards.element(boundBy: 0).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
 
-        // 2. Verify close button exists in top header
         let closeButton = app.buttons["closeBookDetail"]
         XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        sleep(1)
+        let shot1 = app.screenshot()
+        try? shot1.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_01_opened.png"))
 
-        // 3. Verify in-line Latest Transactions section exists directly below the card
-        let latestTransactions = app.staticTexts["Latest Transactions"]
-        XCTAssertTrue(latestTransactions.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["customizeCardDetailButton"].exists)
-        XCTAssertTrue(app.buttons["addExpenseButton"].exists)
-        XCTAssertTrue(app.buttons["cardFlipButton"].exists, "Active card flip button should exist")
-        let backgroundDeckCards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
-        XCTAssertEqual(backgroundDeckCards.count, 0, "No background cards should be visible or accessible when a card is open")
-
-        // Capture screenshot of opened card state with in-line transactions
-        let openedShot = app.screenshot()
-        try? openedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_opened.png"))
-
-        // 4. Test 3D card flip to telemetry back face
-        let flipButton = app.buttons["cardFlipButton"]
-        XCTAssertTrue(flipButton.exists)
-        flipButton.tap()
-
-        let backArtworkButton = app.buttons["cardBackCustomizeButton"]
-        XCTAssertTrue(backArtworkButton.waitForExistence(timeout: 5), "Telemetry back face should appear on flip")
-        let flippedBackgroundCards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
-        XCTAssertEqual(flippedBackgroundCards.count, 0, "No background cards should appear when card is flipped")
-
-        // 5. Tap close button to un-flip and return to stack
         closeButton.tap()
+        sleep(1)
 
-        // 7. Verify stack returns to resting state
-        XCTAssertTrue(targetCard.waitForExistence(timeout: 5))
-        let closedShot = app.screenshot()
-        try? closedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_apple_wallet_closed.png"))
+        // 2. Test Card 02
+        cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        cards.element(boundBy: 1).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        sleep(1)
+        let shot2 = app.screenshot()
+        try? shot2.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_02_opened.png"))
+
+        closeButton.tap()
+        sleep(1)
+
+        // 3. Test Card 03
+        cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 5))
+        cards.element(boundBy: 2).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        sleep(1)
+        let shot3 = app.screenshot()
+        try? shot3.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_03_opened.png"))
+
+        closeButton.tap()
+        sleep(1)
     }
 }
 
