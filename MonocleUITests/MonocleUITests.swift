@@ -1105,5 +1105,57 @@ final class MonocleUITests: XCTestCase {
         XCTAssertEqual(firstCard.frame.minY, originalFrame.minY, accuracy: 3.0)
         XCTAssertEqual(firstCard.frame.width, originalFrame.width, accuracy: 3.0)
     }
+
+    @MainActor
+    func testCardContextMenuLongPressOnHomeScreen() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
+        let thirdCard = cards.element(boundBy: 2)
+        let thirdCardFrame = thirdCard.frame
+
+        // Header must be home logo before long-press
+        XCTAssertTrue(app.staticTexts["monocle"].exists || app.otherElements["homeLogo"].exists)
+        XCTAssertFalse(app.buttons["closeBookDetail"].exists)
+
+        thirdCard.press(forDuration: 1.2)
+        sleep(1)
+        let shot = app.screenshot()
+        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/context_menu_glitch.png"))
+
+        // Header must still be home logo, NOT closeBookDetail
+        XCTAssertFalse(app.buttons["closeBookDetail"].exists, "Header must not switch to book detail header during long-press")
+
+        // Context menu items must exist
+        let bringToFront = app.buttons["Bring to Front"]
+        let flip = app.buttons["Flip"]
+        let customize = app.buttons["Customize card"]
+
+        XCTAssertTrue(bringToFront.waitForExistence(timeout: 5))
+        XCTAssertTrue(flip.exists)
+        XCTAssertTrue(customize.exists)
+
+        // Context menu must be anchored to the card, NOT stuck at the bottom of the screen
+        let menuFrame = bringToFront.frame
+        XCTAssertLessThan(menuFrame.minY, 650, "Context menu must anchor adjacent to the card, not at the bottom of the screen")
+        XCTAssertGreaterThan(menuFrame.minY, thirdCardFrame.minY, "Context menu must appear below card top edge")
+
+        // Tapping Flip should open the card and flip to telemetry back
+        flip.tap()
+        XCTAssertTrue(app.buttons["cardFlipBackButton"].waitForExistence(timeout: 5), "Selecting Flip from context menu must open card and reveal telemetry back")
+        XCTAssertTrue(app.buttons["closeBookDetail"].waitForExistence(timeout: 5), "Expanded card must show close button in header")
+
+        // Flip back to front
+        app.buttons["cardFlipBackButton"].tap()
+        XCTAssertTrue(app.buttons["cardFlipButton"].waitForExistence(timeout: 5), "Card front must show flip button when expanded")
+
+        // Close card
+        app.buttons["closeBookDetail"].tap()
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5), "Closing card must return to home monocle header")
+        XCTAssertFalse(app.buttons["closeBookDetail"].exists)
+        XCTAssertFalse(app.buttons["cardFlipButton"].exists, "Home stack cards must not show flip button")
+    }
 }
 

@@ -174,22 +174,24 @@ struct CardGesturesModifier: ViewModifier {
                 : nil
             )
             .contextMenu {
-                if displayedBooksCount > 1 && index > 0 {
-                    Button {
-                        onMoveToFront()
-                    } label: {
-                        Label("Bring to Front", systemImage: "arrow.up.to.line")
+                if !expanded {
+                    if displayedBooksCount > 1 && index > 0 {
+                        Button {
+                            onMoveToFront()
+                        } label: {
+                            Label("Bring to Front", systemImage: "arrow.up.to.line")
+                        }
                     }
-                }
-                Button {
-                    onFlip()
-                } label: {
-                    Label("Flip", systemImage: "arrow.triangle.2.circlepath")
-                }
-                Button {
-                    onCustomize()
-                } label: {
-                    Label("Customize card", systemImage: "paintbrush")
+                    Button {
+                        onFlip()
+                    } label: {
+                        Label("Flip", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Button {
+                        onCustomize()
+                    } label: {
+                        Label("Customize card", systemImage: "paintbrush")
+                    }
                 }
             }
     }
@@ -497,7 +499,7 @@ struct BookHomeView: View {
 
     private var header: some View {
         HStack {
-            if let current {
+            if expanded, let current {
                 HStack(spacing: 8) {
                     Button {
                         closeCard()
@@ -685,8 +687,10 @@ struct BookHomeView: View {
             ? geometryHeight - homeFrame.minY + CGFloat(index - selectedIndex) * 54 : 0
         let horizontalOffset: CGFloat = (swipingCardID == book.id) ? swipeOffset : 0
 
-        cardView(book, index: index, isCurrent: isSelected)
-            .frame(width: target.width, height: target.height)
+        let posX = target.midX + horizontalOffset + (isSelected && expanded && !reduceMotion ? dismissX : 0)
+        let posY = target.midY + otherOffset + (isSelected && expanded && !reduceMotion ? dismissAmount : 0)
+
+        cardInteractiveView(book: book, index: index, target: target, isSelected: isSelected)
             .shadow(
                 color: isSelected && expanded
                     ? Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16)
@@ -697,10 +701,7 @@ struct BookHomeView: View {
             )
             .blur(radius: expanded && !isSelected && !reduceMotion ? 12 : 0)
             .opacity(expanded && !isSelected ? 0 : 1)
-            .position(
-                x: target.midX + horizontalOffset + (isSelected && expanded && !reduceMotion ? dismissX : 0),
-                y: target.midY + otherOffset + (isSelected && expanded && !reduceMotion ? dismissAmount : 0)
-            )
+            .position(x: posX, y: posY)
             .modifier(CardSpringModifier(
                 isSelected: isSelected,
                 expanded: expanded,
@@ -713,6 +714,18 @@ struct BookHomeView: View {
                 }
             }
             .zIndex(Double(index))
+    }
+
+    @ViewBuilder
+    private func cardInteractiveView(
+        book: BookProfile,
+        index: Int,
+        target: CGRect,
+        isSelected: Bool
+    ) -> some View {
+        cardView(book, index: index, isCurrent: isSelected)
+            .frame(width: target.width, height: target.height)
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .modifier(CardAccessibilityModifier(
                 book: book,
                 expenseCount: model.expenses(for: book.id).count,
@@ -790,12 +803,21 @@ struct BookHomeView: View {
     }
 
     private func closeCard(velocity: CGFloat = 0) {
-        guard selectedID != nil, expanded else { return }
+        guard selectedID != nil else { return }
+        if !expanded {
+            selectedID = nil
+            model.selectedBookID = nil
+            dismissAmount = 0
+            dismissX = 0
+            detailScroll = 0
+            flippedCardID = nil
+            return
+        }
         let haptic = UIImpactFeedbackGenerator(style: .light)
         haptic.impactOccurred()
         let travel = returnDistance - dismissAmount
         releaseVelocity = abs(travel) > 1 ? Double(min(max(velocity / travel, -8), 8)) : 0
-        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle, completionCriteria: .removed) {
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle) {
             expanded = false
         } completion: {
             guard !expanded else { return }
@@ -845,27 +867,29 @@ struct BookHomeView: View {
                 .opacity(isFlipped ? 0 : 1)
                 .accessibilityHidden(isFlipped)
 
-            CardBackTelemetryView(
-                model: model,
-                book: book,
-                index: index,
-                onFlipBack: {
-                    toggleFlip(for: book.id)
-                },
-                onOpenAnalytics: {
-                    model.showAnalytics = true
-                },
-                onCustomize: {
-                    openCustomizer(for: book)
-                }
-            )
-            .rotation3DEffect(
-                .degrees(isFlipped ? 0 : -180),
-                axis: (x: 0, y: 1, z: 0),
-                perspective: 0.7
-            )
-            .opacity(isFlipped ? 1 : 0)
-            .accessibilityHidden(!isFlipped)
+            if isCurrent {
+                CardBackTelemetryView(
+                    model: model,
+                    book: book,
+                    index: index,
+                    onFlipBack: {
+                        toggleFlip(for: book.id)
+                    },
+                    onOpenAnalytics: {
+                        model.showAnalytics = true
+                    },
+                    onCustomize: {
+                        openCustomizer(for: book)
+                    }
+                )
+                .rotation3DEffect(
+                    .degrees(isFlipped ? 0 : -180),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.7
+                )
+                .opacity(isFlipped ? 1 : 0)
+                .accessibilityHidden(!isFlipped)
+            }
         }
         .rotation3DEffect(
             .degrees(tiltX),
@@ -908,7 +932,7 @@ struct BookHomeView: View {
                 Spacer(minLength: 8)
 
                 HStack(spacing: 6) {
-                    if isCurrent {
+                    if isCurrent && expanded {
                         Button {
                             toggleFlip(for: book.id)
                         } label: {

@@ -2,6 +2,14 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.12] - 2026-09-12
+### Fixed & Refined
+- **Discrete Card Context Menu Targeting**: Repositioned `CardGesturesModifier` (and `.contextMenu`) and `CardAccessibilityModifier` directly onto the discrete card artwork (`width` x `height` with continuous 16pt rounded rectangle) *prior* to parent `.position(x:y:)`. This prevents `UIContextMenuInteraction` from targeting the full-screen container, eliminating the semi-transparent box artifact and anchoring context menus directly adjacent to the touched card.
+- **Home Header State Guard**: Updated home header logic to explicitly check `if expanded, let current` rather than `if let current`. When resting in the home card stack (`expanded == false`), the header is guaranteed to always display the brand logo (`monocle.`) rather than prematurely showing the detail view header (`✕ Book Name`).
+- **Deck Rest Card Face Cleanliness**: Restricted the card front flip action button (`⟳`) to expanded detail cards (`if isCurrent && expanded`), keeping resting stack cards perfectly clean.
+- **Single Active Card Back Instance**: Restricted `CardBackTelemetryView` rendering strictly to the active selected card (`if isCurrent`), eliminating background duplicate accessibility tree elements and optimizing memory.
+- **Robust Collapse State Cleanup**: Removed the restrictive `completionCriteria: .removed` from `closeCard()` so that state variables (`selectedID`, `model.selectedBookID`, dismiss offsets) reliably reset upon collapse completion across all spring animations.
+
 ## [0.6.11] - 2026-09-11
 ### Refined & Perfected
 - **Apple Wallet Coordinate-Anchored Persistent Card Plane**: Adopted the exact architecture from the reference Apple Wallet repository (`farchanrifai/wallet`). Built a single persistent artwork view per card whose spatial destination is driven by coordinate anchors (`CardFrames` preference key), eliminating matched-geometry artifacts, coordinate mismatch, and mid-transition view resets.
