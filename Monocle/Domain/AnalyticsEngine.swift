@@ -29,7 +29,7 @@ enum SpendingPaceStatus: Equatable, Sendable {
         switch self {
         case .underPace(let pct): return "\(pct)% under budget pace"
         case .onTrack: return "On track with budget"
-        case .accelerated(let pct): return "\(pct)% faster than budget pace"
+        case .accelerated(let pct): return "\(pct)% above budget pace"
         }
     }
 }
@@ -39,9 +39,28 @@ struct DailySpendPoint: Identifiable, Equatable, Sendable {
     let day: String // YYYY-MM-DD
     let date: Date
     let amount: Int64
-    let cumulativeAmount: Int64
+    let cumulativeAmount: Int64?
     let targetCumulativeAmount: Int64?
     let transactionCount: Int
+    let isFuture: Bool
+
+    init(
+        day: String,
+        date: Date,
+        amount: Int64,
+        cumulativeAmount: Int64?,
+        targetCumulativeAmount: Int64? = nil,
+        transactionCount: Int = 0,
+        isFuture: Bool = false
+    ) {
+        self.day = day
+        self.date = date
+        self.amount = amount
+        self.cumulativeAmount = cumulativeAmount
+        self.targetCumulativeAmount = targetCumulativeAmount
+        self.transactionCount = transactionCount
+        self.isFuture = isFuture
+    }
 }
 
 struct CategorySpendPoint: Identifiable, Equatable, Sendable {
@@ -163,8 +182,13 @@ enum AnalyticsEngine {
         expenses.filter { $0.day >= startDay && $0.day <= endDay }
     }
 
+    /// Special category IDs for reconciliation
+    static let uncategorizedCategoryID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+    static let otherCategoryID = UUID(uuidString: "ffffffff-ffff-ffff-ffff-ffffffffffff")!
+
     /// Computes daily spending points with zero-gap continuity across the entire date span.
     /// Days with zero spending are included with amount 0 to preserve curve continuity.
+    /// In future days within the period, target budget pace continues while actual spend is nil.
     static func calculateDailySpendPoints(
         expenses: [Expense],
         startDate: Date,
@@ -174,30 +198,33 @@ enum AnalyticsEngine {
         now: Date = .now
     ) -> [DailySpendPoint] {
         let startOfToday = calendar.startOfDay(for: now)
-
-        // Determine effective display end: don't plot Rp 0 future days past today unless within an active budget cycle
-        let isFutureEnd = endDate > startOfToday
-        let lastPlotDate = isFutureEnd ? min(endDate, startOfToday) : endDate
+        let latestExpenseDate = expenses.compactMap { Day.date($0.day, calendar: calendar) }.max()
+        let lastActualDate = max(startOfToday, latestExpenseDate ?? startOfToday)
+        let endOfPeriod = calendar.startOfDay(for: endDate)
 
         // Group expenses by day
         var spendByDay: [String: (amount: Int64, count: Int)] = [:]
         for exp in expenses {
-            let current = spendByDay[exp.day, default: (0, 0)]
-            spendByDay[exp.day] = (current.amount + exp.amount, current.count + 1)
+            let current = spendByDay[exp.day, default: (amount: 0, count: 0)]
+            spendByDay[exp.day] = (amount: current.0 + exp.amount, count: current.1 + 1)
         }
 
         // Calculate total days in the full period for target budget line
-        let fullPeriodDays = max(1, (calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate), to: calendar.startOfDay(for: endDate)).day ?? 0) + 1)
+        let fullPeriodDays = max(1, (calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate), to: endOfPeriod).day ?? 0) + 1)
 
         var points: [DailySpendPoint] = []
         var runningTotal: Int64 = 0
         var iterDate = calendar.startOfDay(for: startDate)
         var dayIndex = 1
 
-        while iterDate <= lastPlotDate {
+        while iterDate <= endOfPeriod {
+            let isFutureDay = iterDate > lastActualDate
             let dayString = Day.string(iterDate, calendar: calendar)
-            let dayData = spendByDay[dayString] ?? (0, 0)
-            runningTotal += dayData.amount
+            let dayData = isFutureDay ? (0, 0) : (spendByDay[dayString] ?? (0, 0))
+
+            if !isFutureDay {
+                runningTotal += dayData.0
+            }
 
             var targetCumulative: Int64? = nil
             if let budgetLimit = overallBudgetLimit, budgetLimit > 0 {
@@ -207,10 +234,11 @@ enum AnalyticsEngine {
             points.append(DailySpendPoint(
                 day: dayString,
                 date: iterDate,
-                amount: dayData.amount,
-                cumulativeAmount: runningTotal,
+                amount: dayData.0,
+                cumulativeAmount: isFutureDay ? nil : runningTotal,
                 targetCumulativeAmount: targetCumulative,
-                transactionCount: dayData.count
+                transactionCount: dayData.1,
+                isFuture: isFutureDay
             ))
 
             guard let next = calendar.date(byAdding: .day, value: 1, to: iterDate) else { break }
@@ -221,7 +249,7 @@ enum AnalyticsEngine {
         return points
     }
 
-    /// Computes Month-over-Month Day 1..31 cumulative spending comparison.
+    /// Computes Month-over-Month Day 1..31 cumulative spending comparison with high-performance string matching.
     static func calculateMonthOverMonthComparison(
         expenses: [Expense],
         calendar: Calendar = .current,
@@ -229,10 +257,21 @@ enum AnalyticsEngine {
     ) -> [ComparativePeriodPoint] {
         let startOfToday = calendar.startOfDay(for: now)
         let thisMonthComps = calendar.dateComponents([.year, .month], from: startOfToday)
-        guard let thisMonthStart = calendar.date(from: thisMonthComps),
+        guard let thisYear = thisMonthComps.year,
+              let thisMonth = thisMonthComps.month,
+              let thisMonthStart = calendar.date(from: thisMonthComps),
               let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart) else {
             return []
         }
+
+        let lastMonthComps = calendar.dateComponents([.year, .month], from: lastMonthStart)
+        guard let lastYear = lastMonthComps.year,
+              let lastMonth = lastMonthComps.month else {
+            return []
+        }
+
+        let thisMonthPrefix = String(format: "%04d-%02d-", thisYear, thisMonth)
+        let lastMonthPrefix = String(format: "%04d-%02d-", lastYear, lastMonth)
 
         let thisMonthRange = calendar.range(of: .day, in: .month, for: thisMonthStart) ?? 1..<31
         let lastMonthRange = calendar.range(of: .day, in: .month, for: lastMonthStart) ?? 1..<31
@@ -241,18 +280,17 @@ enum AnalyticsEngine {
         // Today's day of month
         let todayDayNumber = calendar.component(.day, from: startOfToday)
 
-        // Group expenses by (year, month, day)
+        // Group expenses by day number (1..31) using fast string prefix checks
         var currentMonthSpend: [Int: Int64] = [:]
         var previousMonthSpend: [Int: Int64] = [:]
 
         for exp in expenses {
-            guard let d = Day.date(exp.day, calendar: calendar) else { continue }
-            let expComps = calendar.dateComponents([.year, .month, .day], from: d)
-            if expComps.year == thisMonthComps.year && expComps.month == thisMonthComps.month, let day = expComps.day {
-                currentMonthSpend[day, default: 0] += exp.amount
-            } else {
-                let lastComps = calendar.dateComponents([.year, .month], from: lastMonthStart)
-                if expComps.year == lastComps.year && expComps.month == lastComps.month, let day = expComps.day {
+            if exp.day.hasPrefix(thisMonthPrefix) {
+                if let day = Int(exp.day.suffix(2)) {
+                    currentMonthSpend[day, default: 0] += exp.amount
+                }
+            } else if exp.day.hasPrefix(lastMonthPrefix) {
+                if let day = Int(exp.day.suffix(2)) {
                     previousMonthSpend[day, default: 0] += exp.amount
                 }
             }
@@ -263,15 +301,17 @@ enum AnalyticsEngine {
         var prevRunning: Int64 = 0
 
         for dayIndex in 1...maxDays {
-            // Previous month
+            // Previous month: hold flat across full 31-day domain for shorter months
             var prevAmount: Int64? = nil
             var prevDate: Date? = nil
             if dayIndex <= lastMonthRange.count {
                 prevRunning += previousMonthSpend[dayIndex] ?? 0
                 prevAmount = prevRunning
-                var c = calendar.dateComponents([.year, .month], from: lastMonthStart)
+                var c = lastMonthComps
                 c.day = dayIndex
                 prevDate = calendar.date(from: c)
+            } else {
+                prevAmount = prevRunning
             }
 
             // Current month (only plot up to today)
@@ -280,7 +320,7 @@ enum AnalyticsEngine {
             if dayIndex <= thisMonthRange.count && dayIndex <= todayDayNumber {
                 curRunning += currentMonthSpend[dayIndex] ?? 0
                 curAmount = curRunning
-                var c = calendar.dateComponents([.year, .month], from: thisMonthStart)
+                var c = thisMonthComps
                 c.day = dayIndex
                 curDate = calendar.date(from: c)
             }
@@ -297,7 +337,8 @@ enum AnalyticsEngine {
         return points
     }
 
-    /// Computes category distribution, percentage shares, and transaction counts.
+    /// Computes category distribution, percentage shares, transaction counts, and budget limits.
+    /// Captures unallocated amounts in Uncategorized and groups unresolvable categories into Other.
     static func calculateCategoryDistribution(
         expenses: [Expense],
         categories: [ExpenseCategory],
@@ -306,31 +347,48 @@ enum AnalyticsEngine {
         let totalSpend = expenses.reduce(0) { $0 + $1.amount }
         guard totalSpend > 0 else { return [] }
 
+        let catMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
         var spendByCat: [UUID: (amount: Int64, count: Int)] = [:]
+
         for exp in expenses {
+            let allocatedSum = exp.allocations.reduce(0) { $0 + $1.amount }
             for alloc in exp.allocations {
-                let current = spendByCat[alloc.categoryID, default: (0, 0)]
-                spendByCat[alloc.categoryID] = (current.amount + alloc.amount, current.count + 1)
+                let targetID = catMap[alloc.categoryID] != nil ? alloc.categoryID : otherCategoryID
+                let current = spendByCat[targetID, default: (amount: 0, count: 0)]
+                spendByCat[targetID] = (amount: current.0 + alloc.amount, count: current.1 + 1)
+            }
+            let unallocated = exp.amount - allocatedSum
+            if unallocated > 0 {
+                let current = spendByCat[uncategorizedCategoryID, default: (amount: 0, count: 0)]
+                spendByCat[uncategorizedCategoryID] = (amount: current.0 + unallocated, count: current.1 + 1)
             }
         }
 
-        let catMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
-
         var points: [CategorySpendPoint] = []
-        for (catID, data) in spendByCat {
-            let cat = catMap[catID]
-            let name = cat?.name ?? "Other"
-            let symbol = cat?.symbol ?? "tag"
-            let pct = Double(data.amount) / Double(totalSpend)
+        for (catID, data) in spendByCat where data.0 > 0 {
+            let name: String
+            let symbol: String
+            if catID == uncategorizedCategoryID {
+                name = "Uncategorized"
+                symbol = "questionmark.circle"
+            } else if catID == otherCategoryID {
+                name = "Other"
+                symbol = "tag"
+            } else {
+                let cat = catMap[catID]
+                name = cat?.name ?? "Other"
+                symbol = cat?.symbol ?? "tag"
+            }
+            let pct = Double(data.0) / Double(totalSpend)
             let limit = budgetLimits[catID]
 
             points.append(CategorySpendPoint(
                 categoryID: catID,
                 categoryName: name,
                 categorySymbol: symbol,
-                amount: data.amount,
+                amount: data.0,
                 percentage: pct,
-                transactionCount: data.count,
+                transactionCount: data.1,
                 budgetLimit: limit
             ))
         }
@@ -356,19 +414,19 @@ enum AnalyticsEngine {
         let bookMap = Dictionary(uniqueKeysWithValues: books.map { ($0.id, $0) })
 
         var points: [BookSpendPoint] = []
-        for (bID, data) in bookTotals where data.amount > 0 {
+        for (bID, data) in bookTotals where data.0 > 0 {
             let book = bookMap[bID]
             let name = book?.name ?? "Card"
             let colorIdx = book?.colorIndex ?? 0
-            let pct = Double(data.amount) / Double(grandTotal)
+            let pct = Double(data.0) / Double(grandTotal)
 
             points.append(BookSpendPoint(
                 bookID: bID,
                 bookName: name,
                 colorIndex: colorIdx,
-                amount: data.amount,
+                amount: data.0,
                 percentage: pct,
-                transactionCount: data.count
+                transactionCount: data.1
             ))
         }
 
@@ -385,17 +443,18 @@ enum AnalyticsEngine {
         calendar: Calendar = .current,
         now: Date = .now
     ) -> AnalyticsMetrics {
-        let totalSpend = dailyPoints.last?.cumulativeAmount ?? 0
-        let txCount = dailyPoints.reduce(0) { $0 + $1.transactionCount }
+        let elapsedPoints = dailyPoints.filter { !$0.isFuture }
+        let totalSpend = elapsedPoints.last?.cumulativeAmount ?? 0
+        let txCount = elapsedPoints.reduce(0) { $0 + $1.transactionCount }
 
         let fullPeriodDays = max(1, (calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate), to: calendar.startOfDay(for: endDate)).day ?? 1) + 1)
-        let daysElapsed = max(1, dailyPoints.count)
+        let daysElapsed = max(1, elapsedPoints.count)
 
         let dailyAvg: Int64 = daysElapsed > 0 ? (totalSpend / Int64(daysElapsed)) : 0
         let projectedTotal: Int64 = dailyAvg * Int64(fullPeriodDays)
 
         // Highest spend day
-        let highestDay = dailyPoints.max { $0.amount < $1.amount }
+        let highestDay = elapsedPoints.max { $0.amount < $1.amount }
         let highest: (day: String, amount: Int64)? = (highestDay != nil && (highestDay?.amount ?? 0) > 0)
             ? (highestDay!.day, highestDay!.amount)
             : nil

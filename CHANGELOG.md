@@ -2,6 +2,23 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.5] - 2026-09-12
+### Analytics Audit & Presentation Enhancements
+- **Calculation & Data Structure Reliability**:
+  - **Full Cycle Budget Pace Continuity**: Extended budget pace trajectory across the full 30 days of the billing cycle or month, displaying the linear target pace into the future while halting actual spend at the current day (`isFuture: Bool`, optional `cumulativeAmount: Int64?`).
+  - **Unallocated & Archived Category Reconciliation**: Reconciled transactions without categories into an "Uncategorized" bucket and deleted/archived categories into "Other", ensuring 100% mathematical integrity across cards and category breakdowns.
+  - **Fast Month-over-Month Comparison**: Optimized comparison algorithm with instant day-prefix matching and flatline handling for shorter prior months (e.g. February).
+  - **Pace Phrasing Clarity**: Clarified budget pacing copy to explicitly state `"X% above budget pace"` or `"X% under budget pace"`.
+- **Enhanced Charts & 120Hz Scrubbing**:
+  - **Day 1 PointMark Anchors**: Added single-point indicators to Trajectory and Month-over-Month charts ensuring immediate visual feedback on the first day of a cycle before line interpolation begins.
+  - **Interactive Daily Rhythm Scrubbing**: Added `.chartXSelection` scrubber with synchronized peak day indicators and live daily IDR spend callouts.
+  - **Donut Chart Slice Selection**: Implemented native `.chartAngleSelection` allowing direct touch selection of category slices.
+  - **Category Budget Allowance Markers**: Displayed subtle guideline indicators for categories with configured budget caps.
+  - **Card Ranking Visual Hierarchy**: Inverted cross-card breakdown Y-axis so the highest spending card appears at the top.
+  - **ProMotion 120Hz Gesture Throttle**: Throttled scrub state emissions with microsecond timestamp checks for 120 FPS fluidity.
+- **Harness & Widget Store Resilience**:
+  - Added cache directory fallback to `WidgetSnapshotStore` when App Group container permissions are unavailable in simulator test harnesses.
+
 ## [0.7.4] - 2026-09-12
 ### User-Facing Terminology Standardization
 - **Unified Card Experience**:

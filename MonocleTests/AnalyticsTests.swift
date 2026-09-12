@@ -300,6 +300,7 @@ final class AnalyticsTests: XCTestCase {
         )
 
         XCTAssertEqual(metricsOver.paceStatus, .accelerated(percentage: 100))
+        XCTAssertEqual(metricsOver.paceStatus?.label, "100% above budget pace")
     }
 }
 
@@ -310,5 +311,93 @@ extension AnalyticsTests {
         let range = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: BudgetCycle(start: start, end: end))
         XCTAssertEqual(range.startDay, "2026-09-01")
         XCTAssertEqual(range.endDay, "2026-09-30")
+    }
+
+    func testFutureBudgetPaceContinuity() throws {
+        let calendar = Calendar.current
+        let day1 = try XCTUnwrap(Day.date("2026-09-01"))
+        let day5 = try XCTUnwrap(Day.date("2026-09-05"))
+        let day30 = try XCTUnwrap(Day.date("2026-09-30"))
+
+        let catID = UUID()
+        let exp = Expense(
+            id: UUID(),
+            amount: 100_000_00,
+            day: "2026-09-02",
+            note: "Groceries",
+            allocations: [.init(categoryID: catID, amount: 100_000_00)],
+            source: "manual",
+            createdAt: day1
+        )
+
+        let overallBudget: Int64 = 3_000_000_00 // Rp 3M
+        let points = AnalyticsEngine.calculateDailySpendPoints(
+            expenses: [exp],
+            startDate: day1,
+            endDate: day30,
+            overallBudgetLimit: overallBudget,
+            calendar: calendar,
+            now: day5
+        )
+
+        // Must cover all 30 days of the cycle
+        XCTAssertEqual(points.count, 30)
+
+        // Days 1..5: elapsed / non-future
+        for i in 0..<5 {
+            XCTAssertFalse(points[i].isFuture)
+            XCTAssertNotNil(points[i].cumulativeAmount)
+            XCTAssertNotNil(points[i].targetCumulativeAmount)
+        }
+        XCTAssertEqual(points[1].amount, 100_000_00)
+        XCTAssertEqual(points[4].cumulativeAmount, 100_000_00)
+
+        // Days 6..30: future points (actual spend nil, target pace intact)
+        for i in 5..<30 {
+            XCTAssertTrue(points[i].isFuture)
+            XCTAssertNil(points[i].cumulativeAmount)
+            XCTAssertNotNil(points[i].targetCumulativeAmount)
+        }
+        // Day 30 target reaches full budget
+        XCTAssertEqual(points[29].targetCumulativeAmount, overallBudget)
+    }
+
+    func testUnallocatedAndArchivedCategoryReconciliation() {
+        let activeCat = ExpenseCategory(id: UUID(), name: "Food", symbol: "fork.knife")
+        let archivedCatID = UUID()
+
+        let expAllocated = Expense(id: UUID(), amount: 50_000_00, day: "2026-09-01", note: "Lunch", allocations: [.init(categoryID: activeCat.id, amount: 50_000_00)], source: "manual")
+        let expUnallocated = Expense(id: UUID(), amount: 30_000_00, day: "2026-09-02", note: "Cash", allocations: [], source: "manual")
+        let expArchived = Expense(id: UUID(), amount: 20_000_00, day: "2026-09-03", note: "Old", allocations: [.init(categoryID: archivedCatID, amount: 20_000_00)], source: "manual")
+
+        let total: Int64 = 50_000_00 + 30_000_00 + 20_000_00
+        let points = AnalyticsEngine.calculateCategoryDistribution(
+            expenses: [expAllocated, expUnallocated, expArchived],
+            categories: [activeCat] // archivedCatID is not present
+        )
+
+        XCTAssertEqual(points.count, 3)
+        // 1. Food: 50k (50%)
+        XCTAssertEqual(points[0].categoryName, "Food")
+        XCTAssertEqual(points[0].amount, 50_000_00)
+        XCTAssertEqual(points[0].percentage, 0.50, accuracy: 0.001)
+
+        // 2. Uncategorized: 30k (30%)
+        XCTAssertEqual(points[1].categoryName, "Uncategorized")
+        XCTAssertEqual(points[1].categoryID, AnalyticsEngine.uncategorizedCategoryID)
+        XCTAssertEqual(points[1].amount, 30_000_00)
+        XCTAssertEqual(points[1].percentage, 0.30, accuracy: 0.001)
+
+        // 3. Other: 20k (20%)
+        XCTAssertEqual(points[2].categoryName, "Other")
+        XCTAssertEqual(points[2].categoryID, AnalyticsEngine.otherCategoryID)
+        XCTAssertEqual(points[2].amount, 20_000_00)
+        XCTAssertEqual(points[2].percentage, 0.20, accuracy: 0.001)
+
+        // Sum must equal 100%
+        let sum: Int64 = points.reduce(Int64(0)) { $0 + $1.amount }
+        XCTAssertEqual(sum, total)
+        let sumPct = points.reduce(0.0) { $0 + $1.percentage }
+        XCTAssertEqual(sumPct, 1.0, accuracy: 0.001)
     }
 }

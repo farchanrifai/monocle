@@ -10,6 +10,7 @@ struct AnalyticsView: View {
     @State private var selectedScope: AnalyticsScope = .activeBook
     @State private var scrubbedDate: Date? = nil
     @State private var selectedCategoryID: UUID? = nil
+    @State private var selectedChartAngle: Int64? = nil
 
     private let categoryPalette: [Color] = [
         MC.red,
@@ -99,7 +100,7 @@ struct AnalyticsView: View {
     private var categoryPoints: [CategorySpendPoint] {
         let limits: [UUID: Int64]
         if selectedScope == .activeBook {
-            limits = Dictionary(uniqueKeysWithValues: model.activeCategories.compactMap { cat in
+            limits = Dictionary(uniqueKeysWithValues: model.categories.compactMap { cat in
                 model.activeBudget.limit(for: cat.id).map { (cat.id, $0) }
             })
         } else {
@@ -108,7 +109,7 @@ struct AnalyticsView: View {
 
         return AnalyticsEngine.calculateCategoryDistribution(
             expenses: horizonExpenses,
-            categories: model.activeCategories,
+            categories: model.categories,
             budgetLimits: limits
         )
     }
@@ -207,6 +208,8 @@ struct AnalyticsView: View {
                     metricColumn(title: "Projected", value: Money.format(metrics.projectedPeriodTotal))
                 } else if let highest = metrics.highestSpendDay {
                     metricColumn(title: "Peak day", value: Money.format(highest.amount))
+                } else {
+                    metricColumn(title: "Peak day", value: "-")
                 }
             }
         }
@@ -260,10 +263,9 @@ struct AnalyticsView: View {
 
     private var activeScrubbedPoint: DailySpendPoint? {
         guard let scrubbed = scrubbedDate else { return nil }
-        let cal = Calendar.current
-        return dailyPoints.min { p1, p2 in
-            abs(cal.dateComponents([.minute], from: p1.date, to: scrubbed).minute ?? Int.max) <
-            abs(cal.dateComponents([.minute], from: p2.date, to: scrubbed).minute ?? Int.max)
+        let elapsed = dailyPoints.filter { !$0.isFuture }
+        return elapsed.min { p1, p2 in
+            abs(p1.date.timeIntervalSince(scrubbed)) < abs(p2.date.timeIntervalSince(scrubbed))
         }
     }
 
@@ -278,14 +280,21 @@ struct AnalyticsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if let scrub = activeScrubbedPoint {
+                if let scrub = activeScrubbedPoint, let cum = scrub.cumulativeAmount {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text(Day.title(scrub.day))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
-                        Text(Money.format(scrub.cumulativeAmount))
-                            .font(.footnote.weight(.bold).monospacedDigit())
-                            .foregroundStyle(MC.red)
+                        HStack(spacing: 4) {
+                            Text(Money.format(cum))
+                                .font(.footnote.weight(.bold).monospacedDigit())
+                                .foregroundStyle(MC.red)
+                            if scrub.amount > 0 {
+                                Text("(+\(compactMoney(scrub.amount)))")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -295,26 +304,28 @@ struct AnalyticsView: View {
             } else {
                 Chart {
                     ForEach(dailyPoints) { pt in
-                        AreaMark(
-                            x: .value("Date", pt.date, unit: .day),
-                            y: .value("Cumulative", pt.cumulativeAmount)
-                        )
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [MC.red.opacity(0.22), MC.red.opacity(0.02)],
-                                startPoint: .top,
-                                endPoint: .bottom
+                        if let cum = pt.cumulativeAmount {
+                            AreaMark(
+                                x: .value("Date", pt.date, unit: .day),
+                                y: .value("Cumulative", cum)
                             )
-                        )
-                        .interpolationMethod(.monotone)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [MC.red.opacity(0.22), MC.red.opacity(0.02)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .interpolationMethod(.monotone)
 
-                        LineMark(
-                            x: .value("Date", pt.date, unit: .day),
-                            y: .value("Cumulative", pt.cumulativeAmount)
-                        )
-                        .foregroundStyle(MC.red)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5))
-                        .interpolationMethod(.monotone)
+                            LineMark(
+                                x: .value("Date", pt.date, unit: .day),
+                                y: .value("Cumulative", cum)
+                            )
+                            .foregroundStyle(MC.red)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5))
+                            .interpolationMethod(.monotone)
+                        }
 
                         if let target = pt.targetCumulativeAmount {
                             LineMark(
@@ -326,14 +337,24 @@ struct AnalyticsView: View {
                         }
                     }
 
-                    if let scrub = activeScrubbedPoint {
+                    // Visible anchor point on latest elapsed data point (ensures single-day datasets are visible)
+                    if let lastElapsed = dailyPoints.filter({ !$0.isFuture }).last, let cum = lastElapsed.cumulativeAmount {
+                        PointMark(
+                            x: .value("Date", lastElapsed.date, unit: .day),
+                            y: .value("Cumulative", cum)
+                        )
+                        .foregroundStyle(MC.red)
+                        .symbolSize(36)
+                    }
+
+                    if let scrub = activeScrubbedPoint, let cum = scrub.cumulativeAmount {
                         RuleMark(x: .value("Scrubbed", scrub.date, unit: .day))
                             .foregroundStyle(Color.primary.opacity(0.35))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
 
                         PointMark(
                             x: .value("Scrubbed", scrub.date, unit: .day),
-                            y: .value("Cumulative", scrub.cumulativeAmount)
+                            y: .value("Cumulative", cum)
                         )
                         .foregroundStyle(MC.red)
                         .symbolSize(60)
@@ -391,23 +412,30 @@ struct AnalyticsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if metrics.dailyAverage > 0 {
+                if let scrub = activeScrubbedPoint {
+                    Text("\(Money.format(scrub.amount)) · \(dayMonthLabel(scrub.date))")
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(MC.red)
+                } else if metrics.dailyAverage > 0 {
                     Text("Avg \(compactMoney(metrics.dailyAverage))/day")
                         .font(.caption2.weight(.semibold).monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
             }
 
-            if dailyPoints.isEmpty {
+            let elapsedPoints = dailyPoints.filter { !$0.isFuture }
+            if elapsedPoints.isEmpty {
                 emptyChartPlaceholder(message: "No daily data")
             } else {
                 Chart {
-                    ForEach(dailyPoints) { pt in
+                    ForEach(elapsedPoints) { pt in
+                        let isPeak = pt.amount > 0 && pt.amount == metrics.highestSpendDay?.amount
+                        let isScrubbed = activeScrubbedPoint?.day == pt.day
                         BarMark(
                             x: .value("Date", pt.date, unit: .day),
                             y: .value("Spend", pt.amount)
                         )
-                        .foregroundStyle(pt.day == metrics.highestSpendDay?.day ? MC.red : MC.red.opacity(0.40))
+                        .foregroundStyle(isScrubbed ? MC.red : (isPeak ? MC.red.opacity(0.85) : MC.red.opacity(0.40)))
                         .cornerRadius(3)
                     }
 
@@ -422,7 +450,14 @@ struct AnalyticsView: View {
                                     .padding(.trailing, 4)
                             }
                     }
+
+                    if let scrub = activeScrubbedPoint {
+                        RuleMark(x: .value("Scrubbed", scrub.date, unit: .day))
+                            .foregroundStyle(Color.primary.opacity(0.25))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                    }
                 }
+                .chartXSelection(value: $scrubbedDate)
                 .chartYAxis {
                     AxisMarks(position: .leading) { value in
                         if let intVal = value.as(Int64.self) {
@@ -435,7 +470,7 @@ struct AnalyticsView: View {
                     }
                 }
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: max(1, dailyPoints.count / 5))) { value in
+                    AxisMarks(values: .stride(by: .day, count: max(1, elapsedPoints.count / 5))) { value in
                         if let d = value.as(Date.self) {
                             AxisValueLabel {
                                 Text(dayMonthLabel(d))
@@ -450,6 +485,30 @@ struct AnalyticsView: View {
         }
         .padding(20)
         .background(MC.surface, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var currentMonthName: String {
+        let cal = Calendar.current
+        let m = cal.component(.month, from: .now)
+        return cal.monthSymbols[m - 1]
+    }
+
+    private var previousMonthName: String {
+        let cal = Calendar.current
+        let prev = cal.date(byAdding: .month, value: -1, to: .now) ?? .now
+        let m = cal.component(.month, from: prev)
+        return cal.monthSymbols[m - 1]
+    }
+
+    private func category(forAngle angle: Int64) -> UUID? {
+        var accumulated: Int64 = 0
+        for cat in categoryPoints {
+            accumulated += cat.amount
+            if angle <= accumulated {
+                return cat.categoryID
+            }
+        }
+        return categoryPoints.first?.categoryID
     }
 
     // MARK: - Chart 3: Month-over-Month Velocity
@@ -491,6 +550,16 @@ struct AnalyticsView: View {
                             .interpolationMethod(.monotone)
                         }
                     }
+
+                    // Anchor point on current month's latest point for single-day periods
+                    if let lastCur = momPoints.last(where: { $0.currentPeriodCumulative != nil }), let cur = lastCur.currentPeriodCumulative {
+                        PointMark(
+                            x: .value("Day", lastCur.dayIndex),
+                            y: .value("This Month", cur)
+                        )
+                        .foregroundStyle(MC.red)
+                        .symbolSize(36)
+                    }
                 }
                 .chartXScale(domain: 1...31)
                 .chartXAxis {
@@ -518,8 +587,8 @@ struct AnalyticsView: View {
                 .accessibilityIdentifier("monthOverMonthChart")
 
                 HStack(spacing: 20) {
-                    legendItem(color: MC.red, label: "This Month", dashed: false)
-                    legendItem(color: Color.secondary.opacity(0.7), label: "Last Month", dashed: true)
+                    legendItem(color: MC.red, label: currentMonthName, dashed: false)
+                    legendItem(color: Color.secondary.opacity(0.7), label: previousMonthName, dashed: true)
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -558,6 +627,12 @@ struct AnalyticsView: View {
                         .foregroundStyle(colorForCategory(cat.categoryID))
                         .opacity(selectedCategoryID == nil || isSelected ? 1.0 : 0.4)
                     }
+                    .chartAngleSelection(value: $selectedChartAngle)
+                    .onChange(of: selectedChartAngle) { _, newAngle in
+                        if let newAngle {
+                            selectedCategoryID = category(forAngle: newAngle)
+                        }
+                    }
                     .chartBackground { chartProxy in
                         GeometryReader { geo in
                             if let plotFrame = chartProxy.plotFrame {
@@ -572,6 +647,9 @@ struct AnalyticsView: View {
                                             .font(.caption.weight(.bold).monospacedDigit())
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.7)
+                                        Text("\(Int(round(selected.percentage * 100)))%")
+                                            .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                                            .foregroundStyle(MC.red)
                                     } else {
                                         Text("Total")
                                             .font(.caption2)
@@ -633,6 +711,11 @@ struct AnalyticsView: View {
                                         Text(Money.format(cat.amount))
                                             .font(.subheadline.weight(.semibold).monospacedDigit())
                                             .foregroundStyle(.primary)
+                                        if let limit = cat.budgetLimit, limit > 0, cat.amount > limit {
+                                            Image(systemName: "exclamationmark.circle.fill")
+                                                .foregroundStyle(MC.red)
+                                                .font(.caption2)
+                                        }
                                     }
 
                                     GeometryReader { g in
@@ -650,7 +733,21 @@ struct AnalyticsView: View {
                                     HStack {
                                         Text("\(cat.transactionCount) transactions")
                                         Spacer()
-                                        Text("\(Int(round(cat.percentage * 100)))% of spend")
+                                        if let limit = cat.budgetLimit, limit > 0 {
+                                            if cat.amount > limit {
+                                                Text("Over limit of \(compactMoney(limit))")
+                                                    .font(.caption2.weight(.semibold))
+                                                    .foregroundStyle(MC.red)
+                                            } else {
+                                                Text("of \(compactMoney(limit)) budget")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        } else {
+                                            Text("\(Int(round(cat.percentage * 100)))% of spend")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
@@ -692,6 +789,7 @@ struct AnalyticsView: View {
                     .foregroundStyle(CardPalette.color(for: bp.colorIndex))
                     .cornerRadius(4)
                 }
+                .chartYScale(domain: bookPoints.map(\.bookName).reversed())
                 .chartXAxis {
                     AxisMarks { value in
                         if let intVal = value.as(Int64.self) {
@@ -731,11 +829,17 @@ struct AnalyticsView: View {
     // MARK: - Helpers
 
     private func colorForCategory(_ id: UUID) -> Color {
-        let allIDs = model.activeCategories.map(\.id)
+        if id == AnalyticsEngine.uncategorizedCategoryID {
+            return Color.gray
+        }
+        if id == AnalyticsEngine.otherCategoryID {
+            return Color.secondary
+        }
+        let allIDs = model.categories.map(\.id)
         if let idx = allIDs.firstIndex(of: id) {
             return categoryPalette[idx % categoryPalette.count]
         }
-        return MC.red
+        return Color.secondary
     }
 
     private func compactMoney(_ amount: Int64) -> String {

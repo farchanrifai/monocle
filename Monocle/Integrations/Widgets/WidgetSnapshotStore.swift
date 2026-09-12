@@ -7,6 +7,7 @@ public enum WidgetSnapshotStore {
 
     public static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+            ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
     }
 
     public static var snapshotFileURL: URL? {
