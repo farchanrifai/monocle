@@ -517,14 +517,17 @@ struct BookHomeView: View {
             withAnimation(settle) {
                 displayedBooks = newVisible
             }
+            if let target = model.selectedBookID, let book = newVisible.first(where: { $0.id == target }), !expanded {
+                openCard(book)
+            }
         }
         .onChange(of: model.selectedBookID) { _, newID in
-            if selectedID != newID {
-                if let newID, let book = displayedBooks.first(where: { $0.id == newID }) {
+            if let newID, let book = displayedBooks.first(where: { $0.id == newID }) {
+                if selectedID != newID || !expanded {
                     openCard(book)
-                } else if newID == nil && expanded {
-                    closeCard()
                 }
+            } else if newID == nil && expanded {
+                closeCard()
             }
         }
     }

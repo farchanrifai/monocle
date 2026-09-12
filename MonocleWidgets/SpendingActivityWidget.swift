@@ -95,7 +95,7 @@ struct SpendingActivityWidget: Widget {
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(WMC.red)
             }
-            .widgetURL(URL(string: "monocle://entry"))
+            .widgetURL(URL(string: "monocle://session"))
         }
     }
 }
@@ -187,6 +187,6 @@ private struct LockScreenLiveActivityView: View {
             }
         }
         .padding(16)
-        .widgetURL(URL(string: "monocle://entry"))
+        .widgetURL(URL(string: "monocle://session"))
     }
 }

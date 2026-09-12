@@ -4,6 +4,7 @@ import Foundation
 public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public var updatedAt: Date
     public var activeBook: WidgetBookSummary
+    public var activeStack: WidgetStackSummary?
     public var cycleBudget: WidgetBudgetSummary?
     public var todaySpending: WidgetTodaySummary
     public var quickCategories: [WidgetCategoryItem]
@@ -11,12 +12,14 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public init(
         updatedAt: Date = .now,
         activeBook: WidgetBookSummary,
+        activeStack: WidgetStackSummary? = nil,
         cycleBudget: WidgetBudgetSummary?,
         todaySpending: WidgetTodaySummary,
         quickCategories: [WidgetCategoryItem]
     ) {
         self.updatedAt = updatedAt
         self.activeBook = activeBook
+        self.activeStack = activeStack
         self.cycleBudget = cycleBudget
         self.todaySpending = todaySpending
         self.quickCategories = quickCategories
@@ -25,6 +28,14 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public static let sample = WidgetSnapshot(
         updatedAt: .now,
         activeBook: WidgetBookSummary(id: UUID(), name: "Daily", tintColorHex: "E63946"),
+        activeStack: WidgetStackSummary(
+            id: UUID(),
+            name: "Personal",
+            icon: "rectangle.stack",
+            cardCount: 3,
+            totalSpent: 1_250_000_00,
+            cardNames: ["Daily", "Groceries", "Coffee"]
+        ),
         cycleBudget: WidgetBudgetSummary(
             limit: 5_000_000_00,
             spent: 2_150_000_00,
@@ -80,6 +91,31 @@ public struct WidgetBookSummary: Codable, Sendable, Equatable {
     }
 }
 
+public struct WidgetStackSummary: Codable, Sendable, Equatable, Identifiable {
+    public var id: UUID
+    public var name: String
+    public var icon: String
+    public var cardCount: Int
+    public var totalSpent: Int64
+    public var cardNames: [String]
+
+    public init(
+        id: UUID,
+        name: String,
+        icon: String = "rectangle.stack",
+        cardCount: Int = 0,
+        totalSpent: Int64 = 0,
+        cardNames: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.cardCount = cardCount
+        self.totalSpent = totalSpent
+        self.cardNames = cardNames
+    }
+}
+
 public struct WidgetBudgetSummary: Codable, Sendable, Equatable {
     public var limit: Int64
     public var spent: Int64
@@ -116,6 +152,7 @@ public struct WidgetBudgetSummary: Codable, Sendable, Equatable {
 
 public struct WidgetTransactionItem: Codable, Sendable, Equatable, Identifiable {
     public var id: UUID
+    public var bookID: UUID?
     public var title: String
     public var amount: Int64
     public var categoryName: String
@@ -125,6 +162,7 @@ public struct WidgetTransactionItem: Codable, Sendable, Equatable, Identifiable 
 
     public init(
         id: UUID,
+        bookID: UUID? = nil,
         title: String,
         amount: Int64,
         categoryName: String,
@@ -133,6 +171,7 @@ public struct WidgetTransactionItem: Codable, Sendable, Equatable, Identifiable 
         timeFormatted: String
     ) {
         self.id = id
+        self.bookID = bookID
         self.title = title
         self.amount = amount
         self.categoryName = categoryName

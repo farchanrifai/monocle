@@ -3,7 +3,10 @@ import Foundation
 enum WidgetSnapshotUpdater {
     static func update(
         activeBook: BookProfile,
+        activeStack: CardStack? = nil,
+        allBooks: [BookProfile] = [],
         expenses: [Expense],
+        stackExpenses: [Expense] = [],
         categories: [ExpenseCategory],
         budget: BudgetVersion?,
         cycle: BudgetCycle?
@@ -32,6 +35,20 @@ enum WidgetSnapshotUpdater {
             )
         }()
 
+        let stackSummary: WidgetStackSummary? = {
+            guard let activeStack else { return nil }
+            let cardNames = allBooks.filter { activeStack.cardIDs.contains($0.id) }.map(\.name)
+            let total = stackExpenses.reduce(0) { $0 + $1.amount }
+            return WidgetStackSummary(
+                id: activeStack.id,
+                name: activeStack.name,
+                icon: activeStack.icon,
+                cardCount: activeStack.cardIDs.count,
+                totalSpent: total,
+                cardNames: cardNames
+            )
+        }()
+
         let todayStr = Day.string(.now)
         let todayExpenses = expenses.filter { $0.day == todayStr }
         let todaySpent = todayExpenses.reduce(0) { $0 + $1.amount }
@@ -42,6 +59,7 @@ enum WidgetSnapshotUpdater {
             let title = (!note.isEmpty) ? note : (cat?.name ?? "Expense")
             return WidgetTransactionItem(
                 id: exp.id,
+                bookID: exp.bookID,
                 title: title,
                 amount: exp.amount,
                 categoryName: cat?.name ?? "General",
@@ -58,6 +76,7 @@ enum WidgetSnapshotUpdater {
         let snapshot = WidgetSnapshot(
             updatedAt: .now,
             activeBook: WidgetBookSummary(id: activeBook.id, name: activeBook.name),
+            activeStack: stackSummary,
             cycleBudget: budgetSummary,
             todaySpending: WidgetTodaySummary(
                 totalSpent: todaySpent,

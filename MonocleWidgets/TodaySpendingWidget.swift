@@ -79,44 +79,47 @@ struct TodaySpendingWidgetEntryView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Image(systemName: "plus.circle.fill")
-                    .font(.subheadline)
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.caption)
                     .foregroundStyle(WMC.red)
             }
         }
-        .widgetURL(URL(string: "monocle://entry"))
+        .widgetURL(URL(string: "monocle://home"))
     }
 
     private var mediumView: some View {
         HStack(spacing: 16) {
             // Left: Today summary
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("monocle.")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(WMC.red)
-                    Text("· Today")
-                        .font(.caption.weight(.medium))
+            Link(destination: URL(string: "monocle://home")!) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("monocle.")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(WMC.red)
+                        Text("· Today")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SPENT TODAY")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Text(WMC.formatIDR(today.totalSpent))
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                            .foregroundStyle(.primary)
+                    }
+
+                    Spacer()
+
+                    Text("\(today.transactionCount) transactions recorded")
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-
-                Spacer()
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("SPENT TODAY")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                    Text(WMC.formatIDR(today.totalSpent))
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Text("\(today.transactionCount) transactions recorded")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
             }
 
             Divider()
@@ -136,32 +139,36 @@ struct TodaySpendingWidgetEntryView: View {
                     Spacer()
                 } else {
                     ForEach(today.recentTransactions.prefix(3)) { item in
-                        HStack(spacing: 8) {
-                            Image(systemName: item.categorySymbol)
-                                .font(.caption)
-                                .frame(width: 18, height: 18)
-                                .foregroundStyle(WMC.red)
+                        Link(destination: URL(string: item.bookID != nil ? "monocle://card?id=\(item.bookID!.uuidString)" : "monocle://home")!) {
+                            HStack(spacing: 8) {
+                                Image(systemName: item.categorySymbol)
+                                    .font(.caption)
+                                    .frame(width: 18, height: 18)
+                                    .foregroundStyle(WMC.red)
 
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(item.title)
-                                    .font(.caption.weight(.medium))
-                                    .lineLimit(1)
-                                Text(item.timeFormatted)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(item.title)
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    Text(item.timeFormatted)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Text(WMC.formatIDR(item.amount, currency: false))
+                                    .font(.caption.weight(.semibold).monospaced())
+                                    .foregroundStyle(.primary)
                             }
-
-                            Spacer()
-
-                            Text(WMC.formatIDR(item.amount, currency: false))
-                                .font(.caption.weight(.semibold).monospaced())
                         }
                     }
                     Spacer()
                 }
             }
         }
-        .widgetURL(URL(string: "monocle://entry"))
+        .widgetURL(URL(string: "monocle://home"))
     }
 
     private var circularView: some View {

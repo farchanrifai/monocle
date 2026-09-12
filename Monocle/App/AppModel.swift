@@ -162,6 +162,7 @@ final class AppModel {
         set {
             workspacePreferences.activeStackID = newValue
             persistWorkspacePreferences()
+            syncWidgetSnapshot()
         }
     }
 
@@ -288,11 +289,14 @@ final class AppModel {
         guard let saved = expenses.first(where: { $0.id == draft.id }) else { return draft.hasContent }
         return (try? draft.expense()) != saved
     }
-    func openEntry(for bookID: UUID? = nil) {
+    func openEntry(for bookID: UUID? = nil, categoryID: UUID? = nil) {
         if let bookID {
             draft.bookID = bookID
         } else if draft.bookID == nil {
             draft.bookID = selectedBookID ?? activeBookID
+        }
+        if let categoryID, let cat = category(categoryID) {
+            draft.categoryID = cat.id
         }
         showEntry = true
     }
@@ -331,6 +335,28 @@ final class AppModel {
         guard let pendingEntry, discardDraft() else { return }
         self.pendingEntry = nil
         if pendingRepeat { repeatExpense(pendingEntry) } else { edit(pendingEntry) }
+    }
+
+    func openCardInHome(id: UUID) {
+        selectedTab = 0
+        showEntry = false
+        showSettings = false
+        if !visibleBooks.contains(where: { $0.id == id }) {
+            if let stack = stacks.first(where: { $0.cardIDs.contains(id) }) {
+                setActiveStack(id: stack.id)
+            } else {
+                filterScope = .allCards
+            }
+        }
+        selectBook(id)
+    }
+
+    func openStackInHome(id: UUID) {
+        selectedTab = 0
+        showEntry = false
+        showSettings = false
+        selectedBookID = nil
+        setActiveStack(id: id)
     }
 
     func selectBook(_ id: UUID) {
@@ -555,9 +581,19 @@ final class AppModel {
 
     func syncWidgetSnapshot() {
         guard let activeBook = books.first(where: { $0.id == activeBookID }) ?? books.first else { return }
+        let stack = currentStack
+        let stackExp: [Expense] = {
+            if let stack {
+                return books.filter { stack.cardIDs.contains($0.id) }.flatMap { expenses(for: $0.id) }
+            }
+            return expenses
+        }()
         WidgetSnapshotUpdater.update(
             activeBook: activeBook,
+            activeStack: stack,
+            allBooks: books,
             expenses: expenses,
+            stackExpenses: stackExp,
             categories: categories,
             budget: activeBudget,
             cycle: cycle

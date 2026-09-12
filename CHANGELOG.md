@@ -2,6 +2,19 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.1] - 2026-09-12
+### Differentiated Widget Navigation & Stacks Widget
+- **New Stacks Widget (`StackWidget`)**:
+  - Home and Lock Screen widget showcasing active stack identity, member card count, and total stack spend.
+  - Tapping the Stacks widget deep links into Monocle with that stack selected in the Home deck (`monocle://stack?id=...`).
+- **Contextual Tap Actions Across Widget Suite**:
+  - **`+` Capture Widgets** (`QuickCaptureWidget`): Category shortcuts pre-select the category in the entry sheet (`monocle://entry?category=...`), and `+ Add` directly opens expense logging.
+  - **Card Stats Widgets** (`BudgetWidget`): Tapping directly opens the card's transaction list in the Home deck (`monocle://card?id=...`).
+  - **Today Stats Widgets** (`TodaySpendingWidget`): Opens Monocle Home without triggering the Add modal (`monocle://home`), with individual recent items deep linking to their parent card.
+  - **Live Activity** (`SpendingActivityWidget`): Background tap navigates to active session/home, while the `+ Add expense` pill opens quick entry.
+- **Deep Link Routing**:
+  - Added URL routes for `monocle://card`, `monocle://stack`, `monocle://home`, and category-aware `monocle://entry`.
+
 ## [0.7.0] - 2026-09-12
 ### Interactive WidgetKit Suite & Live Activities
 - **Home & Lock Screen Widgets**:

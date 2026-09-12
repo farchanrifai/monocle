@@ -60,11 +60,34 @@ struct RootView: View {
         .onChange(of: model.draft) { _, _ in model.persistDraft() }
         .onOpenURL { url in
             guard url.scheme == "monocle" else { return }
-            if url.host == "entry" {
-                model.openEntry()
-            } else if url.host == "analytics" {
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let queryItems = components?.queryItems ?? []
+            let host = url.host ?? ""
+
+            if host == "entry" {
+                let catIDStr = queryItems.first(where: { $0.name == "category" })?.value
+                let catID = catIDStr.flatMap(UUID.init)
+                let bookIDStr = queryItems.first(where: { $0.name == "book" || $0.name == "card" })?.value
+                let bookID = bookIDStr.flatMap(UUID.init)
+                model.openEntry(for: bookID, categoryID: catID)
+            } else if host == "card" || host == "book" {
+                let cardIDStr = queryItems.first(where: { $0.name == "id" })?.value
+                let cardID = cardIDStr.flatMap(UUID.init) ?? model.activeBookID
+                model.openCardInHome(id: cardID)
+            } else if host == "stack" {
+                let stackIDStr = queryItems.first(where: { $0.name == "id" })?.value
+                if let stackID = stackIDStr.flatMap(UUID.init) ?? model.activeStackID {
+                    model.openStackInHome(id: stackID)
+                }
+            } else if host == "home" || host == "today" {
+                model.showEntry = false
+                model.showSettings = false
+                model.selectedTab = 0
+            } else if host == "analytics" {
+                model.showEntry = false
+                model.showSettings = false
                 model.selectedTab = 1
-            } else if url.host == "session" {
+            } else if host == "session" {
                 if url.path == "/end" {
                     model.sessionManager.endSession()
                 } else if !model.sessionManager.isSessionActive {

@@ -88,7 +88,7 @@ struct BudgetWidgetEntryView: View {
                     .foregroundStyle(WMC.red)
             }
         }
-        .widgetURL(URL(string: "monocle://entry"))
+        .widgetURL(URL(string: "monocle://card?id=\(entry.snapshot.activeBook.id.uuidString)"))
     }
 
     private var mediumView: some View {
@@ -158,7 +158,7 @@ struct BudgetWidgetEntryView: View {
             }
             .frame(maxWidth: 130)
         }
-        .widgetURL(URL(string: "monocle://entry"))
+        .widgetURL(URL(string: "monocle://card?id=\(entry.snapshot.activeBook.id.uuidString)"))
     }
 
     private var circularView: some View {
@@ -203,8 +203,8 @@ struct BudgetWidget: Widget {
                     Color(uiColor: .systemBackground)
                 }
         }
-        .configurationDisplayName("Budget & Pacing")
-        .description("Glance at remaining budget, daily allowance, and cycle pacing.")
+        .configurationDisplayName("Card Budget")
+        .description("Glance at remaining budget, daily allowance, and cycle pacing for your active card.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,

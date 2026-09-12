@@ -16,6 +16,7 @@
 		1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
 		2632A060A85BB7A9F0136CD0 /* ExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */; };
 		27FBC893C5758EE673836A2E /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE599406EF5472DD7EFA518D /* BudgetWidget.swift */; };
+		8A1278C5209DE84310A0B001 /* StackWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B2389D631AFE95421B1C002 /* StackWidget.swift */; };
 		2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */; };
 		2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
 		2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 259DC603F39D197686C31B1F /* MonocleTests.swift */; };
@@ -163,6 +164,7 @@
 		BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryValidation.swift; sourceTree = "<group>"; };
 		BFAB59F8D69B863E198985F9 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
 		CE599406EF5472DD7EFA518D /* BudgetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetWidget.swift; sourceTree = "<group>"; };
+		9B2389D631AFE95421B1C002 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
 		D433FF1198DE03E544B102E2 /* BudgetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetsView.swift; sourceTree = "<group>"; };
 		D4633CBE5D575706F42975ED /* CardCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomization.swift; sourceTree = "<group>"; };
 		D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBackTelemetryView.swift; sourceTree = "<group>"; };
@@ -187,6 +189,7 @@
 				16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */,
 				4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */,
 				4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */,
+				9B2389D631AFE95421B1C002 /* StackWidget.swift */,
 				84DDCA149038B9ABD6CC37B7 /* TodaySpendingWidget.swift */,
 				8B13DB25ED5CA2073CCB5418 /* WidgetStyle.swift */,
 			);
@@ -578,6 +581,7 @@
 				38D80CE49FF838CA72FAFEB0 /* MonocleWidgetsBundle.swift in Sources */,
 				CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */,
 				A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */,
+				8A1278C5209DE84310A0B001 /* StackWidget.swift in Sources */,
 				63C99A25D34B615A9CCD9D0A /* TodaySpendingWidget.swift in Sources */,
 				048A925144F7E74950D05BA3 /* WidgetSnapshot.swift in Sources */,
 				707E431F5CE77BD981B66BA9 /* WidgetSnapshotStore.swift in Sources */,
@@ -675,7 +679,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 59;
+				CURRENT_PROJECT_VERSION = 60;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -696,7 +700,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -785,7 +789,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 59;
+				CURRENT_PROJECT_VERSION = 60;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -800,7 +804,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
