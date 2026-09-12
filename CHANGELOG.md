@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.19] - 2026-09-12
+### Softer header transition
+- Reduce the header paper tint and extend its feathering for a gentler transition into translucent content.
+- Use one smooth fade for the native material and tint, removing the abrupt shoulder beneath the toolbar.
+- Ease header visibility over a longer scroll distance while keeping scrolling directly responsive to the finger.
+- Preserve toolbar layout, controls, and card spring physics.
+
 ## [0.6.18] - 2026-09-12
 ### Reliability and performance audit
 - Commit CSV batches and bill expense/occurrence updates atomically; prevent repeated confirmation and cross-book occurrence deletion.

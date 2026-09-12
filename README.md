@@ -2,7 +2,7 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current release: 0.6.18, build 54.** Local-first expense tracking with multiple books, budgets, recurring bills, CSV interchange, and backup/restore. See the [quality and reliability audit](docs/audit/2026-09-12.md) for changes, verification, and remaining device-validation limits.
+**Current release: 0.6.19, build 55.** Local-first expense tracking with multiple books, budgets, recurring bills, CSV interchange, and backup/restore. See the [quality and reliability audit](docs/audit/2026-09-12.md) for changes, verification, and remaining device-validation limits.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)

@@ -337,46 +337,37 @@ struct BookHomeView: View {
         }
     }
 
-    @ViewBuilder
     private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
-        let showBlur = selectedID == nil || detailScroll > 5
-        let progress: CGFloat = selectedID == nil ? 1.0 : min(max((detailScroll - 5) / 25, 0), 1.0)
-        let totalHeight = safeAreaTop + 52 + 28
-        let solidFraction = min(max((safeAreaTop + 48) / totalHeight, 0.1), 0.95)
+        let toolbarHeight: CGFloat = 52
+        let featherHeight: CGFloat = 44
+        let totalHeight = safeAreaTop + toolbarHeight + featherHeight
+        let fadeStart = safeAreaTop + 8
+        let fadeLength = totalHeight - fadeStart
 
-        ZStack(alignment: .top) {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .mask {
-                    LinearGradient(
-                        stops: [
-                            .init(color: .black, location: 0.0),
-                            .init(color: .black, location: solidFraction),
-                            .init(color: .black.opacity(0.85), location: min(solidFraction + (1.0 - solidFraction) * 0.35, 0.98)),
-                            .init(color: .black.opacity(0.35), location: min(solidFraction + (1.0 - solidFraction) * 0.70, 0.99)),
-                            .init(color: .clear, location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-
-            LinearGradient(
-                stops: [
-                    .init(color: paper.opacity(0.92), location: 0.0),
-                    .init(color: paper.opacity(0.92), location: solidFraction),
-                    .init(color: paper.opacity(0.40), location: min(solidFraction + (1.0 - solidFraction) * 0.50, 0.98)),
-                    .init(color: paper.opacity(0.0), location: 1.0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+        // A smoothstep has zero slope at both ends: no hard shoulder beneath
+        // the toolbar and no visible cutoff at the bottom of the material.
+        let stops: [Gradient.Stop] = [.init(color: .black, location: 0)] + (0...16).map { step in
+            let t = CGFloat(step) / 16
+            let opacity = 1 - t * t * (3 - 2 * t)
+            return .init(color: .black.opacity(Double(opacity)),
+                         location: (fadeStart + fadeLength * t) / totalHeight)
         }
-        .opacity(showBlur ? progress : 0.0)
-        .frame(height: totalHeight)
-        .ignoresSafeArea(edges: .top)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: showBlur)
-        .allowsHitTesting(false)
+        let scrollFraction = min(max((detailScroll - 5) / 64, 0), 1)
+        let scrollOpacity = scrollFraction * scrollFraction * (3 - 2 * scrollFraction)
+
+        return Rectangle()
+            .fill(.ultraThinMaterial)
+            .overlay(paper.opacity(0.52))
+            // Composite first, then fade once so tint and material share an edge.
+            .mask {
+                LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
+            }
+            .frame(height: totalHeight)
+            .opacity(expanded ? scrollOpacity : 1)
+            .ignoresSafeArea(edges: .top)
+            // Animate screen changes only; scroll updates stay attached to the finger.
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: expanded)
+            .allowsHitTesting(false)
     }
 
     private func topBar(safeAreaTop: CGFloat) -> some View {
