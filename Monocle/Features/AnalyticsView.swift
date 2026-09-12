@@ -7,7 +7,7 @@ struct AnalyticsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
-    @State private var selectedScope: AnalyticsScope = .activeBook
+    @State private var selectedScope: AnalyticsFilterScope = .allCards
     @State private var scrubbedDate: Date? = nil
     @State private var selectedCategoryID: UUID? = nil
     @State private var selectedChartAngle: Int64? = nil
@@ -37,7 +37,7 @@ struct AnalyticsView: View {
                     dailyRhythmCard
                     monthOverMonthCard
                     categoryBreakdownCard
-                    if selectedScope == .allBooks {
+                    if !selectedScope.isCard && bookPoints.count > 1 {
                         crossBookBreakdownCard
                     }
                 }
@@ -55,6 +55,28 @@ struct AnalyticsView: View {
                     }
                 }
             }
+            .onAppear {
+                syncScopeWithHomeContext()
+            }
+            .onChange(of: model.filterScope) { _, _ in
+                syncScopeWithHomeContext()
+            }
+            .onChange(of: model.activeStackID) { _, _ in
+                syncScopeWithHomeContext()
+            }
+            .onChange(of: model.selectedBookID) { _, _ in
+                syncScopeWithHomeContext()
+            }
+        }
+    }
+
+    private func syncScopeWithHomeContext() {
+        if let cardID = model.selectedBookID, let card = model.books.first(where: { $0.id == cardID }) {
+            selectedScope = .card(id: card.id, name: card.name)
+        } else if model.filterScope == .activeStack, let stack = model.currentStack {
+            selectedScope = .stack(id: stack.id, name: stack.name)
+        } else {
+            selectedScope = .allCards
         }
     }
 
@@ -62,9 +84,18 @@ struct AnalyticsView: View {
 
     private var targetExpenses: [Expense] {
         switch selectedScope {
-        case .activeBook:
-            return model.expenses(for: model.activeBookID)
-        case .allBooks:
+        case .stack(let id, _):
+            guard let stack = model.stacks.first(where: { $0.id == id }) else {
+                return model.allExpenses()
+            }
+            let cardIDs = Set(stack.cardIDs)
+            return model.allExpenses().filter { exp in
+                guard let bid = exp.bookID else { return false }
+                return cardIDs.contains(bid)
+            }
+        case .card(let id, _):
+            return model.expenses(for: id)
+        case .allCards:
             return model.allExpenses()
         }
     }
@@ -84,12 +115,15 @@ struct AnalyticsView: View {
         )
     }
 
-    private var dailyPoints: [DailySpendPoint] {
-        let budgetLimit = (selectedScope == .activeBook && (selectedHorizon == .thisCycle || selectedHorizon == .thisMonth))
-            ? model.activeBudget.overallLimit
-            : nil
+    private var budgetLimit: Int64? {
+        guard !selectedScope.isAllCards, (selectedHorizon == .thisCycle || selectedHorizon == .thisMonth) else {
+            return nil
+        }
+        return model.activeBudget.overallLimit
+    }
 
-        return AnalyticsEngine.calculateDailySpendPoints(
+    private var dailyPoints: [DailySpendPoint] {
+        AnalyticsEngine.calculateDailySpendPoints(
             expenses: horizonExpenses,
             startDate: currentRange.startDate,
             endDate: currentRange.endDate,
@@ -99,7 +133,7 @@ struct AnalyticsView: View {
 
     private var categoryPoints: [CategorySpendPoint] {
         let limits: [UUID: Int64]
-        if selectedScope == .activeBook {
+        if !selectedScope.isAllCards {
             limits = Dictionary(uniqueKeysWithValues: model.categories.compactMap { cat in
                 model.activeBudget.limit(for: cat.id).map { (cat.id, $0) }
             })
@@ -115,11 +149,33 @@ struct AnalyticsView: View {
     }
 
     private var bookPoints: [BookSpendPoint] {
-        AnalyticsEngine.calculateBookDistribution(
-            expensesByBook: model.allExpensesByBook().mapValues { values in
+        let allByBook = model.allExpensesByBook()
+        let relevantBooks: [BookProfile]
+        let relevantMap: [UUID: [Expense]]
+
+        switch selectedScope {
+        case .stack(let id, _):
+            if let stack = model.stacks.first(where: { $0.id == id }) {
+                let cardIDs = Set(stack.cardIDs)
+                relevantBooks = model.books.filter { cardIDs.contains($0.id) }
+                relevantMap = allByBook.filter { cardIDs.contains($0.key) }
+            } else {
+                relevantBooks = model.books
+                relevantMap = allByBook
+            }
+        case .card(let id, _):
+            relevantBooks = model.books.filter { $0.id == id }
+            relevantMap = allByBook.filter { $0.key == id }
+        case .allCards:
+            relevantBooks = model.books
+            relevantMap = allByBook
+        }
+
+        return AnalyticsEngine.calculateBookDistribution(
+            expensesByBook: relevantMap.mapValues { values in
                 AnalyticsEngine.filterExpenses(values, startDay: currentRange.startDay, endDay: currentRange.endDay)
             },
-            books: model.books
+            books: relevantBooks
         )
     }
 
@@ -128,11 +184,7 @@ struct AnalyticsView: View {
     }
 
     private var metrics: AnalyticsMetrics {
-        let budgetLimit = (selectedScope == .activeBook && (selectedHorizon == .thisCycle || selectedHorizon == .thisMonth))
-            ? model.activeBudget.overallLimit
-            : nil
-
-        return AnalyticsEngine.calculateMetrics(
+        AnalyticsEngine.calculateMetrics(
             dailyPoints: dailyPoints,
             categoryPoints: categoryPoints,
             startDate: currentRange.startDate,
@@ -145,14 +197,7 @@ struct AnalyticsView: View {
 
     private var controlsHeader: some View {
         VStack(spacing: 12) {
-            // Scope Picker
-            Picker("Scope", selection: $selectedScope) {
-                ForEach(AnalyticsScope.allCases) { scope in
-                    Text(scope.rawValue).tag(scope)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("analyticsScopePicker")
+            scopeMenu
 
             // Horizon Chips
             ScrollView(.horizontal, showsIndicators: false) {
@@ -176,6 +221,85 @@ struct AnalyticsView: View {
                 }
             }
         }
+    }
+
+    private var scopeMenu: some View {
+        Menu {
+            if !model.stacks.isEmpty {
+                Section("Stacks") {
+                    ForEach(model.stacks) { stack in
+                        Button {
+                            selectedScope = .stack(id: stack.id, name: stack.name)
+                            model.setActiveStack(id: stack.id)
+                        } label: {
+                            HStack {
+                                Label(stack.name, systemImage: stack.icon)
+                                if case .stack(let id, _) = selectedScope, id == stack.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section("Cards") {
+                ForEach(model.unhiddenBooks) { card in
+                    Button {
+                        selectedScope = .card(id: card.id, name: card.name)
+                    } label: {
+                        HStack {
+                            Label(card.name, systemImage: "creditcard")
+                            if case .card(let id, _) = selectedScope, id == card.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section {
+                Button {
+                    selectedScope = .allCards
+                    model.filterScope = .allCards
+                } label: {
+                    HStack {
+                        Label("All Cards", systemImage: "rectangle.stack")
+                        if case .allCards = selectedScope {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: selectedScope.icon)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MC.red)
+
+                Text(selectedScope.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+
+                Text(selectedScope.subtitle)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.12), in: Capsule())
+
+                Spacer()
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(MC.surface, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .accessibilityIdentifier("analyticsScopeMenu")
     }
 
     // MARK: - KPI Summary Card
@@ -303,11 +427,13 @@ struct AnalyticsView: View {
                 emptyChartPlaceholder(message: "No expense activity in this period")
             } else {
                 Chart {
-                    ForEach(dailyPoints) { pt in
+                    // Series 1: Actual Cumulative Spend (Area + Line) for elapsed days
+                    ForEach(dailyPoints.filter { !$0.isFuture }) { pt in
                         if let cum = pt.cumulativeAmount {
                             AreaMark(
                                 x: .value("Date", pt.date, unit: .day),
-                                y: .value("Cumulative", cum)
+                                y: .value("Cumulative", cum),
+                                series: .value("Series", "Actual Spend")
                             )
                             .foregroundStyle(
                                 LinearGradient(
@@ -320,20 +446,26 @@ struct AnalyticsView: View {
 
                             LineMark(
                                 x: .value("Date", pt.date, unit: .day),
-                                y: .value("Cumulative", cum)
+                                y: .value("Cumulative", cum),
+                                series: .value("Series", "Actual Spend")
                             )
                             .foregroundStyle(MC.red)
                             .lineStyle(StrokeStyle(lineWidth: 2.5))
                             .interpolationMethod(.monotone)
                         }
+                    }
 
+                    // Series 2: Budget Pace Projection (Linear Dashed Line) across entire period
+                    ForEach(dailyPoints) { pt in
                         if let target = pt.targetCumulativeAmount {
                             LineMark(
                                 x: .value("Date", pt.date, unit: .day),
-                                y: .value("Budget Pace", target)
+                                y: .value("Budget Pace", target),
+                                series: .value("Series", "Budget Pace")
                             )
                             .foregroundStyle(Color.secondary.opacity(0.6))
                             .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                            .interpolationMethod(.linear)
                         }
                     }
 
@@ -773,7 +905,7 @@ struct AnalyticsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Spending by Card")
                     .font(.headline)
-                Text("Distribution across active cards")
+                Text(selectedScope.isStack ? "Distribution across cards in this stack" : "Distribution across active cards")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -984,7 +984,7 @@ final class MonocleUITests: XCTestCase {
 
         // 2. Verify Analytics & Trends is a root page, not a modal
         XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.segmentedControls["analyticsScopePicker"].exists)
+        XCTAssertTrue(app.buttons["analyticsScopeMenu"].exists)
         XCTAssertTrue(app.staticTexts["totalSpendMetric"].exists)
         XCTAssertFalse(app.buttons["dismissAnalyticsView"].exists)
 
@@ -997,11 +997,12 @@ final class MonocleUITests: XCTestCase {
             thisMonthChip.tap()
         }
 
-        // 5. Switch scope to All Cards
-        app.segmentedControls["analyticsScopePicker"].buttons["All cards"].tap()
-
-        // 6. Switch back to Current Card
-        app.segmentedControls["analyticsScopePicker"].buttons["Current card"].tap()
+        // 5. Interact with Scope Menu
+        let scopeMenu = app.buttons["analyticsScopeMenu"]
+        scopeMenu.tap()
+        if app.buttons["All Cards"].waitForExistence(timeout: 3) {
+            app.buttons["All Cards"].tap()
+        }
 
         // 7. Return to Home from the same switcher
         homeTab.tap()

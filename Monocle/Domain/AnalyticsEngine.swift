@@ -20,6 +20,51 @@ enum AnalyticsScope: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+enum AnalyticsFilterScope: Equatable, Hashable, Sendable {
+    case stack(id: UUID, name: String)
+    case card(id: UUID, name: String)
+    case allCards
+
+    var title: String {
+        switch self {
+        case .stack(_, let name): return name
+        case .card(_, let name): return name
+        case .allCards: return "All cards"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .stack: return "Stack"
+        case .card: return "Card"
+        case .allCards: return "All cards"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .stack: return "square.stack.3d.up.fill"
+        case .card: return "creditcard.fill"
+        case .allCards: return "rectangle.stack"
+        }
+    }
+
+    var isStack: Bool {
+        if case .stack = self { return true }
+        return false
+    }
+
+    var isCard: Bool {
+        if case .card = self { return true }
+        return false
+    }
+
+    var isAllCards: Bool {
+        if case .allCards = self { return true }
+        return false
+    }
+}
+
 enum SpendingPaceStatus: Equatable, Sendable {
     case underPace(percentage: Int)
     case onTrack

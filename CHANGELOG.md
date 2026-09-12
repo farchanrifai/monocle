@@ -2,6 +2,20 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.6] - 2026-09-12
+### Cumulative Trajectory Decoupling & Stacks-First Analytics Scope
+- **Cumulative Trajectory Decoupling**:
+  - Decoupled `Actual Spend` and `Budget Pace` into two strictly independent Swift Charts series with explicit series keys (`"Actual Spend"` vs `"Budget Pace"`).
+  - Eliminated the saw-tooth zigzag caused by alternating line marks, rendering a smooth monotonic burn-up curve ending at today and a clean dashed guide across the entire 30-day billing cycle.
+- **Stacks & Cards Scope Redesign**:
+  - Replaced the rigid binary `[ Current card | All cards ]` segmented control with an interactive **Scope Menu Pill** (`[ 􀏅 Everyday · Stack ▾ ]`).
+  - **Home Flow Continuity**: Automatically initializes and synchronizes scope with whichever context was active on Home (Active Stack, All Cards, or selected Card).
+  - **Categorized Drilldown**: Provides 1-tap switching between Stacks (with icons and live checkmarks), Individual Cards, and All Active Cards.
+  - **Stack-Scoped Cross-Card Breakdown**: Dynamic "Spending by Card" chart adapts to display spending distribution among cards in the selected stack, or across all active cards.
+- **Domain & Tests**:
+  - Added `AnalyticsFilterScope` in `AnalyticsEngine.swift` supporting stack, card, and global overview scopes.
+  - Added unit test coverage in `AnalyticsTests.swift` and updated UI test suite in `MonocleUITests.swift` (92 unit tests passing).
+
 ## [0.7.5] - 2026-09-12
 ### Analytics Audit & Presentation Enhancements
 - **Calculation & Data Structure Reliability**:

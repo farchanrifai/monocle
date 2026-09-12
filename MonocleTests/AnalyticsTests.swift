@@ -400,4 +400,34 @@ extension AnalyticsTests {
         let sumPct = points.reduce(0.0) { $0 + $1.percentage }
         XCTAssertEqual(sumPct, 1.0, accuracy: 0.001)
     }
+
+    // MARK: - Filter Scope
+
+    func testAnalyticsFilterScopeProperties() {
+        let stackID = UUID()
+        let stackScope = AnalyticsFilterScope.stack(id: stackID, name: "Everyday")
+        XCTAssertTrue(stackScope.isStack)
+        XCTAssertFalse(stackScope.isCard)
+        XCTAssertFalse(stackScope.isAllCards)
+        XCTAssertEqual(stackScope.title, "Everyday")
+        XCTAssertEqual(stackScope.subtitle, "Stack")
+        XCTAssertEqual(stackScope.icon, "square.stack.3d.up.fill")
+
+        let cardID = UUID()
+        let cardScope = AnalyticsFilterScope.card(id: cardID, name: "BCA")
+        XCTAssertFalse(cardScope.isStack)
+        XCTAssertTrue(cardScope.isCard)
+        XCTAssertFalse(cardScope.isAllCards)
+        XCTAssertEqual(cardScope.title, "BCA")
+        XCTAssertEqual(cardScope.subtitle, "Card")
+        XCTAssertEqual(cardScope.icon, "creditcard.fill")
+
+        let allScope = AnalyticsFilterScope.allCards
+        XCTAssertFalse(allScope.isStack)
+        XCTAssertFalse(allScope.isCard)
+        XCTAssertTrue(allScope.isAllCards)
+        XCTAssertEqual(allScope.title, "All cards")
+        XCTAssertEqual(allScope.subtitle, "All cards")
+        XCTAssertEqual(allScope.icon, "rectangle.stack")
+    }
 }
