@@ -484,6 +484,9 @@ struct BookHomeView: View {
         .sheet(isPresented: $model.showAnalytics) {
             AnalyticsView(model: model)
         }
+        .sheet(isPresented: $model.showStartSessionSheet) {
+            startSessionSheet
+        }
         .onAppear {
             if displayedBooks.isEmpty {
                 displayedBooks = model.visibleBooks
@@ -561,6 +564,10 @@ struct BookHomeView: View {
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if model.sessionManager.isSessionActive {
+                    activeSessionPill
+                }
+
                 stackView(width: cardWidth, height: cardHeight, step: step)
                     .frame(height: restingHeight + stackExpansion(displayedBooks), alignment: .top)
 
@@ -1169,6 +1176,20 @@ struct BookHomeView: View {
                     Label("Recurring Bills", systemImage: "calendar")
                 }
                 .accessibilityIdentifier("menuBills")
+
+                Button {
+                    if model.sessionManager.isSessionActive {
+                        model.sessionManager.endSession()
+                    } else {
+                        model.showStartSessionSheet = true
+                    }
+                } label: {
+                    Label(
+                        model.sessionManager.isSessionActive ? "End Spending Session" : "Start Spending Session",
+                        systemImage: model.sessionManager.isSessionActive ? "stop.circle" : "record.circle"
+                    )
+                }
+                .accessibilityIdentifier("menuSpendingSession")
             } label: {
                 Label("Tools & Insights", systemImage: "chart.bar.xaxis")
             }
@@ -1273,5 +1294,111 @@ struct BookHomeView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var activeSessionPill: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(MC.red)
+                .frame(width: 8, height: 8)
+                .overlay(
+                    Circle()
+                        .stroke(MC.red.opacity(0.4), lineWidth: 3)
+                        .scaleEffect(1.4)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.sessionManager.sessionName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(Money.format(model.sessionManager.sessionSpent))
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundStyle(MC.red)
+            }
+
+            Spacer()
+
+            if let startTime = model.sessionManager.sessionStartTime {
+                Text(startTime, style: .timer)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                model.sessionManager.endSession()
+            } label: {
+                Text("End")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.primary.opacity(0.06), in: Capsule())
+            }
+            .buttonStyle(PressFeedbackStyle())
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(MC.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(MC.line, lineWidth: 0.5))
+        .accessibilityIdentifier("activeSessionPill")
+    }
+
+    private var startSessionSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Session Info") {
+                    TextField("Session Name (e.g. Shopping Trip)", text: $model.sessionSheetName)
+                    TextField("Budget Limit in IDR (optional)", text: $model.sessionSheetBudget)
+                        .keyboardType(.numberPad)
+                }
+
+                Section("Quick Presets") {
+                    ForEach(["Shopping Trip", "Weekend Market", "Night Out", "Coffee Run", "Holiday Trip"], id: \.self) { preset in
+                        Button {
+                            model.sessionSheetName = preset
+                        } label: {
+                            HStack {
+                                Text(preset).foregroundStyle(.primary)
+                                Spacer()
+                                if model.sessionSheetName == preset {
+                                    Image(systemName: "checkmark").foregroundStyle(MC.red)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("New Spending Session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        model.showStartSessionSheet = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Start") {
+                        let activeBook = model.books.first(where: { $0.id == model.activeBookID }) ?? model.books.first
+                        let bookName = activeBook?.name ?? "Daily"
+                        var limit: Int64? = nil
+                        if let parsed = try? Money.parse(model.sessionSheetBudget) {
+                            limit = parsed
+                        }
+                        model.sessionManager.startSession(
+                            name: model.sessionSheetName,
+                            bookName: bookName,
+                            budgetLimit: limit
+                        )
+                        model.sessionSheetName = ""
+                        model.sessionSheetBudget = ""
+                        model.showStartSessionSheet = false
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(MC.red)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }

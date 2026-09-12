@@ -60,6 +60,10 @@ final class AppModel {
     var toastID = UUID()
     var saveFeedback = 0
     var pendingEntry: Expense?
+    var sessionManager: SpendingSessionManager { SpendingSessionManager.shared }
+    var showStartSessionSheet = false
+    var sessionSheetName: String = ""
+    var sessionSheetBudget: String = ""
     var pendingRepeat = false
     var undoExpense: Expense?
     private let expenseService: ExpenseService?
@@ -240,6 +244,7 @@ final class AppModel {
         }
         ensureDefaultStack()
         try? expenses.reconcileBills()
+        syncWidgetSnapshot()
     }
 
     init(startupFailure: String) {
@@ -545,6 +550,18 @@ final class AppModel {
         spentCache.removeAll()
         memoizedActivities = nil
         memoizedActivitiesKey = ""
+        syncWidgetSnapshot()
+    }
+
+    func syncWidgetSnapshot() {
+        guard let activeBook = books.first(where: { $0.id == activeBookID }) ?? books.first else { return }
+        WidgetSnapshotUpdater.update(
+            activeBook: activeBook,
+            expenses: expenses,
+            categories: categories,
+            budget: activeBudget,
+            cycle: cycle
+        )
     }
 
     func expenses(for bookID: UUID) -> [Expense] {
@@ -683,6 +700,14 @@ final class AppModel {
             draft = ExpenseDraft(); persistDraft(); showEntry = false
             undoExpense = nil
             saveFeedback += 1
+            if SpendingSessionManager.shared.isSessionActive {
+                let cat = categories.first(where: { $0.id == expense.allocations.first?.categoryID })
+                SpendingSessionManager.shared.recordExpense(
+                    amount: expense.amount,
+                    note: expense.note,
+                    categorySymbol: cat?.symbol
+                )
+            }
             showToast(editing ? "Expense updated" : "Expense recorded")
         } catch { self.error = error.localizedDescription }
     }

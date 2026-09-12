@@ -8,53 +8,67 @@
 
 /* Begin PBXBuildFile section */
 		017729CBC6933B915C34CB21 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6486A991712AB436BBFA6A1D /* EntryView.swift */; };
+		048A925144F7E74950D05BA3 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
 		0D620B558ECBCB24392F65FD /* CategoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C573062CE2769892729F737 /* CategoryManager.swift */; };
 		0F6F3FFB14D8DD030BEC004F /* BackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7626BE09A6EE4CB31A47D198 /* BackupTests.swift */; };
+		110FAD1B3C0E0290C56184FC /* CSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37911938CA6DB5DDAECA328B /* CSVTests.swift */; };
+		12321F76FEE42D2EAFE3275B /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */; };
 		1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
 		2632A060A85BB7A9F0136CD0 /* ExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */; };
+		27FBC893C5758EE673836A2E /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE599406EF5472DD7EFA518D /* BudgetWidget.swift */; };
 		2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */; };
 		2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
 		2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 259DC603F39D197686C31B1F /* MonocleTests.swift */; };
+		3151F6D2CBC78C6E0F550D15 /* WidgetSnapshotUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB0A6327C10E9A9C31261974 /* WidgetSnapshotUpdater.swift */; };
+		31960A13046819AFDB1911A5 /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD9FB88E2A572D015D39DA4 /* CardArtworkStore.swift */; };
 		31E1C2727B36CA6DDE0FB01A /* BookHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */; };
+		3421645B1CC48225EE42CA27 /* WidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B13DB25ED5CA2073CCB5418 /* WidgetStyle.swift */; };
 		37B80FDB18C1C00EA9CFCEE8 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C6F2F7E78348046E865E34 /* BackupService.swift */; };
+		38D80CE49FF838CA72FAFEB0 /* MonocleWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */; };
 		3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */; };
 		40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15119B5A62BE722F4E6FA3B4 /* AppLock.swift */; };
+		43CF2AB8B75D34B1C999940C /* SpendingSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8DBB20CD055FF10D332F /* SpendingSessionManager.swift */; };
 		4F6ECEAEF550F957029CEB09 /* CategoryAndLocaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */; };
+		513A64D5406ECE7A34AC5B43 /* AnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9724B1C00A878339AAC34BE8 /* AnalyticsTests.swift */; };
 		5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C095F291D89DF974579CA6 /* AppEnvironment.swift */; };
+		5D29416C2734213E56EC7E4C /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
+		5FD7E297A1285B47858B55DE /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62059E64D0898BAE71F1C761 /* Bill.swift */; };
+		63C99A25D34B615A9CCD9D0A /* TodaySpendingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DDCA149038B9ABD6CC37B7 /* TodaySpendingWidget.swift */; };
+		65BD656F2456EDCE89D877FA /* CSVInterchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */; };
 		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
 		671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */; };
-		B1117E575000000000000001 /* BillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1117E575000000000000002 /* BillTests.swift */; };
 		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
+		6D11DFDFBBE1E716A21AF997 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4633CBE5D575706F42975ED /* CardCustomization.swift */; };
+		707E431F5CE77BD981B66BA9 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */; };
+		82656E5ED834FC2CE64BE243 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
+		85CEEF28F521F31304E69058 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CD7790B75B1AA86918043C /* CardCustomizerView.swift */; };
+		8F2B2BAF7BEBD04DE9D4060B /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */; };
 		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
 		9321C8B23F73EED9EA109E04 /* LocalStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */; };
+		97C85326D836EB3446CC59B6 /* BillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */; };
+		9855DB0AA96F706694837126 /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEB4F6A31934928B688178D /* BillReconciliationEngine.swift */; };
+		A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */; };
+		A5DF105D10DC5C7A4FB122C1 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */; };
+		A915ADE62CAC7D29C79F273F /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */; };
 		ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */; };
+		AE96304FEA75BDDC336291AB /* MonocleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57F4157D596D4DED7003596D /* MonocleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82F954B55004100EBACB8D /* AppModel.swift */; };
 		B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D433FF1198DE03E544B102E2 /* BudgetsView.swift */; };
+		B42BEC75B82DAD88D288D4CC /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
 		B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8205E545FE1B914526921654 /* RecentsView.swift */; };
 		BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */; };
 		C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */; };
 		C8E13ADF4E646F830D5BC69A /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE369F72DE2591D9D60E1B77 /* BackupView.swift */; };
+		CD0326437A18DBDFEA2F5DD6 /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71073E7844EEEC92CAB6515F /* WidgetSnapshotTests.swift */; };
+		CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */; };
 		DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */; };
 		E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */; };
 		E802991A6C68D4C9D4C7C56E /* BookBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5917E02740846F6B5ED016CC /* BookBackup.swift */; };
 		E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9824AED70CAEA0CCB49515DA /* FoundationTests.swift */; };
+		E96BFA92344378EEABD6831F /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
+		EA063225367C0294629084A8 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4391823DC40DCB9EC94E3F48 /* AnalyticsEngine.swift */; };
 		ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAB59F8D69B863E198985F9 /* BillsView.swift */; };
 		F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */; };
-		CC0000022D75000100000001 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000001 /* CardCustomization.swift */; };
-		CC0000022D75000100000002 /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000002 /* CardArtworkStore.swift */; };
-		CC0000022D75000100000003 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000003 /* StockDesignViews.swift */; };
-		CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000004 /* CardCustomizerView.swift */; };
-		CC0000022D75000100000005 /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000005 /* StackCustomizerView.swift */; };
-		CC0000022D75000100000011 /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000011 /* Bill.swift */; };
-		CC0000022D75000100000012 /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000012 /* BillReconciliationEngine.swift */; };
-		CC0000022D75000100000013 /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000013 /* BillNotificationService.swift */; };
-		CC0000022D75000100000021 /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000021 /* CSVEngine.swift */; };
-		CC0000022D75000100000022 /* CSVInterchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000022 /* CSVInterchangeView.swift */; };
-		CC0000022D75000100000023 /* CSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000023 /* CSVTests.swift */; };
-		CC0000022D75000100000024 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000024 /* AnalyticsEngine.swift */; };
-		CC0000022D75000100000025 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000025 /* AnalyticsView.swift */; };
-		CC0000022D75000100000026 /* AnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000026 /* AnalyticsTests.swift */; };
-		CC0000022D75000100000027 /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000012D75000100000027 /* CardBackTelemetryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +79,13 @@
 			remoteGlobalIDString = 73AFF616301102E5C5194738;
 			remoteInfo = Monocle;
 		};
+		903B6F53E13A18CF419C3808 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0D9692AB4DCFB86AA099BB4B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 910E2A70E2B296D3802A981B;
+			remoteInfo = MonocleWidgets;
+		};
 		CC7030469A4307AFFB77414B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0D9692AB4DCFB86AA099BB4B /* Project object */;
@@ -74,69 +95,110 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		6DCB039894614A9CD8FF0C2E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AE96304FEA75BDDC336291AB /* MonocleWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleBookSeeder.swift; sourceTree = "<group>"; };
 		0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
+		0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
+		10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
 		15119B5A62BE722F4E6FA3B4 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleWidgetsBundle.swift; sourceTree = "<group>"; };
+		24CD7790B75B1AA86918043C /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
 		259DC603F39D197686C31B1F /* MonocleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleTests.swift; sourceTree = "<group>"; };
+		2679FE721B268DBD7023B84F /* Monocle.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Monocle.entitlements; sourceTree = "<group>"; };
+		2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotStore.swift; sourceTree = "<group>"; };
+		37911938CA6DB5DDAECA328B /* CSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVTests.swift; sourceTree = "<group>"; };
 		3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiBookTests.swift; sourceTree = "<group>"; };
-		B1117E575000000000000002 /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
 		41C095F291D89DF974579CA6 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		4391823DC40DCB9EC94E3F48 /* AnalyticsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEngine.swift; sourceTree = "<group>"; };
 		43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
+		44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
+		4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureWidget.swift; sourceTree = "<group>"; };
+		4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingActivityWidget.swift; sourceTree = "<group>"; };
 		55C6F2F7E78348046E865E34 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
+		57F4157D596D4DED7003596D /* MonocleWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MonocleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5917E02740846F6B5ED016CC /* BookBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookBackup.swift; sourceTree = "<group>"; };
 		5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookHomeView.swift; sourceTree = "<group>"; };
 		5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleUITests.swift; sourceTree = "<group>"; };
 		5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV1.xcdatamodel; sourceTree = "<group>"; };
+		62059E64D0898BAE71F1C761 /* Bill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bill.swift; sourceTree = "<group>"; };
 		6486A991712AB436BBFA6A1D /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
 		65AF43141767E4C3DFD4DBFA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleStyle.swift; sourceTree = "<group>"; };
+		68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVEngine.swift; sourceTree = "<group>"; };
 		6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseIntents.swift; sourceTree = "<group>"; };
 		6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryPicker.swift; sourceTree = "<group>"; };
 		6C573062CE2769892729F737 /* CategoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryManager.swift; sourceTree = "<group>"; };
+		71073E7844EEEC92CAB6515F /* WidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotTests.swift; sourceTree = "<group>"; };
 		7626BE09A6EE4CB31A47D198 /* BackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
+		7F1E5ADD2F79A00BBA98572F /* MonocleV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV3.xcdatamodel; sourceTree = "<group>"; };
+		80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
 		8205E545FE1B914526921654 /* RecentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentsView.swift; sourceTree = "<group>"; };
 		849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		84DDCA149038B9ABD6CC37B7 /* TodaySpendingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodaySpendingWidget.swift; sourceTree = "<group>"; };
 		87F9018A4325E0300B4CA9C9 /* Monocle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Monocle.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B13DB25ED5CA2073CCB5418 /* WidgetStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
+		8DD9FB88E2A572D015D39DA4 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
+		9724B1C00A878339AAC34BE8 /* AnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsTests.swift; sourceTree = "<group>"; };
 		9824AED70CAEA0CCB49515DA /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleApp.swift; sourceTree = "<group>"; };
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
+		ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAndLocaleTests.swift; sourceTree = "<group>"; };
 		AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseService.swift; sourceTree = "<group>"; };
 		BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryValidation.swift; sourceTree = "<group>"; };
 		BFAB59F8D69B863E198985F9 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
+		CE599406EF5472DD7EFA518D /* BudgetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetWidget.swift; sourceTree = "<group>"; };
 		D433FF1198DE03E544B102E2 /* BudgetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetsView.swift; sourceTree = "<group>"; };
+		D4633CBE5D575706F42975ED /* CardCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomization.swift; sourceTree = "<group>"; };
+		D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBackTelemetryView.swift; sourceTree = "<group>"; };
+		DB0A6327C10E9A9C31261974 /* WidgetSnapshotUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotUpdater.swift; sourceTree = "<group>"; };
+		DC903D25750DE722F4AF1648 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
+		E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillNotificationService.swift; sourceTree = "<group>"; };
 		E88A8115A260295093DD9EEA /* MonocleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EAE6B2EDE434F3EAB4F40462 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EC82F954B55004100EBACB8D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		EE369F72DE2591D9D60E1B77 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 		F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseRepository.swift; sourceTree = "<group>"; };
+		F85F8DBB20CD055FF10D332F /* SpendingSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingSessionManager.swift; sourceTree = "<group>"; };
+		FDEB4F6A31934928B688178D /* BillReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillReconciliationEngine.swift; sourceTree = "<group>"; };
 		FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV2.xcdatamodel; sourceTree = "<group>"; };
-		CC0000012D75000100000001 /* CardCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomization.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000002 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000003 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000004 /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000005 /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000010 /* MonocleV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV3.xcdatamodel; sourceTree = "<group>"; };
-		CC0000012D75000100000011 /* Bill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bill.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000012 /* BillReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillReconciliationEngine.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000013 /* BillNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillNotificationService.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000021 /* CSVEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVEngine.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000022 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000023 /* CSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVTests.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000024 /* AnalyticsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEngine.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000025 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000026 /* AnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsTests.swift; sourceTree = "<group>"; };
-		CC0000012D75000100000027 /* CardBackTelemetryView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CardBackTelemetryView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		15E5929C4AA1C444F4F2EA0E /* MonocleWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				CE599406EF5472DD7EFA518D /* BudgetWidget.swift */,
+				16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */,
+				4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */,
+				4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */,
+				84DDCA149038B9ABD6CC37B7 /* TodaySpendingWidget.swift */,
+				8B13DB25ED5CA2073CCB5418 /* WidgetStyle.swift */,
+			);
+			path = MonocleWidgets;
+			sourceTree = "<group>";
+		};
 		25F581C22AB6C648F383ACB3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				65AF43141767E4C3DFD4DBFA /* Assets.xcassets */,
 				EAE6B2EDE434F3EAB4F40462 /* Info.plist */,
+				2679FE721B268DBD7023B84F /* Monocle.entitlements */,
 				4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */,
 			);
 			path = Resources;
@@ -160,7 +222,7 @@
 		3B0E9DB67034274B29F020A5 /* Persistence */ = {
 			isa = PBXGroup;
 			children = (
-				CC0000012D75000100000002 /* CardArtworkStore.swift */,
+				8DD9FB88E2A572D015D39DA4 /* CardArtworkStore.swift */,
 				F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */,
 				AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */,
 				02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */,
@@ -171,8 +233,9 @@
 		408D30AC2E99AD73FEC1E498 /* Integrations */ = {
 			isa = PBXGroup;
 			children = (
-				CC0000012D75000100000013 /* BillNotificationService.swift */,
+				E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */,
 				6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */,
+				604F2A4CBCDF83630B90D989 /* Widgets */,
 			);
 			path = Integrations;
 			sourceTree = "<group>";
@@ -183,6 +246,7 @@
 				266C43C1059C729360C3ED11 /* Monocle */,
 				C1CEA2A82A47AEC4152289B5 /* MonocleTests */,
 				569BAF5F10043B68C9864B54 /* MonocleUITests */,
+				15E5929C4AA1C444F4F2EA0E /* MonocleWidgets */,
 				83CFA0EAA244EBAC26DD0857 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -195,12 +259,24 @@
 			path = MonocleUITests;
 			sourceTree = "<group>";
 		};
+		604F2A4CBCDF83630B90D989 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				F85F8DBB20CD055FF10D332F /* SpendingSessionManager.swift */,
+				44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */,
+				2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */,
+				DB0A6327C10E9A9C31261974 /* WidgetSnapshotUpdater.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
 		83CFA0EAA244EBAC26DD0857 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				87F9018A4325E0300B4CA9C9 /* Monocle.app */,
 				849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */,
 				E88A8115A260295093DD9EEA /* MonocleUITests.xctest */,
+				57F4157D596D4DED7003596D /* MonocleWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -226,13 +302,13 @@
 		A07D2AE17C967AD64F16123F /* Domain */ = {
 			isa = PBXGroup;
 			children = (
-				CC0000012D75000100000011 /* Bill.swift */,
-				CC0000012D75000100000012 /* BillReconciliationEngine.swift */,
+				4391823DC40DCB9EC94E3F48 /* AnalyticsEngine.swift */,
+				62059E64D0898BAE71F1C761 /* Bill.swift */,
+				FDEB4F6A31934928B688178D /* BillReconciliationEngine.swift */,
 				5917E02740846F6B5ED016CC /* BookBackup.swift */,
-				CC0000012D75000100000001 /* CardCustomization.swift */,
+				D4633CBE5D575706F42975ED /* CardCustomization.swift */,
 				BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */,
-				CC0000012D75000100000021 /* CSVEngine.swift */,
-				CC0000012D75000100000024 /* AnalyticsEngine.swift */,
+				68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */,
 				AB0C913F4994169E78CFEEF8 /* Expense.swift */,
 			);
 			path = Domain;
@@ -251,22 +327,22 @@
 		BB1F88F75E574DCC0D17D7AE /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */,
 				EE369F72DE2591D9D60E1B77 /* BackupView.swift */,
 				BFAB59F8D69B863E198985F9 /* BillsView.swift */,
 				5CF0E86F7903FD18E8148AFE /* BookHomeView.swift */,
 				0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */,
 				D433FF1198DE03E544B102E2 /* BudgetsView.swift */,
-				CC0000012D75000100000004 /* CardCustomizerView.swift */,
+				D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */,
+				24CD7790B75B1AA86918043C /* CardCustomizerView.swift */,
 				6C573062CE2769892729F737 /* CategoryManager.swift */,
 				6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */,
-				CC0000012D75000100000022 /* CSVInterchangeView.swift */,
-				CC0000012D75000100000025 /* AnalyticsView.swift */,
-				CC0000012D75000100000027 /* CardBackTelemetryView.swift */,
+				10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
-				CC0000012D75000100000003 /* StockDesignViews.swift */,
-				CC0000012D75000100000005 /* StackCustomizerView.swift */,
+				80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */,
+				DC903D25750DE722F4AF1648 /* StockDesignViews.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -274,14 +350,15 @@
 		C1CEA2A82A47AEC4152289B5 /* MonocleTests */ = {
 			isa = PBXGroup;
 			children = (
+				9724B1C00A878339AAC34BE8 /* AnalyticsTests.swift */,
 				7626BE09A6EE4CB31A47D198 /* BackupTests.swift */,
+				0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */,
 				AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */,
-				CC0000012D75000100000023 /* CSVTests.swift */,
-				CC0000012D75000100000026 /* AnalyticsTests.swift */,
+				37911938CA6DB5DDAECA328B /* CSVTests.swift */,
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
 				259DC603F39D197686C31B1F /* MonocleTests.swift */,
 				3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */,
-				B1117E575000000000000002 /* BillTests.swift */,
+				71073E7844EEEC92CAB6515F /* WidgetSnapshotTests.swift */,
 			);
 			path = MonocleTests;
 			sourceTree = "<group>";
@@ -313,10 +390,12 @@
 			buildPhases = (
 				48095B103BEF19159A412F56 /* Sources */,
 				B30BE6783942427EF800B2EE /* Resources */,
+				6DCB039894614A9CD8FF0C2E /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B1EDE0A5C981B8BE9EB2C999 /* PBXTargetDependency */,
 			);
 			name = Monocle;
 			packageProductDependencies = (
@@ -343,6 +422,23 @@
 			productReference = 849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		910E2A70E2B296D3802A981B /* MonocleWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4758EC693DA38AAD40E0C0C0 /* Build configuration list for PBXNativeTarget "MonocleWidgets" */;
+			buildPhases = (
+				6574613ED73C1D3CF2849044 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MonocleWidgets;
+			packageProductDependencies = (
+			);
+			productName = MonocleWidgets;
+			productReference = 57F4157D596D4DED7003596D /* MonocleWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -362,6 +458,9 @@
 					7D7BE9ACD99661B8014A0105 = {
 						DevelopmentTeam = "";
 					};
+					910E2A70E2B296D3802A981B = {
+						DevelopmentTeam = "";
+					};
 				};
 			};
 			buildConfigurationList = 4C6F7A9ACAB492A276F730BF /* Build configuration list for PBXProject "Monocle" */;
@@ -379,6 +478,7 @@
 			projectRoot = "";
 			targets = (
 				73AFF616301102E5C5194738 /* Monocle */,
+				910E2A70E2B296D3802A981B /* MonocleWidgets */,
 				7D7BE9ACD99661B8014A0105 /* MonocleTests */,
 				2F7879A1881F652AEF3A2788 /* MonocleUITests */,
 			);
@@ -401,14 +501,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				513A64D5406ECE7A34AC5B43 /* AnalyticsTests.swift in Sources */,
 				0F6F3FFB14D8DD030BEC004F /* BackupTests.swift in Sources */,
+				97C85326D836EB3446CC59B6 /* BillTests.swift in Sources */,
+				110FAD1B3C0E0290C56184FC /* CSVTests.swift in Sources */,
 				4F6ECEAEF550F957029CEB09 /* CategoryAndLocaleTests.swift in Sources */,
 				E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */,
 				2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */,
 				671CF42C4412B931F1E4F76C /* MultiBookTests.swift in Sources */,
-				B1117E575000000000000001 /* BillTests.swift in Sources */,
-				CC0000022D75000100000023 /* CSVTests.swift in Sources */,
-				CC0000022D75000100000026 /* AnalyticsTests.swift in Sources */,
+				CD0326437A18DBDFEA2F5DD6 /* WidgetSnapshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -424,16 +525,27 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EA063225367C0294629084A8 /* AnalyticsEngine.swift in Sources */,
+				12321F76FEE42D2EAFE3275B /* AnalyticsView.swift in Sources */,
 				5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */,
 				40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */,
 				B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */,
 				37B80FDB18C1C00EA9CFCEE8 /* BackupService.swift in Sources */,
 				C8E13ADF4E646F830D5BC69A /* BackupView.swift in Sources */,
+				5FD7E297A1285B47858B55DE /* Bill.swift in Sources */,
+				B42BEC75B82DAD88D288D4CC /* BillNotificationService.swift in Sources */,
+				9855DB0AA96F706694837126 /* BillReconciliationEngine.swift in Sources */,
 				ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */,
 				E802991A6C68D4C9D4C7C56E /* BookBackup.swift in Sources */,
 				31E1C2727B36CA6DDE0FB01A /* BookHomeView.swift in Sources */,
 				ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */,
 				B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */,
+				E96BFA92344378EEABD6831F /* CSVEngine.swift in Sources */,
+				65BD656F2456EDCE89D877FA /* CSVInterchangeView.swift in Sources */,
+				31960A13046819AFDB1911A5 /* CardArtworkStore.swift in Sources */,
+				A915ADE62CAC7D29C79F273F /* CardBackTelemetryView.swift in Sources */,
+				6D11DFDFBBE1E716A21AF997 /* CardCustomization.swift in Sources */,
+				85CEEF28F521F31304E69058 /* CardCustomizerView.swift in Sources */,
 				0D620B558ECBCB24392F65FD /* CategoryManager.swift in Sources */,
 				2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */,
 				F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */,
@@ -449,19 +561,27 @@
 				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
 				B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */,
 				DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */,
-				CC0000022D75000100000001 /* CardCustomization.swift in Sources */,
-				CC0000022D75000100000002 /* CardArtworkStore.swift in Sources */,
-				CC0000022D75000100000003 /* StockDesignViews.swift in Sources */,
-				CC0000022D75000100000004 /* CardCustomizerView.swift in Sources */,
-				CC0000022D75000100000005 /* StackCustomizerView.swift in Sources */,
-				CC0000022D75000100000011 /* Bill.swift in Sources */,
-				CC0000022D75000100000012 /* BillReconciliationEngine.swift in Sources */,
-				CC0000022D75000100000013 /* BillNotificationService.swift in Sources */,
-				CC0000022D75000100000021 /* CSVEngine.swift in Sources */,
-				CC0000022D75000100000022 /* CSVInterchangeView.swift in Sources */,
-				CC0000022D75000100000024 /* AnalyticsEngine.swift in Sources */,
-				CC0000022D75000100000025 /* AnalyticsView.swift in Sources */,
-				CC0000022D75000100000027 /* CardBackTelemetryView.swift in Sources */,
+				43CF2AB8B75D34B1C999940C /* SpendingSessionManager.swift in Sources */,
+				8F2B2BAF7BEBD04DE9D4060B /* StackCustomizerView.swift in Sources */,
+				5D29416C2734213E56EC7E4C /* StockDesignViews.swift in Sources */,
+				82656E5ED834FC2CE64BE243 /* WidgetSnapshot.swift in Sources */,
+				A5DF105D10DC5C7A4FB122C1 /* WidgetSnapshotStore.swift in Sources */,
+				3151F6D2CBC78C6E0F550D15 /* WidgetSnapshotUpdater.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6574613ED73C1D3CF2849044 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				27FBC893C5758EE673836A2E /* BudgetWidget.swift in Sources */,
+				38D80CE49FF838CA72FAFEB0 /* MonocleWidgetsBundle.swift in Sources */,
+				CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */,
+				A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */,
+				63C99A25D34B615A9CCD9D0A /* TodaySpendingWidget.swift in Sources */,
+				048A925144F7E74950D05BA3 /* WidgetSnapshot.swift in Sources */,
+				707E431F5CE77BD981B66BA9 /* WidgetSnapshotStore.swift in Sources */,
+				3421645B1CC48225EE42CA27 /* WidgetStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -477,6 +597,11 @@
 			isa = PBXTargetDependency;
 			target = 73AFF616301102E5C5194738 /* Monocle */;
 			targetProxy = CC7030469A4307AFFB77414B /* PBXContainerItemProxy */;
+		};
+		B1EDE0A5C981B8BE9EB2C999 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 910E2A70E2B296D3802A981B /* MonocleWidgets */;
+			targetProxy = 903B6F53E13A18CF419C3808 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -495,6 +620,24 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Monocle;
+			};
+			name = Debug;
+		};
+		2FA7F311392A2D3B7729C726 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MonocleWidgets/MonocleWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MonocleWidgets/Info.plist;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.monocle.MonocleWidgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -532,7 +675,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 59;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -553,7 +696,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.6.22;
+				MARKETING_VERSION = 0.7.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -588,6 +731,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Monocle/Resources/Monocle.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monocle/Resources/Info.plist;
@@ -641,7 +785,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 58;
+				CURRENT_PROJECT_VERSION = 59;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -656,7 +800,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.6.22;
+				MARKETING_VERSION = 0.7.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -702,11 +846,30 @@
 			};
 			name = Release;
 		};
+		F424ADA5F334FEA56AD2E71A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MonocleWidgets/MonocleWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MonocleWidgets/Info.plist;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.monocle.MonocleWidgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		F926E5A2DF23E436E38822CC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Monocle/Resources/Monocle.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monocle/Resources/Info.plist;
@@ -729,6 +892,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		4758EC693DA38AAD40E0C0C0 /* Build configuration list for PBXNativeTarget "MonocleWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2FA7F311392A2D3B7729C726 /* Debug */,
+				F424ADA5F334FEA56AD2E71A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		4C6F7A9ACAB492A276F730BF /* Build configuration list for PBXProject "Monocle" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -773,9 +945,9 @@
 			children = (
 				5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */,
 				FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */,
-				CC0000012D75000100000010 /* MonocleV3.xcdatamodel */,
+				7F1E5ADD2F79A00BBA98572F /* MonocleV3.xcdatamodel */,
 			);
-			currentVersion = CC0000012D75000100000010 /* MonocleV3.xcdatamodel */;
+			currentVersion = 7F1E5ADD2F79A00BBA98572F /* MonocleV3.xcdatamodel */;
 			path = Monocle.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

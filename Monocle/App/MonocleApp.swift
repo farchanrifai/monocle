@@ -59,8 +59,18 @@ struct RootView: View {
         }
         .onChange(of: model.draft) { _, _ in model.persistDraft() }
         .onOpenURL { url in
-            guard url.scheme == "monocle", url.host == "entry" else { return }
-            model.openEntry()
+            guard url.scheme == "monocle" else { return }
+            if url.host == "entry" {
+                model.openEntry()
+            } else if url.host == "analytics" {
+                model.selectedTab = 1
+            } else if url.host == "session" {
+                if url.path == "/end" {
+                    model.sessionManager.endSession()
+                } else if !model.sessionManager.isSessionActive {
+                    model.showStartSessionSheet = true
+                }
+            }
         }
     }
 }

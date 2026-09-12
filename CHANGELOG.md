@@ -2,6 +2,20 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.0] - 2026-09-12
+### Interactive WidgetKit Suite & Live Activities
+- **Home & Lock Screen Widgets**:
+  - `BudgetWidget`: `.systemSmall` and `.systemMedium` cycle budget health, remaining IDR, daily allowance pace, and `.accessoryCircular`, `.accessoryRectangular`, `.accessoryInline` Lock Screen gauges.
+  - `TodaySpendingWidget`: track today's spending, transaction count, and recent purchases directly from Home and Lock Screen.
+  - `QuickCaptureWidget`: interactive widget with direct category shortcuts for one-tap expense logging.
+- **ActivityKit & Dynamic Island Live Activity**:
+  - `SpendingActivityWidget`: real-time Active Spending Session with Dynamic Island (compact leading/trailing, minimal, expanded layout with budget progress bar) and Lock Screen live banner.
+  - In-app Session Management: Start/End sessions from Home Options menu (`⋯` -> Tools & Insights -> Start Spending Session) or via URL scheme (`monocle://session`).
+  - Real-time session telemetry: logging expenses while a session is active automatically increments session totals in Dynamic Island and Lock Screen.
+- **Architecture & Packaging**:
+  - Lightweight, atomic `WidgetSnapshot` in shared App Group container (`group.com.farchan.monocle`).
+  - Embedded `MonocleWidgets.appex` extension cleanly packaged for SideStore sideloading.
+
 ## [0.6.22] - 2026-09-12
 ### Native Liquid Glass tab selector
 - Replace the custom Home and Analysis selector with the native iOS tab bar, including hold-and-drag selection.

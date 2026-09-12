@@ -21,6 +21,20 @@
                ReferencedContainer = "container:Monocle.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "910E2A70E2B296D3802A981B"
+               BuildableName = "MonocleWidgets.appex"
+               BlueprintName = "MonocleWidgets"
+               ReferencedContainer = "container:Monocle.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
