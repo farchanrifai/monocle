@@ -5,12 +5,24 @@ struct AnalyticsView: View {
     @Bindable var model: AppModel
     var showsDismissButton = true
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
     @State private var selectedScope: AnalyticsFilterScope = .allCards
     @State private var scrubbedDate: Date? = nil
     @State private var selectedCategoryID: UUID? = nil
     @State private var selectedChartAngle: Int64? = nil
+
+    private var paper: Color {
+        switch model.effectiveDirection(for: colorScheme) {
+        case .light:
+            return MC.paper
+        case .ledger:
+            return Color(red: 0.96, green: 0.94, blue: 0.88)
+        case .instrument, .signal:
+            return .black
+        }
+    }
 
     private let categoryPalette: [Color] = [
         MC.red,
@@ -28,31 +40,40 @@ struct AnalyticsView: View {
     ]
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    controlsHeader
-                    kpiSummaryCard
-                    burnUpTrajectoryCard
-                    dailyRhythmCard
-                    monthOverMonthCard
-                    categoryBreakdownCard
-                    if !selectedScope.isCard && bookPoints.count > 1 {
-                        crossBookBreakdownCard
+        GeometryReader { geometry in
+            let safeAreaTop = geometry.safeAreaInsets.top
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        controlsHeader
+                        kpiSummaryCard
+                        burnUpTrajectoryCard
+                        dailyRhythmCard
+                        monthOverMonthCard
+                        categoryBreakdownCard
+                        if !selectedScope.isCard && bookPoints.count > 1 {
+                            crossBookBreakdownCard
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 96)
+                }
+                .background(paper)
+                .navigationTitle("Analytics & Trends")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbar {
+                    if showsDismissButton {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { dismiss() }
+                                .accessibilityIdentifier("dismissAnalyticsView")
+                        }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-            }
-            .background(MC.paper)
-            .navigationTitle("Analytics & Trends")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if showsDismissButton {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismiss() }
-                            .accessibilityIdentifier("dismissAnalyticsView")
-                    }
+                .overlay(alignment: .top) {
+                    progressiveBlurHeaderBackground(safeAreaTop: safeAreaTop)
+                        .zIndex(1000)
                 }
             }
             .onAppear {
@@ -68,6 +89,31 @@ struct AnalyticsView: View {
                 syncScopeWithHomeContext()
             }
         }
+    }
+
+    private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
+        let toolbarHeight: CGFloat = 44
+        let featherHeight: CGFloat = 22
+        let totalHeight = safeAreaTop + toolbarHeight + featherHeight
+        let fadeStart = safeAreaTop + 8
+        let fadeLength = totalHeight - fadeStart
+
+        let stops: [Gradient.Stop] = [.init(color: .black, location: 0)] + (0...16).map { step in
+            let t = CGFloat(step) / 16
+            let opacity = 1 - t * t * (3 - 2 * t)
+            return .init(color: .black.opacity(Double(opacity)),
+                         location: (fadeStart + fadeLength * t) / totalHeight)
+        }
+
+        return Rectangle()
+            .fill(.ultraThinMaterial)
+            .overlay(paper.opacity(0.52))
+            .mask {
+                LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
+            }
+            .frame(height: totalHeight)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
     }
 
     private func syncScopeWithHomeContext() {

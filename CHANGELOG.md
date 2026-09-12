@@ -2,6 +2,14 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.7] - 2026-09-12
+### Progressive Blur Toolbar & Bottom Navigation Clearance
+- **Progressive Blur Toolbar Background**:
+  - Implemented the same smoothstep progressive blur overlay (`.ultraThinMaterial` + theme-aware paper tint) on the Analytics navigation bar.
+  - Hidden native toolbar background so the "Analytics & Trends" title and actions float over the progressive blur, allowing scrolling charts to smoothly glide and feather out under the status bar.
+- **Bottom Navigation Clearance**:
+  - Added 96pt bottom padding to the Analytics scroll view so the lowest card is never obscured by the floating bottom navigation bar.
+
 ## [0.7.6] - 2026-09-12
 ### Cumulative Trajectory Decoupling & Stacks-First Analytics Scope
 - **Cumulative Trajectory Decoupling**:
