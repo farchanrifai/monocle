@@ -238,6 +238,16 @@ struct CardCustomizerView: View {
                     isNameFieldFocused = true
                 }
             }
+            .onDisappear {
+                photoTask?.cancel()
+                let retained = Set(model.workspacePreferences.cardCustomizations.values.compactMap { custom -> String? in
+                    if case .customPhoto(let filename) = custom.style { return filename }
+                    return nil
+                })
+                for filename in preparedPhotoFilenames where !retained.contains(filename) {
+                    CardArtworkStore.shared.deleteArtwork(filename: filename)
+                }
+            }
             .onChange(of: selectedPhotoItem) { _, newItem in
                 guard let newItem else { return }
                 loadSelectedPhoto(newItem)
@@ -830,30 +840,33 @@ struct CardCustomizerView: View {
         .padding(.horizontal, 20)
     }
 
+    @State private var preparedPhotoFilenames: Set<String> = []
+    @State private var photoTask: Task<Void, Never>?
+
     private func loadSelectedPhoto(_ item: PhotosPickerItem) {
+        photoTask?.cancel()
         isProcessingPhoto = true
         photoError = nil
         let targetBookID = currentBookID
-        Task {
+        photoTask = Task {
+            defer { if !Task.isCancelled { isProcessingPhoto = false } }
             do {
                 guard let data = try await item.loadTransferable(type: Data.self) else {
-                    await MainActor.run {
-                        self.photoError = "Could not read photo data."
-                        self.isProcessingPhoto = false
-                    }
+                    throw BackupError.invalid
+                }
+                try Task.checkCancellation()
+                let filename = try await Task.detached(priority: .userInitiated) {
+                    try CardArtworkStore.shared.saveArtwork(data, for: targetBookID)
+                }.value
+                guard !Task.isCancelled else {
+                    CardArtworkStore.shared.deleteArtwork(filename: filename)
                     return
                 }
-                let filename = try CardArtworkStore.shared.saveArtwork(data, for: targetBookID)
-                await MainActor.run {
-                    self.drafts[targetBookID]?.style = .customPhoto(filename: filename)
-                    self.isProcessingPhoto = false
-                    self.selectedPhotoItem = nil
-                }
+                preparedPhotoFilenames.insert(filename)
+                drafts[targetBookID]?.style = .customPhoto(filename: filename)
+                selectedPhotoItem = nil
             } catch {
-                await MainActor.run {
-                    self.photoError = "Failed to save photo: \(error.localizedDescription)"
-                    self.isProcessingPhoto = false
-                }
+                if !Task.isCancelled { photoError = "Failed to save photo: \(error.localizedDescription)" }
             }
         }
     }

@@ -113,14 +113,13 @@ struct CardAccessibilityModifier: ViewModifier {
 }
 
 struct CardGesturesModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let book: BookProfile
     let index: Int
     let isSelected: Bool
     let expanded: Bool
     let detailScroll: CGFloat
     let displayedBooksCount: Int
-    let onDismissChanged: (CGPoint) -> Void
-    let onDismissEnded: (CGPoint, Bool) -> Void
     let onFlip: () -> Void
     let onCustomize: () -> Void
     let onMoveToFront: () -> Void
@@ -133,11 +132,6 @@ struct CardGesturesModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .allowsHitTesting(!expanded || isSelected)
-            .gesture(CardDismissPan(
-                enabled: isSelected && expanded && detailScroll <= 1,
-                changed: onDismissChanged,
-                ended: onDismissEnded
-            ))
             .gesture(
                 !expanded ?
                 DragGesture(minimumDistance: 7)
@@ -163,10 +157,10 @@ struct CardGesturesModifier: ViewModifier {
                         }
                     }
                     .onEnded { value in
-                        if value.translation.width > 45 {
+                        if value.translation.width > 45 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
                             onMoveToFront()
                         }
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75)) {
                             onSwipeOffsetChanged(0)
                             onSwipingCardIDChanged(nil)
                         }
@@ -421,12 +415,7 @@ struct BookHomeView: View {
             }
             .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1,
                                     changed: updateDismiss, ended: endDismiss))
-            .onChange(of: selectedID) { _, id in
-                guard id != nil else { return }
-                withAnimation(reduceMotion ? .easeOut(duration: 0.15) : opening) {
-                    expanded = true
-                }
-            }
+
         }
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
@@ -519,7 +508,7 @@ struct BookHomeView: View {
             if targetStackKey.isEmpty {
                 targetStackKey = stackKey
             }
-            if let active = model.selectedBookID, let book = displayedBooks.first(where: { $0.id == active }) {
+            if let active = model.selectedBookID, displayedBooks.contains(where: { $0.id == active }) {
                 selectedID = active
                 expanded = true
             }
@@ -768,8 +757,6 @@ struct BookHomeView: View {
                 expanded: expanded,
                 detailScroll: detailScroll,
                 displayedBooksCount: displayedBooks.count,
-                onDismissChanged: updateDismiss,
-                onDismissEnded: endDismiss,
                 onFlip: {
                     if selectedID != book.id { openCard(book) }
                     toggleFlip(for: book.id)
@@ -785,7 +772,8 @@ struct BookHomeView: View {
                 onDragAmountChanged: { val in dragAmount = val },
                 onDragCardIDChanged: { id in draggedCardID = id },
                 onDragEnded: { val in
-                    if val.translation.height < -55 || val.predictedEndTranslation.height < -110 {
+                    if abs(val.translation.height) > abs(val.translation.width) &&
+                        (val.translation.height < -55 || val.predictedEndTranslation.height < -110) {
                         openCard(book)
                     }
                     withAnimation(reduceMotion ? nil : settle, completionCriteria: .removed) {
@@ -834,16 +822,17 @@ struct BookHomeView: View {
     }
 
     private func closeCard(velocity: CGFloat = 0) {
-        guard selectedID != nil else { return }
+        guard selectedID != nil, expanded else { return }
         let haptic = UIImpactFeedbackGenerator(style: .light)
         haptic.impactOccurred()
         let travel = returnDistance - dismissAmount
         releaseVelocity = abs(travel) > 1 ? Double(min(max(velocity / travel, -8), 8)) : 0
-        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle) {
+        let closingID = selectedID
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle, completionCriteria: .removed) {
             expanded = false
             model.selectedBookID = nil
         } completion: {
-            guard !expanded else { return }
+            guard !expanded, selectedID == closingID else { return }
             selectedID = nil
             dismissAmount = 0
             dismissX = 0
@@ -1044,7 +1033,6 @@ struct BookHomeView: View {
         let isAllCards = activeScope == .allCards
         let activeStack = model.stacks.first { $0.id == (displayedStackID ?? model.activeStackID) } ?? model.currentStack
         let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
-        let selectedBook = model.books.first { $0.id == bookID }
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
                 Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
@@ -1090,7 +1078,7 @@ struct BookHomeView: View {
                 .padding(.horizontal, 20)
                 .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             } else {
-                VStack(spacing: 0) {
+                LazyVStack(spacing: 0) {
                     ForEach(activities) { row in
                         activityRow(row, showBookLabel: bookID == nil, isPlatter: true)
                     }

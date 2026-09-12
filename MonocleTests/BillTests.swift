@@ -379,3 +379,65 @@ final class BillTests: XCTestCase {
         XCTAssertEqual(decoded.books.first?.bills, nil)
     }
 }
+
+extension BillTests {
+    func testAutomaticLookaheadPromotesPendingWhenDue() throws {
+        let book = UUID(), category = UUID()
+        let created = try XCTUnwrap(Day.date("2026-09-01"))
+        let due = try XCTUnwrap(Day.date("2026-09-15"))
+        let rule = BillRule(bookID: book, name: "Rent", amount: 10000, categoryID: category,
+                            recurrence: .monthly(day: 15), recordingMode: .automatic, createdAt: created)
+        let preview = BillReconciliationEngine.reconcile(rule: rule, existingOccurrences: [], asOf: created)
+        let pending = try XCTUnwrap(preview.newOccurrences.first)
+        XCTAssertEqual(pending.status, .pending)
+        let result = BillReconciliationEngine.reconcile(rule: rule, existingOccurrences: preview.newOccurrences, asOf: due)
+        XCTAssertEqual(result.autoExpenses.count, 1)
+        XCTAssertEqual(result.newOccurrences.first?.id, pending.id)
+        XCTAssertEqual(result.newOccurrences.first?.status, .recorded)
+        let again = BillReconciliationEngine.reconcile(rule: rule, existingOccurrences: result.newOccurrences, asOf: due)
+        XCTAssertTrue(again.autoExpenses.isEmpty)
+    }
+
+    func testResolvedBillCannotBeRecordedOrSkippedAgain() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let bill = BillRule(bookID: service.activeBookID, name: "Rent", amount: 10000,
+                            categoryID: try XCTUnwrap(service.categories.first?.id), recurrence: .monthly(day: 1))
+        try service.saveBill(bill)
+        let occurrence = BillOccurrence(billRuleID: bill.id, bookID: bill.bookID, dueDay: Day.string(.now))
+        try store.saveOccurrence(occurrence)
+        _ = try service.confirmBillOccurrence(occurrence.id)
+        XCTAssertThrowsError(try service.confirmBillOccurrence(occurrence.id))
+        XCTAssertThrowsError(try service.skipBillOccurrence(occurrence.id))
+        XCTAssertEqual(service.expenses.count, 1)
+    }
+
+    func testOccurrenceDeletionIsScopedToBook() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let a = try store.createBook(named: "A"), b = try store.createBook(named: "B")
+        let rule = BillRule(bookID: a.id, name: "Rent", amount: 10000,
+                            categoryID: try XCTUnwrap(store.categories(in: a.id).first?.id), recurrence: .monthly(day: 1))
+        try store.saveBill(rule)
+        let occurrence = BillOccurrence(billRuleID: rule.id, bookID: a.id, dueDay: "2026-09-01")
+        try store.saveOccurrence(occurrence)
+        try store.deleteOccurrence(occurrence.id, in: b.id)
+        XCTAssertEqual(try store.billOccurrences(in: a.id).count, 1)
+        XCTAssertThrowsError(try store.deleteCategory(rule.categoryID, in: a.id))
+    }
+
+    func testBatchImportRollsBackEarlierRowsOnFailure() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let category = try XCTUnwrap(service.categories.first?.id)
+        let valid = Expense(amount: 10000, day: "2026-09-01", note: "Valid",
+                            allocations: [.init(categoryID: category, amount: 10000)])
+        var invalid = valid
+        invalid.id = UUID()
+        invalid.amount = -1
+        XCTAssertThrowsError(try service.saveExpenses([valid, invalid]))
+        XCTAssertTrue(try store.expenses().isEmpty)
+        XCTAssertTrue(service.expenses.isEmpty)
+    }
+}

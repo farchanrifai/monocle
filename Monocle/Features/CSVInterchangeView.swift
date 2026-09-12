@@ -502,7 +502,10 @@ struct CSVInterchangeView: View {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
 
+            let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            guard fileSize <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
             let data = try Data(contentsOf: url)
+            guard data.count <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
             guard let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
                 throw NSError(domain: "MonocleCSV", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to read CSV text encoding."])
             }
@@ -510,6 +513,7 @@ struct CSVInterchangeView: View {
             importedFileName = url.lastPathComponent
             detectedDelimiter = CSVTokenizer.sniffDelimiter(from: content)
             let rows = CSVTokenizer.parse(content: content, delimiter: detectedDelimiter)
+            guard rows.count <= 10_001 else { throw BackupError.tooLarge }
             guard rows.count > 1 else {
                 throw NSError(domain: "MonocleCSV", code: 2, userInfo: [NSLocalizedDescriptionKey: "CSV has no data rows."])
             }
@@ -530,7 +534,12 @@ struct CSVInterchangeView: View {
     }
 
     private func reprocessImportRows() {
-        guard !importedRawRows.isEmpty, let defaultCat = defaultCategoryID ?? targetBookCategories.first?.id else { return }
+        let categories = targetBookCategories
+        if !categories.contains(where: { $0.id == defaultCategoryID }) { defaultCategoryID = categories.first?.id }
+        guard !importedRawRows.isEmpty, let defaultCat = defaultCategoryID else {
+            processedRows = []
+            return
+        }
         let existingExpenses = model.expenses(for: targetBookID)
 
         let parsed = CSVImportParser.processRows(

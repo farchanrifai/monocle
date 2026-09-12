@@ -220,7 +220,10 @@ final class AppModel {
             ?? BudgetPeriod(budget: activeBudget, cycle: BudgetCycle.containing(.now, startDay: activeBudget.startDay))
     }
     var cycle: BudgetCycle { currentBudgetPeriod.cycle }
-    var cycleExpenses: [Expense] { expenses.filter { cycle.contains($0) } }
+    var cycleExpenses: [Expense] {
+        let currentCycle = cycle
+        return expenses.filter { currentCycle.contains($0) }
+    }
     var spent: Int64 { cycleExpenses.reduce(0) { $0 + $1.amount } }
     var remaining: Int64 { activeBudget.overallLimit - spent }
 
@@ -266,7 +269,8 @@ final class AppModel {
     func reload() throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.reload()
-        try? expenseService.reconcileBills()
+        try expenseService.reconcileBills()
+        invalidateExpenseCaches()
         ensureDefaultStack()
     }
     func category(_ id: UUID?) -> ExpenseCategory? { categories.first { $0.id == id } }
@@ -526,13 +530,15 @@ final class AppModel {
     func persistWorkspacePreferences() {
         workspacePreferences.visibleBookIDs = visibleBooks.map(\.id)
         workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
-        try? state?.saveWorkspacePreferences(workspacePreferences)
+        invalidateExpenseCaches()
+        do { try state?.saveWorkspacePreferences(workspacePreferences) }
+        catch { self.error = error.localizedDescription }
     }
 
-    private var expensesCache: [UUID: [Expense]] = [:]
-    private var spentCache: [UUID: Int64] = [:]
-    private var memoizedActivities: [Expense]? = nil
-    private var memoizedActivitiesKey: String = ""
+    @ObservationIgnored private var expensesCache: [UUID: [Expense]] = [:]
+    @ObservationIgnored private var spentCache: [UUID: Int64] = [:]
+    @ObservationIgnored private var memoizedActivities: [Expense]? = nil
+    @ObservationIgnored private var memoizedActivitiesKey: String = ""
 
     func invalidateExpenseCaches() {
         expensesCache.removeAll()

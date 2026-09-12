@@ -224,6 +224,17 @@ enum CSVExportGenerator {
 // MARK: - CSV Import Parser & Engine
 
 enum CSVImportParser {
+    private struct DuplicateKey: Hashable {
+        let day: String
+        let amount: Int64
+        let note: String
+        init(day: String, amount: Int64, note: String) {
+            self.day = day
+            self.amount = amount
+            self.note = note.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+    }
+
     /// Auto-detect column mappings from header names.
     static func detectColumnMapping(headers: [String]) -> CSVColumnMapping {
         var mapping = CSVColumnMapping()
@@ -351,83 +362,29 @@ enum CSVImportParser {
         var str = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !str.isEmpty else { return nil }
 
-        // Strip currency prefixes
-        if str.hasPrefix("rp") {
-            str = String(str.dropFirst(2)).trimmingCharacters(in: .whitespaces)
-        } else if str.hasPrefix("idr") {
-            str = String(str.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-        }
-
-        // Handle parentheses as negative/debit: "(50000)" -> "50000"
-        if str.hasPrefix("(") && str.hasSuffix(")") {
+        // Banking exports commonly encode spending as a negative/debit.
+        if str.hasPrefix("("), str.hasSuffix(")") {
             str = String(str.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
         }
+        if str.hasPrefix("-") { str = String(str.dropFirst()).trimmingCharacters(in: .whitespaces) }
+        if str.hasPrefix("idr") { str = String(str.dropFirst(3)).trimmingCharacters(in: .whitespaces) }
+        else if str.hasPrefix("rp") { str = String(str.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        if str.hasPrefix("-") { str = String(str.dropFirst()).trimmingCharacters(in: .whitespaces) }
 
-        // Strip leading negative sign if present (since in banking CSVs negative = debit/spent)
-        if str.hasPrefix("-") {
-            str = String(str.dropFirst()).trimmingCharacters(in: .whitespaces)
-        }
-
-        // Handle suffix 'k' for thousands
-        var thousandsMultiplier: Int64 = 1
-        if str.hasSuffix("k") {
-            thousandsMultiplier = 1000
-            str = String(str.dropLast()).trimmingCharacters(in: .whitespaces)
-        }
-
-        // Determine if European punctuation (dot thousand, comma decimal) or standard (comma thousand, dot decimal)
-        // E.g. "50.000,00" vs "50,000.00" vs "50000"
-        let hasComma = str.contains(",")
-        let hasDot = str.contains(".")
-
-        var clean = ""
-        if hasDot && hasComma {
-            let lastDot = str.lastIndex(of: ".")!
-            let lastComma = str.lastIndex(of: ",")!
-            if lastComma > lastDot {
-                // European: 1.234,56 -> remove dots, split on comma
-                let parts = str.components(separatedBy: ",")
-                let whole = parts[0].replacingOccurrences(of: ".", with: "")
-                clean = whole
-            } else {
-                // US: 1,234.56 -> remove commas, split on dot
-                let parts = str.components(separatedBy: ".")
-                let whole = parts[0].replacingOccurrences(of: ",", with: "")
-                clean = whole
-            }
-        } else if hasComma {
-            // Only comma: could be decimal (50,5) or thousand (50,000)
-            let parts = str.components(separatedBy: ",")
-            if parts.count == 2 && parts[1].count <= 2 {
-                // Decimal: take whole part
-                clean = parts[0]
-            } else {
-                // Thousands
-                clean = str.replacingOccurrences(of: ",", with: "")
-            }
-        } else if hasDot {
-            // Only dot: could be thousand in IDR (50.000) or decimal (50.00)
-            let parts = str.components(separatedBy: ".")
-            if parts.count == 2 && parts[1].count == 2 && (Int(parts[1]) == 0 || Int(parts[1]) == 00) {
-                // E.g. 50.00 decimal
-                clean = parts[0]
-            } else {
-                // IDR thousand separator: 50.000 -> 50000
-                clean = str.replacingOccurrences(of: ".", with: "")
-            }
+        let locale: Locale
+        if let comma = str.lastIndex(of: ","), let dot = str.lastIndex(of: ".") {
+            locale = Locale(identifier: comma > dot ? "id_ID" : "en_US")
+        } else if str.contains(",") {
+            let suffix = str.split(separator: ",", omittingEmptySubsequences: false).last ?? ""
+            locale = Locale(identifier: suffix.count == 3 && !str.hasSuffix("k") ? "en_US" : "id_ID")
+        } else if str.contains(".") {
+            let suffix = str.split(separator: ".", omittingEmptySubsequences: false).last ?? ""
+            locale = Locale(identifier: suffix.count == 3 && !str.hasSuffix("k") ? "id_ID" : "en_US")
         } else {
-            clean = str
+            locale = Locale(identifier: "en_US")
         }
-
-        clean = clean.filter { $0.isNumber }
-        guard let wholeUnits = Int64(clean), wholeUnits > 0, wholeUnits <= (Money.maximum / 100) else {
-            return nil
-        }
-
-        let multiplied = wholeUnits * thousandsMultiplier
-        guard multiplied <= (Money.maximum / 100) else { return nil }
-
-        return multiplied * 100 // Convert to minor units
+        // Share entry validation: never strip arbitrary text or silently truncate fractions.
+        return try? Money.parse(str, locale: locale)
     }
 
     /// Check if candidate matches an existing expense.
@@ -459,14 +416,16 @@ enum CSVImportParser {
 
         let rowsToProcess = hasHeader ? Array(rawRows.dropFirst()) : rawRows
         var result: [CSVImportRow] = []
+        result.reserveCapacity(rowsToProcess.count)
+        var seen = Set(existingExpenses.map { DuplicateKey(day: $0.day, amount: $0.amount, note: $0.note) })
 
         let categoryByName = Dictionary(categories.map { ($0.name.trimmingCharacters(in: .whitespaces).lowercased(), $0.id) }) { first, _ in first }
 
         for (offset, rowValues) in rowsToProcess.enumerated() {
             let rowNumber = hasHeader ? (offset + 2) : (offset + 1)
 
-            guard let dateIdx = mapping.dateIndex, dateIdx < rowValues.count,
-                  let amountIdx = mapping.amountIndex, amountIdx < rowValues.count else {
+            guard let dateIdx = mapping.dateIndex, rowValues.indices.contains(dateIdx),
+                  let amountIdx = mapping.amountIndex, rowValues.indices.contains(amountIdx) else {
                 result.append(CSVImportRow(
                     rowNumber: rowNumber,
                     rawValues: rowValues,
@@ -497,7 +456,7 @@ enum CSVImportParser {
             }
 
             var note = ""
-            if let noteIdx = mapping.noteIndex, noteIdx < rowValues.count {
+            if let noteIdx = mapping.noteIndex, rowValues.indices.contains(noteIdx) {
                 note = rowValues[noteIdx].trimmingCharacters(in: .whitespacesAndNewlines)
             }
             if note.isEmpty {
@@ -505,22 +464,19 @@ enum CSVImportParser {
             }
 
             var categoryID = defaultCategoryID
-            if let catIdx = mapping.categoryIndex, catIdx < rowValues.count {
+            if let catIdx = mapping.categoryIndex, rowValues.indices.contains(catIdx) {
                 let catRaw = rowValues[catIdx].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 if let matched = categoryByName[catRaw] {
                     categoryID = matched
                 } else {
-                    // Try partial match
-                    for (catName, id) in categoryByName {
-                        if catName.contains(catRaw) || catRaw.contains(catName) {
-                            categoryID = id
-                            break
-                        }
+                    let matches = categoryByName.filter { name, _ in
+                        !catRaw.isEmpty && (name.contains(catRaw) || catRaw.contains(name))
                     }
+                    if matches.count == 1, let match = matches.first { categoryID = match.value }
                 }
             }
 
-            let duplicate = isDuplicate(day: dateParsed.day, amount: amountParsed, note: note, existingExpenses: existingExpenses)
+            let duplicate = !seen.insert(DuplicateKey(day: dateParsed.day, amount: amountParsed, note: note)).inserted
 
             let expense = Expense(
                 id: UUID(),

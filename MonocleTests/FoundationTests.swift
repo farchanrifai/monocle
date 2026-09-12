@@ -175,6 +175,14 @@ final class FoundationTests: XCTestCase {
 
 @MainActor
 private final class TestExpenseStore: ExpenseStore {
+    func transaction(_ operation: () throws -> Void) throws {
+        let original = (values, budgetValues, billValues, occurrenceValues)
+        do { try operation() }
+        catch {
+            (values, budgetValues, billValues, occurrenceValues) = original
+            throw error
+        }
+    }
     var values: [Expense] = []
     var budgetValues: [BudgetVersion] = []
     var billValues: [BillRule] = []
@@ -274,4 +282,16 @@ private final class TestState: LocalStateStore {
 @MainActor
 private final class TestAuthenticator: DeviceAuthenticating {
     func authenticate(reason: String) async -> Result<Void, AppLockError> { .success(()) }
+}
+
+extension FoundationTests {
+    func testRepeatedSuspensionDoesNotExtendLockGracePeriod() async {
+        let lock = AppLockController(timeout: .oneMinute, authenticator: TestAuthenticator())
+        _ = await lock.unlock()
+        let start = Date.now
+        lock.suspend(now: start)
+        lock.suspend(now: start.addingTimeInterval(50))
+        lock.resume(now: start.addingTimeInterval(65))
+        XCTAssertTrue(lock.needsAuthentication)
+    }
 }

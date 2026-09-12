@@ -7,6 +7,9 @@ final class BillNotificationService {
 
     private let notificationCenter = UNUserNotificationCenter.current()
 
+    private var tasks: [UUID: Task<Void, Never>] = [:]
+    private var generations: [UUID: UUID] = [:]
+
     private init() {}
 
     @discardableResult
@@ -18,8 +21,30 @@ final class BillNotificationService {
         }
     }
 
-    func scheduleReminder(for occurrence: BillOccurrence, rule: BillRule) async {
-        guard rule.hasReminder else { return }
+    func scheduleReminder(for occurrence: BillOccurrence, rule: BillRule) {
+        let id = occurrence.id
+        let previous = tasks[id]
+        previous?.cancel()
+        let generation = UUID()
+        generations[id] = generation
+        tasks[id] = Task {
+            // Serialize replacement with a pending add so cancellation cannot resurrect a reminder.
+            await previous?.value
+            if !Task.isCancelled {
+                await addReminder(for: occurrence, rule: rule)
+                if Task.isCancelled {
+                    notificationCenter.removePendingNotificationRequests(withIdentifiers: [notificationIdentifier(for: id)])
+                }
+            }
+            if generations[id] == generation {
+                tasks[id] = nil
+                generations[id] = nil
+            }
+        }
+    }
+
+    private func addReminder(for occurrence: BillOccurrence, rule: BillRule) async {
+        guard rule.hasReminder, rule.isActive, occurrence.status == .pending else { return }
         guard let dueDate = Day.date(occurrence.dueDay) else { return }
 
         var calendar = Calendar.current
@@ -52,13 +77,15 @@ final class BillNotificationService {
     }
 
     func cancelReminder(for occurrenceID: UUID) {
+        tasks[occurrenceID]?.cancel()
         let identifier = notificationIdentifier(for: occurrenceID)
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 
     func cancelAllReminders(for ruleID: UUID, occurrences: [BillOccurrence]) {
-        let identifiers = occurrences.filter { $0.billRuleID == ruleID }.map { notificationIdentifier(for: $0.id) }
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiers)
+        for occurrence in occurrences where occurrence.billRuleID == ruleID {
+            cancelReminder(for: occurrence.id)
+        }
     }
 
     private func notificationIdentifier(for occurrenceID: UUID) -> String {

@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class MonocleUITests: XCTestCase {
     @MainActor
     func testKeypadDraftSurvivesInterruptionAndRecords() throws {
@@ -57,13 +58,15 @@ final class MonocleUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Tools & Insights"].tap()
         app.buttons["Budgets"].tap()
         XCTAssertTrue(app.staticTexts["Where it went"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
         app.buttons["Done"].tap()
         app.buttons["bookOptionsMenu"].tap()
-        app.buttons["Bills"].tap()
+        app.buttons["Tools & Insights"].tap()
+        app.buttons["Recurring Bills"].tap()
         XCTAssertTrue(app.buttons["addBillButton"].waitForExistence(timeout: 5))
         app.buttons["addBillButton"].tap()
 
@@ -92,7 +95,8 @@ final class MonocleUITests: XCTestCase {
 
         app.terminate(); app.launch()
         app.buttons["bookOptionsMenu"].tap()
-        app.buttons["Bills"].tap()
+        app.buttons["Tools & Insights"].tap()
+        app.buttons["Recurring Bills"].tap()
         XCTAssertTrue(app.buttons["scheduledBill_Fiber Internet"].waitForExistence(timeout: 5))
         app.buttons["scheduledBill_Fiber Internet"].tap()
         XCTAssertEqual(app.switches["billReminderToggle"].value as? String, "0")
@@ -113,7 +117,7 @@ final class MonocleUITests: XCTestCase {
 
         // Capture screenshot of bottom navigation bubbles
         let shot = app.screenshot()
-        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/bottom_nav_bubbles.png"))
+        keepScreenshot(shot)
 
         // 2. Quick tap toggles filter scope
         let initialBadge = app.staticTexts["activityScopeBadge"]
@@ -123,6 +127,7 @@ final class MonocleUITests: XCTestCase {
 
         // 3. Open Stacks & Card Visibility from menu
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
         XCTAssertTrue(app.buttons["Stacks & Card Visibility"].waitForExistence(timeout: 5))
         app.buttons["Stacks & Card Visibility"].tap()
 
@@ -222,6 +227,12 @@ final class MonocleUITests: XCTestCase {
         app.buttons["Discard and continue"].tap()
         XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
+    }
+
+    private func keepScreenshot(_ screenshot: XCUIScreenshot) {
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func openSettings(_ app: XCUIApplication) {
@@ -393,7 +404,7 @@ final class MonocleUITests: XCTestCase {
         card.tap()
         XCTAssertTrue(app.buttons["homeLogo"].waitForExistence(timeout: 5))
         let shot = app.screenshot()
-        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/prod_card_detail.png"))
+        keepScreenshot(shot)
         app.buttons["homeLogo"].tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
@@ -408,9 +419,10 @@ final class MonocleUITests: XCTestCase {
         // Wait for options menu
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
         // Tap "Customize card"
-        let customizeButton = app.buttons["Customize card"]
+        let customizeButton = app.buttons["Customize Card"]
         XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
         customizeButton.tap()
 
@@ -422,7 +434,7 @@ final class MonocleUITests: XCTestCase {
         app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
 
         let customizerSheetShot = app.screenshot()
-        try? customizerSheetShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/card_customizer_sheet.png"))
+        add(XCTAttachment(screenshot: customizerSheetShot))
 
         // Select Aurora Borealis
         let auroraButton = app.buttons["stockDesign-auroraBorealis"]
@@ -438,7 +450,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
 
         let customScreenshot = app.screenshot()
-        try? customScreenshot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_card_stack.png"))
+        add(XCTAttachment(screenshot: customScreenshot))
     }
 
     @MainActor
@@ -459,8 +471,9 @@ final class MonocleUITests: XCTestCase {
         // 3. Tap options menu -> "Customize card" while card detail is open
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
-        let customizeButton = app.buttons["Customize card"]
+        let customizeButton = app.buttons["Customize Card"]
         XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
         customizeButton.tap()
 
@@ -484,8 +497,10 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         card.tap()
 
-        XCTAssertTrue(app.buttons["customizeCardDetailButton"].waitForExistence(timeout: 5))
-        app.buttons["customizeCardDetailButton"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+        app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
+        app.buttons["Customize Card"].tap()
 
         XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
@@ -502,8 +517,9 @@ final class MonocleUITests: XCTestCase {
         // Create second book so stack has multiple cards
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
-        XCTAssertTrue(app.buttons["Create new book"].waitForExistence(timeout: 5))
-        app.buttons["Create new book"].tap()
+        app.buttons["Cards & Stacks"].tap()
+        XCTAssertTrue(app.buttons["Create New Book"].waitForExistence(timeout: 5))
+        app.buttons["Create New Book"].tap()
 
         let inlineField = app.textFields["cardNameInlineTextField"]
         if inlineField.waitForExistence(timeout: 5) {
@@ -523,8 +539,9 @@ final class MonocleUITests: XCTestCase {
         // Open customizer
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
-        let customizeButton = app.buttons["Customize card"]
+        let customizeButton = app.buttons["Customize Card"]
         XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
         customizeButton.tap()
 
@@ -549,13 +566,13 @@ final class MonocleUITests: XCTestCase {
 
         // Take a screenshot of the multi-card horizontal carousel
         let carouselShot = app.screenshot()
-        try? carouselShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_carousel.png"))
+        add(XCTAttachment(screenshot: carouselShot))
 
         // Tap the second preview card in carousel to make it active
         previews.element(boundBy: 1).tap()
         Thread.sleep(forTimeInterval: 0.5)
         let secondCardShot = app.screenshot()
-        try? secondCardShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_carousel_second_active.png"))
+        add(XCTAttachment(screenshot: secondCardShot))
 
         // Switch to Stock tab
         app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
@@ -571,7 +588,7 @@ final class MonocleUITests: XCTestCase {
 
         // Take screenshot of home screen with customized card stack
         let stackShot = app.screenshot()
-        try? stackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_stack_multibook.png"))
+        add(XCTAttachment(screenshot: stackShot))
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 
@@ -585,8 +602,9 @@ final class MonocleUITests: XCTestCase {
         // 1. Open customize card modal
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
-        let customizeButton = app.buttons["Customize card"]
+        let customizeButton = app.buttons["Customize Card"]
         XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
         customizeButton.tap()
 
@@ -603,7 +621,7 @@ final class MonocleUITests: XCTestCase {
 
         // Take a screenshot of the inline card rename in progress
         let renameShot = app.screenshot()
-        try? renameShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_inline_rename.png"))
+        add(XCTAttachment(screenshot: renameShot))
 
         // 4. Tap clear button and type new card name
         let clearButton = app.buttons["cardNameInlineClearButton"]
@@ -630,7 +648,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
 
         let renamedStackShot = app.screenshot()
-        try? renamedStackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customized_stack_renamed.png"))
+        add(XCTAttachment(screenshot: renamedStackShot))
     }
 
     @MainActor
@@ -643,8 +661,9 @@ final class MonocleUITests: XCTestCase {
         // 1. Tap Create new book in options menu
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
-        let createButton = app.buttons["Create new book"]
+        let createButton = app.buttons["Create New Book"]
         XCTAssertTrue(createButton.waitForExistence(timeout: 5))
         createButton.tap()
 
@@ -653,7 +672,7 @@ final class MonocleUITests: XCTestCase {
 
         // Capture screenshot of direct new book customizer entry
         let directEntryShot = app.screenshot()
-        try? directEntryShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_direct_new_book.png"))
+        add(XCTAttachment(screenshot: directEntryShot))
 
         // 3. Rename inline to "Investments"
         let inlineTextField = app.textFields["cardNameInlineTextField"]
@@ -681,7 +700,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Investments"].waitForExistence(timeout: 5))
 
         let newBookStackShot = app.screenshot()
-        try? newBookStackShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/home_stack_after_new_book.png"))
+        add(XCTAttachment(screenshot: newBookStackShot))
     }
 
     @MainActor
@@ -694,8 +713,9 @@ final class MonocleUITests: XCTestCase {
         // 1. Open Customize card
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
-        let customizeButton = app.buttons["Customize card"]
+        let customizeButton = app.buttons["Customize Card"]
         XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
         customizeButton.tap()
 
@@ -710,7 +730,7 @@ final class MonocleUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.5)
 
         let centeredShot = app.screenshot()
-        try? centeredShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/0b84cb4a-9937-4659-954b-7977ccf1a290/scratch/customizer_placeholder_card_centered.png"))
+        add(XCTAttachment(screenshot: centeredShot))
 
         // Tap the createNewCardButton or placeholder card to create new draft book
         let createNewCardButton = app.buttons["createNewCardButton"]
@@ -744,7 +764,7 @@ final class MonocleUITests: XCTestCase {
 
         // Initial screenshot before stack switch
         let initialShot = app.screenshot()
-        try? initialShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_initial.png"))
+        add(XCTAttachment(screenshot: initialShot))
 
         // Tap filter button to toggle stack scope
         filterButton.tap()
@@ -752,12 +772,12 @@ final class MonocleUITests: XCTestCase {
         // Wait 0.6s for Phase 1 to stack up and Phase 2/3 (placeholder reveal) to be on screen
         Thread.sleep(forTimeInterval: 0.6)
         let transitionShot = app.screenshot()
-        try? transitionShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_transition_placeholder.png"))
+        add(XCTAttachment(screenshot: transitionShot))
 
         // Wait for transition to settle
         Thread.sleep(forTimeInterval: 1.2)
         let settledShot = app.screenshot()
-        try? settledShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stack_settled.png"))
+        add(XCTAttachment(screenshot: settledShot))
 
         // Switch back
         filterButton.tap()
@@ -782,14 +802,14 @@ final class MonocleUITests: XCTestCase {
             usleep(120_000) // 120ms
             if i % 3 == 0 {
                 let shot = app.screenshot()
-                try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stress_tap_\(i).png"))
+                keepScreenshot(shot)
             }
         }
 
         // Wait 1.5s for final settle
         Thread.sleep(forTimeInterval: 1.5)
         let finalShot = app.screenshot()
-        try? finalShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/stress_tap_final.png"))
+        add(XCTAttachment(screenshot: finalShot))
         XCTAssertTrue(filterButton.exists)
     }
 
@@ -830,15 +850,16 @@ final class MonocleUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
-        let customizeButton = app.buttons["Customize card"]
+        let customizeButton = app.buttons["Customize Card"]
         XCTAssertTrue(customizeButton.waitForExistence(timeout: 5))
         customizeButton.tap()
 
         XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
 
         let initialShot = app.screenshot()
-        try? initialShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_customizer_initial.png"))
+        add(XCTAttachment(screenshot: initialShot))
 
         // Swipe left on the card carousel to snap to the next card
         let window = app.windows.firstMatch
@@ -848,7 +869,7 @@ final class MonocleUITests: XCTestCase {
 
         Thread.sleep(forTimeInterval: 0.8)
         let snappedShot = app.screenshot()
-        try? snappedShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_customizer_snapped.png"))
+        add(XCTAttachment(screenshot: snappedShot))
 
         // Swipe back right to re-center the first card
         leftTarget.press(forDuration: 0.05, thenDragTo: center)
@@ -885,6 +906,7 @@ final class MonocleUITests: XCTestCase {
         // 2. Open Stack Customizer
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Cards & Stacks"].tap()
 
         let manageStacks = app.buttons["Stacks & Card Visibility"]
         XCTAssertTrue(manageStacks.waitForExistence(timeout: 5))
@@ -918,7 +940,7 @@ final class MonocleUITests: XCTestCase {
         app.buttons["bookOptionsMenu"].tap()
 
         // 2. Open CSV Data -> Export CSV
-        let csvMenu = app.buttons["CSV Data"]
+        let csvMenu = app.buttons["Data & Backup"]
         XCTAssertTrue(csvMenu.waitForExistence(timeout: 5))
         csvMenu.tap()
 
@@ -956,9 +978,10 @@ final class MonocleUITests: XCTestCase {
         // 1. Open Options Menu
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Tools & Insights"].tap()
 
         // 2. Tap Analytics & Trends
-        let analyticsButton = app.buttons["menuAnalytics"]
+        let analyticsButton = app.buttons["Analytics & Trends"]
         XCTAssertTrue(analyticsButton.waitForExistence(timeout: 5))
         analyticsButton.tap()
 
@@ -1005,7 +1028,7 @@ final class MonocleUITests: XCTestCase {
         let flipButton = app.buttons["cardFlipButton"]
         XCTAssertTrue(flipButton.waitForExistence(timeout: 5))
         let frontShot = app.screenshot()
-        try? frontShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_front_focused.png"))
+        add(XCTAttachment(screenshot: frontShot))
 
         // 4. Tap flip button to rotate to back face
         flipButton.tap()
@@ -1018,14 +1041,14 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(analyticsButton.exists)
         XCTAssertTrue(customizeButton.exists)
         let backShot = app.screenshot()
-        try? backShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_telemetry.png"))
+        add(XCTAttachment(screenshot: backShot))
 
         // 6. Test opening Trends & Analytics directly from flipped card
         analyticsButton.tap()
         let dismissAnalyticsButton = app.buttons["dismissAnalyticsView"]
         XCTAssertTrue(dismissAnalyticsButton.waitForExistence(timeout: 5))
         let analyticsShot = app.screenshot()
-        try? analyticsShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_analytics_opened.png"))
+        add(XCTAttachment(screenshot: analyticsShot))
         dismissAnalyticsButton.tap()
 
         // Verify we returned directly to the flipped card without leaving
@@ -1036,7 +1059,7 @@ final class MonocleUITests: XCTestCase {
         let cancelCustomizerButton = app.buttons["cancelCardCustomization"]
         XCTAssertTrue(cancelCustomizerButton.waitForExistence(timeout: 5))
         let customizerShot = app.screenshot()
-        try? customizerShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_back_customizer_opened.png"))
+        add(XCTAttachment(screenshot: customizerShot))
         cancelCustomizerButton.tap()
 
         // Verify we returned directly to the flipped card without leaving
@@ -1060,7 +1083,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
         sleep(1)
         let shot1 = app.screenshot()
-        try? shot1.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_01_opened.png"))
+        keepScreenshot(shot1)
 
         closeButton.tap()
         sleep(1)
@@ -1072,7 +1095,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
         sleep(1)
         let shot2 = app.screenshot()
-        try? shot2.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_02_opened.png"))
+        keepScreenshot(shot2)
 
         closeButton.tap()
         sleep(1)
@@ -1084,7 +1107,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
         sleep(1)
         let shot3 = app.screenshot()
-        try? shot3.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/card_03_opened.png"))
+        keepScreenshot(shot3)
 
         closeButton.tap()
         sleep(1)
@@ -1136,7 +1159,7 @@ final class MonocleUITests: XCTestCase {
         thirdCard.press(forDuration: 1.2)
         sleep(1)
         let shot = app.screenshot()
-        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/context_menu_glitch.png"))
+        keepScreenshot(shot)
 
         // Header must still be home logo
         XCTAssertTrue(app.buttons["homeLogo"].exists, "Header must maintain monocle logo during long-press")
@@ -1211,7 +1234,7 @@ final class MonocleUITests: XCTestCase {
 
         // Capture screenshot of transaction page
         let shot = app.screenshot()
-        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/transaction_page_liquid_glass.png"))
+        keepScreenshot(shot)
 
         // 7. Tap centered add button -> entry modal opens
         addButton.tap()
@@ -1268,7 +1291,7 @@ final class MonocleUITests: XCTestCase {
 
         // Capture screenshot of card detail with scaled-down fonts
         let shot = app.screenshot()
-        try? shot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/transaction_page_scaled_fonts.png"))
+        keepScreenshot(shot)
 
         closeButton.tap()
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
@@ -1299,7 +1322,7 @@ final class MonocleUITests: XCTestCase {
 
         // Capture Home Screen with progressive blur and platter
         let homeShot = app.screenshot()
-        try? homeShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/home_platter_progressive_blur.png"))
+        add(XCTAttachment(screenshot: homeShot))
 
         // 2. Open options menu and verify collapsible submenus + Settings
         optionsButton.tap()
@@ -1328,7 +1351,7 @@ final class MonocleUITests: XCTestCase {
         sleep(1)
 
         let detailShot = app.screenshot()
-        try? detailShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/1a37f5dc-e93b-43b2-af60-070a75a9734b/scratch/transaction_page_scaled_fonts_v2.png"))
+        add(XCTAttachment(screenshot: detailShot))
 
         closeDetail.tap()
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))

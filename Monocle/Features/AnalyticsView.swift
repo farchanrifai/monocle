@@ -112,7 +112,9 @@ struct AnalyticsView: View {
 
     private var bookPoints: [BookSpendPoint] {
         AnalyticsEngine.calculateBookDistribution(
-            expensesByBook: model.allExpensesByBook(),
+            expensesByBook: model.allExpensesByBook().mapValues { values in
+                AnalyticsEngine.filterExpenses(values, startDay: currentRange.startDay, endDay: currentRange.endDay)
+            },
             books: model.books
         )
     }

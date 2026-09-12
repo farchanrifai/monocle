@@ -4,6 +4,7 @@ import Observation
 /// Value-only boundary. Managed objects never leave the persistence adapter.
 @MainActor
 protocol ExpenseStore {
+    func transaction(_ operation: () throws -> Void) throws
     func books() throws -> [BookProfile]
     func createBook(named name: String) throws -> BookProfile
     func renameBook(id: UUID, to name: String) throws
@@ -61,41 +62,17 @@ final class ExpenseService {
 
     func reload() throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let storedBooks = (try? store.books()) ?? []
+        let storedBooks = try store.books()
+        guard let targetID = storedBooks.first(where: { $0.id == activeBookID })?.id ?? storedBooks.first?.id else {
+            throw EntryError.corruptStore
+        }
+        let categories = try store.categories(in: targetID)
+        let expenses = try store.expenses(in: targetID)
+        let budgets = try store.budgets(in: targetID)
+        let bills = try store.bills(in: targetID)
+        let occurrences = try store.billOccurrences(in: targetID)
         self.books = storedBooks
-        if !storedBooks.contains(where: { $0.id == activeBookID }), let first = storedBooks.first {
-            activeBookID = first.id
-        }
-        let categories: [ExpenseCategory]
-        if let scoped = try? store.categories(in: activeBookID) {
-            categories = scoped
-        } else {
-            categories = try store.categories()
-        }
-        let expenses: [Expense]
-        if let scoped = try? store.expenses(in: activeBookID) {
-            expenses = scoped
-        } else {
-            expenses = try store.expenses()
-        }
-        let budgets: [BudgetVersion]
-        if let scoped = try? store.budgets(in: activeBookID) {
-            budgets = scoped
-        } else {
-            budgets = try store.budgets()
-        }
-        let bills: [BillRule]
-        if let scoped = try? store.bills(in: activeBookID) {
-            bills = scoped
-        } else {
-            bills = (try? store.bills()) ?? []
-        }
-        let occurrences: [BillOccurrence]
-        if let scoped = try? store.billOccurrences(in: activeBookID) {
-            occurrences = scoped
-        } else {
-            occurrences = (try? store.billOccurrences()) ?? []
-        }
+        self.activeBookID = targetID
         self.categories = categories
         self.expenses = expenses
         self.budgets = budgets
@@ -105,8 +82,10 @@ final class ExpenseService {
 
     func selectBook(_ id: UUID) throws {
         guard books.contains(where: { $0.id == id }) else { return }
+        let previousID = activeBookID
         activeBookID = id
-        try reload()
+        do { try reload() }
+        catch { activeBookID = previousID; throw error }
     }
 
     func createBook(named name: String) throws -> BookProfile {
@@ -155,20 +134,18 @@ final class ExpenseService {
         bill.bookID = targetID
         let cats = (targetID == activeBookID) ? categories : try store.categories(in: targetID)
         try bill.validate(categories: cats)
-        try store.saveBill(bill, in: targetID)
-
-        let existing = (try? store.billOccurrences(in: targetID)) ?? []
+        let existing = try store.billOccurrences(in: targetID)
         let result = BillReconciliationEngine.reconcile(rule: bill, existingOccurrences: existing)
-        for expense in result.autoExpenses {
-            try store.save(expense, in: targetID)
+        try store.transaction {
+            try store.saveBill(bill, in: targetID)
+            for expense in result.autoExpenses { try store.save(expense, in: targetID) }
+            for occ in result.newOccurrences { try store.saveOccurrence(occ, in: targetID) }
         }
-        for occ in result.newOccurrences {
-            try store.saveOccurrence(occ, in: targetID)
-            if bill.hasReminder && occ.status == .pending {
-                Task {
-                    await BillNotificationService.shared.scheduleReminder(for: occ, rule: bill)
-                }
-            }
+        BillNotificationService.shared.cancelAllReminders(for: bill.id, occurrences: existing)
+        let updatedIDs = Set(result.newOccurrences.map(\.id))
+        let reminders = existing.filter { $0.billRuleID == bill.id && !updatedIDs.contains($0.id) } + result.newOccurrences
+        for occurrence in reminders where occurrence.status == .pending {
+            BillNotificationService.shared.scheduleReminder(for: occurrence, rule: bill)
         }
         try reload()
     }
@@ -176,9 +153,9 @@ final class ExpenseService {
     func deleteBill(_ id: UUID, in bookID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = bookID ?? activeBookID
-        let existingOccurrences = (try? store.billOccurrences(in: targetID)) ?? []
-        BillNotificationService.shared.cancelAllReminders(for: id, occurrences: existingOccurrences)
+        let existingOccurrences = try store.billOccurrences(in: targetID)
         try store.deleteBill(id, in: targetID)
+        BillNotificationService.shared.cancelAllReminders(for: id, occurrences: existingOccurrences)
         try reload()
     }
 
@@ -195,17 +172,16 @@ final class ExpenseService {
                 existingOccurrences: existingOccurrences,
                 asOf: date
             )
-            for expense in result.autoExpenses {
-                try store.save(expense, in: targetID)
-                hasChanges = true
+            try store.transaction {
+                for expense in result.autoExpenses { try store.save(expense, in: targetID) }
+                for occ in result.newOccurrences { try store.saveOccurrence(occ, in: targetID) }
             }
             for occ in result.newOccurrences {
-                try store.saveOccurrence(occ, in: targetID)
                 hasChanges = true
-                if bill.hasReminder && occ.status == .pending {
-                    Task {
-                        await BillNotificationService.shared.scheduleReminder(for: occ, rule: bill)
-                    }
+                if occ.status == .pending {
+                    BillNotificationService.shared.scheduleReminder(for: occ, rule: bill)
+                } else {
+                    BillNotificationService.shared.cancelReminder(for: occ.id)
                 }
             }
         }
@@ -233,6 +209,8 @@ final class ExpenseService {
             throw BillError.ruleNotFound
         }
 
+        guard occurrence.status == .pending else { throw BillError.alreadyResolved }
+
         let expenseID = UUID()
         let expenseDate = customDate ?? Day.date(occurrence.dueDay) ?? .now
         let expenseAmount = customAmount ?? rule.amount
@@ -249,12 +227,13 @@ final class ExpenseService {
             bookID: targetID
         )
 
-        try store.save(expense, in: targetID)
-
         occurrence.status = .recorded
         occurrence.expenseID = expenseID
         occurrence.updatedAt = .now
-        try store.saveOccurrence(occurrence, in: targetID)
+        try store.transaction {
+            try store.save(expense, in: targetID)
+            try store.saveOccurrence(occurrence, in: targetID)
+        }
 
         BillNotificationService.shared.cancelReminder(for: occurrenceID)
 
@@ -270,6 +249,7 @@ final class ExpenseService {
             throw BillError.occurrenceNotFound
         }
 
+        guard occurrence.status == .pending else { throw BillError.alreadyResolved }
         occurrence.status = .skipped
         occurrence.updatedAt = .now
         try store.saveOccurrence(occurrence, in: targetID)
@@ -303,11 +283,13 @@ final class ExpenseService {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = bookID ?? activeBookID
         let cats = (targetID == activeBookID) ? categories : try store.categories(in: targetID)
-        for expense in batch {
-            var exp = expense
-            exp.bookID = targetID
-            try exp.validate(categories: cats)
-            try store.save(exp, in: targetID)
+        try store.transaction {
+            for expense in batch {
+                var exp = expense
+                exp.bookID = targetID
+                try exp.validate(categories: cats)
+                try store.save(exp, in: targetID)
+            }
         }
         try reload()
     }

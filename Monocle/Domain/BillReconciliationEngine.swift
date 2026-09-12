@@ -104,10 +104,24 @@ enum BillReconciliationEngine {
         let endDate = calendar.date(byAdding: .day, value: max(0, lookaheadDays), to: date) ?? date
 
         let allDueDays = dueDays(for: rule, from: startDate, to: endDate, calendar: calendar)
-        let existingDueDays = Set(existingOccurrences.filter { $0.billRuleID == rule.id }.map(\.dueDay))
+        let existing = existingOccurrences.filter { $0.billRuleID == rule.id && $0.bookID == rule.bookID }
+        let existingDueDays = Set(existing.map(\.dueDay))
 
         var newOccurrences: [BillOccurrence] = []
         var autoExpenses: [Expense] = []
+
+        // Lookahead creates pending occurrences; promote them when their due day arrives.
+        for var occurrence in existing where occurrence.status == .pending && occurrence.dueDay <= todayString && rule.recordingMode == .automatic {
+            let expenseID = UUID()
+            let occurrenceDate = Day.date(occurrence.dueDay, calendar: calendar) ?? date
+            autoExpenses.append(Expense(id: expenseID, amount: rule.amount, day: occurrence.dueDay,
+                note: rule.name, allocations: [.init(categoryID: rule.categoryID, amount: rule.amount)],
+                source: "bill-automatic", createdAt: occurrenceDate, bookID: rule.bookID))
+            occurrence.status = .recorded
+            occurrence.expenseID = expenseID
+            occurrence.updatedAt = date
+            newOccurrences.append(occurrence)
+        }
 
         for dueDay in allDueDays {
             guard !existingDueDays.contains(dueDay) else { continue }

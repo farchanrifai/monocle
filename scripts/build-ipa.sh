@@ -19,7 +19,7 @@ fi
 (cd "$package_stage" && /usr/bin/zip -qr "$output_path" Payload)
 /usr/bin/unzip -t "$output_path"
 sha256="$(/usr/bin/shasum -a 256 "$output_path" | /usr/bin/awk '{print $1}')"
-delivery_dir="/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex"
+delivery_dir="${IPA_DELIVERY_DIR:-/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex}"
 mkdir -p "$delivery_dir"
 delivery_path="$delivery_dir/$(basename "$output_path")"
 if [ -e "$delivery_path" ]; then

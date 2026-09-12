@@ -116,9 +116,10 @@ enum AnalyticsEngine {
         switch horizon {
         case .thisCycle:
             if let cycle = currentCycle {
-                let sDay = Day.string(cycle.start)
-                let eDay = Day.string(cycle.end)
-                return (cycle.start, cycle.end, sDay, eDay)
+                let end = calendar.date(byAdding: .day, value: -1, to: cycle.end) ?? cycle.start
+                let sDay = Day.string(cycle.start, calendar: calendar)
+                let eDay = Day.string(end, calendar: calendar)
+                return (cycle.start, end, sDay, eDay)
             } else {
                 // Fallback to current calendar month
                 return dateRange(for: .thisMonth, currentCycle: nil, calendar: calendar, now: now)
@@ -129,27 +130,27 @@ enum AnalyticsEngine {
             let start = calendar.date(from: comps) ?? startOfToday
             let nextMonth = calendar.date(byAdding: .month, value: 1, to: start) ?? startOfToday
             let end = calendar.date(byAdding: .day, value: -1, to: nextMonth) ?? startOfToday
-            return (start, end, Day.string(start), Day.string(end))
+            return (start, end, Day.string(start, calendar: calendar), Day.string(end, calendar: calendar))
 
         case .lastMonth:
             let comps = calendar.dateComponents([.year, .month], from: startOfToday)
             let thisMonthStart = calendar.date(from: comps) ?? startOfToday
             let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart) ?? startOfToday
             let lastMonthEnd = calendar.date(byAdding: .day, value: -1, to: thisMonthStart) ?? startOfToday
-            return (lastMonthStart, lastMonthEnd, Day.string(lastMonthStart), Day.string(lastMonthEnd))
+            return (lastMonthStart, lastMonthEnd, Day.string(lastMonthStart, calendar: calendar), Day.string(lastMonthEnd, calendar: calendar))
 
         case .last30Days:
             let start = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
-            return (start, startOfToday, Day.string(start), Day.string(startOfToday))
+            return (start, startOfToday, Day.string(start, calendar: calendar), Day.string(startOfToday, calendar: calendar))
 
         case .last90Days:
             let start = calendar.date(byAdding: .day, value: -89, to: startOfToday) ?? startOfToday
-            return (start, startOfToday, Day.string(start), Day.string(startOfToday))
+            return (start, startOfToday, Day.string(start, calendar: calendar), Day.string(startOfToday, calendar: calendar))
 
         case .yearToDate:
             let comps = calendar.dateComponents([.year], from: startOfToday)
             let start = calendar.date(from: comps) ?? startOfToday
-            return (start, startOfToday, Day.string(start), Day.string(startOfToday))
+            return (start, startOfToday, Day.string(start, calendar: calendar), Day.string(startOfToday, calendar: calendar))
         }
     }
 
@@ -173,8 +174,6 @@ enum AnalyticsEngine {
         now: Date = .now
     ) -> [DailySpendPoint] {
         let startOfToday = calendar.startOfDay(for: now)
-        let todayDay = Day.string(startOfToday)
-        let endDay = Day.string(endDate)
 
         // Determine effective display end: don't plot Rp 0 future days past today unless within an active budget cycle
         let isFutureEnd = endDate > startOfToday
@@ -188,7 +187,7 @@ enum AnalyticsEngine {
         }
 
         // Calculate total days in the full period for target budget line
-        let fullPeriodDays = max(1, calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate), to: calendar.startOfDay(for: endDate)).day ?? 1) + 1
+        let fullPeriodDays = max(1, (calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate), to: calendar.startOfDay(for: endDate)).day ?? 0) + 1)
 
         var points: [DailySpendPoint] = []
         var runningTotal: Int64 = 0
@@ -196,7 +195,7 @@ enum AnalyticsEngine {
         var dayIndex = 1
 
         while iterDate <= lastPlotDate {
-            let dayString = Day.string(iterDate)
+            let dayString = Day.string(iterDate, calendar: calendar)
             let dayData = spendByDay[dayString] ?? (0, 0)
             runningTotal += dayData.amount
 
@@ -247,7 +246,7 @@ enum AnalyticsEngine {
         var previousMonthSpend: [Int: Int64] = [:]
 
         for exp in expenses {
-            guard let d = Day.date(exp.day) else { continue }
+            guard let d = Day.date(exp.day, calendar: calendar) else { continue }
             let expComps = calendar.dateComponents([.year, .month, .day], from: d)
             if expComps.year == thisMonthComps.year && expComps.month == thisMonthComps.month, let day = expComps.day {
                 currentMonthSpend[day, default: 0] += exp.amount

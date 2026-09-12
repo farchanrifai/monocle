@@ -20,7 +20,8 @@ if [ "$visibility" != "PUBLIC" ]; then
   exit 1
 fi
 
-stage="$(mktemp -d)"
+mkdir -p "$project_root/build/packages"
+stage="$(mktemp -d "$project_root/build/packages/publish.XXXXXX")"
 trap 'rm -rf "$stage"' EXIT
 /usr/bin/unzip -q "$ipa" Payload/Monocle.app/Info.plist -d "$stage"
 info="$stage/Payload/Monocle.app/Info.plist"
@@ -42,7 +43,8 @@ if gh release view "$tag" --repo "$distribution_repo" >/dev/null 2>&1; then
   exit 1
 fi
 release_notes="$(printf '%s\n\nSHA-256: %s' "$notes" "$sha256")"
-gh release create "$tag" "$ipa" --repo "$distribution_repo" --title "Monocle $version ($build_number)" --notes "$release_notes"
+printf '%s\n' "$release_notes" > "$stage/release-notes.md"
+gh release create "$tag" "$ipa" --repo "$distribution_repo" --title "Monocle $version ($build_number)" --notes-file "$stage/release-notes.md"
 
 gh repo clone "$distribution_repo" "$stage/source" -- --depth=1
 source_file="$stage/source/source.json"

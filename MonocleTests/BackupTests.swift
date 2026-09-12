@@ -195,3 +195,31 @@ final class BackupTests: XCTestCase {
         try run(repository, state, service, directory)
     }
 }
+
+extension BackupTests {
+    func testWorkspaceRestoresEveryBooksDraft() throws {
+        try withStore { repository, state, service, directory in
+            let second = try repository.createBook(named: "Second")
+            try service.reload()
+            var firstDraft = ExpenseDraft(); firstDraft.note = "first draft"; firstDraft.bookID = BookProfile.sample.id
+            var secondDraft = ExpenseDraft(); secondDraft.note = "second draft"; secondDraft.bookID = second.id
+            try state.saveDraft(firstDraft, for: BookProfile.sample.id)
+            try state.saveDraft(secondDraft, for: second.id)
+            let backups = BackupService(directory: directory, repository: repository, state: state, expenses: service)
+            let snapshot = try backups.workspaceSnapshot(currentDraft: secondDraft, settings: PrototypeSettings())
+            try state.saveDraft(ExpenseDraft(), for: second.id)
+            try backups.restoreWorkspace(snapshot, currentDraft: firstDraft, settings: PrototypeSettings())
+            XCTAssertEqual(try state.loadDraft(for: second.id).note, "second draft")
+            XCTAssertEqual(try state.loadDraft(for: BookProfile.sample.id).note, "first draft")
+        }
+    }
+
+    func testWorkspaceRejectsArtworkTraversalAndOrphanOccurrences() throws {
+        var workspace = WorkspaceBackup(singleBook: fixture())
+        workspace.cardArtworks = ["../settings.json": Data("bad".utf8)]
+        XCTAssertThrowsError(try workspace.validate())
+        workspace.cardArtworks = nil
+        workspace.books[0].billOccurrences = [BillOccurrence(billRuleID: UUID(), bookID: workspace.books[0].book.id, dueDay: "2026-09-01")]
+        XCTAssertThrowsError(try workspace.validate())
+    }
+}
