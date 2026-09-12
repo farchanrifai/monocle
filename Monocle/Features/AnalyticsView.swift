@@ -674,7 +674,7 @@ struct AnalyticsView: View {
     private var crossBookBreakdownCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Spending by Book")
+                Text("Spending by Card")
                     .font(.headline)
                 Text("Distribution across active cards")
                     .font(.caption)
@@ -682,12 +682,12 @@ struct AnalyticsView: View {
             }
 
             if bookPoints.isEmpty {
-                emptyChartPlaceholder(message: "No book spending found")
+                emptyChartPlaceholder(message: "No card spending found")
             } else {
                 Chart(bookPoints) { bp in
                     BarMark(
                         x: .value("Spend", bp.amount),
-                        y: .value("Book", bp.bookName)
+                        y: .value("Card", bp.bookName)
                     )
                     .foregroundStyle(CardPalette.color(for: bp.colorIndex))
                     .cornerRadius(4)

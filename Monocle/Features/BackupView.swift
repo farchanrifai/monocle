@@ -29,17 +29,17 @@ struct BackupView: View {
                 }.accessibilityIdentifier("exportBackup")
                 Button("Choose backup to restore", systemImage: "arrow.counterclockwise") { importing = true }
                     .accessibilityIdentifier("importBackup")
-            } footer: { Text("Includes your book, categories, expenses, splits, budget history, unfinished draft and settings. Backups are readable JSON files; store them somewhere you trust.") }
+            } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups are readable JSON files; store them somewhere you trust.") }
             if let candidate {
                 Section("Review replacement") {
-                    LabeledContent("Book", value: candidate.bookName)
+                    LabeledContent("Card", value: candidate.bookName)
                     LabeledContent("Exported", value: candidate.exportedAt.formatted(date: .abbreviated, time: .shortened))
                     LabeledContent("Expenses", value: String(candidate.expenses.count))
                     LabeledContent("Categories", value: String(candidate.categories.count))
                     LabeledContent("Budget versions", value: String(max(1, candidate.budgets.count)))
                     LabeledContent("Total", value: Money.format(candidate.total))
                     LabeledContent("Current expenses replaced", value: String(model.expenses.count))
-                    Button("Replace current book", role: .destructive) { confirm = true }
+                    Button("Replace current card", role: .destructive) { confirm = true }
                         .accessibilityIdentifier("restoreBackup")
                     Button("Cancel review") { self.candidate = nil }
                 }
@@ -53,7 +53,7 @@ struct BackupView: View {
                         document = BackupDocument(data: data); exporting = true
                     } catch { message = "No readable safety backup is available yet. One is created before each restoration." }
                 }
-            } footer: { Text("Restoring replaces this book, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
+            } footer: { Text("Restoring replaces this card, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
         }.navigationTitle("Backup & restore")
             .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "monocle-\(Day.string(.now)).json") { result in
                 switch result {
@@ -72,10 +72,10 @@ struct BackupView: View {
                     candidate = try backups.preview(data: Data(contentsOf: url, options: .mappedIfSafe))
                 } catch { candidate = nil; message = error.localizedDescription }
             }
-            .alert("Replace your current book?", isPresented: $confirm) {
-                Button("Replace book", role: .destructive) {
+            .alert("Replace your current card?", isPresented: $confirm) {
+                Button("Replace card", role: .destructive) {
                     guard let candidate else { return }
-                    do { try model.restoreBackup(candidate); self.candidate = nil; message = "Book restored. Your previous book is available as the safety backup." }
+                    do { try model.restoreBackup(candidate); self.candidate = nil; message = "Card restored. Your previous card is available as the safety backup." }
                     catch { message = error.localizedDescription }
                 }
                 Button("Cancel", role: .cancel) {}

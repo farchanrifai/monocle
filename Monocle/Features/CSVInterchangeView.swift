@@ -54,8 +54,8 @@ struct CSVInterchangeView: View {
     @State private var showImportConfirmation = false
 
     enum ExportScope: String, CaseIterable, Identifiable {
-        case activeBook = "Current book"
-        case allBooks = "All books"
+        case activeBook = "Current card"
+        case allBooks = "All cards"
         var id: String { rawValue }
     }
 
@@ -122,7 +122,7 @@ struct CSVInterchangeView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 let count = processedRows.filter { $0.isSelectedForImport && $0.parsedExpense != nil }.count
-                let bookName = model.books.first { $0.id == targetBookID }?.name ?? "selected book"
+                let bookName = model.books.first { $0.id == targetBookID }?.name ?? "selected card"
                 Text("Are you sure you want to import \(count) expenses into \(bookName)?")
             }
             .onAppear {
@@ -293,8 +293,8 @@ struct CSVInterchangeView: View {
             }
 
             if !importedRawRows.isEmpty {
-                Section("Target Book & Category") {
-                    Picker("Destination Book", selection: $targetBookID) {
+                Section("Target Card & Category") {
+                    Picker("Destination Card", selection: $targetBookID) {
                         ForEach(model.books) { book in
                             Text(book.name).tag(book.id)
                         }

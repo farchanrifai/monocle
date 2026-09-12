@@ -14,8 +14,8 @@ enum AnalyticsTimeHorizon: String, CaseIterable, Identifiable, Sendable {
 }
 
 enum AnalyticsScope: String, CaseIterable, Identifiable, Sendable {
-    case activeBook = "Current book"
-    case allBooks = "All books"
+    case activeBook = "Current card"
+    case allBooks = "All cards"
 
     var id: String { rawValue }
 }
@@ -358,7 +358,7 @@ enum AnalyticsEngine {
         var points: [BookSpendPoint] = []
         for (bID, data) in bookTotals where data.amount > 0 {
             let book = bookMap[bID]
-            let name = book?.name ?? "Book"
+            let name = book?.name ?? "Card"
             let colorIdx = book?.colorIndex ?? 0
             let pct = Double(data.amount) / Double(grandTotal)
 

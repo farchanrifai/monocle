@@ -1140,7 +1140,7 @@ struct BookHomeView: View {
                 Button {
                     openCustomizerForNewBook()
                 } label: {
-                    Label("Create New Book", systemImage: "plus.rectangle.on.rectangle")
+                    Label("New Card", systemImage: "plus.rectangle.on.rectangle")
                 }
                 .accessibilityIdentifier("menuNewBook")
 

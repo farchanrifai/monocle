@@ -2,6 +2,18 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.4] - 2026-09-12
+### User-Facing Terminology Standardization
+- **Unified Card Experience**:
+  - Standardized user-facing copy from "Book" to "Card" across Settings (Active Card section, Card name, Start your real card), Card Customizer, and Book Home options ("New Card").
+  - Updated Backup & Restore ("Replace current card", "Includes your cards, categories...") and CSV Interchange ("Destination Card", "Target Card & Category") while preserving existing underlying Core Data schema.
+  - Aligned Analytics breakdown with "Spending by Card", "Current card", and "All cards" filters.
+- **Consistent Navigation & Eyebrows**:
+  - Standardized bottom navigation tab bar item from "Analysis" to "Analytics" to match section headers and reporting contexts.
+  - Standardized recurring bills header eyebrow from "Recurring commitments" to "Recurring bills" in `BillsView`.
+- **Test Suite Alignment**:
+  - Updated XCUI automation flows and unit tests to match standardized Card and Analytics naming.
+
 ## [0.7.3] - 2026-09-12
 ### Apple HIG-Compliant Settings Organization
 - **Structured Hierarchy & Icon Badges**:

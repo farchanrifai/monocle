@@ -25,7 +25,7 @@ struct RootView: View {
                         BookHomeView(model: model)
                             .toolbar(.hidden, for: .tabBar)
                     }
-                    Tab("Analysis", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
+                    Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
                         AnalyticsView(model: model, showsDismissButton: false)
                             .toolbar(.hidden, for: .tabBar)
                     }

@@ -997,11 +997,11 @@ final class MonocleUITests: XCTestCase {
             thisMonthChip.tap()
         }
 
-        // 5. Switch scope to All Books
-        app.segmentedControls["analyticsScopePicker"].buttons["All books"].tap()
+        // 5. Switch scope to All Cards
+        app.segmentedControls["analyticsScopePicker"].buttons["All cards"].tap()
 
-        // 6. Switch back to Current Book
-        app.segmentedControls["analyticsScopePicker"].buttons["Current book"].tap()
+        // 6. Switch back to Current Card
+        app.segmentedControls["analyticsScopePicker"].buttons["Current card"].tap()
 
         // 7. Return to Home from the same switcher
         homeTab.tap()

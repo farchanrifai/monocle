@@ -54,7 +54,7 @@ struct BillsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                    Eyebrow(text: "Recurring commitments")
+                    Eyebrow(text: "Recurring bills")
                     Text("Fewer things\non your mind.")
                         .font(.largeTitle.weight(.medium))
                         .tracking(-1)
@@ -644,7 +644,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // MARK: 1. Active Book & Categories
+                // MARK: 1. Active Card & Categories
                 Section {
                     if model.settings.book.kind == .sample {
                         NavigationLink {
@@ -655,7 +655,7 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                             } label: {
                                 Label {
-                                    Text("Start your real book")
+                                    Text("Start your real card")
                                 } icon: {
                                     SettingsIcon(symbol: "sparkles", color: MC.red)
                                 }
@@ -671,9 +671,9 @@ struct SettingsView: View {
                                     .foregroundStyle(.secondary)
                             } label: {
                                 Label {
-                                    Text("Book name")
+                                    Text("Card name")
                                 } icon: {
-                                    SettingsIcon(symbol: "book.pages.fill", color: .indigo)
+                                    SettingsIcon(symbol: "creditcard.fill", color: .indigo)
                                 }
                             }
                         }
@@ -707,7 +707,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Active Book")
+                    Text("Active Card")
                 }
 
                 // MARK: 2. Data & Storage
@@ -873,9 +873,9 @@ private struct RenameBookView: View {
 
     var body: some View {
         Form {
-            TextField("Book name", text: $name).accessibilityIdentifier("renameBookName")
+            TextField("Card name", text: $name).accessibilityIdentifier("renameBookName")
         }
-        .navigationTitle("Rename book").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Rename card").navigationBarTitleDisplayMode(.inline)
         .onAppear { name = model.settings.book.name }
         .toolbar { ToolbarItem(placement: .confirmationAction) {
             Button("Save") {
@@ -883,7 +883,7 @@ private struct RenameBookView: View {
                 catch { self.error = error.localizedDescription }
             }
         } }
-        .alert("Could not rename book", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+        .alert("Could not rename card", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK") { error = nil }
         } message: { Text(error ?? "") }
     }
@@ -899,26 +899,26 @@ private struct RealBookOnboardingView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Book name", text: $name).accessibilityIdentifier("realBookName")
+                TextField("Card name", text: $name).accessibilityIdentifier("realBookName")
             } header: {
-                Text("Your real book")
+                Text("Your real card")
             } footer: {
                 Text("This keeps your categories and settings, removes sample entries and unfinished drafts, and creates a safety backup first. It cannot happen by accident.")
             }
             Section {
-                Button("Start empty real book", role: .destructive) { confirm = true }
+                Button("Start empty real card", role: .destructive) { confirm = true }
                     .accessibilityIdentifier("confirmRealBook")
             }
         }
-        .navigationTitle("Start real book").navigationBarTitleDisplayMode(.inline)
-        .alert("Start an empty real book?", isPresented: $confirm) {
-            Button("Start empty book", role: .destructive) {
+        .navigationTitle("Start real card").navigationBarTitleDisplayMode(.inline)
+        .alert("Start an empty real card?", isPresented: $confirm) {
+            Button("Start empty card", role: .destructive) {
                 do { try model.startEmptyRealBook(named: name); dismiss() }
                 catch { self.error = error.localizedDescription }
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Sample entries and any unfinished draft will be removed. Your categories and settings stay in place, and a safety backup is created first.") }
-        .alert("Could not start real book", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+        .alert("Could not start real card", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("OK") { error = nil }
         } message: { Text(error ?? "") }
     }

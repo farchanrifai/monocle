@@ -75,7 +75,7 @@ struct CardCustomizerView: View {
         if isCreatingNewBook {
             let newID = UUID()
             let nextIndex = booksList.count + 1
-            let defaultName = "New Book \(nextIndex)"
+            let defaultName = "New Card \(nextIndex)"
             let defaultPaletteIndex = booksList.count % CardPalette.standard.count
             let newDraftBook = BookProfile(id: newID, name: defaultName, kind: .real, colorIndex: defaultPaletteIndex)
 
@@ -181,7 +181,7 @@ struct CardCustomizerView: View {
                 }
                 .scrollBounceBehavior(.always)
             }
-            .navigationTitle(isCreatingNewBook ? "New Book" : "Customize Card")
+            .navigationTitle(isCreatingNewBook ? "New Card" : "Customize Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -201,7 +201,7 @@ struct CardCustomizerView: View {
                             if let book = customizerBooks.first(where: { $0.id == bookID }) {
                                 let rawName = draftNames[bookID] ?? book.name
                                 let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
-                                let finalName = trimmed.isEmpty ? "New Book" : String(trimmed.prefix(40))
+                                let finalName = trimmed.isEmpty ? "New Card" : String(trimmed.prefix(40))
                                 if let created = try? model.createBook(named: finalName) {
                                     if let custom = drafts[bookID] {
                                         model.updateCustomization(custom, for: created.id)
@@ -270,7 +270,7 @@ struct CardCustomizerView: View {
     private func addNewDraftBook() {
         let newID = UUID()
         let nextIndex = customizerBooks.count + 1
-        let defaultName = "New Book \(nextIndex)"
+        let defaultName = "New Card \(nextIndex)"
         let defaultPaletteIndex = customizerBooks.count % CardPalette.standard.count
         let newBook = BookProfile(id: newID, name: defaultName, kind: .real, colorIndex: defaultPaletteIndex)
 
@@ -314,7 +314,7 @@ struct CardCustomizerView: View {
         if let current = draftNames[bookID] {
             let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty {
-                let original = customizerBooks.first(where: { $0.id == bookID })?.name ?? "Book"
+                let original = customizerBooks.first(where: { $0.id == bookID })?.name ?? "Card"
                 draftNames[bookID] = original
             } else {
                 draftNames[bookID] = String(trimmed.prefix(40))
@@ -428,7 +428,7 @@ struct CardCustomizerView: View {
                 }
 
                 VStack(spacing: 4) {
-                    Text("New Book")
+                    Text("New Card")
                         .font(.headline)
                         .foregroundStyle(Color.primary)
                     Text("Tap to create and customize")
@@ -454,7 +454,7 @@ struct CardCustomizerView: View {
             .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Add new book")
+        .accessibilityLabel("Add new card")
         .accessibilityIdentifier("customizerPlaceholderCard")
     }
 
@@ -465,9 +465,9 @@ struct CardCustomizerView: View {
                 .foregroundStyle(Color.accentColor)
 
             VStack(spacing: 6) {
-                Text("Add a New Book")
+                Text("Add a New Card")
                     .font(.title3.bold())
-                Text("Create and customize a new personal expense book. Each book gets its own card, currency, and categories.")
+                Text("Create and customize a new card. Each card gets its own spending limits and transactions.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
