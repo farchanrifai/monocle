@@ -13,14 +13,25 @@ struct AnalyticsView: View {
     @State private var selectedCategoryID: UUID? = nil
     @State private var selectedChartAngle: Int64? = nil
 
+    private var direction: BookVisualDirection { model.effectiveDirection(for: colorScheme) }
+
     private var paper: Color {
-        switch model.effectiveDirection(for: colorScheme) {
+        switch direction {
         case .light:
             return MC.paper
         case .ledger:
             return Color(red: 0.96, green: 0.94, blue: 0.88)
         case .instrument, .signal:
             return .black
+        }
+    }
+
+    private var ink: Color {
+        switch direction {
+        case .light, .ledger:
+            return MC.ink
+        case .instrument, .signal:
+            return .white
         }
     }
 
@@ -42,7 +53,9 @@ struct AnalyticsView: View {
     var body: some View {
         GeometryReader { geometry in
             let safeAreaTop = geometry.safeAreaInsets.top
-            NavigationStack {
+            ZStack(alignment: .top) {
+                paper.ignoresSafeArea()
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         controlsHeader
@@ -56,25 +69,12 @@ struct AnalyticsView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.top, 68)
                     .padding(.bottom, 96)
                 }
-                .background(paper)
-                .navigationTitle("Analytics & Trends")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.hidden, for: .navigationBar)
-                .toolbar {
-                    if showsDismissButton {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Done") { dismiss() }
-                                .accessibilityIdentifier("dismissAnalyticsView")
-                        }
-                    }
-                }
-                .overlay(alignment: .top) {
-                    progressiveBlurHeaderBackground(safeAreaTop: safeAreaTop)
-                        .zIndex(1000)
-                }
+
+                topBar(safeAreaTop: safeAreaTop)
+                    .zIndex(1000)
             }
             .onAppear {
                 syncScopeWithHomeContext()
@@ -91,13 +91,60 @@ struct AnalyticsView: View {
         }
     }
 
+    private func topBar(safeAreaTop: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: safeAreaTop)
+            header
+        }
+        .background(alignment: .top) {
+            progressiveBlurHeaderBackground(safeAreaTop: safeAreaTop)
+        }
+        .ignoresSafeArea(edges: .top)
+    }
+
+    private var header: some View {
+        HStack {
+            if showsDismissButton {
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(MC.red)
+                }
+                .accessibilityIdentifier("dismissAnalyticsView")
+            } else {
+                Color.clear
+                    .frame(width: 44, height: 44)
+            }
+
+            Spacer()
+
+            Text("Analytics & Trends")
+                .font(.headline)
+                .foregroundStyle(ink)
+                .accessibilityIdentifier("analyticsTitle")
+
+            Spacer()
+
+            Color.clear
+                .frame(width: 44, height: 44)
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 8)
+        .frame(height: 52)
+    }
+
     private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
-        let toolbarHeight: CGFloat = 44
+        let toolbarHeight: CGFloat = 52
+        // Shorten the full fade from 88 pt to 66 pt (25%), ending closer to the toolbar.
         let featherHeight: CGFloat = 22
         let totalHeight = safeAreaTop + toolbarHeight + featherHeight
         let fadeStart = safeAreaTop + 8
         let fadeLength = totalHeight - fadeStart
 
+        // A smoothstep has zero slope at both ends: no hard shoulder beneath
+        // the toolbar and no visible cutoff at the bottom of the material.
         let stops: [Gradient.Stop] = [.init(color: .black, location: 0)] + (0...16).map { step in
             let t = CGFloat(step) / 16
             let opacity = 1 - t * t * (3 - 2 * t)
@@ -108,6 +155,7 @@ struct AnalyticsView: View {
         return Rectangle()
             .fill(.ultraThinMaterial)
             .overlay(paper.opacity(0.52))
+            // Composite first, then fade once so tint and material share an edge.
             .mask {
                 LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
             }

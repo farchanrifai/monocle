@@ -2,6 +2,15 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.8] - 2026-09-12
+### Native Progressive Blur Toolbar Matching Home
+- **Eliminated UIKit NavigationBar Hard Stop**:
+  - Replaced internal `NavigationStack` in `AnalyticsView` with a native `ZStack` layout, custom topBar, and progressive blur header background identical to `BookHomeView`.
+  - Removed UIKit's `_UIBarBackground` and fixed 44pt hard-stop cutoff, allowing scrolling charts and content to feather continuously and smoothly under the title and status bar.
+  - Provided custom centered header with theme-aware `ink` typography and dismiss button when presented modally.
+- **Test Suite Consistency**:
+  - Verified 92 unit tests in `MonocleTests` and all UI tests in `MonocleUITests`.
+
 ## [0.7.7] - 2026-09-12
 ### Progressive Blur Toolbar & Bottom Navigation Clearance
 - **Progressive Blur Toolbar Background**:

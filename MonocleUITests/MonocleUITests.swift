@@ -983,7 +983,7 @@ final class MonocleUITests: XCTestCase {
         homeTab.press(forDuration: 0.3, thenDragTo: analysisTab)
 
         // 2. Verify Analytics & Trends is a root page, not a modal
-        XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Analytics & Trends"].waitForExistence(timeout: 5) || app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["analyticsScopeMenu"].exists)
         XCTAssertTrue(app.staticTexts["totalSpendMetric"].exists)
         XCTAssertFalse(app.buttons["dismissAnalyticsView"].exists)
