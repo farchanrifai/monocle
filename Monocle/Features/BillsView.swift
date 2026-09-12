@@ -753,7 +753,9 @@ struct SettingsView: View {
                 } footer: {
                     Text(model.preferredEntryMode == .keypad
                         ? "New expense opens numeric keypad for fast amount entry."
-                        : "New expense opens natural language text field (e.g. 'Coffee 28k').")
+                        : (model.preferredEntryMode == .compact
+                            ? "New expense opens a tactile liquid glass compact sheet with mini keypad."
+                            : "New expense opens natural language text field (e.g. 'Coffee 28k')."))
                 }
 
                 // MARK: 4. Appearance

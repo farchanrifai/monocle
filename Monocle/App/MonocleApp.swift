@@ -20,20 +20,30 @@ struct RootView: View {
             } else if model.appLock.blocksContent {
                 AppLockView(lock: model.appLock)
             } else {
-                TabView(selection: $model.selectedTab) {
-                    Tab("Home", systemImage: "house", value: 0) {
-                        BookHomeView(model: model)
-                            .toolbar(.hidden, for: .tabBar)
+                ZStack {
+                    TabView(selection: $model.selectedTab) {
+                        Tab("Home", systemImage: "house", value: 0) {
+                            BookHomeView(model: model)
+                                .toolbar(.hidden, for: .tabBar)
+                        }
+                        Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
+                            AnalyticsView(model: model, showsDismissButton: false)
+                                .toolbar(.hidden, for: .tabBar)
+                        }
                     }
-                    Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
-                        AnalyticsView(model: model, showsDismissButton: false)
-                            .toolbar(.hidden, for: .tabBar)
+                    .toolbar(.hidden, for: .tabBar)
+                    .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
+
+                    if model.showEntry && model.draft.mode == .compact {
+                        CompactEntrySheet(model: model)
+                            .zIndex(9999)
                     }
                 }
-                .toolbar(.hidden, for: .tabBar)
-                .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
                 .tint(MC.red)
-                .sheet(isPresented: $model.showEntry, onDismiss: {
+                .sheet(isPresented: Binding(
+                    get: { model.showEntry && model.draft.mode != .compact },
+                    set: { model.showEntry = $0 }
+                ), onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }
                 }) { EntryView(model: model) }
                 .sensoryFeedback(.success, trigger: model.saveFeedback)

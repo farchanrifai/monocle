@@ -223,7 +223,7 @@ struct ExpenseDraft: Codable, Equatable {
     }
 }
 
-enum EntryMode: String, Codable, CaseIterable { case keypad = "Keypad", text = "Text" }
+enum EntryMode: String, Codable, CaseIterable { case keypad = "Keypad", text = "Text", compact = "Compact" }
 
 struct ParsedExpense {
     var amount: Int64

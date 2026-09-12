@@ -1366,4 +1366,51 @@ final class MonocleUITests: XCTestCase {
         closeDetail.tap()
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testCompactEntrySheetKeypadAndRecord() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Configure default input mode to Compact in Settings
+        openSettings(app)
+        let compactOption = app.segmentedControls["entryMode"].buttons["Compact"]
+        XCTAssertTrue(compactOption.waitForExistence(timeout: 5))
+        compactOption.tap()
+        app.buttons["Done"].tap()
+
+        // 2. Open Entry Sheet - should open the Compact Liquid Glass sheet
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
+        app.buttons["addExpense"].tap()
+
+        // 3. Verify compact elements are visible
+        XCTAssertTrue(app.buttons["compactRecordExpense"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["compactCardSelector"].exists)
+        XCTAssertTrue(app.buttons["compactDateSelector"].exists)
+        XCTAssertTrue(app.buttons["compactCategorySelector"].exists)
+        XCTAssertTrue(app.buttons["compact-key-5"].exists)
+
+        // Capture screenshot of Compact Liquid Glass Sheet
+        let compactShot = app.screenshot()
+        add(XCTAttachment(screenshot: compactShot))
+
+        // 4. Type amount on mini keypad: 5 0 000 -> 50.000
+        app.buttons["compact-key-5"].tap()
+        app.buttons["compact-key-0"].tap()
+        app.buttons["compact-key-000"].tap()
+        XCTAssertTrue(app.staticTexts["compactAmountDisplay"].label.contains("50.000"))
+
+        // 5. Test backspace key
+        app.buttons["compact-key-delete.left"].tap()
+        app.buttons["compact-key-000"].tap()
+
+        // 6. Record the expense
+        app.buttons["compactRecordExpense"].tap()
+
+        // 7. Verify toast or completion
+        XCTAssertTrue(app.staticTexts["Expense recorded"].waitForExistence(timeout: 5))
+    }
 }
+
