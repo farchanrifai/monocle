@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BottomNavigation: View {
     @Bindable var model: AppModel
@@ -26,19 +27,16 @@ struct BottomNavigation: View {
             }
 
             GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 0) {
-                    // Left Bubble: Filter & Stack Switcher (only on home screen)
+                HStack(spacing: 8) {
                     if !isDetail {
                         filterMenu
                             .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        tabSwitcher
+                            .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    } else {
+                        Spacer(minLength: 0)
                     }
-
-                    // Spacer pushes the add button to the right on home, or centers it on detail
-                    Spacer(minLength: 0)
-
-                    // Floating Red Add Button (morphs from bottom-right circle to middle-bottom expanded capsule)
                     addButton
-
                     if isDetail {
                         Spacer(minLength: 0)
                     }
@@ -59,6 +57,13 @@ struct BottomNavigation: View {
             guard !Task.isCancelled else { return }
         model.toast = nil
         }
+    }
+
+    private var tabSwitcher: some View {
+        NativeTabSwitcher(selection: $model.selectedTab)
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .offset(y: 10.5)
     }
 
     private var filterMenu: some View {
@@ -107,7 +112,7 @@ struct BottomNavigation: View {
             Image(systemName: model.filterScope == .activeStack ? "square.stack.3d.up.fill" : "rectangle.stack")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(model.filterScope == .activeStack ? MC.red : Color.primary)
-                .frame(width: 56, height: 56)
+                .frame(width: 60, height: 60)
                 .contentTransition(.symbolEffect(.replace))
         } primaryAction: {
             model.toggleFilterScope()
@@ -135,12 +140,47 @@ struct BottomNavigation: View {
             }
             .foregroundStyle(.white)
             .padding(.horizontal, isDetail ? 24 : 0)
-            .frame(width: isDetail ? nil : 56, height: 56)
+            .frame(width: isDetail ? nil : 60, height: isDetail ? 56 : 60)
         }
         .buttonStyle(PressFeedbackStyle())
         .glassEffect(.regular.tint(MC.red.opacity(0.85)).interactive(), in: .capsule)
         .environment(\.colorScheme, .dark)
         .accessibilityLabel(model.draft.hasContent ? "Continue expense" : "Add expense")
         .accessibilityIdentifier("addExpense")
+    }
+}
+
+private struct NativeTabSwitcher: UIViewRepresentable {
+    @Binding var selection: Int
+
+    func makeCoordinator() -> Coordinator { Coordinator(selection: $selection) }
+
+    func makeUIView(context: Context) -> UITabBar {
+        let tabBar = UITabBar()
+        let home = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), selectedImage: UIImage(systemName: "house.fill"))
+        let analysis = UITabBarItem(title: "Analysis", image: UIImage(systemName: "chart.line.uptrend.xyaxis"), tag: 1)
+        home.tag = 0
+        home.accessibilityIdentifier = "homeTab"
+        analysis.accessibilityIdentifier = "analysisTab"
+        tabBar.items = [home, analysis]
+        tabBar.selectedItem = home
+        tabBar.itemPositioning = .fill
+        tabBar.delegate = context.coordinator
+        return tabBar
+    }
+
+    func updateUIView(_ tabBar: UITabBar, context: Context) {
+        context.coordinator.selection = $selection
+        tabBar.selectedItem = tabBar.items?.first { $0.tag == selection }
+    }
+
+    final class Coordinator: NSObject, UITabBarDelegate {
+        var selection: Binding<Int>
+
+        init(selection: Binding<Int>) { self.selection = selection }
+
+        func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+            selection.wrappedValue = item.tag
+        }
     }
 }

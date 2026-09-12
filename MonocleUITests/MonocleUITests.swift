@@ -975,39 +975,38 @@ final class MonocleUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
-        // 1. Open Options Menu
-        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
-        app.buttons["bookOptionsMenu"].tap()
-        app.buttons["Tools & Insights"].tap()
+        // 1. Open Analytics from the center tab switcher
+        let homeTab = app.buttons["homeTab"]
+        let analysisTab = app.buttons["analysisTab"]
+        XCTAssertTrue(homeTab.waitForExistence(timeout: 10))
+        XCTAssertTrue(analysisTab.exists)
+        homeTab.press(forDuration: 0.3, thenDragTo: analysisTab)
 
-        // 2. Tap Analytics & Trends
-        let analyticsButton = app.buttons["Analytics & Trends"]
-        XCTAssertTrue(analyticsButton.waitForExistence(timeout: 5))
-        analyticsButton.tap()
-
-        // 3. Verify Analytics & Trends modal presented
+        // 2. Verify Analytics & Trends is a root page, not a modal
         XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.segmentedControls["analyticsScopePicker"].exists)
         XCTAssertTrue(app.staticTexts["totalSpendMetric"].exists)
+        XCTAssertFalse(app.buttons["dismissAnalyticsView"].exists)
 
-        // 4. Verify Charts present
+        // 3. Verify Charts present
         XCTAssertTrue(app.otherElements["burnUpTrajectoryChart"].exists || app.scrollViews.firstMatch.exists)
 
-        // 5. Switch horizon chip
+        // 4. Switch horizon chip
         let thisMonthChip = app.buttons["horizon-This month"]
         if thisMonthChip.exists {
             thisMonthChip.tap()
         }
 
-        // 6. Switch scope to All Books
+        // 5. Switch scope to All Books
         app.segmentedControls["analyticsScopePicker"].buttons["All books"].tap()
 
-        // 7. Switch back to Current Book
+        // 6. Switch back to Current Book
         app.segmentedControls["analyticsScopePicker"].buttons["Current book"].tap()
 
-        // 8. Dismiss modal
-        app.buttons["dismissAnalyticsView"].tap()
+        // 7. Return to Home from the same switcher
+        homeTab.tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["activityFilterButton"].exists)
     }
 
     @MainActor
@@ -1201,12 +1200,18 @@ final class MonocleUITests: XCTestCase {
         // 1. On Home screen, filter button exists on left, add button on right
         let filterButton = app.buttons["activityFilterButton"]
         let addButton = app.buttons["addExpense"]
+        let homeTab = app.buttons["homeTab"]
+        let analysisTab = app.buttons["analysisTab"]
         XCTAssertTrue(filterButton.waitForExistence(timeout: 10))
         XCTAssertTrue(addButton.exists)
+        XCTAssertTrue(homeTab.exists)
+        XCTAssertTrue(analysisTab.exists)
 
         let homeAddFrame = addButton.frame
         let screenWidth = app.windows.firstMatch.frame.width
         XCTAssertGreaterThan(homeAddFrame.midX, screenWidth * 0.6, "Home add button must be on the right side")
+        XCTAssertEqual(homeTab.frame.midY, filterButton.frame.midY, accuracy: 4, "Tab island must align vertically with the filter bubble")
+        XCTAssertEqual(analysisTab.frame.midY, homeAddFrame.midY, accuracy: 4, "Tab island must align vertically with the add bubble")
 
         // 2. Open first card
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
@@ -1223,6 +1228,8 @@ final class MonocleUITests: XCTestCase {
 
         // 5. Filter button must be removed on transaction page
         XCTAssertFalse(filterButton.exists, "Filter button must be hidden on transaction page")
+        XCTAssertFalse(homeTab.exists, "Tab switcher must be hidden on transaction page")
+        XCTAssertFalse(analysisTab.exists, "Tab switcher must be hidden on transaction page")
 
         // 6. Floating red add button must morph to the middle bottom
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))
@@ -1254,6 +1261,8 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
         sleep(1) // Wait for spring animation to settle
         XCTAssertTrue(filterButton.waitForExistence(timeout: 5), "Filter button must reappear on home screen")
+        XCTAssertTrue(homeTab.exists, "Tab switcher must reappear on home screen")
+        XCTAssertTrue(analysisTab.exists, "Tab switcher must reappear on home screen")
         let returnedAddFrame = addButton.frame
         XCTAssertGreaterThan(returnedAddFrame.midX, screenWidth * 0.6, "Add button must return to right side on home")
     }
@@ -1334,7 +1343,7 @@ final class MonocleUITests: XCTestCase {
         // 3. Open sub-menu: Tools & Insights
         app.buttons["Tools & Insights"].tap()
         XCTAssertTrue(app.buttons["Budgets"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Analytics & Trends"].exists)
+        XCTAssertFalse(app.buttons["Analytics & Trends"].exists)
         XCTAssertTrue(app.buttons["Recurring Bills"].exists)
 
         // Tap Budgets
@@ -1357,5 +1366,3 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
     }
 }
-
-

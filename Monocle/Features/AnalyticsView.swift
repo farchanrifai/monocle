@@ -3,6 +3,7 @@ import Charts
 
 struct AnalyticsView: View {
     @Bindable var model: AppModel
+    var showsDismissButton = true
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
@@ -46,9 +47,11 @@ struct AnalyticsView: View {
             .navigationTitle("Analytics & Trends")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("dismissAnalyticsView")
+                if showsDismissButton {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismiss() }
+                            .accessibilityIdentifier("dismissAnalyticsView")
+                    }
                 }
             }
         }

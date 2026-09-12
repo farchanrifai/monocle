@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.22] - 2026-09-12
+### Native Liquid Glass tab selector
+- Replace the custom Home and Analysis selector with the native iOS tab bar, including hold-and-drag selection.
+- Align the Filter, tab switcher, and Add controls on the same visual centerline.
+
+## [0.6.21] - 2026-09-12
+### Three-island bottom navigation
+- Add separate Liquid Glass Filter and Add bubbles around a two-button Home and Analysis island.
+- Promote Analytics & Trends to a persistent root tab and remove its duplicate Options-menu entry while preserving direct sheet access from card telemetry and Budgets.
+- Preserve the centered Add Expense card-detail morph, Reduce Motion behavior, selection feedback, and accessible selected-tab state.
+
 ## [0.6.20] - 2026-09-12
 ### Shorter header gradient
 - Shorten the header fade by 25%, from 88 pt to 66 pt, so the blur ends 22 pt higher and covers less content.

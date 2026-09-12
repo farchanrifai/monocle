@@ -1164,13 +1164,6 @@ struct BookHomeView: View {
                 .accessibilityIdentifier("menuBudgets")
 
                 Button {
-                    model.showAnalytics = true
-                } label: {
-                    Label("Analytics & Trends", systemImage: "chart.line.uptrend.xyaxis")
-                }
-                .accessibilityIdentifier("menuAnalytics")
-
-                Button {
                     showingBills = true
                 } label: {
                     Label("Recurring Bills", systemImage: "calendar")
