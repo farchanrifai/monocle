@@ -640,19 +640,132 @@ struct SettingsView: View {
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         NavigationStack {
             Form {
+                // MARK: 1. Active Book & Categories
                 Section {
-                    LabeledContent("Book", value: model.settings.book.name)
-                    LabeledContent("Currency", value: "IDR")
-                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.3"
-                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "29"
-                    LabeledContent("Version", value: "\(version) (\(build))")
+                    if model.settings.book.kind == .sample {
+                        NavigationLink {
+                            RealBookOnboardingView(model: model)
+                        } label: {
+                            LabeledContent {
+                                Text("Sample")
+                                    .foregroundStyle(.secondary)
+                            } label: {
+                                Label {
+                                    Text("Start your real book")
+                                } icon: {
+                                    SettingsIcon(symbol: "sparkles", color: MC.red)
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("startRealBook")
+                    } else {
+                        NavigationLink {
+                            RenameBookView(model: model)
+                        } label: {
+                            LabeledContent {
+                                Text(model.settings.book.name)
+                                    .foregroundStyle(.secondary)
+                            } label: {
+                                Label {
+                                    Text("Book name")
+                                } icon: {
+                                    SettingsIcon(symbol: "book.pages.fill", color: .indigo)
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("renameRealBook")
+                    }
+
+                    NavigationLink {
+                        CategoryManager(model: model)
+                    } label: {
+                        LabeledContent {
+                            Text("\(model.categories.count)")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label {
+                                Text("Categories")
+                            } icon: {
+                                SettingsIcon(symbol: "tag.fill", color: .orange)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("manageCategories")
+
+                    LabeledContent {
+                        Text("IDR")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label {
+                            Text("Currency")
+                        } icon: {
+                            SettingsIcon(symbol: "banknote.fill", color: .green)
+                        }
+                    }
+                } header: {
+                    Text("Active Book")
                 }
+
+                // MARK: 2. Data & Storage
                 Section {
-                    Toggle("Auto switch", isOn: $model.autoAppearance)
-                        .accessibilityIdentifier("autoAppearanceToggle")
+                    NavigationLink {
+                        BackupView(model: model)
+                    } label: {
+                        Label {
+                            Text("Backup & restore")
+                        } icon: {
+                            SettingsIcon(symbol: "arrow.triangle.2.circlepath", color: .blue)
+                        }
+                    }
+                    .accessibilityIdentifier("backupSettings")
+
+                    NavigationLink {
+                        CSVInterchangeView(model: model)
+                    } label: {
+                        Label {
+                            Text("CSV export & import")
+                        } icon: {
+                            SettingsIcon(symbol: "tablecells.fill", color: .teal)
+                        }
+                    }
+                    .accessibilityIdentifier("csvInterchangeSettings")
+                } header: {
+                    Text("Data & Storage")
+                } footer: {
+                    Text("Export full JSON snapshots for safekeeping or import spreadsheets.")
+                }
+
+                // MARK: 3. Expense Input
+                Section {
+                    Picker("Default input method", selection: $model.preferredEntryMode) {
+                        ForEach(EntryMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("entryMode")
+                } header: {
+                    Text("Expense Input")
+                } footer: {
+                    Text(model.preferredEntryMode == .keypad
+                        ? "New expense opens numeric keypad for fast amount entry."
+                        : "New expense opens natural language text field (e.g. 'Coffee 28k').")
+                }
+
+                // MARK: 4. Appearance
+                Section {
+                    Toggle(isOn: $model.autoAppearance) {
+                        Label {
+                            Text("Auto switch")
+                        } icon: {
+                            SettingsIcon(symbol: "circle.lefthalf.filled", color: .blue)
+                        }
+                    }
+                    .accessibilityIdentifier("autoAppearanceToggle")
 
                     Picker("Appearance", selection: Binding(
                         get: {
@@ -671,7 +784,7 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("appearanceModePicker")
 
-                    Picker("Theme style", selection: Binding(
+                    Picker(selection: Binding(
                         get: { model.visualDirection },
                         set: { newDir in
                             model.visualDirection = newDir
@@ -679,6 +792,12 @@ struct SettingsView: View {
                     )) {
                         ForEach(BookVisualDirection.allCases) { dir in
                             Text(dir.rawValue).tag(dir)
+                        }
+                    } label: {
+                        Label {
+                            Text("Theme style")
+                        } icon: {
+                            SettingsIcon(symbol: "paintpalette.fill", color: .purple)
                         }
                     }
                     .accessibilityIdentifier("themeStylePicker")
@@ -691,36 +810,57 @@ struct SettingsView: View {
                         Text("Appearance is locked to your selection.")
                     }
                 }
+
+                // MARK: 5. Security & Privacy
                 Section {
-                    Picker("Default input method", selection: $model.preferredEntryMode) {
-                        ForEach(EntryMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                    NavigationLink {
+                        AppLockSettingsView(model: model)
+                    } label: {
+                        LabeledContent {
+                            Text(model.settings.appLockTimeout?.title ?? "Off")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label {
+                                Text("App lock")
+                            } icon: {
+                                SettingsIcon(symbol: "lock.shield.fill", color: MC.red)
+                            }
                         }
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("entryMode")
+                    .accessibilityIdentifier("appLockSettings")
                 } header: {
-                    Text("Expense Input")
+                    Text("Security")
                 } footer: {
-                    Text(model.preferredEntryMode == .keypad
-                        ? "New expense opens numeric keypad for fast amount entry."
-                        : "New expense opens natural language text field (e.g. 'Coffee 28k').")
+                    Text("Require Face ID or device passcode when returning to Monocle.")
                 }
+
+                // MARK: 6. About
                 Section {
-                    NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
-                    NavigationLink("CSV export & import") { CSVInterchangeView(model: model) }.accessibilityIdentifier("csvInterchangeSettings")
-                    NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
-                    NavigationLink("App lock") { AppLockSettingsView(model: model) }.accessibilityIdentifier("appLockSettings")
-                    if model.settings.book.kind == .sample {
-                        NavigationLink("Start your real book") { RealBookOnboardingView(model: model) }
-                            .accessibilityIdentifier("startRealBook")
-                    } else {
-                        NavigationLink("Rename book") { RenameBookView(model: model) }
-                            .accessibilityIdentifier("renameRealBook")
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.7.2"
+                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "61"
+                    LabeledContent {
+                        Text("\(version) (\(build))")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label {
+                            Text("Version")
+                        } icon: {
+                            SettingsIcon(symbol: "info.circle.fill", color: .gray)
+                        }
                     }
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("Monocle — Single-card daily expense ledger with Liquid Glass design.")
                 }
-            }.navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }

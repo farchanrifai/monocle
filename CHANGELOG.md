@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.3] - 2026-09-12
+### Apple HIG-Compliant Settings Organization
+- **Structured Hierarchy & Icon Badges**:
+  - Reorganized Settings into 6 clear sections: Active Book, Data & Storage, Expense Input, Appearance, Security, and About.
+  - Added native iOS Settings-style icon badges (`SettingsIcon`) featuring SF Symbols on vibrant gradient rounded tiles.
+  - Consolidated book identification and rename/onboarding into an interactive row with trailing state details.
+  - Displayed live badges and status details (active category counts, app lock timeout state, book name, and version).
+- **Streamlined Preferences & Accessibility**:
+  - Maintained direct 1-tap in-line controls for high-frequency settings (Auto Switch, Light/Dark appearance, Theme style, and Input mode).
+  - Positioned Data & Storage directly beneath Active Book for immediate visibility and rapid access.
+
 ## [0.7.2] - 2026-09-12
 ### Settings-Configured Expense Input & Consistent Record Button
 - **Separated Expense Input Mode**:

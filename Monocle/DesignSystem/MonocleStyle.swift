@@ -49,6 +49,21 @@ struct CategoryMark: View {
     }
 }
 
+/// Standard Apple Settings icon badge with rounded square gradient backing.
+struct SettingsIcon: View {
+    let symbol: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(color.gradient, in: RoundedRectangle(cornerRadius: 6.5, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}
+
 /// Brief, interruptible touch feedback; accessibility preferences remove scaling.
 struct PressFeedbackStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
