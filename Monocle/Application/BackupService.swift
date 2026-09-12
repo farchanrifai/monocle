@@ -39,10 +39,10 @@ final class BackupService {
             let budgets = try repository.budgets(in: book.id)
             let bills = try repository.bills(in: book.id)
             let occurrences = try repository.billOccurrences(in: book.id)
-            let draft = (book.id == settings.book.id) ? currentDraft : (try? state.loadDraft(for: book.id))
+            let draft = (book.id == (currentDraft.bookID ?? settings.book.id)) ? currentDraft : (try state.loadDraft(for: book.id))
             items.append(BookBackupItem(book: book, categories: cats, expenses: exps, budgets: budgets, draft: draft, bills: bills, billOccurrences: occurrences))
         }
-        let prefs = (try? state.loadWorkspacePreferences()) ?? WorkspacePreferences(visibleBookIDs: allBooks.map(\.id), bookOrder: allBooks.map(\.id))
+        let prefs = try state.loadWorkspacePreferences()
         var artworks: [String: Data] = [:]
         for (_, custom) in prefs.cardCustomizations {
             if case .customPhoto(let filename) = custom.style,
@@ -61,7 +61,9 @@ final class BackupService {
         let profile = try BookProfile.real(named: name)
         var updated = settings
         updated.book = profile
-        let original = try snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try repository.books().count > 1
+            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
+            : snapshot(draft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -87,7 +89,9 @@ final class BackupService {
         let profile = try settings.book.renamed(to: name)
         var updated = settings
         updated.book = profile
-        let original = try snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try repository.books().count > 1
+            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
+            : snapshot(draft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -138,7 +142,7 @@ final class BackupService {
     func previewWorkspace(data: Data) throws -> WorkspaceBackup {
         let candidate = try WorkspaceBackup.decode(data)
         let store = try ExpenseRepository(inMemory: true)
-        try store.replace(with: candidate)
+        try store.replace(with: candidate, importArtworks: false)
         return candidate
     }
 
@@ -152,8 +156,8 @@ final class BackupService {
             try fault?(.journalWritten)
             try repository.replace(with: candidate)
             try fault?(.databaseReplaced)
-            if let firstBook = candidate.books.first {
-                try state.saveDraft(firstBook.draft ?? ExpenseDraft())
+            for book in candidate.books {
+                try state.saveDraft(book.draft ?? ExpenseDraft(), for: book.book.id)
             }
             try fault?(.draftWritten)
             try state.saveSettings(candidate.settings)
@@ -180,7 +184,9 @@ final class BackupService {
         // Validate single-book candidate preview:
         _ = try preview(data: candidate.encoded())
         guard !FileManager.default.fileExists(atPath: journal.path) else { throw BackupError.recoveryRequired }
-        let original = try snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try repository.books().count > 1
+            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
+            : snapshot(draft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -214,8 +220,8 @@ final class BackupService {
         let journalData = try Data(contentsOf: journal)
         if let workspace = try? WorkspaceBackup.decode(journalData) {
             try repository.replace(with: workspace)
-            if let first = workspace.books.first, let draft = first.draft {
-                try state.saveDraft(draft)
+            for book in workspace.books {
+                try state.saveDraft(book.draft ?? ExpenseDraft(), for: book.book.id)
             }
             try state.saveSettings(workspace.settings)
             try state.saveWorkspacePreferences(workspace.preferences)

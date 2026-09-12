@@ -113,12 +113,9 @@ enum Money {
 
     static func digits(_ amount: Int64) -> String { String(amount / 100) }
     static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = locale
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = amount % 100 == 0 ? 0 : 2
-        let number = NSDecimalNumber(decimal: Decimal(amount) / 100)
-        return (currency ? "Rp" : "") + (formatter.string(from: number) ?? number.stringValue)
+        let value = Decimal(amount) / 100
+        let number = value.formatted(.number.locale(locale).precision(.fractionLength(0...(amount % 100 == 0 ? 0 : 2))))
+        return (currency ? "Rp" : "") + number
     }
 }
 

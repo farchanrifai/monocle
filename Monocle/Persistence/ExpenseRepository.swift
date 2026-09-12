@@ -6,6 +6,24 @@ final class ExpenseRepository: ExpenseStore {
     let container: NSPersistentContainer
     private var context: NSManagedObjectContext { container.viewContext }
 
+    private var transactionDepth = 0
+
+    func transaction(_ operation: () throws -> Void) throws {
+        transactionDepth += 1
+        defer { transactionDepth -= 1 }
+        do {
+            try operation()
+            if transactionDepth == 1 { try context.save() }
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private func commitIfNeeded() throws {
+        if transactionDepth == 0 && context.hasChanges { try context.save() }
+    }
+
     init(url: URL? = nil, inMemory: Bool = false) throws {
         guard let modelURL = Bundle.main.url(forResource: "Monocle", withExtension: "momd"),
               let model = NSManagedObjectModel(contentsOf: modelURL) else { throw EntryError.corruptStore }
@@ -27,7 +45,7 @@ final class ExpenseRepository: ExpenseStore {
                 row.setValue(category.id, forKey: "id"); row.setValue(category.name, forKey: "name")
                 row.setValue(category.symbol, forKey: "symbol"); row.setValue(book, forKey: "book")
             }
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -53,7 +71,7 @@ final class ExpenseRepository: ExpenseStore {
                 row.setValue(cat.symbol, forKey: "symbol")
                 row.setValue(book, forKey: "book")
             }
-            try context.save()
+            try commitIfNeeded()
             return profile
         } catch { context.rollback(); throw error }
     }
@@ -64,7 +82,7 @@ final class ExpenseRepository: ExpenseStore {
         do {
             let book = try bookRow(for: id)
             book.setValue(trimmed, forKey: "name")
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -74,7 +92,7 @@ final class ExpenseRepository: ExpenseStore {
         do {
             let book = try bookRow(for: id)
             context.delete(book)
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -257,7 +275,7 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(bill.isActive, forKey: "isActive")
             row.setValue(bill.createdAt, forKey: "createdAt")
             row.setValue(book, forKey: "book")
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -270,7 +288,7 @@ final class ExpenseRepository: ExpenseStore {
             let book = try bookRow(for: bookID)
             if let row = try findBillRule("BillRuleRecord", id: id, in: book) {
                 context.delete(row)
-                try context.save()
+                try commitIfNeeded()
             }
         } catch { context.rollback(); throw error }
     }
@@ -294,7 +312,7 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(occurrence.createdAt, forKey: "createdAt")
             row.setValue(occurrence.updatedAt, forKey: "updatedAt")
             row.setValue(ruleRow, forKey: "rule")
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -304,9 +322,13 @@ final class ExpenseRepository: ExpenseStore {
 
     func deleteOccurrence(_ id: UUID, in bookID: UUID) throws {
         do {
-            if let row = try find("BillOccurrenceRecord", id: id) {
+            let book = try bookRow(for: bookID)
+            let request = NSFetchRequest<NSManagedObject>(entityName: "BillOccurrenceRecord")
+            request.predicate = NSPredicate(format: "id == %@ AND rule.book == %@", id as NSUUID, book)
+            request.fetchLimit = 1
+            if let row = try context.fetch(request).first {
                 context.delete(row)
-                try context.save()
+                try commitIfNeeded()
             }
         } catch { context.rollback(); throw error }
     }
@@ -342,7 +364,7 @@ final class ExpenseRepository: ExpenseStore {
                 allocation.setValue(value.amount, forKey: "amount"); allocation.setValue(category, forKey: "category")
                 allocation.setValue(row, forKey: "expense")
             }
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -381,7 +403,7 @@ final class ExpenseRepository: ExpenseStore {
                 value.setValue(categoryLimit.limit, forKey: "limit")
                 value.setValue(row, forKey: "budget")
             }
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -398,7 +420,7 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(category.name, forKey: "name")
             row.setValue(category.symbol, forKey: "symbol")
             row.setValue(book, forKey: "book")
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -407,12 +429,13 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func deleteCategory(_ id: UUID, in bookID: UUID) throws {
+        guard try !bills(in: bookID).contains(where: { $0.categoryID == id }) else { throw CategoryError.inUse }
         guard try !expenses(in: bookID).contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
         do {
             let book = try bookRow(for: bookID)
             if let row = try findCategory("CategoryRecord", id: id, in: book) {
                 context.delete(row)
-                try context.save()
+                try commitIfNeeded()
             }
         } catch { context.rollback(); throw error }
     }
@@ -433,7 +456,7 @@ final class ExpenseRepository: ExpenseStore {
             }
             book.setValue(profile.id, forKey: "id")
             book.setValue(profile.name, forKey: "name")
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
@@ -442,12 +465,12 @@ final class ExpenseRepository: ExpenseStore {
         do {
             let book = try bookRow(for: profile.id)
             book.setValue(profile.name, forKey: "name")
-            try context.save()
+            try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
     /// Replace the complete workspace with a single Core Data transaction.
-    func replace(with workspace: WorkspaceBackup) throws {
+    func replace(with workspace: WorkspaceBackup, importArtworks: Bool = true) throws {
         try workspace.validate()
         do {
             for entity in ["BillOccurrenceRecord", "BillRuleRecord", "AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
@@ -542,10 +565,10 @@ final class ExpenseRepository: ExpenseStore {
                     }
                 }
             }
-            try context.save()
-            if let artworks = workspace.cardArtworks {
+            try commitIfNeeded()
+            if importArtworks, let artworks = workspace.cardArtworks {
                 for (filename, data) in artworks {
-                    try? CardArtworkStore.shared.importArtworkData(data, filename: filename)
+                    try CardArtworkStore.shared.importArtworkData(data, filename: filename)
                 }
             }
         } catch { context.rollback(); throw error }
@@ -558,7 +581,7 @@ final class ExpenseRepository: ExpenseStore {
 
     func delete(_ id: UUID) throws {
         do {
-            if let row = try find("ExpenseRecord", id: id) { context.delete(row); try context.save() }
+            if let row = try find("ExpenseRecord", id: id) { context.delete(row); try commitIfNeeded() }
         } catch { context.rollback(); throw error }
     }
 

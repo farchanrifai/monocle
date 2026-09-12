@@ -261,3 +261,31 @@ final class CSVTests: XCTestCase {
         XCTAssertTrue(saved.contains(where: { $0.note == "Snack 3" }))
     }
 }
+
+extension CSVTests {
+    func testMalformedAmountsAreNotSilentlyChanged() {
+        XCTAssertNil(CSVImportParser.parseAmount("abc123"))
+        XCTAssertNil(CSVImportParser.parseAmount("50.50"))
+        XCTAssertNil(CSVImportParser.parseAmount("50,50"))
+        XCTAssertNil(CSVImportParser.parseAmount("1,2,3"))
+        XCTAssertEqual(CSVImportParser.parseAmount("1.5k"), 150000)
+        XCTAssertEqual(CSVImportParser.parseAmount("1,5k"), 150000)
+    }
+}
+
+extension CSVTests {
+    func testImportFindsDuplicatesWithinFileAndPreservesBlankCategoryDefault() {
+        let categories = ExpenseCategory.defaults
+        let rows = [["2026-09-01", "1000", "Coffee", ""], ["2026-09-01", "1000", " coffee ", ""]]
+        let parsed = CSVImportParser.processRows(rawRows: rows, hasHeader: false,
+            mapping: CSVColumnMapping(dateIndex: 0, amountIndex: 1, noteIndex: 2, categoryIndex: 3),
+            targetBookID: UUID(), categories: categories, defaultCategoryID: categories[1].id, existingExpenses: [])
+        XCTAssertFalse(parsed[0].isDuplicate)
+        XCTAssertTrue(parsed[1].isDuplicate)
+        XCTAssertEqual(parsed[0].parsedExpense?.allocations.first?.categoryID, categories[1].id)
+        let invalid = CSVImportParser.processRows(rawRows: rows, hasHeader: false,
+            mapping: CSVColumnMapping(dateIndex: -1, amountIndex: 1), targetBookID: UUID(),
+            categories: categories, defaultCategoryID: categories[0].id, existingExpenses: [])
+        XCTAssertNil(invalid[0].parsedExpense)
+    }
+}

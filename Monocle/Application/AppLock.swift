@@ -59,7 +59,7 @@ final class AppLockController {
 
     func suspend(now: Date = .now) {
         guard timeout != nil else { return }
-        suspendedAt = now
+        if suspendedAt == nil { suspendedAt = now }
         privacyShieldVisible = true
     }
 

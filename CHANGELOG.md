@@ -2,6 +2,31 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.20] - 2026-09-12
+### Shorter header gradient
+- Shorten the header fade by 25%, from 88 pt to 66 pt, so the blur ends 22 pt higher and covers less content.
+- Preserve the smooth fade, tint strength, scroll response, and toolbar layout.
+
+## [0.6.19] - 2026-09-12
+### Softer header transition
+- Reduce the header paper tint and extend its feathering for a gentler transition into translucent content.
+- Use one smooth fade for the native material and tint, removing the abrupt shoulder beneath the toolbar.
+- Ease header visibility over a longer scroll distance while keeping scrolling directly responsive to the finger.
+- Preserve toolbar layout, controls, and card spring physics.
+
+## [0.6.18] - 2026-09-12
+### Reliability and performance audit
+- Commit CSV batches and bill expense/occurrence updates atomically; prevent repeated confirmation and cross-book occurrence deletion.
+- Promote pending automatic bills when due, refresh edited reminders, and serialize notification cancellation/replacement.
+- Restore all book drafts, preserve multi-book recovery snapshots, and keep backup previews free of artwork writes.
+- Validate backup artwork paths and occurrence references; report scoped read failures instead of substituting another book.
+- Fix analytics cycle boundaries, one-day target pacing, and book-distribution date filtering.
+- Share strict amount parsing between CSV and manual entry; use lookup sets for duplicate detection, bound CSV input size, and reset category selection when switching destinations.
+- Load transaction rows lazily, reuse native number-formatting caches, avoid observable cache writes during rendering, and invalidate activity caches after reload and stack edits.
+- Remove competing card-open animation and duplicate dismissal recognizers, guard directional releases and close completion, and preserve the existing layout and spring parameters.
+- Prepare photos off the main thread with cancellation, immutable filenames, abandoned-import cleanup, and a decoded-image cache budget.
+- Keep app-lock grace periods anchored to the first suspension. Modernize UI test menu navigation and retain screenshots in test results.
+
 ## [0.6.17] - 2026-09-12
 ### Refined & Perfected
 - **Persistent Monocle Brand Logo Across All Views**: Unlocked complete top toolbar consistency between the resting home deck and the card transaction page. The `monocle.` brand logo remains permanently anchored on the left across both views, eliminating unnecessary view switches and title transitions.

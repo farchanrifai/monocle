@@ -29,10 +29,7 @@ struct CardBackTelemetryView: View {
     }
 
     private var todayString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.calendar = Calendar.current
-        return formatter.string(from: Date.now)
+        Day.string(.now)
     }
 
     private var dateRange: (startDate: Date, endDate: Date, startDay: String, endDay: String) {

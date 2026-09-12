@@ -326,6 +326,11 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
         guard !books.isEmpty, books.count <= 100 else { throw BackupError.invalid }
         let bookIDs = Set(books.map(\.book.id))
         guard bookIDs.count == books.count else { throw BackupError.invalid }
+        if let cardArtworks {
+            guard cardArtworks.keys.allSatisfy(CardArtworkStore.isValidFilename) else { throw BackupError.invalid }
+        }
+        let expenseIDs = books.flatMap { $0.expenses.map(\.id) }
+        guard Set(expenseIDs).count == expenseIDs.count else { throw BackupError.invalid }
         for item in books {
             guard !item.book.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, item.book.name.count <= 40 else { throw BackupError.invalid }
             guard item.expenses.count <= 10_000, item.categories.count <= 500 else { throw BackupError.tooLarge }
@@ -343,11 +348,17 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             if let bills = item.bills {
                 guard bills.count <= 1_000, Set(bills.map(\.id)).count == bills.count else { throw BackupError.invalid }
                 for bill in bills {
+                    guard bill.bookID == item.book.id else { throw BackupError.invalid }
                     try bill.validate(categories: item.categories)
                 }
             }
             if let occurrences = item.billOccurrences {
                 guard occurrences.count <= 10_000, Set(occurrences.map(\.id)).count == occurrences.count else { throw BackupError.invalid }
+                let ruleIDs = Set((item.bills ?? []).map(\.id))
+                for occurrence in occurrences {
+                    guard occurrence.bookID == item.book.id, ruleIDs.contains(occurrence.billRuleID),
+                          Day.date(occurrence.dueDay) != nil else { throw BackupError.invalid }
+                }
             }
         }
     }

@@ -302,3 +302,13 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(metricsOver.paceStatus, .accelerated(percentage: 100))
     }
 }
+
+extension AnalyticsTests {
+    func testCycleAnalyticsExcludesNextCycleBoundary() throws {
+        let start = try XCTUnwrap(Day.date("2026-09-01"))
+        let end = try XCTUnwrap(Day.date("2026-10-01"))
+        let range = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: BudgetCycle(start: start, end: end))
+        XCTAssertEqual(range.startDay, "2026-09-01")
+        XCTAssertEqual(range.endDay, "2026-09-30")
+    }
+}

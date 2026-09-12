@@ -2,7 +2,7 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current source stage: M3 budget slice (latest delivered artifact: 0.1.3, build 13).** Runs with an isolated, persistent sample book. It is not ready for daily financial records yet.
+**Current release: 0.6.20, build 56.** Local-first expense tracking with multiple books, budgets, recurring bills, CSV interchange, and backup/restore. See the [quality and reliability audit](docs/audit/2026-09-12.md) for changes, verification, and remaining device-validation limits.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)
@@ -27,7 +27,7 @@ The IPA script builds an **unsigned arm64 device app**, packaged for SideStore t
 
 ## Wireless SideStore updates
 
-`scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in iCloud Drive, publishes it to the public `farchanrifai/monocle-releases` repository, and updates its SideStore source. The public repository contains only release artifacts and metadata; this source repository can remain private. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package.
+`scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in iCloud Drive, publishes it to the public `farchanrifai/monocle-releases` repository, and updates its SideStore source. The public repository contains only release artifacts and metadata; this source repository can remain private. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package. Set `IPA_DELIVERY_DIR="$PWD/build/delivery"` when a task requires all artifacts to stay inside the project.
 
 Add the printed `sidestore://source?...` link to SideStore once. Later builds appear as updates automatically; keep the bundle identifier unchanged and increment the build number before each IPA build.
 

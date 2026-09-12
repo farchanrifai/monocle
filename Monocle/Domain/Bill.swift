@@ -149,10 +149,12 @@ struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
 }
 
 enum BillError: LocalizedError {
+    case alreadyResolved
     case invalidName, invalidAmount, missingCategory, invalidRecurrence, invalidReminder, ruleNotFound, occurrenceNotFound
 
     var errorDescription: String? {
         switch self {
+        case .alreadyResolved: return "This bill occurrence has already been recorded or skipped."
         case .invalidName: return "Enter a bill name up to 40 characters."
         case .invalidAmount: return "Enter a valid bill amount greater than zero."
         case .missingCategory: return "Choose a category for this bill."
