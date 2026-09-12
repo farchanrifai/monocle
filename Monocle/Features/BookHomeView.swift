@@ -339,7 +339,8 @@ struct BookHomeView: View {
 
     private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
         let toolbarHeight: CGFloat = 52
-        let featherHeight: CGFloat = 44
+        // Shorten the full fade from 88 pt to 66 pt (25%), ending closer to the toolbar.
+        let featherHeight: CGFloat = 22
         let totalHeight = safeAreaTop + toolbarHeight + featherHeight
         let fadeStart = safeAreaTop + 8
         let fadeLength = totalHeight - fadeStart

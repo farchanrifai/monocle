@@ -2,6 +2,11 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.6.20] - 2026-09-12
+### Shorter header gradient
+- Shorten the header fade by 25%, from 88 pt to 66 pt, so the blur ends 22 pt higher and covers less content.
+- Preserve the smooth fade, tint strength, scroll response, and toolbar layout.
+
 ## [0.6.19] - 2026-09-12
 ### Softer header transition
 - Reduce the header paper tint and extend its feathering for a gentler transition into translucent content.
