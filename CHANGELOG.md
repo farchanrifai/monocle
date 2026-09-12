@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.2] - 2026-09-12
+### Settings-Configured Expense Input & Consistent Record Button
+- **Separated Expense Input Mode**:
+  - Moved entry mode selection (Keypad vs. Natural Language Text) into Settings under a dedicated "Expense Input" section.
+  - Removed the segmented picker header in `EntryView` to recover vertical layout space and streamline fast logging.
+  - Preserved automatic keyboard focusing on the natural language field when Text mode is chosen.
+  - Persisted `preferredEntryMode` in `WorkspacePreferences` across app restarts and workspace backups.
+- **Unified Record Button Styling**:
+  - Aligned `RecordButton` in `EntryView` with the card transaction detail's Add Expense button.
+  - Employs a 56pt Liquid Glass Capsule (`.glassEffect(.regular.tint(MC.red.opacity(0.85)).interactive(), in: .capsule)`), centered icon and title label, and dark-mode glass styling.
+
 ## [0.7.1] - 2026-09-12
 ### Differentiated Widget Navigation & Stacks Widget
 - **New Stacks Widget (`StackWidget`)**:

@@ -205,6 +205,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var stacks: [CardStack] = []
     var activeStackID: UUID? = nil
     var filterScopeRaw: String = "activeStack"
+    var entryModeRaw: String = "Keypad"
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
@@ -216,9 +217,14 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         set { filterScopeRaw = newValue.rawValue }
     }
 
+    var entryMode: EntryMode {
+        get { EntryMode(rawValue: entryModeRaw) ?? .keypad }
+        set { entryModeRaw = newValue.rawValue }
+    }
+
     private enum CodingKeys: String, CodingKey {
         case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
-        case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw
+        case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw
     }
 
     init(
@@ -231,7 +237,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         alwaysHiddenBookIDs: [UUID] = [],
         stacks: [CardStack] = [],
         activeStackID: UUID? = nil,
-        filterScope: StackFilterScope = .activeStack
+        filterScope: StackFilterScope = .activeStack,
+        entryMode: EntryMode = .keypad
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
@@ -243,6 +250,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.stacks = stacks
         self.activeStackID = activeStackID
         self.filterScopeRaw = filterScope.rawValue
+        self.entryModeRaw = entryMode.rawValue
     }
 
     init(from decoder: any Decoder) throws {
@@ -257,6 +265,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         stacks = try container.decodeIfPresent([CardStack].self, forKey: .stacks) ?? []
         activeStackID = try container.decodeIfPresent(UUID.self, forKey: .activeStackID)
         filterScopeRaw = try container.decodeIfPresent(String.self, forKey: .filterScopeRaw) ?? "activeStack"
+        entryModeRaw = try container.decodeIfPresent(String.self, forKey: .entryModeRaw) ?? "Keypad"
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -271,6 +280,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(stacks, forKey: .stacks)
         try container.encodeIfPresent(activeStackID, forKey: .activeStackID)
         try container.encode(filterScopeRaw, forKey: .filterScopeRaw)
+        try container.encode(entryModeRaw, forKey: .entryModeRaw)
     }
 }
 

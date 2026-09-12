@@ -24,14 +24,14 @@ final class MonocleUITests: XCTestCase {
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        app.buttons["addExpense"].tap()
+        openSettings(app)
         app.segmentedControls["entryMode"].buttons["Text"].tap()
+        app.buttons["Done"].tap()
+        app.buttons["addExpense"].tap()
         app.textFields["expenseText"].tap()
         app.textFields["expenseText"].typeText("Coffee 28k")
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"), "Text should parse as it is typed")
         app.buttons["parseExpense"].tap()
-        app.segmentedControls["entryMode"].buttons["Keypad"].tap()
-        XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
         XCTAssertEqual(app.textFields["expenseNote"].value as? String, "Coffee")
         app.buttons["recordExpense"].tap()
         XCTAssertTrue(app.buttons["expense-Coffee"].waitForExistence(timeout: 5))

@@ -289,6 +289,14 @@ final class AppModel {
         guard let saved = expenses.first(where: { $0.id == draft.id }) else { return draft.hasContent }
         return (try? draft.expense()) != saved
     }
+    var preferredEntryMode: EntryMode {
+        get { workspacePreferences.entryMode }
+        set {
+            workspacePreferences.entryMode = newValue
+            persistWorkspacePreferences()
+        }
+    }
+
     func openEntry(for bookID: UUID? = nil, categoryID: UUID? = nil) {
         if let bookID {
             draft.bookID = bookID
@@ -297,6 +305,9 @@ final class AppModel {
         }
         if let categoryID, let cat = category(categoryID) {
             draft.categoryID = cat.id
+        }
+        if !draft.editing {
+            draft.mode = preferredEntryMode
         }
         showEntry = true
     }

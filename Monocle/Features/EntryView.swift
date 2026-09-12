@@ -20,7 +20,6 @@ struct EntryView: View {
                 VStack(spacing: 0) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
-                            modePicker
                             if model.draft.mode == .text { textEntry }
                             amountDisplay
                             if model.draft.isSplit {
@@ -37,7 +36,7 @@ struct EntryView: View {
                                 } label: {
                                     Label("Split across categories", systemImage: "square.grid.2x2")
                                         .font(.subheadline.weight(.semibold))
-                                }.tint(MC.red).accessibilityIdentifier("editSplits")
+                                 }.tint(MC.red).accessibilityIdentifier("editSplits")
                             }
                             HStack(spacing: 10) {
                                 Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
@@ -55,7 +54,10 @@ struct EntryView: View {
                             .padding(.horizontal, 24).padding(.top, 4)
                             .transition(.opacity)
                     }
-                    RecordButton(title: model.draft.editing ? "Save changes" : "Record expense") {
+                    RecordButton(
+                        title: model.draft.editing ? "Save changes" : "Record expense",
+                        symbol: model.draft.editing ? "checkmark" : "plus"
+                    ) {
                         model.saveDraft()
                     }.accessibilityIdentifier("recordExpense")
                         .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 10)
@@ -109,15 +111,13 @@ struct EntryView: View {
             }
             .sensoryFeedback(.selection, trigger: selectionTick)
             .onChange(of: model.draft.mode) { _, mode in focusedField = mode == .text ? .text : nil }
+            .onAppear {
+                if model.draft.mode == .text { focusedField = .text }
+            }
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
             .interactiveDismissDisabled(model.draftNeedsConfirmation)
     }
 
-    private var modePicker: some View {
-        Picker("Entry method", selection: $model.draft.mode) {
-            ForEach(EntryMode.allCases, id: \.self) { mode in Text(mode.rawValue).tag(mode) }
-        }.pickerStyle(.segmented).accessibilityIdentifier("entryMode")
-    }
     private var textEntry: some View {
         VStack(alignment: .leading, spacing: 10) {
             TextField("Coffee 28k", text: $model.draft.text)

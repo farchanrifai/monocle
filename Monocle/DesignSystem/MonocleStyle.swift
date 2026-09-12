@@ -18,14 +18,25 @@ struct Eyebrow: View {
 
 struct RecordButton: View {
     let title: String
-    var symbol = "arrow.up.right"
+    var symbol: String = "plus"
     let action: () -> Void
+
     var body: some View {
         Button(action: action) {
-            HStack { Text(title).font(.headline); Spacer(); Image(systemName: symbol).font(.headline) }
-                .foregroundStyle(.white).padding(.horizontal, 22).frame(minHeight: 56)
-                .background(MC.red, in: RoundedRectangle(cornerRadius: 18))
-        }.buttonStyle(PressFeedbackStyle())
+            HStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+        }
+        .buttonStyle(PressFeedbackStyle())
+        .glassEffect(.regular.tint(MC.red.opacity(0.85)).interactive(), in: .capsule)
+        .environment(\.colorScheme, .dark)
     }
 }
 

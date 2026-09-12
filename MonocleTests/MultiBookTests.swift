@@ -481,4 +481,37 @@ final class MultiBookTests: XCTestCase {
         model.moveBookToFront(b1.id)
         XCTAssertEqual(model.orderedBooks.first?.id, b1.id)
     }
+
+    func testPreferredEntryModePersistenceAndOpenEntry() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let book = try store.createBook(named: "Main Card")
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let expenseService = try ExpenseService(store: store)
+        let model = AppModel(expenses: expenseService, state: state)
+
+        // Default should be keypad
+        XCTAssertEqual(model.preferredEntryMode, .keypad)
+        model.openEntry(for: book.id)
+        XCTAssertEqual(model.draft.mode, .keypad)
+        XCTAssertFalse(model.draft.editing)
+
+        // Switch preferred mode to text
+        model.preferredEntryMode = .text
+        XCTAssertEqual(model.preferredEntryMode, .text)
+
+        // Reopen entry
+        model.openEntry(for: book.id)
+        XCTAssertEqual(model.draft.mode, .text)
+
+        // Verify persistence across new AppModel instance
+        let newModel = AppModel(expenses: expenseService, state: state)
+        XCTAssertEqual(newModel.preferredEntryMode, .text)
+        newModel.openEntry(for: book.id)
+        XCTAssertEqual(newModel.draft.mode, .text)
+    }
 }
+

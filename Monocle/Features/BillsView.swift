@@ -692,6 +692,21 @@ struct SettingsView: View {
                     }
                 }
                 Section {
+                    Picker("Default input method", selection: $model.preferredEntryMode) {
+                        ForEach(EntryMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("entryMode")
+                } header: {
+                    Text("Expense Input")
+                } footer: {
+                    Text(model.preferredEntryMode == .keypad
+                        ? "New expense opens numeric keypad for fast amount entry."
+                        : "New expense opens natural language text field (e.g. 'Coffee 28k').")
+                }
+                Section {
                     NavigationLink("Backup & restore") { BackupView(model: model) }.accessibilityIdentifier("backupSettings")
                     NavigationLink("CSV export & import") { CSVInterchangeView(model: model) }.accessibilityIdentifier("csvInterchangeSettings")
                     NavigationLink("Categories") { CategoryManager(model: model) }.accessibilityIdentifier("manageCategories")
