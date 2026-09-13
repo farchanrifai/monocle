@@ -30,6 +30,9 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
     var createdAt: Date = .now
     var bookID: UUID? = nil
 
+    var categoryID: UUID? { allocations.first?.categoryID }
+    var date: Date { Day.date(day) ?? createdAt }
+
     init(id: UUID = UUID(), amount: Int64, day: String, note: String, allocations: [Allocation], source: String = "manual", createdAt: Date = .now, bookID: UUID? = nil) {
         self.id = id
         self.amount = amount
@@ -39,6 +42,10 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
         self.source = source
         self.createdAt = createdAt
         self.bookID = bookID
+    }
+
+    init(id: UUID = UUID(), amount: Int64, day: String, categoryID: UUID, note: String, source: String = "manual", createdAt: Date = .now, bookID: UUID? = nil) {
+        self.init(id: id, amount: amount, day: day, note: note, allocations: [.init(categoryID: categoryID, amount: amount)], source: source, createdAt: createdAt, bookID: bookID)
     }
 
     static func == (lhs: Expense, rhs: Expense) -> Bool {

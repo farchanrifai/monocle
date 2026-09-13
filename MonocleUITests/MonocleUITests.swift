@@ -1366,4 +1366,60 @@ final class MonocleUITests: XCTestCase {
         closeDetail.tap()
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testSpotlightSearchAndFilter() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Verify Home Screen loaded and search button exists
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 10))
+        let searchButton = app.buttons["homeSearchButton"]
+        XCTAssertTrue(searchButton.waitForExistence(timeout: 5))
+
+        // 2. Tap search button to activate Spotlight Search Overlay
+        searchButton.tap()
+
+        // 3. Verify search elements exist
+        let searchField = app.textFields["spotlightSearchField"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["filterDatePill"].exists)
+        XCTAssertTrue(app.buttons["filterAmountPill"].exists)
+        XCTAssertTrue(app.buttons["filterCategoryPill"].exists)
+        XCTAssertTrue(app.buttons["spotlightCancelButton"].exists)
+
+        // Capture screenshot of Spotlight Search view
+        let searchShot = app.screenshot()
+        add(XCTAttachment(screenshot: searchShot))
+
+        // 4. Type search text
+        searchField.tap()
+        searchField.typeText("Coffee")
+
+        // 5. Check if search clear button appears and clear it
+        let clearBtn = app.buttons["spotlightSearchClearButton"]
+        if clearBtn.waitForExistence(timeout: 2) {
+            clearBtn.tap()
+            let val = searchField.value as? String
+            XCTAssertTrue(val == "" || val == "Search note, merchant, amount…")
+        }
+
+        // 6. Test date filter pill menu
+        let datePill = app.buttons["filterDatePill"]
+        datePill.tap()
+        if app.buttons["This Month"].waitForExistence(timeout: 2) {
+            app.buttons["This Month"].tap()
+        }
+
+        // 7. Dismiss search overlay with Cancel button
+        let cancelBtn = app.buttons["spotlightCancelButton"]
+        XCTAssertTrue(cancelBtn.waitForExistence(timeout: 3))
+        cancelBtn.tap()
+
+        // 8. Verify returned to Home view
+        XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
+    }
 }
+

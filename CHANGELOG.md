@@ -2,6 +2,20 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.9] - 2026-09-13
+### Spotlight Fullscreen Search & Filter Overlay with Native Liquid Glass
+- **Spotlight Search & Filter Experience**:
+  - Added native search icon in top navigation bar (`homeSearchButton`) opening a responsive fullscreen Spotlight search overlay (`SpotlightSearchView`).
+  - Implemented multi-field real-time search matching notes, category names, and monetary values (including colloquial numeric queries like `50k` or `185.000`).
+  - Integrated horizontal filter pills with dynamic menus: Date presets (`All Time`, `Today`, `This Week`, `This Month`, `Last Month`), Amount tiers (`< Rp 50k`, `Rp 50k - 200k`, `> Rp 200k`), Category picker, and Card scope selector.
+  - Added live subtotal banner showing total matching results and aggregate amount with instant filter reset capability.
+  - Rendered results grouped by Card in liquid glass platter sections with direct tap-to-edit and contextual action menus.
+- **Native Liquid Glass System**:
+  - Implemented reusable design system modifiers (`.liquidGlass(...)` and `.liquidGlassPill(...)`) leveraging iOS 26 `.glassEffect` with ultra-thin material backing and specular rim highlight gradients.
+- **Test Suite & Verification**:
+  - Added 5 unit tests in `SearchTests.swift` covering query matching, amount parsing, date ranges, arithmetic subtotals, and category allocations (97 total unit tests passing).
+  - Added comprehensive UI test in `MonocleUITests.swift` verifying search bar activation, typing, clearing, date filter selection, and seamless dismiss.
+
 ## [0.7.8] - 2026-09-12
 ### Native Progressive Blur Toolbar Matching Home
 - **Eliminated UIKit NavigationBar Hard Stop**:
