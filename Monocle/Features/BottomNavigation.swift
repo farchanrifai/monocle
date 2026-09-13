@@ -113,9 +113,8 @@ struct BottomNavigation: View {
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(model.filterScope == .activeStack ? MC.red : Color.primary)
                 .frame(width: 60, height: 60)
+                .contentShape(Circle())
                 .contentTransition(.symbolEffect(.replace))
-        } primaryAction: {
-            model.toggleFilterScope()
         }
         .buttonStyle(PressFeedbackStyle())
         .glassEffect(.regular.interactive(), in: .circle)

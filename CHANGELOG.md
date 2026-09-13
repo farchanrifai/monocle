@@ -2,6 +2,16 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.11] - 2026-09-14
+### Direct Filter Menu on Tap (Unified Instant Menu Presentation)
+- **Direct Filter Menu Presentation**:
+  - Refactored the filter button bubble in `BottomNavigation.swift` so that a single tap directly presents the filter menu containing all Stacks, "All Active Cards", "New Stack…", and "Manage Stacks & Cards…".
+  - Removed the `primaryAction` quick-switch toggle, completely unifying the interaction model with zero delay or separation between tap and long-press.
+  - Added `.contentShape(Circle())` for precise circular touch targeting on the 60×60 floating bubble.
+- **Test Suite Updates**:
+  - Updated `MonocleUITests.swift` (`testStacksFilterBubbleAndCustomizer`, `testStackSwitchAnimationSequence`, `testTransactionPageLiquidGlassAddButtonAndPlatter`) to reflect immediate menu presentation and direct stack selection.
+  - Verified all 97 unit tests in `MonocleTests` pass with 0 failures.
+
 ## [0.7.10] - 2026-09-13
 ### True Native iOS Search Bar (.searchable) & Fluid Navigation Overlay
 - **True Native iOS System Search Architecture**:

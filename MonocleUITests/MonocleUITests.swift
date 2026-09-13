@@ -119,10 +119,13 @@ final class MonocleUITests: XCTestCase {
         let shot = app.screenshot()
         keepScreenshot(shot)
 
-        // 2. Quick tap toggles filter scope
+        // 2. Tap filter button to show menu directly and select All Active Cards
         let initialBadge = app.staticTexts["activityScopeBadge"]
         XCTAssertTrue(initialBadge.waitForExistence(timeout: 5))
         app.buttons["activityFilterButton"].tap()
+        let allCardsOption = app.buttons["All Active Cards"]
+        XCTAssertTrue(allCardsOption.waitForExistence(timeout: 5))
+        allCardsOption.tap()
         XCTAssertTrue(app.staticTexts["All cards"].waitForExistence(timeout: 5) || initialBadge.exists)
 
         // 3. Open Stacks & Card Visibility from menu
@@ -766,8 +769,12 @@ final class MonocleUITests: XCTestCase {
         let initialShot = app.screenshot()
         add(XCTAttachment(screenshot: initialShot))
 
-        // Tap filter button to toggle stack scope
+        // Tap filter button to open menu directly and switch to All Active Cards
         filterButton.tap()
+        let allCardsOption = app.buttons["All Active Cards"]
+        if allCardsOption.waitForExistence(timeout: 3) {
+            allCardsOption.tap()
+        }
 
         // Wait 0.6s for Phase 1 to stack up and Phase 2/3 (placeholder reveal) to be on screen
         Thread.sleep(forTimeInterval: 0.6)
@@ -779,8 +786,12 @@ final class MonocleUITests: XCTestCase {
         let settledShot = app.screenshot()
         add(XCTAttachment(screenshot: settledShot))
 
-        // Switch back
+        // Switch back via filter menu
         filterButton.tap()
+        let firstStackOption = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Stack' OR label CONTAINS 'Default'")).firstMatch
+        if firstStackOption.waitForExistence(timeout: 3) {
+            firstStackOption.tap()
+        }
         Thread.sleep(forTimeInterval: 1.2)
         XCTAssertTrue(filterButton.exists)
     }
@@ -1196,6 +1207,8 @@ final class MonocleUITests: XCTestCase {
     @MainActor
     func testTransactionPageLiquidGlassAddButtonAndPlatter() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
         // 1. On Home screen, filter button exists on left, add button on right
