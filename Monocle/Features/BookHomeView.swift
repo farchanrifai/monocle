@@ -577,12 +577,13 @@ struct BookHomeView: View {
                 }
             } label: {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(ink)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+                    .frame(width: 38, height: 38)
+                    .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressFeedbackStyle())
+            .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel("Search and filter transactions")
             .accessibilityIdentifier("homeSearchButton")
 
@@ -1263,11 +1264,14 @@ struct BookHomeView: View {
             }
             .accessibilityIdentifier("homeSettings")
         } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.system(size: 20, weight: .semibold))
-                .frame(width: 44, height: 44)
+            Image(systemName: "ellipsis")
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(ink)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
         }
+        .buttonStyle(PressFeedbackStyle())
+        .glassEffect(.regular.interactive(), in: .circle)
         .accessibilityLabel("Options")
         .accessibilityIdentifier("bookOptionsMenu")
     }

@@ -205,7 +205,7 @@ struct SpotlightSearchView: View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .regular))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(.secondary)
 
                 TextField("Search note, merchant, amount…", text: $searchText)
@@ -228,9 +228,9 @@ struct SpotlightSearchView: View {
                     .accessibilityIdentifier("spotlightSearchClearButton")
                 }
             }
-            .padding(.horizontal, 10)
-            .frame(height: 36)
-            .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .padding(.horizontal, 12)
+            .frame(height: 40)
+            .background(Color(uiColor: .secondarySystemFill), in: Capsule())
 
             Button("Cancel") {
                 isSearchFocused = false

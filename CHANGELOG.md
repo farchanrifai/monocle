@@ -3,17 +3,17 @@
 All notable changes to Monocle are documented in this file.
 
 ## [0.7.9] - 2026-09-13
-### Spotlight Fullscreen Search & Filter Overlay with Native Apple System Elements
-- **Spotlight Search & Filter Experience**:
-  - Replaced custom glass search bar with native Apple system search bar styling (`Color(uiColor: .tertiarySystemFill)` background, 10pt continuous rounded rectangle, 36pt height, native SF magnifyingglass and clear icons).
-  - Added native navigation bar search trigger button (`homeSearchButton`) next to the options menu (`bookOptionsMenu`) opening the responsive fullscreen Spotlight search overlay (`SpotlightSearchView`).
-  - Implemented multi-field real-time search matching notes, category names, and monetary values (including colloquial numeric queries like `50k` or `185.000`).
-  - Integrated horizontal native filter pills (`.nativeFilterPill(...)`) with dynamic menus: Date presets (`All Time`, `Today`, `This Week`, `This Month`, `Last Month`), Amount tiers (`< Rp 50k`, `Rp 50k - 200k`, `> Rp 200k`), Category picker, and Card scope selector.
-  - Added live subtotal banner showing total matching results and aggregate amount with instant filter reset capability.
-  - Rendered results grouped by Card in clean surface platter sections with direct tap-to-edit and contextual action menus.
+### Spotlight Fullscreen Search & Filter Overlay with iOS Default Capsule & Native Liquid Glass Bubbles
+- **Native iOS Default Search Bar & Liquid Glass Bubble Controls**:
+  - Refined the Spotlight search bar to use iOS's default app search bar styling: smooth `Capsule()` pill with zero squared edges, 40pt height, and native `Color(uiColor: .secondarySystemFill)` fill.
+  - Converted navigation bar search trigger (`homeSearchButton`) and options menu (`bookOptionsMenu`) into uniform 38×38 circular liquid glass bubbles (`.glassEffect(.regular.interactive(), in: .circle)` with interactive press feedback).
+  - Maintained responsive horizontal filter pills (`.nativeFilterPill(...)`) for Date presets (`All Time`, `Today`, `This Week`, `This Month`, `Last Month`), Amount tiers, Category picker, and Card scope selector.
+  - Multi-field real-time search matching notes, category names, and monetary values (including colloquial numeric queries like `50k` or `185.000`).
+  - Dynamic live subtotal banner showing total matching results and aggregate amount with instant filter reset capability.
+  - Grouped search results by Card in clean surface platter sections with direct tap-to-edit and contextual action menus.
 - **Test Suite & Verification**:
-  - Added 5 unit tests in `SearchTests.swift` covering query matching, amount parsing, date ranges, arithmetic subtotals, and category allocations (97 total unit tests passing).
-  - Added comprehensive UI test in `MonocleUITests.swift` verifying search bar activation, typing, clearing, date filter selection, and seamless dismiss.
+  - Verified 97 unit tests in `MonocleTests` including all query, date, and amount filtering suites.
+  - Comprehensive UI test in `MonocleUITests` verifying liquid glass search trigger button activation, typing, clearing, date filter selection, and dismiss.
 
 ## [0.7.8] - 2026-09-12
 ### Native Progressive Blur Toolbar Matching Home
