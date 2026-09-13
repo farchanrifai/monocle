@@ -2,22 +2,6 @@
 
 All notable changes to Monocle are documented in this file.
 
-## [0.7.9] - 2026-09-13
-### Compact Liquid Glass Expense Sheet
-- **Tactile Compact Liquid Glass Input Mode**:
-  - Added a third expense entry mode alongside numeric keypad and natural language text.
-  - Implemented 100% native custom liquid glass compact sheet that springs smoothly from the Add Expense capsule button with interactive drag-to-dismiss gesture and darkened frosted backdrop.
-  - **Two-Column Ergonomic Layout**:
-    - **Left Column**: Card selector pill with active card palette badge, Date selector pill (Today, Yesterday, Custom graphical picker), Amount Hero display box with dynamic monospaced formatting, and Category dropdown menu with glyph icons and live selection indicators.
-    - **Right Column**: Tactile 3×4 mini numeric keypad (`1-9`, `000`, `0`, `⌫`) styled with specular rim highlights, subtle shadow depths, and light sensory haptics.
-    - **Bottom Action**: High-prominence glowing liquid glass Record Expense capsule button with adaptive active/disabled states.
-    - **Expand Action**: Top-left header button to expand into full Keypad mode with note and split capabilities without state loss.
-  - **Settings Integration**: Added `Compact` option to `Default input method` segmented picker in Settings.
-- **Automated Test Coverage**:
-  - Added unit test coverage in `MultiBookTests.swift` (`testCompactEntryDraftExpenseCreation`).
-  - Added UI automation test `testCompactEntrySheetKeypadAndRecord` in `MonocleUITests.swift` verifying Settings configuration, sheet presentation, mini keypad typing, backspace, and expense recording.
-  - All 93 unit tests and UI automation passing.
-
 ## [0.7.8] - 2026-09-12
 ### Native Progressive Blur Toolbar Matching Home
 - **Eliminated UIKit NavigationBar Hard Stop**:

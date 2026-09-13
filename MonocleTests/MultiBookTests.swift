@@ -507,37 +507,11 @@ final class MultiBookTests: XCTestCase {
         model.openEntry(for: book.id)
         XCTAssertEqual(model.draft.mode, .text)
 
-        // Switch preferred mode to compact
-        model.preferredEntryMode = .compact
-        XCTAssertEqual(model.preferredEntryMode, .compact)
-
-        model.openEntry(for: book.id)
-        XCTAssertEqual(model.draft.mode, .compact)
-
         // Verify persistence across new AppModel instance
         let newModel = AppModel(expenses: expenseService, state: state)
-        XCTAssertEqual(newModel.preferredEntryMode, .compact)
+        XCTAssertEqual(newModel.preferredEntryMode, .text)
         newModel.openEntry(for: book.id)
-        XCTAssertEqual(newModel.draft.mode, .compact)
-    }
-
-    func testCompactEntryDraftExpenseCreation() throws {
-        var draft = ExpenseDraft()
-        draft.mode = .compact
-        draft.amount = "75000"
-        draft.categoryID = UUID()
-        draft.bookID = UUID()
-
-        let expense = try draft.expense()
-        XCTAssertEqual(expense.amount, 7500000) // 75,000 * 100 IDR minor units
-        XCTAssertEqual(expense.bookID, draft.bookID)
-        XCTAssertEqual(expense.allocations.first?.categoryID, draft.categoryID)
-
-        let encoded = try JSONEncoder().encode(draft)
-        let decoded = try JSONDecoder().decode(ExpenseDraft.self, from: encoded)
-        XCTAssertEqual(decoded.mode, .compact)
-        XCTAssertEqual(decoded.amount, "75000")
-        XCTAssertEqual(decoded.categoryID, draft.categoryID)
+        XCTAssertEqual(newModel.draft.mode, .text)
     }
 }
 

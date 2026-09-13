@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FCE000012C8E100000000001 /* CompactEntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE000022C8E100000000002 /* CompactEntrySheet.swift */; };
 		017729CBC6933B915C34CB21 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6486A991712AB436BBFA6A1D /* EntryView.swift */; };
 		048A925144F7E74950D05BA3 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
 		0D620B558ECBCB24392F65FD /* CategoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C573062CE2769892729F737 /* CategoryManager.swift */; };
@@ -137,7 +136,6 @@
 		5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleUITests.swift; sourceTree = "<group>"; };
 		5FF12315E6E5C1CD72DEA8CA /* MonocleV1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV1.xcdatamodel; sourceTree = "<group>"; };
 		62059E64D0898BAE71F1C761 /* Bill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bill.swift; sourceTree = "<group>"; };
-		FCE000022C8E100000000002 /* CompactEntrySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactEntrySheet.swift; sourceTree = "<group>"; };
 		6486A991712AB436BBFA6A1D /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
 		65AF43141767E4C3DFD4DBFA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleStyle.swift; sourceTree = "<group>"; };
@@ -344,7 +342,6 @@
 				6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */,
 				10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
-				FCE000022C8E100000000002 /* CompactEntrySheet.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
 				80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */,
@@ -556,7 +553,6 @@
 				2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */,
 				F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */,
 				E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */,
-				FCE000012C8E100000000001 /* CompactEntrySheet.swift in Sources */,
 				017729CBC6933B915C34CB21 /* EntryView.swift in Sources */,
 				2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */,
 				1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */,
@@ -683,7 +679,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 67;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -704,7 +700,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.9;
+				MARKETING_VERSION = 0.7.8;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -793,7 +789,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 67;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -808,7 +804,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.9;
+				MARKETING_VERSION = 0.7.8;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
