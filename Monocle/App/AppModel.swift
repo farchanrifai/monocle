@@ -43,6 +43,7 @@ final class AppModel {
     var billOccurrences: [BillOccurrence] { expenseService?.billOccurrences ?? [] }
     var activeCategories: [ExpenseCategory] { categories.filter { !settings.archivedCategoryIDs.contains($0.id) } }
     var draft = ExpenseDraft()
+    private(set) var originalDraft: ExpenseDraft?
     var settings = PrototypeSettings()
     var showEntry = false
     var showSettings = false
@@ -285,9 +286,16 @@ final class AppModel {
         cycleExpenses.flatMap(\.allocations).filter { $0.categoryID == category.id }.reduce(0) { $0 + $1.amount }
     }
     var draftNeedsConfirmation: Bool {
-        guard draft.editing else { return draft.hasContent }
-        guard let saved = expenses.first(where: { $0.id == draft.id }) else { return draft.hasContent }
-        return (try? draft.expense()) != saved
+        if draft.editing {
+            if let originalDraft {
+                return draft != originalDraft
+            }
+            let saved = expenses.first(where: { $0.id == draft.id })
+                ?? books.lazy.compactMap { self.expenses(for: $0.id).first(where: { $0.id == self.draft.id }) }.first
+            guard let saved else { return false }
+            return (try? draft.expense()) != saved
+        }
+        return draft.hasContent
     }
     var preferredEntryMode: EntryMode {
         get { workspacePreferences.entryMode }
@@ -298,6 +306,7 @@ final class AppModel {
     }
 
     func openEntry(for bookID: UUID? = nil, categoryID: UUID? = nil) {
+        originalDraft = nil
         if let bookID {
             draft.bookID = bookID
         } else if draft.bookID == nil {
@@ -317,6 +326,7 @@ final class AppModel {
         if draft.bookID == nil {
             draft.bookID = expense.bookID ?? activeBookID
         }
+        originalDraft = draft
         showEntry = true
     }
     func persistDraft() {
@@ -331,6 +341,7 @@ final class AppModel {
     }
     @discardableResult
     func discardDraft() -> Bool {
+        originalDraft = nil
         let cleared = ExpenseDraft()
         do {
             if let bookID = draft.bookID {
@@ -744,6 +755,7 @@ final class AppModel {
             expense.bookID = targetID
             try save(expense)
             let editing = draft.editing
+            originalDraft = nil
             draft = ExpenseDraft(); persistDraft(); showEntry = false
             undoExpense = nil
             saveFeedback += 1

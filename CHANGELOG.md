@@ -2,6 +2,25 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.13] - 2026-09-14
+### Dedicated Transaction Detail Page, Row Swipe Actions & Exact Discard Tracking
+- **Smart Discard Prompt Tracking (No False Discard Dialogs)**:
+  - Added `originalDraft` snapshot capture to `AppModel`.
+  - When opening any expense (latest or historical, same-card or cross-card), closing the sheet without making any changes now dismisses cleanly without prompting to Discard or Keep Editing.
+  - Making any modifications (amount, category, note, split, or date) activates confirmation safeguards to prevent accidental data loss.
+- **Fluid Row Swipe Actions**:
+  - Implemented `SwipeActionModifier` on transaction rows within the custom platter `LazyVStack`.
+  - **Swipe Right (Leading)**: Reveals a blue rounded Edit action; swiping past threshold or tapping immediately opens the Edit Expense sheet.
+  - **Swipe Left (Trailing)**: Reveals a red rounded Delete action; swiping past threshold or tapping deletes the expense with haptic feedback and displays the undo toast.
+- **Dedicated Transaction Detail Page (`TransactionDetailView`)**:
+  - Tapping any expense row now opens a dedicated Apple Wallet–inspired receipt and metadata page (`TransactionDetailView`).
+  - Hero header with category icon platter, prominent title, large formatted amount, and relative timestamp.
+  - Itemized details platter showing category, card/account badge with authentic color pill, date, entry source, notes, and split category allocations.
+  - Primary navigation with Back button, top & bottom Edit buttons, and Delete button with confirmation dialog.
+- **Verification & Test Suite**:
+  - All 94 unit tests in `MonocleTests` passed with 0 failures.
+  - UI test suite in `MonocleUITests` (`testTransactionDetailPageAndBackNavigation`, `testSwipeActionsOnExpenseRow`, `testCloseConfirmsDiscardAndDoesNotBlockEditing`, `testStacksFilterBubbleAndCustomizer`, `testTransactionPageLiquidGlassAddButtonAndPlatter`) passed cleanly.
+
 ## [0.7.12] - 2026-09-14
 ### Revert Spotlight Search Feature
 - **Full Search Feature Removal**:

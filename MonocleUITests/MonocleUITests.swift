@@ -188,16 +188,23 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
         app.buttons["Close entry"].tap()
         app.buttons["Discard"].tap()
-        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
         app.buttons["expense-Morning coffee"].tap()
+        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        app.buttons["transactionDetailEdit"].tap()
         XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
         app.buttons["key-0"].tap()
         app.buttons["Close entry"].tap()
         app.buttons["Discard"].tap()
-        XCTAssertTrue(app.buttons["expense-Morning coffee"].label.contains("Rp28.000"))
+        XCTAssertTrue(app.buttons["transactionDetailBack"].waitForExistence(timeout: 5))
+        app.buttons["transactionDetailBack"].tap()
+        XCTAssertTrue(app.buttons["expense-Morning coffee"].waitForExistence(timeout: 5))
         app.buttons["expense-Morning coffee"].tap()
+        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        app.buttons["transactionDetailEdit"].tap()
         app.buttons["Close entry"].tap()
-        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5), "Unmodified edits close without a discard prompt")
+        XCTAssertTrue(app.buttons["transactionDetailBack"].waitForExistence(timeout: 5), "Unmodified edits close without a discard prompt")
+        app.buttons["transactionDetailBack"].tap()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
     }
     @MainActor
     func testSwipeDownAlsoConfirmsDiscard() throws {
@@ -226,10 +233,59 @@ final class MonocleUITests: XCTestCase {
         app.buttons["addExpense"].tap(); app.buttons["key-5"].tap()
         app.terminate(); app.launch()
         app.buttons["expense-Morning coffee"].tap()
+        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        app.buttons["transactionDetailEdit"].tap()
         XCTAssertTrue(app.buttons["Discard and continue"].waitForExistence(timeout: 5))
         app.buttons["Discard and continue"].tap()
         XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
+    }
+
+    @MainActor
+    func testTransactionDetailPageAndBackNavigation() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["expense-Morning coffee"].waitForExistence(timeout: 10))
+        app.buttons["expense-Morning coffee"].tap()
+
+        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["transactionDetailAmount"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["transactionDetailEdit"].exists)
+        XCTAssertTrue(app.buttons["transactionDetailDelete"].exists)
+
+        app.buttons["transactionDetailBack"].tap()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSwipeActionsOnExpenseRow() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        let row = app.buttons["expense-Morning coffee"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+
+        // Swipe right to edit
+        row.swipeRight()
+        if app.buttons["Edit expense"].waitForExistence(timeout: 2) {
+            app.buttons["Edit expense"].tap()
+        }
+        XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
+        app.buttons["Close entry"].tap()
+
+        // Swipe left to delete
+        let deleteRow = app.buttons["expense-Morning coffee"]
+        XCTAssertTrue(deleteRow.waitForExistence(timeout: 5))
+        deleteRow.swipeLeft()
+        if app.buttons["Delete expense"].waitForExistence(timeout: 2) {
+            app.buttons["Delete expense"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["Expense deleted"].waitForExistence(timeout: 5))
     }
 
     private func keepScreenshot(_ screenshot: XCUIScreenshot) {

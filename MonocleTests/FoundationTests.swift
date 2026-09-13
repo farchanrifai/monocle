@@ -171,6 +171,65 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(state.savedSettings?.appLockTimeout, .fiveMinutes)
         XCTAssertEqual(lock.timeout, .fiveMinutes)
     }
+
+    func testEditingExpenseUntouchedDoesNotRequireDiscardConfirmation() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: TestState())
+
+        let oldExpense = Expense(
+            amount: 50_000_00,
+            day: "2026-08-15",
+            note: "Historical expense",
+            allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 50_000_00)],
+            bookID: BookProfile.sample.id
+        )
+        try service.save(oldExpense)
+
+        // Open edit for this historical expense
+        model.edit(oldExpense)
+        XCTAssertTrue(model.showEntry)
+        XCTAssertTrue(model.draft.editing)
+
+        // Untouched: must NOT require confirmation
+        XCTAssertFalse(model.draftNeedsConfirmation)
+
+        // Change note: now MUST require confirmation
+        model.draft.note = "Changed note"
+        XCTAssertTrue(model.draftNeedsConfirmation)
+
+        // Revert back: no confirmation needed
+        model.draft.note = "Historical expense"
+        XCTAssertFalse(model.draftNeedsConfirmation)
+    }
+
+    func testCrossBookExpenseEditingUntouchedDoesNotRequireDiscardConfirmation() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let book1 = try store.createBook(named: "Card 1")
+        let book2 = try store.createBook(named: "Card 2")
+        let cats2 = try store.categories(in: book2.id)
+        let service = try ExpenseService(store: store)
+        try service.selectBook(book1.id)
+        let model = AppModel(expenses: service, state: TestState())
+
+        let card2Expense = Expense(
+            amount: 75_000_00,
+            day: "2026-07-20",
+            note: "Card 2 coffee",
+            allocations: [.init(categoryID: cats2[0].id, amount: 75_000_00)],
+            bookID: book2.id
+        )
+        try service.save(card2Expense, in: book2.id)
+
+        // Edit expense from card 2 while card 1 is active
+        model.edit(card2Expense)
+        XCTAssertFalse(model.draftNeedsConfirmation)
+
+        // Change amount
+        model.draft.amount = "80000"
+        XCTAssertTrue(model.draftNeedsConfirmation)
+    }
 }
 
 @MainActor

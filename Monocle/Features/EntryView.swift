@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EntryView: View {
     @Bindable var model: AppModel
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 52.0
     private enum Field: Hashable { case text, note }
@@ -59,6 +60,7 @@ struct EntryView: View {
                         symbol: model.draft.editing ? "checkmark" : "plus"
                     ) {
                         model.saveDraft()
+                        dismiss()
                     }.accessibilityIdentifier("recordExpense")
                         .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 10)
                 }
@@ -193,7 +195,10 @@ struct EntryView: View {
         else { closeAndDiscard() }
     }
     private func closeAndDiscard() {
-        if model.discardDraft() { model.showEntry = false }
+        if model.discardDraft() {
+            model.showEntry = false
+            dismiss()
+        }
     }
     private func parse(hideKeyboard: Bool = true) {
         do {

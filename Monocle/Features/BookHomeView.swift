@@ -299,6 +299,7 @@ struct BookHomeView: View {
     @State private var dragTilt: CGSize = .zero
     @State private var swipingCardID: UUID? = nil
     @State private var swipeOffset: CGFloat = 0.0
+    @State private var selectedExpenseForDetail: Expense? = nil
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -486,6 +487,13 @@ struct BookHomeView: View {
         }
         .sheet(isPresented: $model.showStartSessionSheet) {
             startSessionSheet
+        }
+        .fullScreenCover(item: $selectedExpenseForDetail) { expense in
+            TransactionDetailView(
+                initialExpense: expense,
+                model: model,
+                onDismiss: { selectedExpenseForDetail = nil }
+            )
         }
         .onAppear {
             if displayedBooks.isEmpty {
@@ -1092,33 +1100,38 @@ struct BookHomeView: View {
     }
 
     private func activityRow(_ expense: Expense, showBookLabel: Bool, isPlatter: Bool = false) -> some View {
-        Button {
-            model.edit(expense)
-        } label: {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2.5) {
-                    Text(model.title(expense))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(ink)
-                        .lineLimit(1)
-                    Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
-                        .font(.system(size: 11.5, weight: .regular))
-                        .foregroundStyle(ink.opacity(0.55))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Text(Money.format(expense.amount))
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .monospacedDigit()
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2.5) {
+                Text(model.title(expense))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(ink)
+                    .lineLimit(1)
+                Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
+                    .font(.system(size: 11.5, weight: .regular))
+                    .foregroundStyle(ink.opacity(0.55))
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, isPlatter ? 16 : 0)
-            .padding(.vertical, isPlatter ? 10 : 8)
-            .frame(minHeight: isPlatter ? 54 : 46)
-            .contentShape(Rectangle())
+            Spacer(minLength: 8)
+            Text(Money.format(expense.amount))
+                .font(.system(size: 13.5, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(ink)
         }
-        .buttonStyle(PressFeedbackStyle())
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, isPlatter ? 16 : 0)
+        .padding(.vertical, isPlatter ? 10 : 8)
+        .frame(minHeight: isPlatter ? 54 : 46)
+        .contentShape(Rectangle())
+        .transactionSwipeActions(
+            onTap: { selectedExpenseForDetail = expense },
+            onEdit: { model.edit(expense) },
+            onDelete: { model.delete(expense) }
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(showBookLabel && expense.bookID != nil
+            ? "\(model.title(expense)), \(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? ""), \(Money.format(expense.amount))"
+            : "\(model.title(expense)), \(expense.day), \(Money.format(expense.amount))")
         .accessibilityIdentifier("expense-\(expense.note)")
         .contextMenu {
             Button("Edit", systemImage: "pencil") {
