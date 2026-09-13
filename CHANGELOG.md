@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.12] - 2026-09-14
+### Revert Spotlight Search Feature
+- **Full Search Feature Removal**:
+  - Removed Spotlight Search overlay (`SpotlightSearchView.swift`) and toolbar search button (`homeSearchButton`), restoring the clean home navigation header.
+  - Removed `showSearch` state tracking in `AppModel` and removed bottom navigation suppression in `MonocleApp`.
+  - Removed search-specific helper extensions in `Expense.swift` and styling modifiers in `MonocleStyle.swift`.
+  - Removed `SearchTests.swift` and UI test `testSpotlightSearchAndFilter`.
+- **Preserved Core Features**:
+  - Maintained direct-menu filter button presentation on tap in `BottomNavigation.swift`.
+  - All 92 unit tests in `MonocleTests` passed cleanly with 0 failures.
+
 ## [0.7.11] - 2026-09-14
 ### Direct Filter Menu on Tap (Unified Instant Menu Presentation)
 - **Direct Filter Menu Presentation**:

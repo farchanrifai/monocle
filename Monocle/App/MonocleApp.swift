@@ -31,11 +31,7 @@ struct RootView: View {
                     }
                 }
                 .toolbar(.hidden, for: .tabBar)
-                .safeAreaBar(edge: .bottom) {
-                    if !model.showSearch {
-                        BottomNavigation(model: model)
-                    }
-                }
+                .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
                 .tint(MC.red)
                 .sheet(isPresented: $model.showEntry, onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }

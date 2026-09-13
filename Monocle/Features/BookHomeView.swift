@@ -281,10 +281,6 @@ struct BookHomeView: View {
     @State private var managing = false
     @State private var showingBudgets = false
     @State private var showingBills = false
-    private var showingSearch: Bool {
-        get { model.showSearch }
-        nonmutating set { model.showSearch = newValue }
-    }
     @State private var draggedCardID: UUID?
     @State private var dragAmount: CGFloat = 0
     @State private var dismissAmount: CGFloat = 0
@@ -389,45 +385,29 @@ struct BookHomeView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
-                // Background & Main Deck
-                ZStack(alignment: .top) {
-                    paper.ignoresSafeArea()
+                paper.ignoresSafeArea()
 
-                    home(width: geometry.size.width, height: geometry.size.height)
-                        .allowsHitTesting(selectedID == nil && !showingSearch)
-                        .accessibilityHidden(selectedID != nil || showingSearch)
+                home(width: geometry.size.width, height: geometry.size.height)
+                    .allowsHitTesting(selectedID == nil)
+                    .accessibilityHidden(selectedID != nil)
 
-                    if let current {
-                        detail(current, width: geometry.size.width)
-                            .transition(.identity)
-                    }
-                }
-                .overlayPreferenceValue(CardFrames.self) { frames in
-                    GeometryReader { proxy in
-                        cardPlane(frames: frames, geometry: proxy)
-                    }
-                }
-                .overlay(alignment: .top) {
-                    topBar(safeAreaTop: geometry.safeAreaInsets.top)
-                        .zIndex(1000)
-                }
-                .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1 && !showingSearch,
-                                        changed: updateDismiss, ended: endDismiss))
-                .accessibilityHidden(showingSearch)
-                .allowsHitTesting(!showingSearch)
-
-                // Spotlight Search Overlay
-                if showingSearch {
-                    SpotlightSearchView(model: model, isPresented: $model.showSearch, safeAreaTop: geometry.safeAreaInsets.top)
-                        .zIndex(9999)
-                        .transition(
-                            .asymmetric(
-                                insertion: .opacity.combined(with: .scale(scale: 0.98, anchor: .top)),
-                                removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
-                            )
-                        )
+                if let current {
+                    detail(current, width: geometry.size.width)
+                        .transition(.identity)
                 }
             }
+            .overlayPreferenceValue(CardFrames.self) { frames in
+                GeometryReader { proxy in
+                    cardPlane(frames: frames, geometry: proxy)
+                }
+            }
+            .overlay(alignment: .top) {
+                topBar(safeAreaTop: geometry.safeAreaInsets.top)
+                    .zIndex(1000)
+            }
+            .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1,
+                                    changed: updateDismiss, ended: endDismiss))
+
         }
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
@@ -572,24 +552,6 @@ struct BookHomeView: View {
             .accessibilityIdentifier("homeLogo")
 
             Spacer()
-
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.84)) {
-                    showingSearch = true
-                }
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ink)
-                    .frame(width: 38, height: 38)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressFeedbackStyle())
-            .glassEffect(.regular.interactive(), in: .circle)
-            .accessibilityLabel("Search and filter transactions")
-            .accessibilityIdentifier("homeSearchButton")
-
             optionsMenu
         }
         .padding(.horizontal, 20)
