@@ -2,7 +2,7 @@
 
 All notable changes to Monocle are documented in this file.
 
-## [0.7.9] - 2026-09-13
+## [0.7.10] - 2026-09-13
 ### True Native iOS Search Bar (.searchable) & Fluid Navigation Overlay
 - **True Native iOS System Search Architecture**:
   - Migrated the Spotlight Search overlay from a custom SwiftUI textfield container to Apple's first-party `NavigationStack` with the native `.searchable` modifier (`placement: .navigationBarDrawer(displayMode: .always)`).
