@@ -281,7 +281,10 @@ struct BookHomeView: View {
     @State private var managing = false
     @State private var showingBudgets = false
     @State private var showingBills = false
-    @State private var showingSearch = false
+    private var showingSearch: Bool {
+        get { model.showSearch }
+        nonmutating set { model.showSearch = newValue }
+    }
     @State private var draggedCardID: UUID?
     @State private var dragAmount: CGFloat = 0
     @State private var dismissAmount: CGFloat = 0
@@ -415,7 +418,7 @@ struct BookHomeView: View {
 
                 // Spotlight Search Overlay
                 if showingSearch {
-                    SpotlightSearchView(model: model, isPresented: $showingSearch, safeAreaTop: geometry.safeAreaInsets.top)
+                    SpotlightSearchView(model: model, isPresented: $model.showSearch, safeAreaTop: geometry.safeAreaInsets.top)
                         .zIndex(9999)
                         .transition(
                             .asymmetric(

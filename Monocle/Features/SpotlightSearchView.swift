@@ -42,6 +42,7 @@ struct SpotlightSearchView: View {
     var safeAreaTop: CGFloat = 0
 
     @State private var searchText = ""
+    @State private var isSearchActive = true
     @State private var selectedDatePreset: DateFilterPreset = .all
     @State private var selectedAmountPreset: AmountFilterPreset = .all
     @State private var selectedCategoryID: UUID? = nil
@@ -166,17 +167,10 @@ struct SpotlightSearchView: View {
     // MARK: - Body
 
     var body: some View {
-        ZStack(alignment: .top) {
-            paper.ignoresSafeArea()
-
+        NavigationStack {
             VStack(spacing: 0) {
-                Color.clear.frame(height: safeAreaTop)
-
-                topSearchBar
-                    .padding(.top, 4)
-
                 filterPillsBar
-                    .padding(.top, 10)
+                    .padding(.top, 8)
                     .padding(.bottom, 6)
 
                 if isFilteringActive {
@@ -192,57 +186,38 @@ struct SpotlightSearchView: View {
 
                 resultsScrollView
             }
+            .background(paper.ignoresSafeArea())
+            .navigationTitle("Search")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.84)) {
+                            isPresented = false
+                        }
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(MC.red)
+                    .accessibilityIdentifier("spotlightCancelButton")
+                }
+            }
+            .toolbarBackground(paper, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .searchable(
+                text: $searchText,
+                isPresented: $isSearchActive,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "Search note, merchant, amount…"
+            )
+            .onChange(of: isSearchActive) { _, active in
+                if !active {
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.84)) {
+                        isPresented = false
+                    }
+                }
+            }
         }
         .ignoresSafeArea()
-        .onAppear {
-            isSearchFocused = true
-        }
-    }
-
-    // MARK: - Search Bar
-
-    private var topSearchBar: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                TextField("Search note, merchant, amount…", text: $searchText)
-                    .font(.system(size: 16, weight: .regular))
-                    .focused($isSearchFocused)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .accessibilityIdentifier("spotlightSearchField")
-
-                if !searchText.isEmpty {
-                    Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 15))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("spotlightSearchClearButton")
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 40)
-            .background(Color(uiColor: .secondarySystemFill), in: Capsule())
-
-            Button("Cancel") {
-                isSearchFocused = false
-                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.84)) {
-                    isPresented = false
-                }
-            }
-            .font(.system(size: 16, weight: .regular))
-            .foregroundStyle(MC.red)
-            .accessibilityIdentifier("spotlightCancelButton")
-        }
-        .padding(.horizontal, 16)
     }
 
     // MARK: - Filter Pills

@@ -1383,23 +1383,27 @@ final class MonocleUITests: XCTestCase {
         searchButton.tap()
 
         // 3. Verify search elements exist
-        let searchField = app.textFields["spotlightSearchField"]
+        let searchField = app.searchFields.firstMatch
         XCTAssertTrue(searchField.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["filterDatePill"].exists)
         XCTAssertTrue(app.buttons["filterAmountPill"].exists)
         XCTAssertTrue(app.buttons["filterCategoryPill"].exists)
-        XCTAssertTrue(app.buttons["spotlightCancelButton"].exists)
+        XCTAssertTrue(app.buttons["Close"].exists || app.buttons["spotlightCancelButton"].exists)
 
         // Capture screenshot of Spotlight Search view
         let searchShot = app.screenshot()
-        add(XCTAttachment(screenshot: searchShot))
+        let shotURL = URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch/spotlight_screenshot.png")
+        try? searchShot.pngRepresentation.write(to: shotURL)
+        let att = XCTAttachment(screenshot: searchShot)
+        att.lifetime = .keepAlways
+        add(att)
 
         // 4. Type search text
         searchField.tap()
         searchField.typeText("Coffee")
 
         // 5. Check if search clear button appears and clear it
-        let clearBtn = app.buttons["spotlightSearchClearButton"]
+        let clearBtn = searchField.buttons["Clear text"].exists ? searchField.buttons["Clear text"] : app.buttons["Clear text"]
         if clearBtn.waitForExistence(timeout: 2) {
             clearBtn.tap()
             let val = searchField.value as? String
@@ -1413,8 +1417,8 @@ final class MonocleUITests: XCTestCase {
             app.buttons["This Month"].tap()
         }
 
-        // 7. Dismiss search overlay with Cancel button
-        let cancelBtn = app.buttons["spotlightCancelButton"]
+        // 7. Dismiss search overlay with Close / Cancel button
+        let cancelBtn = app.buttons["Close"].exists ? app.buttons["Close"] : app.buttons["spotlightCancelButton"]
         XCTAssertTrue(cancelBtn.waitForExistence(timeout: 3))
         cancelBtn.tap()
 

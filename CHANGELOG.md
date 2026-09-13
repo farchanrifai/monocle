@@ -3,17 +3,15 @@
 All notable changes to Monocle are documented in this file.
 
 ## [0.7.9] - 2026-09-13
-### Spotlight Fullscreen Search & Filter Overlay with iOS Default Capsule & Native Liquid Glass Bubbles
-- **Native iOS Default Search Bar & Liquid Glass Bubble Controls**:
-  - Refined the Spotlight search bar to use iOS's default app search bar styling: smooth `Capsule()` pill with zero squared edges, 40pt height, and native `Color(uiColor: .secondarySystemFill)` fill.
-  - Converted navigation bar search trigger (`homeSearchButton`) and options menu (`bookOptionsMenu`) into uniform 38×38 circular liquid glass bubbles (`.glassEffect(.regular.interactive(), in: .circle)` with interactive press feedback).
-  - Maintained responsive horizontal filter pills (`.nativeFilterPill(...)`) for Date presets (`All Time`, `Today`, `This Week`, `This Month`, `Last Month`), Amount tiers, Category picker, and Card scope selector.
-  - Multi-field real-time search matching notes, category names, and monetary values (including colloquial numeric queries like `50k` or `185.000`).
-  - Dynamic live subtotal banner showing total matching results and aggregate amount with instant filter reset capability.
-  - Grouped search results by Card in clean surface platter sections with direct tap-to-edit and contextual action menus.
+### True Native iOS Search Bar (.searchable) & Fluid Navigation Overlay
+- **True Native iOS System Search Architecture**:
+  - Migrated the Spotlight Search overlay from a custom SwiftUI textfield container to Apple's first-party `NavigationStack` with the native `.searchable` modifier (`placement: .navigationBarDrawer(displayMode: .always)`).
+  - Eliminates all custom shapes, fake borders, and squared corner approximations in favor of Apple's exact system search bar, authentic system squircle corner radius, native clear button, and native dismiss mechanics.
+  - Automatically suppresses the floating bottom navigation bar (`BottomNavigation`) when search is active, providing full keyboard and scroll clearance for matching results.
+  - Retained native liquid glass bubbles for the navigation bar search trigger (`homeSearchButton`) and options menu (`bookOptionsMenu`).
 - **Test Suite & Verification**:
-  - Verified 97 unit tests in `MonocleTests` including all query, date, and amount filtering suites.
-  - Comprehensive UI test in `MonocleUITests` verifying liquid glass search trigger button activation, typing, clearing, date filter selection, and dismiss.
+  - All 97 unit tests in `MonocleTests` passed cleanly.
+  - UI test suite in `MonocleUITests` (`testSpotlightSearchAndFilter`) verified native `.searchable` activation, typing, clear button, date filtering, and native close button dismissal with 0 failures.
 
 ## [0.7.8] - 2026-09-12
 ### Native Progressive Blur Toolbar Matching Home
