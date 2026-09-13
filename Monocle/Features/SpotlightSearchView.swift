@@ -205,11 +205,11 @@ struct SpotlightSearchView: View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(.secondary)
 
                 TextField("Search note, merchant, amount…", text: $searchText)
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.system(size: 16, weight: .regular))
                     .focused($isSearchFocused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -221,16 +221,16 @@ struct SpotlightSearchView: View {
                         searchText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
+                            .font(.system(size: 15))
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("spotlightSearchClearButton")
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(height: 42)
-            .liquidGlass(cornerRadius: 14, specularIntensity: 0.28, interactive: false)
+            .padding(.horizontal, 10)
+            .frame(height: 36)
+            .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             Button("Cancel") {
                 isSearchFocused = false
@@ -238,7 +238,7 @@ struct SpotlightSearchView: View {
                     isPresented = false
                 }
             }
-            .font(.system(size: 15, weight: .semibold))
+            .font(.system(size: 16, weight: .regular))
             .foregroundStyle(MC.red)
             .accessibilityIdentifier("spotlightCancelButton")
         }
@@ -278,7 +278,7 @@ struct SpotlightSearchView: View {
                     .padding(.horizontal, 11)
                     .frame(height: 32)
                 }
-                .liquidGlassPill(isActive: selectedDatePreset != .all)
+                .nativeFilterPill(isActive: selectedDatePreset != .all)
                 .accessibilityIdentifier("filterDatePill")
 
                 // 2. Amount Pill
@@ -309,7 +309,7 @@ struct SpotlightSearchView: View {
                     .padding(.horizontal, 11)
                     .frame(height: 32)
                 }
-                .liquidGlassPill(isActive: selectedAmountPreset != .all)
+                .nativeFilterPill(isActive: selectedAmountPreset != .all)
                 .accessibilityIdentifier("filterAmountPill")
 
                 // 3. Category Pill
@@ -359,7 +359,7 @@ struct SpotlightSearchView: View {
                     .padding(.horizontal, 11)
                     .frame(height: 32)
                 }
-                .liquidGlassPill(isActive: selectedCategoryID != nil)
+                .nativeFilterPill(isActive: selectedCategoryID != nil)
                 .accessibilityIdentifier("filterCategoryPill")
 
                 // 4. Card Pill
@@ -402,7 +402,7 @@ struct SpotlightSearchView: View {
                     .padding(.horizontal, 11)
                     .frame(height: 32)
                 }
-                .liquidGlassPill(isActive: selectedCardID != nil)
+                .nativeFilterPill(isActive: selectedCardID != nil)
                 .accessibilityIdentifier("filterCardPill")
             }
             .padding(.horizontal, 16)
@@ -604,7 +604,7 @@ struct SpotlightSearchView: View {
                         .padding(.horizontal, 12)
                         .frame(height: 34)
                     }
-                    .liquidGlassPill(isActive: false)
+                    .nativeFilterPill(isActive: false)
 
                     Button {
                         UISelectionFeedbackGenerator().selectionChanged()
@@ -618,7 +618,7 @@ struct SpotlightSearchView: View {
                         .padding(.horizontal, 12)
                         .frame(height: 34)
                     }
-                    .liquidGlassPill(isActive: false)
+                    .nativeFilterPill(isActive: false)
 
                     if let firstCat = model.activeCategories.first {
                         Button {
@@ -634,7 +634,7 @@ struct SpotlightSearchView: View {
                             .padding(.horizontal, 12)
                             .frame(height: 34)
                         }
-                        .liquidGlassPill(isActive: false)
+                        .nativeFilterPill(isActive: false)
                     }
                 }
             }

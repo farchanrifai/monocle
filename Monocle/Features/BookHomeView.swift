@@ -577,33 +577,12 @@ struct BookHomeView: View {
                 }
             } label: {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(ink.opacity(0.85))
-                    .frame(width: 36, height: 36)
-                    .background {
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .overlay {
-                                Circle()
-                                    .strokeBorder(
-                                        LinearGradient(
-                                            stops: [
-                                                .init(color: .white.opacity(0.35), location: 0.0),
-                                                .init(color: .white.opacity(0.1), location: 0.5),
-                                                .init(color: .white.opacity(0.02), location: 1.0)
-                                            ],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        ),
-                                        lineWidth: 0.8
-                                    )
-                            }
-                            .allowsHitTesting(false)
-                    }
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(ink)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(PressFeedbackStyle())
+            .buttonStyle(.plain)
             .accessibilityLabel("Search and filter transactions")
             .accessibilityIdentifier("homeSearchButton")
 

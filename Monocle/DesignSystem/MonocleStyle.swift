@@ -163,5 +163,33 @@ extension View {
     func liquidGlassPill(isActive: Bool = false, activeTint: Color = MC.red, interactive: Bool = false) -> some View {
         modifier(LiquidGlassPillModifier(isActive: isActive, activeTint: activeTint, interactive: interactive))
     }
+
+    func nativeFilterPill(isActive: Bool = false, activeTint: Color = MC.red) -> some View {
+        modifier(NativeFilterPillModifier(isActive: isActive, activeTint: activeTint))
+    }
+}
+
+// MARK: - Native Apple Filter Pill System
+
+struct NativeFilterPillModifier: ViewModifier {
+    var isActive: Bool = false
+    var activeTint: Color = MC.red
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(isActive ? activeTint : .primary)
+            .background {
+                Capsule()
+                    .fill(isActive ? activeTint.opacity(0.12) : Color(uiColor: .tertiarySystemFill))
+                    .allowsHitTesting(false)
+            }
+            .overlay {
+                if isActive {
+                    Capsule()
+                        .strokeBorder(activeTint.opacity(0.35), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+            }
+    }
 }
 
