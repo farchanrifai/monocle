@@ -272,8 +272,9 @@ final class MonocleUITests: XCTestCase {
 
         // Swipe right to edit
         row.swipeRight()
-        if app.buttons["Edit expense"].waitForExistence(timeout: 2) {
-            app.buttons["Edit expense"].tap()
+        let editBtn = app.buttons["Edit"].exists ? app.buttons["Edit"] : app.buttons["Edit expense"]
+        if editBtn.waitForExistence(timeout: 2) {
+            editBtn.tap()
         }
         XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
         app.buttons["Close entry"].tap()
@@ -282,8 +283,9 @@ final class MonocleUITests: XCTestCase {
         let deleteRow = app.buttons["expense-Morning coffee"]
         XCTAssertTrue(deleteRow.waitForExistence(timeout: 5))
         deleteRow.swipeLeft()
-        if app.buttons["Delete expense"].waitForExistence(timeout: 2) {
-            app.buttons["Delete expense"].tap()
+        let delBtn = app.buttons["Delete"].exists ? app.buttons["Delete"] : app.buttons["Delete expense"]
+        if delBtn.waitForExistence(timeout: 2) {
+            delBtn.tap()
         }
         XCTAssertTrue(app.staticTexts["Expense deleted"].waitForExistence(timeout: 5))
     }

@@ -1088,11 +1088,18 @@ struct BookHomeView: View {
                 .padding(.horizontal, 20)
                 .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             } else {
-                LazyVStack(spacing: 0) {
+                List {
                     ForEach(activities) { row in
                         activityRow(row, showBookLabel: bookID == nil, isPlatter: true)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(MC.surface)
                     }
                 }
+                .listStyle(.plain)
+                .scrollDisabled(true)
+                .scrollContentBackground(.hidden)
+                .frame(height: CGFloat(activities.count) * 60)
                 .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
@@ -1100,33 +1107,48 @@ struct BookHomeView: View {
     }
 
     private func activityRow(_ expense: Expense, showBookLabel: Bool, isPlatter: Bool = false) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2.5) {
-                Text(model.title(expense))
-                    .font(.system(size: 14, weight: .semibold))
+        Button {
+            selectedExpenseForDetail = expense
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2.5) {
+                    Text(model.title(expense))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ink)
+                        .lineLimit(1)
+                    Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
+                        .font(.system(size: 11.5, weight: .regular))
+                        .foregroundStyle(ink.opacity(0.55))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Text(Money.format(expense.amount))
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundStyle(ink)
-                    .lineLimit(1)
-                Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
-                    .font(.system(size: 11.5, weight: .regular))
-                    .foregroundStyle(ink.opacity(0.55))
-                    .lineLimit(1)
             }
-            Spacer(minLength: 8)
-            Text(Money.format(expense.amount))
-                .font(.system(size: 13.5, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, isPlatter ? 16 : 0)
+            .padding(.vertical, isPlatter ? 10 : 8)
+            .frame(minHeight: isPlatter ? 54 : 46)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, isPlatter ? 16 : 0)
-        .padding(.vertical, isPlatter ? 10 : 8)
-        .frame(minHeight: isPlatter ? 54 : 46)
-        .contentShape(Rectangle())
-        .transactionSwipeActions(
-            onTap: { selectedExpenseForDetail = expense },
-            onEdit: { model.edit(expense) },
-            onDelete: { model.delete(expense) }
-        )
+        .buttonStyle(.plain)
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                model.edit(expense)
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(Color.blue)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                model.delete(expense)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(showBookLabel && expense.bookID != nil

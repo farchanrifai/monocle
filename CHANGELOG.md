@@ -2,6 +2,20 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.14] - 2026-09-14
+### Native List Style without Dividers & Authentic iOS Swipe Actions
+- **Native SwiftUI `List` Implementation**:
+  - Replaced custom `LazyVStack` platter and custom drag modifier with Apple's first-party SwiftUI `List`.
+  - Configured `.listStyle(.plain)` with `.scrollContentBackground(.hidden)` to seamlessly render over Monocle's liquid glass platter.
+  - Removed dividers completely via `.listRowSeparator(.hidden)` as requested, maintaining a clean, uninterrupted visual flow.
+- **Authentic iOS Native `.swipeActions`**:
+  - Attached first-party `.swipeActions(edge: .leading)` with `.tint(.blue)` for Edit and `.swipeActions(edge: .trailing)` with `.destructive` for Delete.
+  - Restores 100% natural Apple velocity curves, rubber-banding spring physics, threshold expansion, and system audio/haptic responses.
+  - Allows simultaneous smooth vertical list scrolling without gesture intercept or touch cancellation conflicts.
+- **Verification & Test Suite**:
+  - All 94 unit tests in `MonocleTests` passed with 0 failures.
+  - Full targeted UI test suite in `MonocleUITests` (`testSwipeActionsOnExpenseRow`, `testTransactionDetailPageAndBackNavigation`, `testCloseConfirmsDiscardAndDoesNotBlockEditing`, `testStacksFilterBubbleAndCustomizer`, `testTransactionPageLiquidGlassAddButtonAndPlatter`) passed cleanly.
+
 ## [0.7.13] - 2026-09-14
 ### Dedicated Transaction Detail Page, Row Swipe Actions & Exact Discard Tracking
 - **Smart Discard Prompt Tracking (No False Discard Dialogs)**:
