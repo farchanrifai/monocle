@@ -638,5 +638,97 @@ final class MultiBookTests: XCTestCase {
         XCTAssertTrue(cats1.contains(where: { $0.id == customCat.id }))
         XCTAssertFalse(cats2.contains(where: { $0.id == customCat.id }))
     }
+
+    func testClearActiveCardExpensesPreservesCategoriesAndCard() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+        let backups = BackupService(directory: tempDir, repository: store, state: state, expenses: service)
+        model.backups = backups
+
+        let book = try model.createBook(named: "Trip Card")
+        try model.selectBook(book.id)
+
+        let categories = model.categories
+        let exp = Expense(id: UUID(), amount: 45_000_00, day: Day.string(.now), note: "Taxi",
+                          allocations: [.init(categoryID: categories[0].id, amount: 45_000_00)],
+                          bookID: book.id)
+        try model.save(exp)
+        XCTAssertEqual(model.expenses.count, 1)
+
+        try model.clearActiveCardExpenses()
+
+        XCTAssertEqual(model.expenses.count, 0)
+        XCTAssertEqual(model.categories.count, categories.count)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backups.safetyURL.path))
+    }
+
+    func testClearAllTransactionsAcrossMultipleCards() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+        let backups = BackupService(directory: tempDir, repository: store, state: state, expenses: service)
+        model.backups = backups
+
+        let card1 = try model.createBook(named: "Card A")
+        let card2 = try model.createBook(named: "Card B")
+
+        let exp1 = Expense(id: UUID(), amount: 30_000_00, day: Day.string(.now), note: "Card1 Exp",
+                           allocations: [.init(categoryID: model.categories[0].id, amount: 30_000_00)],
+                           bookID: card1.id)
+        let exp2 = Expense(id: UUID(), amount: 50_000_00, day: Day.string(.now), note: "Card2 Exp",
+                           allocations: [.init(categoryID: model.categories[0].id, amount: 50_000_00)],
+                           bookID: card2.id)
+        try store.save(exp1, in: card1.id)
+        try store.save(exp2, in: card2.id)
+
+        try model.clearAllTransactions()
+
+        XCTAssertEqual(try store.expenses(in: card1.id).count, 0)
+        XCTAssertEqual(try store.expenses(in: card2.id).count, 0)
+        XCTAssertEqual(try store.books().count, 3) // Sample book + Card A + Card B
+    }
+
+    func testResetAllDataCreatesFreshRealCardAndSafetyBackup() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+        let backups = BackupService(directory: tempDir, repository: store, state: state, expenses: service)
+        model.backups = backups
+
+        _ = try model.createBook(named: "Extra Card 1")
+        _ = try model.createBook(named: "Extra Card 2")
+        XCTAssertEqual(model.books.count, 3)
+
+        try model.resetAllData(cardName: "Personal Wallet")
+
+        XCTAssertEqual(model.books.count, 1)
+        XCTAssertEqual(model.books.first?.name, "Personal Wallet")
+        XCTAssertEqual(model.books.first?.kind, .real)
+        XCTAssertEqual(model.expenses.count, 0)
+        XCTAssertEqual(model.bills.count, 0)
+        XCTAssertEqual(model.categories.count, ExpenseCategory.defaults.count)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backups.safetyURL.path))
+
+        let safetyData = try Data(contentsOf: backups.safetyURL)
+        let decodedWorkspace = try? WorkspaceBackup.decode(safetyData)
+        XCTAssertNotNil(decodedWorkspace)
+        XCTAssertEqual(decodedWorkspace?.books.count, 3)
+    }
 }
 

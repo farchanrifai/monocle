@@ -568,6 +568,78 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
+    /// Deletes all expenses and their allocations in the specified book, or across all books if nil.
+    func clearExpenses(in bookID: UUID? = nil) throws {
+        do {
+            let targetBook: NSManagedObject? = try bookID.map { try bookRow(for: $0) }
+            let allExpenses = try objects("ExpenseRecord")
+            for expense in allExpenses {
+                if let targetBook {
+                    if (expense.value(forKey: "book") as? NSManagedObject) == targetBook {
+                        for allocation in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
+                            context.delete(allocation)
+                        }
+                        context.delete(expense)
+                    }
+                } else {
+                    for allocation in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
+                        context.delete(allocation)
+                    }
+                    context.delete(expense)
+                }
+            }
+            let occurrences = try objects("BillOccurrenceRecord")
+            for occ in occurrences {
+                if let rule = occ.value(forKey: "rule") as? NSManagedObject,
+                   let ruleBook = rule.value(forKey: "book") as? NSManagedObject {
+                    if targetBook == nil || ruleBook == targetBook {
+                        if occ.value(forKey: "expenseID") != nil {
+                            occ.setValue(nil, forKey: "expenseID")
+                            occ.setValue(BillOccurrenceStatus.pending.rawValue, forKey: "status")
+                            occ.setValue(Date.now, forKey: "updatedAt")
+                        }
+                    }
+                }
+            }
+            try commitIfNeeded()
+        } catch { context.rollback(); throw error }
+    }
+
+    /// Performs a complete factory wipe of Core Data entities and initializes a single fresh real book.
+    func resetToFreshWorkspace(bookName: String, categories: [ExpenseCategory] = ExpenseCategory.defaults) throws -> (bookID: UUID, categories: [ExpenseCategory]) {
+        do {
+            for entity in ["BillOccurrenceRecord", "BillRuleRecord", "AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
+                for row in try objects(entity) { context.delete(row) }
+            }
+            let newBookID = UUID()
+            let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+            book.setValue(newBookID, forKey: "id")
+            book.setValue(bookName, forKey: "name")
+            var createdCategories: [ExpenseCategory] = []
+            for category in categories {
+                let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
+                row.setValue(category.id, forKey: "id")
+                row.setValue(category.name, forKey: "name")
+                row.setValue(category.symbol, forKey: "symbol")
+                row.setValue(book, forKey: "book")
+                createdCategories.append(category)
+            }
+            let initialBudget = BudgetVersion.initial(overallLimit: 5_000_000 * 100, startDay: 1, date: .now, bookID: newBookID)
+            let budgetRow = NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
+            budgetRow.setValue(initialBudget.id, forKey: "id")
+            budgetRow.setValue(initialBudget.overallLimit, forKey: "overallLimit")
+            budgetRow.setValue(initialBudget.startDay, forKey: "startDay")
+            budgetRow.setValue(initialBudget.effectiveDay, forKey: "effectiveDay")
+            budgetRow.setValue(initialBudget.transitionEndDay, forKey: "transitionEndDay")
+            budgetRow.setValue(book, forKey: "book")
+            try commitIfNeeded()
+            return (newBookID, createdCategories)
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
     /// Replace the complete workspace with a single Core Data transaction.
     func replace(with workspace: WorkspaceBackup, importArtworks: Bool = true) throws {
         try workspace.validate()

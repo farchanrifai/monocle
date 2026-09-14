@@ -2,6 +2,24 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.19] - 2026-09-15
+### Reset Data & Factory Fresh Start for Daily Use
+- **Dedicated Reset Data Screen**:
+  - Added a new **Reset data** screen inside **Settings $\rightarrow$ Data & Storage** tailored for users transitioning to daily logging.
+- **Two Flexible Reset Tiers**:
+  - **Clear Active Card Transactions**: Purges logged expenses on the active card (or across all cards) and resets card balances to Rp 0 while preserving customized cards, global categories, and recurring bills.
+  - **Erase All Content & Start Fresh**: Performs a complete factory wipe of Core Data entities and local files, creating a single clean card in real mode (with user-defined card name) and restoring canonical default global categories.
+- **Automatic Pre-Reset Safety Backup**:
+  - Automatically takes an atomic snapshot to `safetyURL` prior to performing any destructive reset operation.
+  - Users can export or restore their safety backup at any time from **Backup & Restore**.
+- **First-Party Apple iOS Design**:
+  - Informative safety guarantee banner with shield iconography.
+  - Destructive button roles with explicit confirmation alerts to prevent accidental data loss.
+- **Verification & Test Suite**:
+  - Added unit tests in `MultiBookTests` verifying active card clearing, multi-card clearing, and full factory reset with safety backup generation.
+  - All 106 unit tests in `MonocleTests` passed cleanly.
+  - Targeted UI test in `MonocleUITests` verified screen presentation, elements, alerts, and captured visual proof.
+
 ## [0.7.18] - 2026-09-15
 ### Unified Global Categories with Bidirectional Card Activation
 - **Unified Global Category Catalog**:

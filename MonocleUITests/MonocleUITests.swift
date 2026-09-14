@@ -1455,5 +1455,47 @@ final class MonocleUITests: XCTestCase {
         closeDetail.tap()
         XCTAssertTrue(app.staticTexts["monocle"].waitForExistence(timeout: 5))
     }
+
+    @MainActor
+    func testResetDataViewUIAndScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Tap options menu and open Settings
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
+        app.buttons["bookOptionsMenu"].tap()
+
+        let settingsBtn = app.buttons["Settings"].exists ? app.buttons["Settings"] : app.buttons["homeSettings"]
+        XCTAssertTrue(settingsBtn.waitForExistence(timeout: 5))
+        settingsBtn.tap()
+
+        // 2. Tap "Reset data" in Settings
+        let resetLink = app.buttons["resetDataSettings"]
+        XCTAssertTrue(resetLink.waitForExistence(timeout: 5))
+        resetLink.tap()
+
+        // 3. Verify Reset data elements
+        XCTAssertTrue(app.navigationBars["Reset data"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["clearActiveCardButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["resetAllDataButton"].waitForExistence(timeout: 5))
+
+        // 4. Capture screenshot
+        let resetShot = app.screenshot()
+        let resetAttachment = XCTAttachment(screenshot: resetShot)
+        resetAttachment.name = "ResetDataScreen"
+        add(resetAttachment)
+
+        let scratchDir = URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch")
+        try? FileManager.default.createDirectory(at: scratchDir, withIntermediateDirectories: true)
+        try? resetShot.image.pngData()?.write(to: scratchDir.appendingPathComponent("reset_data_screen.png"))
+
+        // 5. Test opening confirmation alert
+        app.buttons["clearActiveCardButton"].tap()
+        let clearAlert = app.alerts.firstMatch
+        XCTAssertTrue(clearAlert.waitForExistence(timeout: 5))
+        clearAlert.buttons["Cancel"].tap()
+    }
 }
 

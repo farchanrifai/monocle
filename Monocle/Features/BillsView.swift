@@ -733,10 +733,21 @@ struct SettingsView: View {
                         }
                     }
                     .accessibilityIdentifier("csvInterchangeSettings")
+
+                    NavigationLink {
+                        ResetDataView(model: model)
+                    } label: {
+                        Label {
+                            Text("Reset data")
+                        } icon: {
+                            SettingsIcon(symbol: "trash.fill", color: MC.red)
+                        }
+                    }
+                    .accessibilityIdentifier("resetDataSettings")
                 } header: {
                     Text("Data & Storage")
                 } footer: {
-                    Text("Export full JSON snapshots for safekeeping or import spreadsheets.")
+                    Text("Export full JSON snapshots, import spreadsheets, or reset data to start fresh.")
                 }
 
                 // MARK: 3. Expense Input

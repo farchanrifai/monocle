@@ -43,6 +43,7 @@ protocol ExpenseStore {
     func delete(_ id: UUID) throws
     func saveCategory(_ category: ExpenseCategory) throws
     func deleteCategory(_ id: UUID) throws
+    func clearExpenses(in bookID: UUID?) throws
 }
 
 extension ExpenseStore {
@@ -56,6 +57,7 @@ extension ExpenseStore {
     func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
     func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
     func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {}
+    func clearExpenses(in bookID: UUID?) throws {}
 }
 
 /// Shared by screen state and App Intents. Main-actor isolation serializes local commands.

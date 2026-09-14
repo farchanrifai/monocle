@@ -72,6 +72,7 @@
 		F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */; };
 		8A1249D1E728B21F00AA1102 /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1249D0E728B21F00AA1101 /* TransactionDetailView.swift */; };
 		8A1249D5E728B21F00AA1106 /* QuickEntryControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1249D4E728B21F00AA1105 /* QuickEntryControl.swift */; };
+		8A1249D6E728B21F00AA1107 /* ResetDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1249D7E728B21F00AA1108 /* ResetDataView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -183,6 +184,7 @@
 		FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV2.xcdatamodel; sourceTree = "<group>"; };
 		8A1249D0E728B21F00AA1101 /* TransactionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionDetailView.swift; sourceTree = "<group>"; };
 		8A1249D4E728B21F00AA1105 /* QuickEntryControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickEntryControl.swift; sourceTree = "<group>"; };
+		8A1249D7E728B21F00AA1108 /* ResetDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -352,6 +354,7 @@
 				80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */,
 				DC903D25750DE722F4AF1648 /* StockDesignViews.swift */,
 				8A1249D0E728B21F00AA1101 /* TransactionDetailView.swift */,
+				8A1249D7E728B21F00AA1108 /* ResetDataView.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -577,6 +580,7 @@
 				A5DF105D10DC5C7A4FB122C1 /* WidgetSnapshotStore.swift in Sources */,
 				3151F6D2CBC78C6E0F550D15 /* WidgetSnapshotUpdater.swift in Sources */,
 				8A1249D1E728B21F00AA1102 /* TransactionDetailView.swift in Sources */,
+				8A1249D6E728B21F00AA1107 /* ResetDataView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -687,7 +691,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 81;
+				CURRENT_PROJECT_VERSION = 82;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -708,7 +712,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.18;
+				MARKETING_VERSION = 0.7.19;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -797,7 +801,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 81;
+				CURRENT_PROJECT_VERSION = 82;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -812,7 +816,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.18;
+				MARKETING_VERSION = 0.7.19;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -72,6 +72,16 @@ public final class CardArtworkStore: @unchecked Sendable {
         try? fileManager.removeItem(at: url)
     }
 
+    public func deleteAllArtworks() {
+        cache.removeAllObjects()
+        if let files = try? fileManager.contentsOfDirectory(atPath: artworkDirectory.path) {
+            for file in files {
+                let url = artworkDirectory.appendingPathComponent(file)
+                try? fileManager.removeItem(at: url)
+            }
+        }
+    }
+
     public static func isValidFilename(_ filename: String) -> Bool {
         !filename.isEmpty && filename != "." && filename != ".." &&
         !filename.contains("/") && !filename.contains("\\") &&

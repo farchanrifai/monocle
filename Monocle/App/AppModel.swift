@@ -757,6 +757,43 @@ final class AppModel {
         showToast("Book renamed")
     }
 
+    func clearActiveCardExpenses() throws {
+        guard let backups else { throw BackupError.unsupported }
+        let targetID = selectedBookID ?? activeBookID
+        try backups.clearExpenses(in: targetID, currentDraft: draft, settings: settings)
+        draft = ExpenseDraft()
+        originalDraft = nil
+        undoExpense = nil; pendingEntry = nil
+        try reload()
+        showToast("Transactions cleared")
+    }
+
+    func clearAllTransactions() throws {
+        guard let backups else { throw BackupError.unsupported }
+        try backups.clearExpenses(in: nil, currentDraft: draft, settings: settings)
+        draft = ExpenseDraft()
+        originalDraft = nil
+        undoExpense = nil; pendingEntry = nil
+        try reload()
+        showToast("All transactions cleared")
+    }
+
+    func resetAllData(cardName: String) throws {
+        guard let backups else { throw BackupError.unsupported }
+        let newSettings = try backups.resetAllData(cardName: cardName, currentDraft: draft, settings: settings)
+        self.settings = newSettings
+        self.workspacePreferences = (try? state?.loadWorkspacePreferences()) ?? WorkspacePreferences()
+        self.draft = ExpenseDraft()
+        self.originalDraft = nil
+        self.undoExpense = nil; pendingEntry = nil
+        self.hiddenBookIDs = []
+        self.alwaysHiddenBookIDs = []
+        self.customizerTarget = nil
+        self.selectedBookID = newSettings.book.id
+        try reload()
+        showToast("App reset to clean state")
+    }
+
     func showToast(_ text: String) { toast = text; toastID = UUID() }
 
     func importExpenses(_ batch: [Expense], to bookID: UUID) throws {

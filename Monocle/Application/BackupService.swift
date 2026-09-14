@@ -112,6 +112,82 @@ final class BackupService {
         }
     }
 
+    func clearExpenses(in bookID: UUID? = nil, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
+        let original = try repository.books().count > 1
+            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
+            : snapshot(draft: currentDraft, settings: settings).encoded()
+        try original.write(to: safetyURL, options: .atomic)
+        try original.write(to: journal, options: .atomic)
+        do {
+            try repository.clearExpenses(in: bookID)
+            if let bookID {
+                try state.saveDraft(ExpenseDraft(), for: bookID)
+            } else {
+                for book in try repository.books() {
+                    try state.saveDraft(ExpenseDraft(), for: book.id)
+                }
+            }
+            try expenses.reload()
+            try FileManager.default.removeItem(at: journal)
+        } catch {
+            do {
+                try Self.recoverIfNeeded(directory: directory, repository: repository, state: state)
+                try expenses.reload()
+            } catch {
+                requiresRecovery = true; expenses.isBlocked = true
+                throw BackupError.recoveryRequired
+            }
+            throw error
+        }
+    }
+
+    func resetAllData(cardName: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
+        let original = try repository.books().count > 1
+            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
+            : snapshot(draft: currentDraft, settings: settings).encoded()
+        try original.write(to: safetyURL, options: .atomic)
+        try original.write(to: journal, options: .atomic)
+        do {
+            CardArtworkStore.shared.deleteAllArtworks()
+            let resolvedName = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let finalName = resolvedName.isEmpty ? "My expenses" : resolvedName
+            let defaultCategories = ExpenseCategory.defaults
+            let (newBookID, _) = try repository.resetToFreshWorkspace(bookName: finalName, categories: defaultCategories)
+
+            var updatedSettings = settings
+            updatedSettings.book = BookProfile(id: newBookID, name: finalName, kind: .real)
+
+            var freshPreferences = WorkspacePreferences()
+            freshPreferences.visibleBookIDs = [newBookID]
+            freshPreferences.bookOrder = [newBookID]
+            freshPreferences.globalCategories = defaultCategories.map {
+                GlobalCategory(id: $0.id, name: $0.name, symbol: $0.symbol, defaultActiveForNewCards: true)
+            }
+            freshPreferences.cardInactiveCategoryIDs = [:]
+            freshPreferences.cardCustomizations = [:]
+            freshPreferences.stacks = []
+            freshPreferences.activeStackID = nil
+
+            try state.saveDraft(ExpenseDraft(), for: newBookID)
+            try state.saveSettings(updatedSettings)
+            try state.saveWorkspacePreferences(freshPreferences)
+            try Data("1".utf8).write(to: directory.appendingPathComponent("sample-seeded"), options: .atomic)
+
+            try expenses.reload()
+            try FileManager.default.removeItem(at: journal)
+            return updatedSettings
+        } catch {
+            do {
+                try Self.recoverIfNeeded(directory: directory, repository: repository, state: state)
+                try expenses.reload()
+            } catch {
+                requiresRecovery = true; expenses.isBlocked = true
+                throw BackupError.recoveryRequired
+            }
+            throw error
+        }
+    }
+
     func preview(data: Data) throws -> BookBackup {
         let candidate = try BookBackup.decode(data)
         let store = try ExpenseRepository(inMemory: true)

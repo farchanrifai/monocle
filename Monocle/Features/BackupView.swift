@@ -49,7 +49,9 @@ struct BackupView: View {
                     do {
                         guard let backups = model.backups else { throw BackupError.unsupported }
                         let data = try Data(contentsOf: backups.safetyURL)
-                        _ = try BookBackup.decode(data)
+                        guard (try? BookBackup.decode(data)) != nil || (try? WorkspaceBackup.decode(data)) != nil else {
+                            throw BackupError.invalid
+                        }
                         document = BackupDocument(data: data); exporting = true
                     } catch { message = "No readable safety backup is available yet. One is created before each restoration." }
                 }

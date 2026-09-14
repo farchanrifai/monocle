@@ -271,6 +271,7 @@ private final class TestExpenseStore: ExpenseStore {
     func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
     func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
     func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {}
+    func clearExpenses(in bookID: UUID?) throws { values.removeAll() }
 
     func categories() throws -> [ExpenseCategory] {
         if failReads { throw EntryError.corruptStore }
