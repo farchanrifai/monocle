@@ -1144,12 +1144,17 @@ struct CardPresentationView: View {
                 .listStyle(.plain)
                 .scrollDisabled(true)
                 .scrollContentBackground(.hidden)
-                .frame(height: CGFloat(activities.count) * 60)
+                .environment(\.defaultMinListRowHeight, activityRowHeight)
+                .environment(\.defaultMinListHeaderHeight, 0)
+                .listSectionSpacing(.custom(0))
+                .frame(height: CGFloat(activities.count) * activityRowHeight)
                 .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
         }
     }
+
+    private let activityRowHeight: CGFloat = 56
 
     private func activityRow(_ expense: Expense, showBookLabel: Bool, isPlatter: Bool = false) -> some View {
         Button {
@@ -1174,8 +1179,7 @@ struct CardPresentationView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, isPlatter ? 16 : 0)
-            .padding(.vertical, isPlatter ? 10 : 8)
-            .frame(minHeight: isPlatter ? 54 : 46)
+            .frame(height: isPlatter ? activityRowHeight : 46)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
