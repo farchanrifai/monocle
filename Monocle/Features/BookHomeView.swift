@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UIKit
 
@@ -296,7 +297,6 @@ struct BookHomeView: View {
     @State private var currentStackKey: String = ""
     @State private var targetStackKey: String = ""
     @State private var flippedCardID: UUID? = nil
-    @State private var dragTilt: CGSize = .zero
     @State private var swipingCardID: UUID? = nil
     @State private var swipeOffset: CGFloat = 0.0
     @State private var selectedExpenseForDetail: Expense? = nil
@@ -750,9 +750,22 @@ struct BookHomeView: View {
         target: CGRect,
         isSelected: Bool
     ) -> some View {
-        cardView(book, index: index, isCurrent: isSelected)
-            .frame(width: target.width, height: target.height)
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        CardPresentationView(
+            book: book,
+            index: index,
+            isCurrent: isSelected,
+            isFlipped: flippedCardID == book.id,
+            expanded: expanded,
+            dismissAmount: dismissAmount,
+            scrollOverscroll: scrollOverscroll,
+            amountFont: amountFont,
+            model: model,
+            onFlip: { toggleFlip(for: book.id) },
+            onOpenAnalytics: { model.showAnalytics = true },
+            onCustomize: { openCustomizer(for: book) }
+        )
+        .frame(width: target.width, height: target.height)
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .modifier(CardAccessibilityModifier(
                 book: book,
                 expenseCount: model.expenses(for: book.id).count,
@@ -873,14 +886,55 @@ struct BookHomeView: View {
         }
     }
 
-    private func cardView(_ book: BookProfile, index: Int, isCurrent: Bool) -> some View {
-        let isFlipped = (flippedCardID == book.id)
+// MARK: - Isolated 3D Card Presentation
+struct CardPresentationView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let book: BookProfile
+    let index: Int
+    let isCurrent: Bool
+    let isFlipped: Bool
+    let expanded: Bool
+    let dismissAmount: CGFloat
+    let scrollOverscroll: CGFloat
+    let amountFont: Font
+    let model: AppModel
+    let onFlip: () -> Void
+    let onOpenAnalytics: () -> Void
+    let onCustomize: () -> Void
 
-        let tiltX = (isCurrent && !reduceMotion && dismissAmount == 0) ? min(max(-dragTilt.height / 14, -12), 12) : 0
-        let tiltY = (isCurrent && !reduceMotion && dismissAmount == 0) ? min(max(dragTilt.width / 14, -12), 12) : 0
+    @State private var dragTilt: CGSize = .zero
 
-        return ZStack {
-            cardFrontView(book, index: index, isCurrent: isCurrent)
+    private var effectiveTilt: (angle: Double, axisX: Double, axisY: Double, shiftX: CGFloat, shiftY: CGFloat) {
+        guard isCurrent, expanded, !reduceMotion else {
+            let shiftX = scrollOverscroll * 0.002
+            let shiftY = scrollOverscroll * 0.003
+            return (0, 1, 0, shiftX, shiftY)
+        }
+
+        let dismissDamp = max(0, 1.0 - Double(dismissAmount) / 70.0)
+        guard dismissDamp > 0 else {
+            return (0, 1, 0, 0, 0)
+        }
+
+        let maxAngle: Double = 12.0
+        let tiltX = -maxAngle * tanh(Double(dragTilt.height) / 140.0) * dismissDamp
+        let tiltY = maxAngle * tanh(Double(dragTilt.width) / 140.0) * dismissDamp
+
+        let angle = sqrt(tiltX * tiltX + tiltY * tiltY)
+        let axisX = angle > 0.001 ? (tiltX / angle) : 1.0
+        let axisY = angle > 0.001 ? (tiltY / angle) : 0.0
+
+        let shiftX = CGFloat((tiltY / maxAngle) * 0.32)
+        let shiftY = CGFloat((-tiltX / maxAngle) * 0.32)
+
+        return (angle, axisX, axisY, shiftX, shiftY)
+    }
+
+    var body: some View {
+        let tilt = effectiveTilt
+
+        ZStack {
+            cardFrontView(tiltShiftX: tilt.shiftX, tiltShiftY: tilt.shiftY)
                 .rotation3DEffect(
                     .degrees(isFlipped ? 180 : 0),
                     axis: (x: 0, y: 1, z: 0),
@@ -894,15 +948,9 @@ struct BookHomeView: View {
                     model: model,
                     book: book,
                     index: index,
-                    onFlipBack: {
-                        toggleFlip(for: book.id)
-                    },
-                    onOpenAnalytics: {
-                        model.showAnalytics = true
-                    },
-                    onCustomize: {
-                        openCustomizer(for: book)
-                    }
+                    onFlipBack: onFlip,
+                    onOpenAnalytics: onOpenAnalytics,
+                    onCustomize: onCustomize
                 )
                 .rotation3DEffect(
                     .degrees(isFlipped ? 0 : -180),
@@ -914,33 +962,32 @@ struct BookHomeView: View {
             }
         }
         .rotation3DEffect(
-            .degrees(tiltX),
-            axis: (x: 1, y: 0, z: 0),
-            perspective: 0.8
-        )
-        .rotation3DEffect(
-            .degrees(tiltY),
-            axis: (x: 0, y: 1, z: 0),
+            .degrees(tilt.angle),
+            axis: (x: tilt.axisX, y: tilt.axisY, z: 0),
             perspective: 0.8
         )
         .simultaneousGesture(
-            (isCurrent && dismissAmount == 0) ?
-                DragGesture(minimumDistance: 8)
+            (isCurrent && expanded && !reduceMotion) ?
+                DragGesture(minimumDistance: 3)
                     .onChanged { value in
-                        if abs(value.translation.width) > abs(value.translation.height) * 1.3 {
-                            dragTilt = value.translation
-                        }
+                        dragTilt = value.translation
                     }
                     .onEnded { _ in
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.74)) {
                             dragTilt = .zero
                         }
                     }
                 : nil
         )
+        .animation(.interactiveSpring(response: 0.22, dampingFraction: 0.85, blendDuration: 0.08), value: dragTilt)
+        .onChange(of: expanded) { _, isExpanded in
+            if !isExpanded {
+                dragTilt = .zero
+            }
+        }
     }
 
-    private func cardFrontView(_ book: BookProfile, index: Int, isCurrent: Bool) -> some View {
+    private func cardFrontView(tiltShiftX: CGFloat, tiltShiftY: CGFloat) -> some View {
         let bookExpenses = model.expenses(for: book.id)
         let total = model.spent(for: book.id)
         let customization = model.customization(for: book.id)
@@ -956,7 +1003,7 @@ struct BookHomeView: View {
                 HStack(spacing: 6) {
                     if isCurrent && expanded {
                         Button {
-                            toggleFlip(for: book.id)
+                            onFlip()
                         } label: {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.caption.weight(.bold))
@@ -991,7 +1038,7 @@ struct BookHomeView: View {
         .background(
             ZStack {
                 cardBackground(for: customization, book: book)
-                specularSheen(isCurrent: isCurrent)
+                specularSheen(shiftX: tiltShiftX, shiftY: tiltShiftY)
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -999,11 +1046,8 @@ struct BookHomeView: View {
     }
 
     @ViewBuilder
-    private func specularSheen(isCurrent: Bool) -> some View {
+    private func specularSheen(shiftX: CGFloat, shiftY: CGFloat) -> some View {
         if !reduceMotion {
-            let shiftX = isCurrent ? (dragTilt.width / 350) : (scrollOverscroll * 0.002)
-            let shiftY = isCurrent ? (dragTilt.height / 350) : (scrollOverscroll * 0.003)
-
             LinearGradient(
                 colors: [
                     Color.white.opacity(0.24),
@@ -1037,6 +1081,7 @@ struct BookHomeView: View {
             }
         }
     }
+}
 
     private func activitySection(bookID: UUID?) -> some View {
         let activeScope = displayedFilterScope ?? model.filterScope

@@ -2,6 +2,27 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.16] - 2026-09-14
+### Silky Smooth 3D Card Physics & Performance Optimization
+- **Isolated Card Presentation View (`CardPresentationView`)**:
+  - Encapsulated the 3D tilt gesture and visual transform state into a dedicated `CardPresentationView` component.
+  - Eliminated full-screen `BookHomeView` invalidation and re-rendering on every drag frame, keeping the transaction list, scroll views, and progressive blur background completely static during card tilt.
+- **Removed Discontinuous Ratio Threshold & Unlocked 360° Tilt**:
+  - Removed the `abs(width) > 1.3 * abs(height)` binary filter that was causing severe frame freezing and sudden jumping when dragging diagonally or vertically.
+  - Enabled continuous, natural 360° tilt in any direction across the card surface.
+- **Asymptotic Soft-Clamping with Hyperbolic Tangent (`tanh`)**:
+  - Replaced hard linear bounds clamping (`min(max(..., -12), 12)`) with a continuous $C^\infty$ hyperbolic tangent resistance curve (`12.0 * tanh(offset / 140.0)`).
+  - Eliminates harsh boundary stops, giving the card an authentic elastic resistance feel.
+- **Interactive Spring Tracking & Settle**:
+  - Added `.animation(.interactiveSpring(response: 0.22, dampingFraction: 0.85, blendDuration: 0.08), value: dragTilt)` to filter capacitive touch sensor noise during dragging.
+  - Added `.spring(response: 0.38, dampingFraction: 0.74)` on gesture release to settle the card back to zero with natural physical bounce.
+- **Continuous Dismissal Damping**:
+  - Replaced the abrupt `dismissAmount == 0` boolean cutoff with a continuous dampening factor (`max(0, 1.0 - dismissAmount / 70.0)`), allowing the card to smoothly level out as it is pulled down toward dismiss.
+- **Unified 3D Rodrigues Rotation & Synced Specular Reflection**:
+  - Combined two separate Euler rotation passes into a single vector rotation around the exact perpendicular axis, cutting CALayer 3D compositing overhead in half.
+  - Synchronized the specular reflection sheen with the continuous tilt angle for accurate physical lighting.
+
+
 ## [0.7.15] - 2026-09-14
 ### Modern AppIntents, Multi-Card Support, Rich Receipt Snippets & iOS 18 Control Center Quick Entry
 - **Purged Obsolete Prototype Artifacts**:
