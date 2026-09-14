@@ -2,6 +2,31 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.15] - 2026-09-14
+### Modern AppIntents, Multi-Card Support, Rich Receipt Snippets & iOS 18 Control Center Quick Entry
+- **Purged Obsolete Prototype Artifacts**:
+  - Removed all prototype-era strings, dummy intents, and hardcoded "sample book" references from AppIntents metadata.
+- **Dynamic Multi-Card Support (`CardEntity` & `CardEntityQuery`)**:
+  - Added `CardEntity` with `EnumerableEntityQuery` conformance, allowing users to choose any active card/account directly in Shortcuts or Siri dropdown pickers.
+  - Updated `AddExpenseIntent`, `AddExpenseFromTextIntent`, `OpenQuickEntryIntent`, and `StartSpendingSessionIntent` with an optional `card` parameter. When omitted, it seamlessly defaults to the user's currently selected or active card.
+- **Enhanced Category Picker (`ExpenseCategoryEntityQuery: EnumerableEntityQuery`)**:
+  - Upgraded `ExpenseCategoryEntityQuery` with `allEntities()` and `suggestedEntities()` to provide native drop-down category pickers in the iOS Shortcuts editor.
+- **Rich Visual Receipt Snippets (`ExpenseReceiptSnippetView`)**:
+  - Added `ExpenseReceiptSnippetView` adopting `ShowsSnippetView`.
+  - When recording expenses via Siri or Shortcuts, iOS renders a rich visual receipt drawer below the Dynamic Island / Siri interface featuring category icon, transaction note, card badge, day, and formatted amount.
+- **Shopping & Spending Session Intents**:
+  - Added `StartSpendingSessionIntent` and `EndSpendingSessionIntent` bridging AppIntents to `SpendingSessionManager` and ActivityKit Dynamic Island Live Activities.
+- **Modern App Shortcuts & Parameterized Voice Phrases**:
+  - Configured `shortcutTileColor: .red` in `MonocleShortcuts`.
+  - Added entity-parameterized Siri voice phrases (e.g. "Add Food & Drinks expense in Monocle", "Record Groceries in Monocle").
+- **iOS 18 Control Center & Lock Screen Widget (`QuickEntryControl`)**:
+  - Implemented `QuickEntryControl: ControlWidget` with `OpenQuickEntryControlIntent`, enabling users to launch quick expense capture directly from iOS 18 Control Center or Lock Screen buttons.
+- **Verification & Test Suite**:
+  - Added unit tests for `CardEntityQuery`, `ExpenseCategoryEntityQuery`, multi-card shortcut routing, and `SpendingSessionManager`.
+  - All 98 unit tests in `MonocleTests` passed with 0 failures.
+  - All targeted UI tests passed cleanly on iPhone 17 Pro simulator.
+
+
 ## [0.7.14] - 2026-09-14
 ### Native List Style without Dividers & Authentic iOS Swipe Actions
 - **Native SwiftUI `List` Implementation**:

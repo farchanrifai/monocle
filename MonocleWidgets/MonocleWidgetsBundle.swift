@@ -9,5 +9,8 @@ struct MonocleWidgetsBundle: WidgetBundle {
         TodaySpendingWidget()
         QuickCaptureWidget()
         SpendingActivityWidget()
+        if #available(iOS 18.0, *) {
+            QuickEntryControl()
+        }
     }
 }

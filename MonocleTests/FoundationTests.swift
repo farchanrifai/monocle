@@ -353,4 +353,85 @@ extension FoundationTests {
         lock.resume(now: start.addingTimeInterval(65))
         XCTAssertTrue(lock.needsAuthentication)
     }
+
+    func testCardEntityQueryEnumerableAndMatching() async throws {
+        let query = CardEntityQuery()
+        let all = try await query.allEntities()
+        let suggested = try await query.suggestedEntities()
+        XCTAssertEqual(all.count, suggested.count)
+        XCTAssertFalse(all.isEmpty)
+
+        let first = all[0]
+        let byID = try await query.entities(for: [first.id])
+        XCTAssertEqual(byID.count, 1)
+        XCTAssertEqual(byID.first?.name, first.name)
+
+        let matched = try await query.entities(matching: String(first.name.prefix(3)))
+        XCTAssertTrue(matched.contains(where: { $0.id == first.id }))
+
+        let none = try await query.entities(matching: "NonExistentCardXYZ123")
+        XCTAssertTrue(none.isEmpty)
+    }
+
+    func testExpenseCategoryEntityQueryEnumerableAndMatching() async throws {
+        let query = ExpenseCategoryEntityQuery()
+        let all = try await query.allEntities()
+        let suggested = try await query.suggestedEntities()
+        XCTAssertEqual(all.count, suggested.count)
+        XCTAssertFalse(all.isEmpty)
+
+        let first = all[0]
+        let byID = try await query.entities(for: [first.id])
+        XCTAssertEqual(byID.count, 1)
+        XCTAssertEqual(byID.first?.name, first.name)
+
+        let matched = try await query.entities(matching: String(first.name.prefix(3)))
+        XCTAssertTrue(matched.contains(where: { $0.id == first.id }))
+
+        let none = try await query.entities(matching: "NonExistentCategoryXYZ123")
+        XCTAssertTrue(none.isEmpty)
+    }
+
+    func testStructuredShortcutSupportsExplicitCardSelection() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let secondCard = try store.createBook(named: "Travel Card")
+        let service = try ExpenseService(store: store)
+
+        let secondCardCats = try store.categories(in: secondCard.id)
+        XCTAssertFalse(secondCardCats.isEmpty)
+        let targetCatID = secondCardCats[0].id
+
+        // Record targeting the second card explicitly
+        let exp1 = try service.record(amountInRupiah: 45_000, categoryID: targetCatID, note: "Dinner abroad", in: secondCard.id)
+        XCTAssertEqual(exp1.bookID, secondCard.id)
+        XCTAssertEqual(exp1.amount, 4_500_000)
+
+        // Record with nil card targets default active book
+        let defaultCatID = ExpenseCategory.defaults[0].id
+        let exp2 = try service.record(amountInRupiah: 20_000, categoryID: defaultCatID, note: "Coffee", in: nil)
+        XCTAssertEqual(exp2.bookID, service.activeBookID)
+        XCTAssertEqual(exp2.amount, 2_000_000)
+
+        let card2Expenses = try store.expenses(in: secondCard.id)
+        XCTAssertEqual(card2Expenses.count, 1)
+        XCTAssertEqual(card2Expenses.first?.note, "Dinner abroad")
+
+        let defaultExpenses = try store.expenses(in: service.activeBookID)
+        XCTAssertTrue(defaultExpenses.contains(where: { $0.id == exp2.id }))
+    }
+
+    func testSpendingSessionManagerLifecycle() {
+        let manager = SpendingSessionManager.shared
+        manager.startSession(name: "Test Grocery", bookName: "Personal", budgetLimit: 500_000_00)
+        XCTAssertTrue(manager.isSessionActive)
+        XCTAssertEqual(manager.sessionName, "Test Grocery")
+        XCTAssertEqual(manager.sessionBudgetLimit, 500_000_00)
+        XCTAssertEqual(manager.sessionSpent, 0)
+        XCTAssertEqual(manager.sessionItemCount, 0)
+
+        manager.endSession()
+        XCTAssertFalse(manager.isSessionActive)
+    }
 }
+

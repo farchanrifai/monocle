@@ -71,6 +71,7 @@
 		ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAB59F8D69B863E198985F9 /* BillsView.swift */; };
 		F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */; };
 		8A1249D1E728B21F00AA1102 /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1249D0E728B21F00AA1101 /* TransactionDetailView.swift */; };
+		8A1249D5E728B21F00AA1106 /* QuickEntryControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1249D4E728B21F00AA1105 /* QuickEntryControl.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -181,6 +182,7 @@
 		FDEB4F6A31934928B688178D /* BillReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillReconciliationEngine.swift; sourceTree = "<group>"; };
 		FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV2.xcdatamodel; sourceTree = "<group>"; };
 		8A1249D0E728B21F00AA1101 /* TransactionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionDetailView.swift; sourceTree = "<group>"; };
+		8A1249D4E728B21F00AA1105 /* QuickEntryControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickEntryControl.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -189,6 +191,7 @@
 			children = (
 				CE599406EF5472DD7EFA518D /* BudgetWidget.swift */,
 				16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */,
+				8A1249D4E728B21F00AA1105 /* QuickEntryControl.swift */,
 				4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */,
 				4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */,
 				9B2389D631AFE95421B1C002 /* StackWidget.swift */,
@@ -583,6 +586,7 @@
 			files = (
 				27FBC893C5758EE673836A2E /* BudgetWidget.swift in Sources */,
 				38D80CE49FF838CA72FAFEB0 /* MonocleWidgetsBundle.swift in Sources */,
+				8A1249D5E728B21F00AA1106 /* QuickEntryControl.swift in Sources */,
 				CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */,
 				A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */,
 				8A1278C5209DE84310A0B001 /* StackWidget.swift in Sources */,
@@ -683,7 +687,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 77;
+				CURRENT_PROJECT_VERSION = 78;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -704,7 +708,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.14;
+				MARKETING_VERSION = 0.7.15;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -793,7 +797,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 77;
+				CURRENT_PROJECT_VERSION = 78;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -808,7 +812,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.14;
+				MARKETING_VERSION = 0.7.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
