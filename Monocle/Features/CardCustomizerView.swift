@@ -31,6 +31,8 @@ struct CardCustomizerView: View {
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var isProcessingPhoto = false
     @State private var photoError: String? = nil
+    @State private var cardCategorySelections: [UUID: Set<UUID>]
+    @State private var editingCategoriesForBookID: UUID? = nil
 
     init(
         model: AppModel,
@@ -67,9 +69,11 @@ struct CardCustomizerView: View {
             activeID = visibleBooks.first?.id
         }
 
+        var initialCategorySelections: [UUID: Set<UUID>] = [:]
         for b in booksList {
             initialDrafts[b.id] = model.customization(for: b.id)
             initialNames[b.id] = b.name
+            initialCategorySelections[b.id] = model.activeCategoryIDs(for: b.id)
         }
 
         if isCreatingNewBook {
@@ -83,10 +87,13 @@ struct CardCustomizerView: View {
             initialNewIDs.insert(newID)
             initialDrafts[newID] = BookCardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
             initialNames[newID] = defaultName
+            let defaults = Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))
+            initialCategorySelections[newID] = defaults.isEmpty ? Set(model.globalCategories.map(\.id)) : defaults
             activeID = newID
             _editingBookNameID = State(initialValue: newID)
         }
 
+        _cardCategorySelections = State(initialValue: initialCategorySelections)
         _customizerBooks = State(initialValue: booksList)
         _newBookIDs = State(initialValue: initialNewIDs)
         _drafts = State(initialValue: initialDrafts)
@@ -174,6 +181,52 @@ struct CardCustomizerView: View {
                             case .photo:
                                 photoSection
                             }
+
+                            // MARK: - Card Categories
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Categories")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .textCase(.uppercase)
+
+                                Button {
+                                    editingCategoriesForBookID = currentBookID
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "tag.fill")
+                                            .font(.body.weight(.semibold))
+                                            .foregroundStyle(MC.ink)
+                                            .frame(width: 32, height: 32)
+                                            .background(MC.ink.opacity(0.08), in: Circle())
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Active Categories")
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundStyle(Color.primary)
+                                            let count = (cardCategorySelections[currentBookID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
+                                            Text("\(count) of \(model.globalCategories.count) active on this card")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer()
+
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .stroke(MC.ink.opacity(0.08), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("cardCategoriesButton")
+                            }
+                            .padding(.horizontal, 20)
                         }
                     }
                     .frame(width: screenWidth)
@@ -202,7 +255,8 @@ struct CardCustomizerView: View {
                                 let rawName = draftNames[bookID] ?? book.name
                                 let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
                                 let finalName = trimmed.isEmpty ? "New Card" : String(trimmed.prefix(40))
-                                if let created = try? model.createBook(named: finalName) {
+                                let selectedCats = cardCategorySelections[bookID]
+                                if let created = try? model.createBook(named: finalName, selectedCategoryIDs: selectedCats) {
                                     if let custom = drafts[bookID] {
                                         model.updateCustomization(custom, for: created.id)
                                     }
@@ -227,10 +281,36 @@ struct CardCustomizerView: View {
                                 model.updateCustomization(custom, for: bookID)
                             }
                         }
+
+                        // 4. Update category activations for existing books
+                        for (bookID, selectedCats) in cardCategorySelections where !newBookIDs.contains(bookID) {
+                            for cat in model.globalCategories {
+                                let shouldBeActive = selectedCats.contains(cat.id)
+                                if shouldBeActive != model.isCategoryActive(cat.id, on: bookID) {
+                                    try? model.setCategory(cat.id, active: shouldBeActive, for: bookID)
+                                }
+                            }
+                        }
                         onDismiss()
                     }
                     .font(.headline)
                     .accessibilityIdentifier("saveCardCustomization")
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { editingCategoriesForBookID != nil },
+                set: { if !$0 { editingCategoriesForBookID = nil } }
+            )) {
+                if let bookID = editingCategoriesForBookID {
+                    let cardName = draftNames[bookID] ?? customizerBooks.first(where: { $0.id == bookID })?.name ?? "Card"
+                    CardCategoryPickerSheet(
+                        cardName: cardName,
+                        globalCategories: model.globalCategories,
+                        selectedIDs: Binding(
+                            get: { cardCategorySelections[bookID] ?? [] },
+                            set: { cardCategorySelections[bookID] = $0 }
+                        )
+                    )
                 }
             }
             .onAppear {
@@ -867,6 +947,65 @@ struct CardCustomizerView: View {
                 selectedPhotoItem = nil
             } catch {
                 if !Task.isCancelled { photoError = "Failed to save photo: \(error.localizedDescription)" }
+            }
+        }
+    }
+}
+
+struct CardCategoryPickerSheet: View {
+    let cardName: String
+    let globalCategories: [GlobalCategory]
+    @Binding var selectedIDs: Set<UUID>
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Text("\(selectedIDs.count) of \(globalCategories.count) active")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(selectedIDs.count == globalCategories.count ? "Deselect All" : "Select All") {
+                            if selectedIDs.count == globalCategories.count {
+                                selectedIDs.removeAll()
+                            } else {
+                                selectedIDs = Set(globalCategories.map(\.id))
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
+                    }
+                    .padding(.vertical, 2)
+
+                    ForEach(globalCategories) { category in
+                        HStack(spacing: 12) {
+                            CategoryMark(symbol: category.symbol)
+                            Text(category.name)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { selectedIDs.contains(category.id) },
+                                set: { isOn in
+                                    if isOn { selectedIDs.insert(category.id) }
+                                    else { selectedIDs.remove(category.id) }
+                                }
+                            ))
+                            .labelsHidden()
+                        }
+                    }
+                } header: {
+                    Text("Active Categories for \(cardName)")
+                } footer: {
+                    Text("Only active categories will appear when adding or editing expenses on this card.")
+                }
+            }
+            .navigationTitle("Card Categories")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
     }

@@ -15,6 +15,35 @@ struct ExpenseCategory: Identifiable, Codable, Hashable, Sendable {
     ]
 }
 
+struct GlobalCategory: Identifiable, Codable, Hashable, Sendable {
+    var id: UUID
+    var name: String
+    var symbol: String
+    var defaultActiveForNewCards: Bool = true
+
+    init(id: UUID = UUID(), name: String, symbol: String, defaultActiveForNewCards: Bool = true) {
+        self.id = id
+        self.name = name
+        self.symbol = symbol
+        self.defaultActiveForNewCards = defaultActiveForNewCards
+    }
+
+    init(category: ExpenseCategory, defaultActiveForNewCards: Bool = true) {
+        self.id = category.id
+        self.name = category.name
+        self.symbol = category.symbol
+        self.defaultActiveForNewCards = defaultActiveForNewCards
+    }
+
+    func toExpenseCategory() -> ExpenseCategory {
+        ExpenseCategory(id: id, name: name, symbol: symbol)
+    }
+
+    static let defaults: [GlobalCategory] = ExpenseCategory.defaults.map {
+        GlobalCategory(category: $0, defaultActiveForNewCards: true)
+    }
+}
+
 struct Allocation: Codable, Equatable, Sendable {
     var categoryID: UUID
     var amount: Int64

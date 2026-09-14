@@ -341,6 +341,24 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
+    func testCategoryManagerScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launch()
+        openSettings(app)
+        app.buttons["manageCategories"].tap()
+        XCTAssertTrue(app.buttons["newCategory"].waitForExistence(timeout: 5))
+
+        let allCategoriesShot = app.screenshot()
+        try allCategoriesShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch/categories_all.png"))
+
+        app.buttons["By Card"].tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        let byCardShot = app.screenshot()
+        try byCardShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch/categories_by_card.png"))
+    }
+
+    @MainActor
     func testBackupSettingsExposeExportAndImport() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString

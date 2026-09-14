@@ -7,6 +7,7 @@ protocol ExpenseStore {
     func transaction(_ operation: () throws -> Void) throws
     func books() throws -> [BookProfile]
     func createBook(named name: String) throws -> BookProfile
+    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile
     func renameBook(id: UUID, to name: String) throws
     func deleteBook(id: UUID) throws
 
@@ -23,6 +24,10 @@ protocol ExpenseStore {
     func deleteOccurrence(_ id: UUID, in bookID: UUID) throws
     func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws
     func deleteCategory(_ id: UUID, in bookID: UUID) throws
+    func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws
+    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws
+    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws
+    func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws
 
     func categories() throws -> [ExpenseCategory]
     func expenses() throws -> [Expense]
@@ -38,6 +43,19 @@ protocol ExpenseStore {
     func delete(_ id: UUID) throws
     func saveCategory(_ category: ExpenseCategory) throws
     func deleteCategory(_ id: UUID) throws
+}
+
+extension ExpenseStore {
+    func createBook(named name: String) throws -> BookProfile {
+        try createBook(named: name, initialCategories: nil)
+    }
+    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile {
+        try createBook(named: name)
+    }
+    func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {}
+    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
+    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
+    func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {}
 }
 
 /// Shared by screen state and App Intents. Main-actor isolation serializes local commands.
@@ -88,11 +106,35 @@ final class ExpenseService {
         catch { activeBookID = previousID; throw error }
     }
 
-    func createBook(named name: String) throws -> BookProfile {
+    func createBook(named name: String, initialCategories: [GlobalCategory]? = nil) throws -> BookProfile {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let book = try store.createBook(named: name)
+        let book = try store.createBook(named: name, initialCategories: initialCategories)
         try reload()
         return book
+    }
+
+    func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try store.updateGlobalCategoryMetadata(id: id, name: name, symbol: symbol)
+        try reload()
+    }
+
+    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try store.activateCategory(category, in: bookID)
+        try reload()
+    }
+
+    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try store.deactivateCategory(categoryID, in: bookID)
+        try reload()
+    }
+
+    func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try store.unifyCategoriesToGlobalCatalog(catalog)
+        try reload()
     }
 
     func renameBook(id: UUID, to name: String) throws {

@@ -1,141 +1,502 @@
 import SwiftUI
 
-struct CategoryManager: View {
-    let model: AppModel
-    @State private var editing: ExpenseCategory?
-    @State private var deleting: ExpenseCategory?
-    @State private var error: String?
-    private var activeCategories: [ExpenseCategory] { model.categories.filter { !model.isArchived($0) } }
-    private var archivedCategories: [ExpenseCategory] { model.categories.filter { model.isArchived($0) } }
-    var body: some View {
-        List {
-            Section {
-                ForEach(activeCategories) { category in
-                    Button { editing = category } label: {
-                        HStack {
-                            CategoryMark(symbol: category.symbol)
-                            Text(category.name).foregroundStyle(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }.accessibilityIdentifier("edit-category-\(category.name)")
-                        .swipeActions { Button("Delete", role: .destructive) { deleting = category } }
-                }
-            } header: { Text("Active") } footer: { Text("Archiving hides a category from new expenses but preserves every recorded expense. Only unused categories can be deleted.") }
-            if !archivedCategories.isEmpty {
-                Section {
-                    ForEach(archivedCategories) { category in
-                        ArchivedCategoryRow(category: category) { restore(category) }
-                    }
-                } header: { Text("Archived") }
-            }
-            Section {
-                NavigationLink("Keyword rules") { CategoryRuleManager(model: model) }
-                    .accessibilityIdentifier("categoryRules")
-            } footer: { Text("A keyword fills the category for text entry and the text Shortcut.") }
-        }.navigationTitle("Categories")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("New category", systemImage: "plus") { editing = ExpenseCategory(id: UUID(), name: "", symbol: "circle.grid.2x2") }
-                        .accessibilityIdentifier("newCategory")
-                }
-            }
-            .sheet(item: $editing) { category in CategoryEditor(model: model, category: category) }
-            .alert("Delete category?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-                Button("Delete", role: .destructive) {
-                    guard let deleting else { return }
-                    do { try model.deleteCategory(deleting) } catch { self.error = error.localizedDescription }
-                    self.deleting = nil
-                }
-                Button("Cancel", role: .cancel) { deleting = nil }
-            } message: { Text("This removes the category from your book.") }
-            .alert("Unable to delete", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-                Button("OK") { error = nil }
-            } message: { Text(error ?? "") }
-    }
-
-    private func restore(_ category: ExpenseCategory) {
-        do { try model.restoreCategory(category) }
-        catch let failure { error = failure.localizedDescription }
-    }
+enum CategoryManagerTab: String, CaseIterable, Identifiable {
+    case all = "All Categories"
+    case byCard = "By Card"
+    var id: String { rawValue }
 }
 
-private struct ArchivedCategoryRow: View {
-    let category: ExpenseCategory
-    let restore: () -> Void
-    private var accessibilityID: String { "restore-category-" + category.name }
+struct CategoryManager: View {
+    let model: AppModel
+    @State private var selectedTab: CategoryManagerTab = .all
+    @State private var selectedBookID: UUID?
+    @State private var editingGlobalCategory: GlobalCategory?
+    @State private var isCreatingCategory = false
+    @State private var deletingGlobalCategory: GlobalCategory?
+    @State private var error: String?
+
+    private var activeBookID: UUID {
+        if let selected = selectedBookID, model.books.contains(where: { $0.id == selected }) {
+            return selected
+        }
+        return model.activeBookID
+    }
+
     var body: some View {
-        HStack {
-            CategoryMark(symbol: category.symbol).opacity(0.55)
-            Text(category.name).foregroundStyle(.secondary)
-            Spacer()
-            Button("Restore", action: restore).accessibilityIdentifier(accessibilityID)
+        VStack(spacing: 0) {
+            Picker("Mode", selection: $selectedTab) {
+                ForEach(CategoryManagerTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(uiColor: .systemGroupedBackground))
+
+            switch selectedTab {
+            case .all:
+                allCategoriesView
+            case .byCard:
+                byCardView
+            }
+        }
+        .navigationTitle("Categories")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isCreatingCategory = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityIdentifier("newCategory")
+            }
+        }
+        .sheet(isPresented: $isCreatingCategory) {
+            NewGlobalCategorySheet(model: model)
+        }
+        .sheet(item: $editingGlobalCategory) { category in
+            GlobalCategoryEditor(model: model, category: category)
+        }
+        .alert("Delete category?", isPresented: Binding(
+            get: { deletingGlobalCategory != nil },
+            set: { if !$0 { deletingGlobalCategory = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                guard let category = deletingGlobalCategory else { return }
+                do {
+                    try model.deleteGlobalCategory(category)
+                } catch {
+                    self.error = error.localizedDescription
+                }
+                deletingGlobalCategory = nil
+            }
+            Button("Cancel", role: .cancel) {
+                deletingGlobalCategory = nil
+            }
+        } message: {
+            Text("This deletes the category across all cards. Categories with recorded transactions cannot be deleted.")
+        }
+        .alert("Unable to delete", isPresented: Binding(
+            get: { error != nil },
+            set: { if !$0 { error = nil } }
+        )) {
+            Button("OK") { error = nil }
+        } message: {
+            Text(error ?? "")
+        }
+    }
+
+    // MARK: - Mode 1: All Categories (Global Catalog)
+    private var allCategoriesView: some View {
+        List {
+            Section {
+                ForEach(model.globalCategories) { category in
+                    Button {
+                        editingGlobalCategory = category
+                    } label: {
+                        HStack(spacing: 14) {
+                            CategoryMark(symbol: category.symbol)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(category.name)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                cardScopeLabel(for: category)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .accessibilityIdentifier("edit-category-\(category.name)")
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button("Delete", role: .destructive) {
+                            deletingGlobalCategory = category
+                        }
+                    }
+                }
+            } header: {
+                Text("Global Catalog (\(model.globalCategories.count))")
+            } footer: {
+                Text("Tap any category to change its name, icon, card activations, or default availability for future cards.")
+            }
+
+            Section {
+                NavigationLink("Keyword rules") {
+                    CategoryRuleManager(model: model)
+                }
+                .accessibilityIdentifier("categoryRules")
+            } footer: {
+                Text("A keyword fills the category automatically during text entry and Siri Shortcuts.")
+            }
+        }
+    }
+
+    private func cardScopeLabel(for category: GlobalCategory) -> some View {
+        let activeBookIDs = model.activeBookIDs(for: category.id)
+        let totalCount = model.books.count
+        if totalCount > 0 && activeBookIDs.count == totalCount {
+            return Text("Active on all cards (\(totalCount))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if activeBookIDs.isEmpty {
+            return Text("Inactive")
+                .font(.caption)
+                .foregroundStyle(MC.red.opacity(0.8))
+        } else {
+            let cardNames = model.books.filter { activeBookIDs.contains($0.id) }.map(\.name).joined(separator: ", ")
+            return Text("Active on: \(cardNames)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Mode 2: By Card (Card-Specific Activation)
+    private var byCardView: some View {
+        List {
+            Section {
+                Picker("Card", selection: Binding(
+                    get: { activeBookID },
+                    set: { selectedBookID = $0 }
+                )) {
+                    ForEach(model.books) { book in
+                        Text(book.name).tag(book.id)
+                    }
+                }
+                .pickerStyle(.menu)
+            } header: {
+                Text("Selected Card")
+            }
+
+            Section {
+                let currentID = activeBookID
+                let activeCount = model.globalCategories.filter { model.isCategoryActive($0.id, on: currentID) }.count
+
+                HStack {
+                    Text("\(activeCount) of \(model.globalCategories.count) active")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Activate All") {
+                        for cat in model.globalCategories {
+                            try? model.setCategory(cat.id, active: true, for: currentID)
+                        }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .padding(.trailing, 8)
+
+                    Button("Reset") {
+                        for cat in model.globalCategories {
+                            try? model.setCategory(cat.id, active: cat.defaultActiveForNewCards, for: currentID)
+                        }
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+                .padding(.vertical, 2)
+
+                ForEach(model.globalCategories) { category in
+                    HStack(spacing: 12) {
+                        CategoryMark(symbol: category.symbol)
+                        Text(category.name)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { model.isCategoryActive(category.id, on: currentID) },
+                            set: { newValue in
+                                do {
+                                    try model.setCategory(category.id, active: newValue, for: currentID)
+                                } catch {
+                                    self.error = error.localizedDescription
+                                }
+                            }
+                        ))
+                        .labelsHidden()
+                        .sensoryFeedback(.selection, trigger: model.isCategoryActive(category.id, on: currentID))
+                    }
+                }
+            } header: {
+                Text("Card Categories")
+            } footer: {
+                Text("Deactivating a category hides it when logging new expenses on this card. Any past expenses using this category remain safely recorded.")
+            }
         }
     }
 }
 
-struct CategoryEditor: View {
+// MARK: - New Global Category Sheet
+struct NewGlobalCategorySheet: View {
     let model: AppModel
-    let category: ExpenseCategory
     @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var symbol: String
+    @State private var name: String = ""
+    @State private var symbol: String = "circle.grid.2x2"
+    @State private var activateOnAllCards: Bool = true
+    @State private var selectedBookIDs: Set<UUID> = []
+    @State private var defaultForNewCards: Bool = true
     @State private var error: String?
-    @State private var discard = false
-    @State private var confirmArchive = false
-    private var changed: Bool { name != category.name || symbol != category.symbol }
-    init(model: AppModel, category: ExpenseCategory) {
-        self.model = model; self.category = category
-        _name = State(initialValue: category.name); _symbol = State(initialValue: category.symbol)
-    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") { TextField("e.g. Pets", text: $name).accessibilityIdentifier("categoryName") }
+                Section("Name") {
+                    TextField("e.g. Shopping", text: $name)
+                        .accessibilityIdentifier("categoryName")
+                }
+
                 Section("Icon") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
                         ForEach(ExpenseCategory.symbols, id: \.self) { icon in
-                            Button { symbol = icon } label: {
-                                Image(systemName: icon).font(.title2).frame(width: 48, height: 48)
+                            Button {
+                                symbol = icon
+                            } label: {
+                                Image(systemName: icon)
+                                    .font(.title2)
+                                    .frame(width: 48, height: 48)
                                     .foregroundStyle(symbol == icon ? .white : Color.primary)
                                     .background(symbol == icon ? MC.ink : .clear, in: .rect(cornerRadius: 12))
-                            }.buttonStyle(PressFeedbackStyle()).accessibilityLabel(icon.replacingOccurrences(of: ".", with: " "))
-                                .accessibilityAddTraits(symbol == icon ? .isSelected : [])
+                            }
+                            .buttonStyle(PressFeedbackStyle())
+                            .accessibilityLabel(icon.replacingOccurrences(of: ".", with: " "))
+                            .accessibilityAddTraits(symbol == icon ? .isSelected : [])
                         }
-                    }.padding(.vertical, 8)
+                    }
+                    .padding(.vertical, 8)
                 }
-                if !category.name.isEmpty {
-                    Section { Button("Archive category", role: .destructive) { confirmArchive = true } }
-                }
-                if let error { Text(error).foregroundStyle(MC.red) }
-            }.navigationTitle(category.name.isEmpty ? "New category" : "Edit category").navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { if changed { discard = true } else { dismiss() } } }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            do {
-                                try model.saveCategory(ExpenseCategory(id: category.id, name: name, symbol: symbol))
-                                dismiss()
-                            } catch { self.error = error.localizedDescription }
-                        }.accessibilityIdentifier("saveCategory")
+
+                Section("Card Activation") {
+                    Toggle("Activate on all cards", isOn: $activateOnAllCards)
+                        .onChange(of: activateOnAllCards) { _, all in
+                            if all {
+                                selectedBookIDs = Set(model.books.map(\.id))
+                            }
+                        }
+
+                    if !activateOnAllCards {
+                        ForEach(model.books) { book in
+                            Toggle(book.name, isOn: Binding(
+                                get: { selectedBookIDs.contains(book.id) },
+                                set: { isOn in
+                                    if isOn { selectedBookIDs.insert(book.id) }
+                                    else { selectedBookIDs.remove(book.id) }
+                                }
+                            ))
+                        }
                     }
                 }
-                .background { EntryDismissalGuard(needsConfirmation: changed) { discard = true }.frame(width: 0, height: 0) }
-                .alert("Discard category changes?", isPresented: $discard) {
-                    Button("Discard", role: .destructive) { dismiss() }
-                    Button("Keep editing", role: .cancel) {}
+
+                Section("Future Cards") {
+                    Toggle("Default for new cards", isOn: $defaultForNewCards)
                 }
-                .alert("Archive category?", isPresented: $confirmArchive) {
-                    Button("Archive", role: .destructive) {
-                        do { try model.archiveCategory(category); dismiss() } catch { self.error = error.localizedDescription }
+
+                if let error {
+                    Section {
+                        Text(error).foregroundStyle(MC.red)
                     }
-                    Button("Cancel", role: .cancel) {}
-                } message: { Text("It will remain on existing expenses but no longer appear when recording a new expense.") }
-                .sensoryFeedback(.selection, trigger: symbol)
-        }.interactiveDismissDisabled(changed)
+                }
+            }
+            .navigationTitle("New category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        do {
+                            let newCategory = GlobalCategory(
+                                id: UUID(),
+                                name: name,
+                                symbol: symbol,
+                                defaultActiveForNewCards: defaultForNewCards
+                            )
+                            let targets = activateOnAllCards ? Set(model.books.map(\.id)) : selectedBookIDs
+                            try model.saveGlobalCategory(newCategory, activeBookIDs: targets)
+                            dismiss()
+                        } catch {
+                            self.error = error.localizedDescription
+                        }
+                    }
+                    .accessibilityIdentifier("saveCategory")
+                }
+            }
+            .onAppear {
+                selectedBookIDs = Set(model.books.map(\.id))
+            }
+            .sensoryFeedback(.selection, trigger: symbol)
+        }
     }
 }
 
+// MARK: - Global Category Editor
+struct GlobalCategoryEditor: View {
+    let model: AppModel
+    let category: GlobalCategory
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var symbol: String
+    @State private var selectedBookIDs: Set<UUID>
+    @State private var defaultForNewCards: Bool
+    @State private var error: String?
+    @State private var discard = false
+    @State private var confirmDelete = false
+
+    private var hasChanges: Bool {
+        name != category.name ||
+        symbol != category.symbol ||
+        defaultForNewCards != category.defaultActiveForNewCards ||
+        selectedBookIDs != model.activeBookIDs(for: category.id)
+    }
+
+    init(model: AppModel, category: GlobalCategory) {
+        self.model = model
+        self.category = category
+        _name = State(initialValue: category.name)
+        _symbol = State(initialValue: category.symbol)
+        _defaultForNewCards = State(initialValue: category.defaultActiveForNewCards)
+        _selectedBookIDs = State(initialValue: model.activeBookIDs(for: category.id))
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Name") {
+                    TextField("Category name", text: $name)
+                        .accessibilityIdentifier("categoryName")
+                }
+
+                Section("Icon") {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 12) {
+                        ForEach(ExpenseCategory.symbols, id: \.self) { icon in
+                            Button {
+                                symbol = icon
+                            } label: {
+                                Image(systemName: icon)
+                                    .font(.title2)
+                                    .frame(width: 48, height: 48)
+                                    .foregroundStyle(symbol == icon ? .white : Color.primary)
+                                    .background(symbol == icon ? MC.ink : .clear, in: .rect(cornerRadius: 12))
+                            }
+                            .buttonStyle(PressFeedbackStyle())
+                            .accessibilityLabel(icon.replacingOccurrences(of: ".", with: " "))
+                            .accessibilityAddTraits(symbol == icon ? .isSelected : [])
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                Section {
+                    HStack {
+                        Text("\(selectedBookIDs.count) of \(model.books.count) cards selected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(selectedBookIDs.count == model.books.count ? "Deselect All" : "Select All") {
+                            if selectedBookIDs.count == model.books.count {
+                                selectedBookIDs.removeAll()
+                            } else {
+                                selectedBookIDs = Set(model.books.map(\.id))
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
+                    }
+
+                    ForEach(model.books) { book in
+                        Toggle(book.name, isOn: Binding(
+                            get: { selectedBookIDs.contains(book.id) },
+                            set: { isOn in
+                                if isOn { selectedBookIDs.insert(book.id) }
+                                else { selectedBookIDs.remove(book.id) }
+                            }
+                        ))
+                    }
+                } header: {
+                    Text("Active on Cards")
+                } footer: {
+                    Text("Turning off a category on a card removes it from that card's entry options without affecting past transactions.")
+                }
+
+                Section("Future Cards") {
+                    Toggle("Default for new cards", isOn: $defaultForNewCards)
+                }
+
+                Section {
+                    Button("Delete category", role: .destructive) {
+                        confirmDelete = true
+                    }
+                }
+
+                if let error {
+                    Section {
+                        Text(error).foregroundStyle(MC.red)
+                    }
+                }
+            }
+            .navigationTitle("Edit category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        if hasChanges { discard = true } else { dismiss() }
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        do {
+                            let updated = GlobalCategory(
+                                id: category.id,
+                                name: name,
+                                symbol: symbol,
+                                defaultActiveForNewCards: defaultForNewCards
+                            )
+                            try model.saveGlobalCategory(updated, activeBookIDs: selectedBookIDs)
+                            dismiss()
+                        } catch {
+                            self.error = error.localizedDescription
+                        }
+                    }
+                    .accessibilityIdentifier("saveCategory")
+                }
+            }
+            .alert("Discard changes?", isPresented: $discard) {
+                Button("Discard", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) {}
+            }
+            .alert("Delete category?", isPresented: $confirmDelete) {
+                Button("Delete", role: .destructive) {
+                    do {
+                        try model.deleteGlobalCategory(category)
+                        dismiss()
+                    } catch {
+                        self.error = error.localizedDescription
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes the category across all cards. Categories with recorded transactions cannot be deleted.")
+            }
+            .sensoryFeedback(.selection, trigger: symbol)
+        }
+        .interactiveDismissDisabled(hasChanges)
+    }
+}
+
+// MARK: - Backward Compatibility Wrapper for CategoryEditor
+struct CategoryEditor: View {
+    let model: AppModel
+    let category: ExpenseCategory
+
+    var body: some View {
+        if let global = model.globalCategories.first(where: { $0.id == category.id }) {
+            GlobalCategoryEditor(model: model, category: global)
+        } else {
+            GlobalCategoryEditor(model: model, category: GlobalCategory(category: category, defaultActiveForNewCards: true))
+        }
+    }
+}
+
+// MARK: - Category Rules
 struct CategoryRuleManager: View {
     let model: AppModel
     @State private var editing: CategoryRule?
@@ -151,9 +512,10 @@ struct CategoryRuleManager: View {
                         .swipeActions { Button("Delete", role: .destructive) { try? model.deleteCategoryRule(rule) } }
                 }
             }
-        }.navigationTitle("Keyword rules")
-            .toolbar { ToolbarItem(placement: .primaryAction) { Button("New rule", systemImage: "plus") { newRule() } } }
-            .sheet(item: $editing) { rule in CategoryRuleEditor(model: model, rule: rule) }
+        }
+        .navigationTitle("Keyword rules")
+        .toolbar { ToolbarItem(placement: .primaryAction) { Button("New rule", systemImage: "plus") { newRule() } } }
+        .sheet(item: $editing) { rule in CategoryRuleEditor(model: model, rule: rule) }
     }
 
     private func newRule() { editing = CategoryRule(id: UUID(), keyword: "", categoryID: model.activeCategories.first?.id ?? UUID()) }
@@ -191,16 +553,23 @@ private struct CategoryRuleEditor: View {
                     ForEach(model.activeCategories) { category in Text(category.name).tag(category.id) }
                 }
                 if let error { Text(error).foregroundStyle(MC.red) }
-            }.navigationTitle(rule.keyword.isEmpty ? "New rule" : "Edit rule")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") {
-                            do { try model.saveCategoryRule(.init(id: rule.id, keyword: keyword, categoryID: categoryID)); dismiss() }
-                            catch { self.error = error.localizedDescription }
-                        }.accessibilityIdentifier("saveCategoryRule")
+            }
+            .navigationTitle(rule.keyword.isEmpty ? "New rule" : "Edit rule")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        do {
+                            try model.saveCategoryRule(.init(id: rule.id, keyword: keyword, categoryID: categoryID))
+                            dismiss()
+                        } catch {
+                            self.error = error.localizedDescription
+                        }
                     }
+                    .accessibilityIdentifier("saveCategoryRule")
                 }
+            }
         }
     }
 }
+

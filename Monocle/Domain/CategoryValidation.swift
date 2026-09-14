@@ -43,3 +43,16 @@ extension ExpenseCategory {
         return result
     }
 }
+
+extension GlobalCategory {
+    func validated(against categories: [GlobalCategory]) throws -> Self {
+        var result = self
+        result.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !result.name.isEmpty, result.name.count <= 40,
+              result.name.rangeOfCharacter(from: .controlCharacters) == nil else { throw CategoryError.invalidName }
+        func key(_ name: String) -> String { name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX")) }
+        guard !categories.contains(where: { $0.id != id && key($0.name) == key(result.name) }) else { throw CategoryError.duplicateName }
+        guard ExpenseCategory.symbols.contains(symbol) else { throw CategoryError.invalidSymbol }
+        return result
+    }
+}

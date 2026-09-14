@@ -59,14 +59,19 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func createBook(named name: String) throws -> BookProfile {
+        try createBook(named: name, initialCategories: nil)
+    }
+
+    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile {
         let profile = try BookProfile.real(named: name)
         do {
             let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
             book.setValue(profile.id, forKey: "id")
             book.setValue(profile.name, forKey: "name")
-            for cat in ExpenseCategory.defaults {
+            let catsToSeed = initialCategories ?? GlobalCategory.defaults
+            for cat in catsToSeed {
                 let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
-                row.setValue(UUID(), forKey: "id")
+                row.setValue(cat.id, forKey: "id")
                 row.setValue(cat.name, forKey: "name")
                 row.setValue(cat.symbol, forKey: "symbol")
                 row.setValue(book, forKey: "book")
@@ -442,6 +447,100 @@ final class ExpenseRepository: ExpenseStore {
 
     func deleteCategory(_ id: UUID) throws {
         try deleteCategory(id, in: defaultBookID())
+    }
+
+    func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {
+        let request = NSFetchRequest<NSManagedObject>(entityName: "CategoryRecord")
+        request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        do {
+            let rows = try context.fetch(request)
+            for row in rows {
+                row.setValue(name, forKey: "name")
+                row.setValue(symbol, forKey: "symbol")
+            }
+            try commitIfNeeded()
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {
+        let book = try bookRow(for: bookID)
+        do {
+            if let existing = try findCategory("CategoryRecord", id: category.id, in: book) {
+                existing.setValue(category.name, forKey: "name")
+                existing.setValue(category.symbol, forKey: "symbol")
+            } else {
+                let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
+                row.setValue(category.id, forKey: "id")
+                row.setValue(category.name, forKey: "name")
+                row.setValue(category.symbol, forKey: "symbol")
+                row.setValue(book, forKey: "book")
+            }
+            try commitIfNeeded()
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {
+        let book = try bookRow(for: bookID)
+        let hasAllocations = try expenses(in: bookID).contains(where: { $0.allocations.contains(where: { $0.categoryID == categoryID }) })
+        let hasBills = try bills(in: bookID).contains(where: { $0.categoryID == categoryID })
+        do {
+            if !hasAllocations && !hasBills {
+                if let row = try findCategory("CategoryRecord", id: categoryID, in: book) {
+                    context.delete(row)
+                    try commitIfNeeded()
+                }
+            }
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {
+        func norm(_ name: String) -> String {
+            name.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+        }
+        let catalogByName = Dictionary(catalog.map { (norm($0.name), $0) }, uniquingKeysWith: { first, _ in first })
+        do {
+            let catRows = try objects("CategoryRecord")
+            let budgetCatRows = try objects("BudgetCategoryRecord")
+            let billRows = try objects("BillRuleRecord")
+
+            var idMapping: [UUID: UUID] = [:]
+
+            for row in catRows {
+                guard let name = row.value(forKey: "name") as? String,
+                      let currentID = row.value(forKey: "id") as? UUID,
+                      let global = catalogByName[norm(name)] else { continue }
+                if currentID != global.id {
+                    row.setValue(global.id, forKey: "id")
+                    idMapping[currentID] = global.id
+                }
+            }
+
+            if !idMapping.isEmpty {
+                for bRow in budgetCatRows {
+                    if let oldID = bRow.value(forKey: "categoryID") as? UUID, let newID = idMapping[oldID] {
+                        bRow.setValue(newID, forKey: "categoryID")
+                    }
+                }
+                for billRow in billRows {
+                    if let oldID = billRow.value(forKey: "categoryID") as? UUID, let newID = idMapping[oldID] {
+                        billRow.setValue(newID, forKey: "categoryID")
+                    }
+                }
+            }
+            try commitIfNeeded()
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
     /// User-initiated promotion keeps categories but removes only recorded sample entries.

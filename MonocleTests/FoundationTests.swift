@@ -266,6 +266,11 @@ private final class TestExpenseStore: ExpenseStore {
     func deleteOccurrence(_ id: UUID, in bookID: UUID) throws { try deleteOccurrence(id) }
     func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws { try saveCategory(category) }
     func deleteCategory(_ id: UUID, in bookID: UUID) throws { try deleteCategory(id) }
+    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile { BookProfile(name: name) }
+    func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {}
+    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
+    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
+    func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {}
 
     func categories() throws -> [ExpenseCategory] {
         if failReads { throw EntryError.corruptStore }

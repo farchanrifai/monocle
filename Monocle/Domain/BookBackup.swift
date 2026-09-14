@@ -206,6 +206,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var activeStackID: UUID? = nil
     var filterScopeRaw: String = "activeStack"
     var entryModeRaw: String = "Keypad"
+    var globalCategories: [GlobalCategory] = []
+    var cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
@@ -224,7 +226,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
-        case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw
+        case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
     }
 
     init(
@@ -238,7 +240,9 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         stacks: [CardStack] = [],
         activeStackID: UUID? = nil,
         filterScope: StackFilterScope = .activeStack,
-        entryMode: EntryMode = .keypad
+        entryMode: EntryMode = .keypad,
+        globalCategories: [GlobalCategory] = [],
+        cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
@@ -251,6 +255,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.activeStackID = activeStackID
         self.filterScopeRaw = filterScope.rawValue
         self.entryModeRaw = entryMode.rawValue
+        self.globalCategories = globalCategories
+        self.cardInactiveCategoryIDs = cardInactiveCategoryIDs
     }
 
     init(from decoder: any Decoder) throws {
@@ -266,6 +272,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         activeStackID = try container.decodeIfPresent(UUID.self, forKey: .activeStackID)
         filterScopeRaw = try container.decodeIfPresent(String.self, forKey: .filterScopeRaw) ?? "activeStack"
         entryModeRaw = try container.decodeIfPresent(String.self, forKey: .entryModeRaw) ?? "Keypad"
+        globalCategories = try container.decodeIfPresent([GlobalCategory].self, forKey: .globalCategories) ?? []
+        cardInactiveCategoryIDs = try container.decodeIfPresent([UUID: [UUID]].self, forKey: .cardInactiveCategoryIDs) ?? [:]
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -281,6 +289,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encodeIfPresent(activeStackID, forKey: .activeStackID)
         try container.encode(filterScopeRaw, forKey: .filterScopeRaw)
         try container.encode(entryModeRaw, forKey: .entryModeRaw)
+        try container.encode(globalCategories, forKey: .globalCategories)
+        try container.encode(cardInactiveCategoryIDs, forKey: .cardInactiveCategoryIDs)
     }
 }
 

@@ -41,7 +41,17 @@ final class AppModel {
     var categories: [ExpenseCategory] { expenseService?.categories ?? [] }
     var bills: [BillRule] { expenseService?.bills ?? [] }
     var billOccurrences: [BillOccurrence] { expenseService?.billOccurrences ?? [] }
-    var activeCategories: [ExpenseCategory] { categories.filter { !settings.archivedCategoryIDs.contains($0.id) } }
+    var activeCategories: [ExpenseCategory] {
+        let currentInactive = workspacePreferences.cardInactiveCategoryIDs[activeBookID] ?? []
+        return categories.filter { !settings.archivedCategoryIDs.contains($0.id) && !currentInactive.contains($0.id) }
+    }
+    var globalCategories: [GlobalCategory] {
+        get { workspacePreferences.globalCategories }
+        set {
+            workspacePreferences.globalCategories = newValue
+            persistWorkspacePreferences()
+        }
+    }
     var draft = ExpenseDraft()
     private(set) var originalDraft: ExpenseDraft?
     var settings = PrototypeSettings()
@@ -245,6 +255,7 @@ final class AppModel {
             self.alwaysHiddenBookIDs = Set(prefs.alwaysHiddenBookIDs)
         }
         ensureDefaultStack()
+        ensureGlobalCategories()
         try? expenses.reconcileBills()
         syncWidgetSnapshot()
     }
@@ -273,14 +284,57 @@ final class AppModel {
         }
     }
 
+    func ensureGlobalCategories() {
+        if workspacePreferences.globalCategories.isEmpty {
+            var existing: [GlobalCategory] = []
+            var seenNames = Set<String>()
+            func norm(_ name: String) -> String {
+                name.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            }
+            for cat in categories {
+                let n = norm(cat.name)
+                if !seenNames.contains(n) {
+                    seenNames.insert(n)
+                    existing.append(GlobalCategory(id: cat.id, name: cat.name, symbol: cat.symbol, defaultActiveForNewCards: true))
+                }
+            }
+            for book in books {
+                let otherCats = (try? expenseService?.categories(for: book.id)) ?? []
+                for cat in otherCats {
+                    let n = norm(cat.name)
+                    if !seenNames.contains(n) {
+                        seenNames.insert(n)
+                        existing.append(GlobalCategory(id: cat.id, name: cat.name, symbol: cat.symbol, defaultActiveForNewCards: true))
+                    }
+                }
+            }
+            if existing.isEmpty {
+                existing = GlobalCategory.defaults
+            }
+            workspacePreferences.globalCategories = existing
+            persistWorkspacePreferences()
+            try? expenseService?.unifyCategoriesToGlobalCatalog(existing)
+        }
+    }
+
     func reload() throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.reload()
         try expenseService.reconcileBills()
         invalidateExpenseCaches()
         ensureDefaultStack()
+        ensureGlobalCategories()
     }
-    func category(_ id: UUID?) -> ExpenseCategory? { categories.first { $0.id == id } }
+    func category(_ id: UUID?) -> ExpenseCategory? {
+        guard let id else { return nil }
+        if let cat = categories.first(where: { $0.id == id }) {
+            return cat
+        }
+        if let global = globalCategories.first(where: { $0.id == id }) {
+            return global.toExpenseCategory()
+        }
+        return nil
+    }
     func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.allocations.first?.categoryID)?.name ?? "Expense" : expense.note }
     func spent(in category: ExpenseCategory) -> Int64 {
         cycleExpenses.flatMap(\.allocations).filter { $0.categoryID == category.id }.reduce(0) { $0 + $1.amount }
@@ -388,9 +442,16 @@ final class AppModel {
         }
     }
 
-    func createBook(named name: String) throws -> BookProfile {
+    func createBook(named name: String, selectedCategoryIDs: Set<UUID>? = nil) throws -> BookProfile {
         guard let expenseService else { throw EntryError.corruptStore }
-        let book = try expenseService.createBook(named: name)
+        let initialCategories: [GlobalCategory]
+        if let selected = selectedCategoryIDs {
+            initialCategories = globalCategories.filter { selected.contains($0.id) }
+        } else {
+            let defaults = globalCategories.filter { $0.defaultActiveForNewCards }
+            initialCategories = defaults.isEmpty ? globalCategories : defaults
+        }
+        let book = try expenseService.createBook(named: name, initialCategories: initialCategories)
         workspacePreferences.bookOrder.append(book.id)
         if let activeID = workspacePreferences.activeStackID,
            let index = workspacePreferences.stacks.firstIndex(where: { $0.id == activeID }) {
@@ -417,6 +478,7 @@ final class AppModel {
             CardArtworkStore.shared.deleteArtwork(filename: filename)
         }
         workspacePreferences.cardCustomizations.removeValue(forKey: id)
+        workspacePreferences.cardInactiveCategoryIDs.removeValue(forKey: id)
         workspacePreferences.bookOrder.removeAll { $0 == id }
         workspacePreferences.visibleBookIDs.removeAll { $0 == id }
         hiddenBookIDs.remove(id)
@@ -839,8 +901,108 @@ final class AppModel {
     }
     func saveCategory(_ category: ExpenseCategory) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.saveCategory(category)
+        let validated = try category.validated(against: categories)
+        try expenseService.saveCategory(validated)
+        var catalog = globalCategories
+        if let idx = catalog.firstIndex(where: { $0.id == validated.id }) {
+            catalog[idx].name = validated.name
+            catalog[idx].symbol = validated.symbol
+            try? expenseService.updateGlobalCategoryMetadata(id: validated.id, name: validated.name, symbol: validated.symbol)
+        } else {
+            catalog.append(GlobalCategory(category: validated, defaultActiveForNewCards: true))
+        }
+        globalCategories = catalog
     }
+
+    func isCategoryActive(_ categoryID: UUID, on bookID: UUID) -> Bool {
+        if let inactive = workspacePreferences.cardInactiveCategoryIDs[bookID], inactive.contains(categoryID) {
+            return false
+        }
+        let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
+        return bookCategories.contains(where: { $0.id == categoryID })
+    }
+
+    func activeBookIDs(for categoryID: UUID) -> Set<UUID> {
+        Set(books.map(\.id).filter { isCategoryActive(categoryID, on: $0) })
+    }
+
+    func activeCategoryIDs(for bookID: UUID) -> Set<UUID> {
+        let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[bookID] ?? [])
+        let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
+        return Set(bookCategories.map(\.id).filter { !inactive.contains($0) })
+    }
+
+    func setCategory(_ categoryID: UUID, active: Bool, for bookID: UUID) throws {
+        guard let global = globalCategories.first(where: { $0.id == categoryID }) else { return }
+        if active {
+            var inactives = workspacePreferences.cardInactiveCategoryIDs[bookID] ?? []
+            inactives.removeAll { $0 == categoryID }
+            workspacePreferences.cardInactiveCategoryIDs[bookID] = inactives
+            try expenseService?.activateCategory(global, in: bookID)
+        } else {
+            var inactives = workspacePreferences.cardInactiveCategoryIDs[bookID] ?? []
+            if !inactives.contains(categoryID) {
+                inactives.append(categoryID)
+            }
+            workspacePreferences.cardInactiveCategoryIDs[bookID] = inactives
+            try expenseService?.deactivateCategory(categoryID, in: bookID)
+        }
+        persistWorkspacePreferences()
+        invalidateExpenseCaches()
+    }
+
+    func saveGlobalCategory(_ category: GlobalCategory, activeBookIDs: Set<UUID>) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let validated = try category.validated(against: globalCategories)
+        var catalog = globalCategories
+        if let idx = catalog.firstIndex(where: { $0.id == validated.id }) {
+            catalog[idx] = validated
+        } else {
+            catalog.append(validated)
+        }
+        globalCategories = catalog
+        
+        try expenseService.updateGlobalCategoryMetadata(id: validated.id, name: validated.name, symbol: validated.symbol)
+        
+        for book in books {
+            let shouldBeActive = activeBookIDs.contains(book.id)
+            try setCategory(validated.id, active: shouldBeActive, for: book.id)
+        }
+        try expenseService.reload()
+        invalidateExpenseCaches()
+    }
+
+    func deleteGlobalCategory(_ category: GlobalCategory) throws {
+        guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
+              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
+        
+        guard let expenseService else { throw EntryError.corruptStore }
+        for book in books {
+            let bookExpenses = try expenseService.expenses(for: book.id)
+            if bookExpenses.contains(where: { $0.allocations.contains(where: { $0.categoryID == category.id }) }) {
+                throw CategoryError.inUse
+            }
+            let bookBills = try expenseService.bills(for: book.id)
+            if bookBills.contains(where: { $0.categoryID == category.id }) {
+                throw CategoryError.inUse
+            }
+        }
+        
+        for book in books {
+            try expenseService.deactivateCategory(category.id, in: book.id)
+            var inactives = workspacePreferences.cardInactiveCategoryIDs[book.id] ?? []
+            inactives.removeAll { $0 == category.id }
+            workspacePreferences.cardInactiveCategoryIDs[book.id] = inactives
+        }
+        
+        var catalog = globalCategories
+        catalog.removeAll { $0.id == category.id }
+        globalCategories = catalog
+        persistWorkspacePreferences()
+        try expenseService.reload()
+        invalidateExpenseCaches()
+    }
+
     func isArchived(_ category: ExpenseCategory) -> Bool { settings.archivedCategoryIDs.contains(category.id) }
     func archiveCategory(_ category: ExpenseCategory) throws {
         guard draft.categoryID != category.id, !draft.splitAllocations.contains(where: { $0.categoryID == category.id }),
@@ -891,6 +1053,9 @@ final class AppModel {
               !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.deleteCategory(category.id)
+        var catalog = globalCategories
+        catalog.removeAll { $0.id == category.id }
+        globalCategories = catalog
     }
     func restoreBackup(_ backup: BookBackup) throws {
         guard let backups else { throw BackupError.unsupported }

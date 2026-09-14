@@ -2,6 +2,29 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.18] - 2026-09-15
+### Unified Global Categories with Bidirectional Card Activation
+- **Unified Global Category Catalog**:
+  - Transitioned the app from fragmented per-card category sets to a unified global catalog (`GlobalCategory`) stored in workspace preferences and synced across all cards.
+  - Automatically consolidates existing card categories into the canonical catalog on startup without modifying user transaction history.
+  - Preserves 100% Core Data referential integrity: `AllocationRecord` relationships and past expenses remain untouched.
+- **Bidirectional Category & Card Activation**:
+  - **Category -> Cards**: When creating or editing any category, users can select which cards it is active on (e.g. "All Cards" or multi-select individual cards).
+  - **Card -> Categories**: In card management and inside `CardCustomizerView`, users can configure which categories are active for that specific card.
+  - **Immediate Metadata Synchronization**: Renaming a category or changing its icon updates it everywhere across all cards where it is active.
+  - **Safe Deactivation / Clutter Control**: Deactivating a category on a card cleanly hides it from new transaction entry pickers while safely preserving historical expenses and analytics attribution.
+- **Polished Dual-Mode Category Manager**:
+  - Redesigned `CategoryManager` with a segmented picker (`All Categories` and `By Card`).
+  - `All Categories`: displays the complete global catalog with active card counts/badges, swipe-to-delete with safety checks, and a "+" button with smart "All Cards" default preselection.
+  - `By Card`: provides a card switcher with instant toggle switches, "Activate All", and "Reset to Defaults" buttons.
+  - Interactive haptic feedback on all toggle operations.
+- **Card Customizer Integration**:
+  - Added an "Active Categories" configuration row inside `CardCustomizerView`, allowing users to customize category sets both when creating a new card and when modifying an existing one.
+- **Verification & Test Suite**:
+  - Added comprehensive automated unit tests covering catalog initialization, metadata propagation, bidirectional activation, custom category card creation, and selective assignment.
+  - All 103 unit tests in `MonocleTests` passed cleanly.
+  - Targeted UI test suite in `MonocleUITests` passed on iPhone 17 Pro simulator.
+
 ## [0.7.17] - 2026-09-14
 ### Pixel-Perfect Transaction Platter Geometry & Blank Row Elimination
 - **Eliminated Trailing Gap / Blank Row in Recent Activities**:

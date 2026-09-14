@@ -684,7 +684,7 @@ struct SettingsView: View {
                         CategoryManager(model: model)
                     } label: {
                         LabeledContent {
-                            Text("\(model.categories.count)")
+                            Text("\(model.globalCategories.count)")
                                 .foregroundStyle(.secondary)
                         } label: {
                             Label {

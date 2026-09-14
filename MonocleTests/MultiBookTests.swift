@@ -513,5 +513,130 @@ final class MultiBookTests: XCTestCase {
         newModel.openEntry(for: book.id)
         XCTAssertEqual(newModel.draft.mode, .text)
     }
+
+    func testGlobalCategoryCatalogInitialization() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+
+        XCTAssertFalse(model.globalCategories.isEmpty)
+        XCTAssertTrue(model.globalCategories.contains(where: { $0.name == "Food & Drink" }))
+    }
+
+    func testCategoryMetadataUpdatePropagatesToAllActiveCards() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+
+        let bookA = try model.createBook(named: "Card A")
+        let bookB = try model.createBook(named: "Card B")
+
+        guard let foodCat = model.globalCategories.first(where: { $0.name == "Food & Drink" }) else {
+            XCTFail("Missing Food & Drink category")
+            return
+        }
+
+        // Rename and update icon
+        var updated = foodCat
+        updated.name = "Dining Out"
+        updated.symbol = "fork.knife"
+        try model.saveGlobalCategory(updated, activeBookIDs: Set([bookA.id, bookB.id]))
+
+        let catsA = try store.categories(in: bookA.id)
+        let catsB = try store.categories(in: bookB.id)
+
+        XCTAssertTrue(catsA.contains(where: { $0.id == foodCat.id && $0.name == "Dining Out" && $0.symbol == "fork.knife" }))
+        XCTAssertTrue(catsB.contains(where: { $0.id == foodCat.id && $0.name == "Dining Out" && $0.symbol == "fork.knife" }))
+    }
+
+    func testBidirectionalActivation() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+
+        let bookA = try model.createBook(named: "Personal")
+        let bookB = try model.createBook(named: "Work")
+
+        guard let firstCat = model.globalCategories.first else {
+            XCTFail("No global categories")
+            return
+        }
+
+        // Both active initially
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookA.id))
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookB.id))
+
+        // Deactivate on Work card
+        try model.setCategory(firstCat.id, active: false, for: bookB.id)
+
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookA.id))
+        XCTAssertFalse(model.isCategoryActive(firstCat.id, on: bookB.id))
+        XCTAssertFalse(model.activeCategoryIDs(for: bookB.id).contains(firstCat.id))
+
+        // Activate back on Work card
+        try model.setCategory(firstCat.id, active: true, for: bookB.id)
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookB.id))
+        XCTAssertTrue(model.activeCategoryIDs(for: bookB.id).contains(firstCat.id))
+    }
+
+    func testCreateCardWithSelectedCategories() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+
+        let selected = Array(model.globalCategories.prefix(2))
+        let selectedIDs = Set(selected.map(\.id))
+
+        let newCard = try model.createBook(named: "Minimal Card", selectedCategoryIDs: selectedIDs)
+        let activeIDs = model.activeCategoryIDs(for: newCard.id)
+
+        XCTAssertEqual(activeIDs.count, 2)
+        XCTAssertEqual(activeIDs, selectedIDs)
+    }
+
+    func testCreateCategoryWithCardAssignment() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+
+        let card1 = try model.createBook(named: "Card 1")
+        let card2 = try model.createBook(named: "Card 2")
+
+        let customCat = GlobalCategory(name: "Gaming", symbol: "gamecontroller", defaultActiveForNewCards: false)
+        try model.saveGlobalCategory(customCat, activeBookIDs: Set([card1.id]))
+
+        XCTAssertTrue(model.isCategoryActive(customCat.id, on: card1.id))
+        XCTAssertFalse(model.isCategoryActive(customCat.id, on: card2.id))
+
+        let cats1 = try store.categories(in: card1.id)
+        let cats2 = try store.categories(in: card2.id)
+        XCTAssertTrue(cats1.contains(where: { $0.id == customCat.id }))
+        XCTAssertFalse(cats2.contains(where: { $0.id == customCat.id }))
+    }
 }
 
