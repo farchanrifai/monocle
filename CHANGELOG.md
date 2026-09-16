@@ -2,6 +2,30 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.20] - 2026-09-16
+### Interactive Apple Shortcuts with Customizable Prompt Order
+- **Interactive Runtime Prompting**:
+  - Re-architected `AddExpenseIntent` so that when a shortcut is run without pre-filled parameters, Monocle prompts sequentially at runtime instead of requiring hardcoded inputs during shortcut setup.
+  - Interactive prompts for **Card / Account** (disambiguation between unhidden cards, or auto-selected if only one card exists), **Category** (dynamically filtered to the chosen card's active categories), **Short Note** (optional text input), and **Amount** in Indonesian Rupiah.
+  - Automatically skips prompting for any parameter already supplied or configured in the shortcut action or passed from earlier Shortcuts steps.
+- **Customizable Prompt & Input Order**:
+  - **Dedicated In-App Settings**: Added **Shortcut prompt order** in **Settings $\rightarrow$ Shortcuts & Siri** (`ShortcutOrderSettingsView`).
+  - Users can reorder the 4 prompt fields (Card, Category, Note, Amount) with intuitive drag handles or up/down arrows.
+  - Includes quick presets:
+    - *Card First (Recommended)*: Card $\rightarrow$ Category $\rightarrow$ Short Note $\rightarrow$ Amount
+    - *Amount First*: Amount $\rightarrow$ Card $\rightarrow$ Category $\rightarrow$ Short Note
+    - *Amount & Category First*: Amount $\rightarrow$ Category $\rightarrow$ Card $\rightarrow$ Short Note
+    - *Category First*: Category $\rightarrow$ Card $\rightarrow$ Short Note $\rightarrow$ Amount
+  - **Per-Shortcut Order Override**: Added `inputOrder` (`ShortcutPromptOrder` `AppEnum`) parameter directly to `AddExpenseIntent`, allowing advanced users to configure different prompt sequences for individual shortcut actions in Apple Shortcuts.
+- **Dynamic Category Filtering**:
+  - When Card is chosen before Category, the category disambiguation picker dynamically limits options to only active categories configured on the selected card.
+- **Rich Receipt Snippet & Text Entry Enhancements**:
+  - `AddExpenseFromTextIntent` updated to prompt for card disambiguation if multiple cards exist.
+  - High-resolution receipt snippet view displays category icon, transaction note, card name, and formatted amount.
+- **Verification & Test Suite**:
+  - Added dedicated unit test suite `IntentTests` covering field properties, preset mappings, workspace serialization, model order customization, entity queries, and full intent execution (112 unit tests passing).
+  - Added targeted UI test `testShortcutOrderSettingsViewUIAndScreenshots` validating interactive screen controls and reordering on iPhone 17 Pro simulator.
+
 ## [0.7.19] - 2026-09-15
 ### Reset Data & Factory Fresh Start for Daily Use
 - **Dedicated Reset Data Screen**:

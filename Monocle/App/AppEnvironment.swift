@@ -3,9 +3,9 @@ import Foundation
 /// The only production composition root. Tests provide their own stores and models.
 @MainActor
 final class AppEnvironment {
-    static let shared = AppEnvironment()
-    let model: AppModel
-    let expenses: ExpenseService?
+    static var shared = AppEnvironment()
+    var model: AppModel
+    var expenses: ExpenseService?
 
     private init() {
         do {

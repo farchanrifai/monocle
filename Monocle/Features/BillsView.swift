@@ -767,7 +767,32 @@ struct SettingsView: View {
                         : "New expense opens natural language text field (e.g. 'Coffee 28k').")
                 }
 
-                // MARK: 4. Appearance
+                // MARK: 4. Shortcuts & Siri
+                Section {
+                    NavigationLink {
+                        ShortcutOrderSettingsView(model: model)
+                    } label: {
+                        LabeledContent {
+                            Text(model.shortcutInputOrder.map(\.displayName).joined(separator: " → "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        } label: {
+                            Label {
+                                Text("Shortcut prompt order")
+                            } icon: {
+                                SettingsIcon(symbol: "arrow.up.arrow.down.square.fill", color: .pink)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("shortcutOrderSettings")
+                } header: {
+                    Text("Shortcuts & Siri")
+                } footer: {
+                    Text("Configure the sequence Monocle asks for details when adding expenses via Apple Shortcuts.")
+                }
+
+                // MARK: 5. Appearance
                 Section {
                     Toggle(isOn: $model.autoAppearance) {
                         Label {

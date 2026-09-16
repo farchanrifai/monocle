@@ -3,6 +3,7 @@ HANDOFF.md
 .build/
 build/
 DerivedData/
+.derivedData/
 *.xcuserstate
 xcuserdata/
 *.ipa

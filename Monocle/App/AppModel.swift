@@ -52,6 +52,19 @@ final class AppModel {
             persistWorkspacePreferences()
         }
     }
+    var shortcutInputOrder: [ShortcutInputField] {
+        get {
+            var order = workspacePreferences.shortcutInputOrder
+            if order.isEmpty {
+                order = [.card, .category, .note, .amount]
+            }
+            return order
+        }
+        set {
+            workspacePreferences.shortcutInputOrder = newValue
+            persistWorkspacePreferences()
+        }
+    }
     var draft = ExpenseDraft()
     private(set) var originalDraft: ExpenseDraft?
     var settings = PrototypeSettings()
@@ -967,6 +980,12 @@ final class AppModel {
         let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[bookID] ?? [])
         let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
         return Set(bookCategories.map(\.id).filter { !inactive.contains($0) })
+    }
+
+    func activeCategories(for bookID: UUID) -> [ExpenseCategory] {
+        let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[bookID] ?? [])
+        let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
+        return bookCategories.filter { !inactive.contains($0.id) && !settings.archivedCategoryIDs.contains($0.id) }
     }
 
     func setCategory(_ categoryID: UUID, active: Bool, for bookID: UUID) throws {

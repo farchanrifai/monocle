@@ -194,6 +194,33 @@ struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
     }
 }
 
+enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Sendable {
+    case card
+    case category
+    case note
+    case amount
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .card: return "Card / Account"
+        case .category: return "Category"
+        case .note: return "Short Note"
+        case .amount: return "Amount (IDR)"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .card: return "creditcard.fill"
+        case .category: return "tag.fill"
+        case .note: return "pencil.line"
+        case .amount: return "banknote.fill"
+        }
+    }
+}
+
 struct WorkspacePreferences: Codable, Equatable, Sendable {
     var visibleBookIDs: [UUID] = []
     var bookOrder: [UUID] = []
@@ -208,6 +235,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var entryModeRaw: String = "Keypad"
     var globalCategories: [GlobalCategory] = []
     var cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
+    var shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount]
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
@@ -227,6 +255,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
         case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
+        case shortcutInputOrder
     }
 
     init(
@@ -242,7 +271,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         filterScope: StackFilterScope = .activeStack,
         entryMode: EntryMode = .keypad,
         globalCategories: [GlobalCategory] = [],
-        cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
+        cardInactiveCategoryIDs: [UUID: [UUID]] = [:],
+        shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount]
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
@@ -257,6 +287,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.entryModeRaw = entryMode.rawValue
         self.globalCategories = globalCategories
         self.cardInactiveCategoryIDs = cardInactiveCategoryIDs
+        self.shortcutInputOrder = shortcutInputOrder
     }
 
     init(from decoder: any Decoder) throws {
@@ -274,6 +305,12 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         entryModeRaw = try container.decodeIfPresent(String.self, forKey: .entryModeRaw) ?? "Keypad"
         globalCategories = try container.decodeIfPresent([GlobalCategory].self, forKey: .globalCategories) ?? []
         cardInactiveCategoryIDs = try container.decodeIfPresent([UUID: [UUID]].self, forKey: .cardInactiveCategoryIDs) ?? [:]
+        let decodedOrder = try container.decodeIfPresent([ShortcutInputField].self, forKey: .shortcutInputOrder) ?? [.card, .category, .note, .amount]
+        var sanitized = decodedOrder.filter { ShortcutInputField.allCases.contains($0) }
+        for field in ShortcutInputField.allCases where !sanitized.contains(field) {
+            sanitized.append(field)
+        }
+        self.shortcutInputOrder = sanitized.isEmpty ? [.card, .category, .note, .amount] : sanitized
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -291,6 +328,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(entryModeRaw, forKey: .entryModeRaw)
         try container.encode(globalCategories, forKey: .globalCategories)
         try container.encode(cardInactiveCategoryIDs, forKey: .cardInactiveCategoryIDs)
+        try container.encode(shortcutInputOrder, forKey: .shortcutInputOrder)
     }
 }
 

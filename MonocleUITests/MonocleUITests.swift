@@ -1497,5 +1497,43 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(clearAlert.waitForExistence(timeout: 5))
         clearAlert.buttons["Cancel"].tap()
     }
+
+    @MainActor
+    func testShortcutOrderSettingsViewUIAndScreenshots() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // 1. Navigate to Settings
+        openSettings(app)
+
+        // 2. Tap "Shortcut prompt order" in Settings
+        let shortcutLink = app.buttons["shortcutOrderSettings"]
+        XCTAssertTrue(shortcutLink.waitForExistence(timeout: 5))
+        shortcutLink.tap()
+
+        // 3. Verify Shortcut Input Order screen elements
+        XCTAssertTrue(app.navigationBars["Shortcut Input Order"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["presetCardFirst"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["presetAmountFirst"].waitForExistence(timeout: 5))
+
+        // 4. Tap "Amount First" preset to test interactive customization
+        app.buttons["presetAmountFirst"].tap()
+
+        // 5. Capture screenshot
+        let shot = app.screenshot()
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "ShortcutOrderScreen"
+        add(attachment)
+
+        let scratchDir = URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch")
+        try? FileManager.default.createDirectory(at: scratchDir, withIntermediateDirectories: true)
+        try? shot.image.pngData()?.write(to: scratchDir.appendingPathComponent("shortcut_order_screen.png"))
+
+        // 6. Reset back to Card First preset
+        app.buttons["presetCardFirst"].tap()
+    }
 }
+
 
