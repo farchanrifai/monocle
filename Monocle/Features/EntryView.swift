@@ -59,8 +59,7 @@ struct EntryView: View {
                         title: model.draft.editing ? "Save changes" : "Record expense",
                         symbol: model.draft.editing ? "checkmark" : "plus"
                     ) {
-                        model.saveDraft()
-                        dismiss()
+                        if model.saveDraft() { dismiss() }
                     }.accessibilityIdentifier("recordExpense")
                         .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 10)
                 }

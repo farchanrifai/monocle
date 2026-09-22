@@ -86,7 +86,7 @@ final class WidgetSnapshotTests: XCTestCase {
 
     func testWidgetDeepLinkNavigation() throws {
         let model = AppModel.shared
-        let bookID = UUID()
+        let bookID = try XCTUnwrap(model.books.first?.id)
         let stackID = UUID()
 
         // Test openCardInHome
@@ -108,7 +108,8 @@ final class WidgetSnapshotTests: XCTestCase {
 
     func testSpendingSessionManagerLifecycle() {
         let manager = SpendingSessionManager.shared
-        manager.startSession(name: "Morning Market", bookName: "Personal", budgetLimit: 200_000_00)
+        let bookID = UUID()
+        manager.startSession(name: "Morning Market", bookName: "Personal", bookID: bookID, budgetLimit: 200_000_00)
 
         XCTAssertTrue(manager.isSessionActive)
         XCTAssertEqual(manager.sessionName, "Morning Market")
@@ -116,12 +117,16 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertEqual(manager.sessionSpent, 0)
         XCTAssertEqual(manager.sessionItemCount, 0)
 
-        manager.recordExpense(amount: 45_000_00, note: "Fresh Bread", categorySymbol: "basket.fill")
+        manager.recordExpense(amount: 45_000_00, note: "Other card", categorySymbol: "basket.fill", bookID: UUID())
+        XCTAssertEqual(manager.sessionSpent, 0)
+        XCTAssertEqual(manager.sessionItemCount, 0)
+
+        manager.recordExpense(amount: 45_000_00, note: "Fresh Bread", categorySymbol: "basket.fill", bookID: bookID)
         XCTAssertEqual(manager.sessionSpent, 45_000_00)
         XCTAssertEqual(manager.sessionItemCount, 1)
         XCTAssertEqual(manager.latestItemNote, "Fresh Bread")
 
-        manager.recordExpense(amount: 30_000_00, note: "Fruit", categorySymbol: "apple.logo")
+        manager.recordExpense(amount: 30_000_00, note: "Fruit", categorySymbol: "apple.logo", bookID: bookID)
         XCTAssertEqual(manager.sessionSpent, 75_000_00)
         XCTAssertEqual(manager.sessionItemCount, 2)
 

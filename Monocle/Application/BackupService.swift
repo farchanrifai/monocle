@@ -61,9 +61,7 @@ final class BackupService {
         let profile = try BookProfile.real(named: name)
         var updated = settings
         updated.book = profile
-        let original = try repository.books().count > 1
-            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
-            : snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -89,9 +87,7 @@ final class BackupService {
         let profile = try settings.book.renamed(to: name)
         var updated = settings
         updated.book = profile
-        let original = try repository.books().count > 1
-            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
-            : snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -113,9 +109,7 @@ final class BackupService {
     }
 
     func clearExpenses(in bookID: UUID? = nil, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
-        let original = try repository.books().count > 1
-            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
-            : snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -142,9 +136,7 @@ final class BackupService {
     }
 
     func resetAllData(cardName: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
-        let original = try repository.books().count > 1
-            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
-            : snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {
@@ -260,9 +252,7 @@ final class BackupService {
         // Validate single-book candidate preview:
         _ = try preview(data: candidate.encoded())
         guard !FileManager.default.fileExists(atPath: journal.path) else { throw BackupError.recoveryRequired }
-        let original = try repository.books().count > 1
-            ? workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
-            : snapshot(draft: currentDraft, settings: settings).encoded()
+        let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
         try original.write(to: safetyURL, options: .atomic)
         try original.write(to: journal, options: .atomic)
         do {

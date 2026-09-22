@@ -178,6 +178,29 @@ final class CSVTests: XCTestCase {
         XCTAssertEqual(rows[2][5], "Commute & Snack")
     }
 
+    @MainActor
+    func testAllCardExportUsesCategoriesFromEveryCard() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let travel = GlobalCategory(name: "Rail Pass", symbol: "tram.fill")
+        let second = try store.createBook(named: "Travel", initialCategories: [travel])
+        try store.save(
+            Expense(amount: 80_000_00, day: "2026-09-11", note: "Airport train",
+                    allocations: [.init(categoryID: travel.id, amount: 80_000_00)], bookID: second.id),
+            in: second.id
+        )
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: FileLocalStateStore(directory: directory))
+
+        let csv = model.csvExportText(for: nil, dateRange: .allTime)
+
+        XCTAssertTrue(csv.contains("Rail Pass"))
+        XCTAssertFalse(csv.contains("General"))
+    }
+
     // MARK: - Row Processing & Duplicate Detection
 
     func testRowProcessingAndDuplicateDetection() {

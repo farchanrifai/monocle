@@ -191,6 +191,33 @@ final class BillTests: XCTestCase {
         XCTAssertEqual(matchingExpense?.source, "bill-automatic")
     }
 
+    func testClearingTransactionsDoesNotRecreateAutomaticBills() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let due = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        let bill = BillRule(
+            bookID: service.activeBookID,
+            name: "Cloud Storage",
+            amount: 45_000_00,
+            categoryID: try XCTUnwrap(service.categories.first?.id),
+            recurrence: .monthly(day: Calendar.current.component(.day, from: due)),
+            recordingMode: .automatic,
+            createdAt: due
+        )
+        try service.saveBill(bill)
+        XCTAssertFalse(service.expenses.isEmpty)
+
+        try store.clearExpenses(in: service.activeBookID)
+        try service.reload()
+        try service.reconcileBills()
+
+        XCTAssertTrue(service.expenses.isEmpty)
+        let occurrence = try XCTUnwrap(service.billOccurrences.first { $0.billRuleID == bill.id && $0.dueDay == Day.string(due) })
+        XCTAssertEqual(occurrence.status, .skipped)
+        XCTAssertNil(occurrence.expenseID)
+    }
+
     func testPendingModeRequiresConfirmationAndSkippingWorks() throws {
         let store = try ExpenseRepository(inMemory: true)
         try store.prepareSampleBook()

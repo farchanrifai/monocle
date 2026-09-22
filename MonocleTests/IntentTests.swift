@@ -59,6 +59,10 @@ final class IntentTests: XCTestCase {
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(WorkspacePreferences.self, from: data)
         XCTAssertEqual(decoded.shortcutInputOrder, [.amount, .note, .category, .card])
+
+        prefs.shortcutInputOrder = [.card, .card]
+        let deduplicated = try decoder.decode(WorkspacePreferences.self, from: encoder.encode(prefs))
+        XCTAssertEqual(deduplicated.shortcutInputOrder, [.card, .category, .note, .amount])
     }
 
     func testAppModelShortcutOrderCustomization() throws {
@@ -129,5 +133,32 @@ final class IntentTests: XCTestCase {
         XCTAssertEqual(saved.note, "Iced Latte")
         XCTAssertEqual(saved.allocations.first?.categoryID.uuidString, categoryEntity.id)
         XCTAssertEqual(saved.bookID, book.id)
+    }
+
+    func testAddExpenseIntentRevalidatesCategoryAfterCardResolution() async throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let sampleCategories = try store.categories(in: BookProfile.sample.id)
+        let allowed = try XCTUnwrap(sampleCategories.first)
+        let invalid = try XCTUnwrap(sampleCategories.dropFirst().first)
+        let second = try store.createBook(named: "Only Food", initialCategories: [GlobalCategory(category: allowed)])
+        let service = try ExpenseService(store: store)
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let model = AppModel(expenses: service, state: FileLocalStateStore(directory: tempDir))
+        AppEnvironment.shared.model = model
+        AppEnvironment.shared.expenses = service
+
+        var intent = AddExpenseIntent()
+        intent.amount = 10_000
+        intent.category = ExpenseCategoryEntity(invalid)
+        intent.card = CardEntity(second)
+        intent.note = "Lunch"
+
+        _ = try await intent.perform()
+
+        let saved = try XCTUnwrap(try store.expenses(in: second.id).first)
+        XCTAssertEqual(saved.allocations.first?.categoryID, allowed.id)
     }
 }

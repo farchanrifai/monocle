@@ -116,6 +116,12 @@ final class BackupTests: XCTestCase {
             let original = fixture()
             try repository.replace(with: original)
             try state.saveDraft(original.draft); try state.saveSettings(original.settings)
+            var preferences = WorkspacePreferences()
+            preferences.allActivitiesScope = true
+            try state.saveWorkspacePreferences(preferences)
+            let bill = BillRule(bookID: BookProfile.sample.id, name: "Internet", amount: 10000,
+                                categoryID: original.categories[0].id, recurrence: .monthly(day: 1))
+            try repository.saveBill(bill)
             try service.reload()
 
             let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
@@ -126,7 +132,10 @@ final class BackupTests: XCTestCase {
             XCTAssertTrue(try repository.expenses().isEmpty)
             XCTAssertEqual(try repository.categories(), original.categories.sorted { $0.id.uuidString < $1.id.uuidString })
             XCTAssertFalse(try state.loadDraft().hasContent)
-            XCTAssertEqual(try BookBackup.decode(Data(contentsOf: backup.safetyURL)).expenses, original.expenses)
+            let safety = try WorkspaceBackup.decode(Data(contentsOf: backup.safetyURL))
+            XCTAssertEqual(safety.books.first?.expenses, original.expenses)
+            XCTAssertEqual(safety.books.first?.bills, [bill])
+            XCTAssertTrue(safety.preferences.allActivitiesScope)
             let realBackup = try backup.snapshot(draft: ExpenseDraft(), settings: settings)
             XCTAssertEqual(realBackup.formatVersion, 3)
             XCTAssertEqual(realBackup.bookKind, BookKind.real.rawValue)
@@ -220,6 +229,20 @@ extension BackupTests {
         XCTAssertThrowsError(try workspace.validate())
         workspace.cardArtworks = nil
         workspace.books[0].billOccurrences = [BillOccurrence(billRuleID: UUID(), bookID: workspace.books[0].book.id, dueDay: "2026-09-01")]
+        XCTAssertThrowsError(try workspace.validate())
+    }
+
+    func testWorkspaceRejectsCrossBookRecords() throws {
+        var workspace = WorkspaceBackup(singleBook: fixture())
+        workspace.books[0].expenses[0].bookID = UUID()
+        XCTAssertThrowsError(try workspace.validate())
+
+        workspace = WorkspaceBackup(singleBook: fixture())
+        workspace.books[0].draft?.bookID = UUID()
+        XCTAssertThrowsError(try workspace.validate())
+
+        workspace = WorkspaceBackup(singleBook: fixture())
+        workspace.books[0].budgets[0].bookID = UUID()
         XCTAssertThrowsError(try workspace.validate())
     }
 }

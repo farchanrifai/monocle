@@ -5,8 +5,7 @@ struct BudgetsView: View {
     @State private var editing = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     Eyebrow(text: model.currentBudgetPeriod.isTransition ? "Transition · \(model.cycle.label)" : model.cycle.label)
                     Text("Room for what\nmatters.").font(.largeTitle.weight(.medium)).tracking(-1)
@@ -95,12 +94,11 @@ struct BudgetsView: View {
                     Text("Budget changes are stored as effective-dated versions. Amount changes can start this or the next cycle; a start-day change begins at the next existing boundary and keeps the transition period visible.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(24)
-            }.background(MC.paper)
-                .navigationTitle("Budgets").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Edit", systemImage: "slider.horizontal.3") { editing = true } } }
-                .sheet(isPresented: $editing) { BudgetEditor(model: model) }
-                .sheet(isPresented: $model.showAnalytics) { AnalyticsView(model: model) }
-        }
+        }.background(MC.paper)
+            .navigationTitle("Budgets").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Edit", systemImage: "slider.horizontal.3") { editing = true } } }
+            .sheet(isPresented: $editing) { BudgetEditor(model: model) }
+            .sheet(isPresented: $model.showAnalytics) { AnalyticsView(model: model) }
     }
 }
 

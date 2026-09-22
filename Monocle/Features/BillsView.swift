@@ -641,12 +641,18 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
+    private var activeBook: BookProfile {
+        model.books.first(where: { $0.id == (model.selectedBookID ?? model.activeBookID) })
+            ?? model.books.first
+            ?? model.settings.book
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 // MARK: 1. Active Card & Categories
                 Section {
-                    if model.settings.book.kind == .sample {
+                    if activeBook.kind == .sample, model.books.count == 1 {
                         NavigationLink {
                             RealBookOnboardingView(model: model)
                         } label: {
@@ -662,12 +668,12 @@ struct SettingsView: View {
                             }
                         }
                         .accessibilityIdentifier("startRealBook")
-                    } else {
+                    } else if activeBook.kind == .real {
                         NavigationLink {
-                            RenameBookView(model: model)
+                            RenameBookView(model: model, book: activeBook)
                         } label: {
                             LabeledContent {
-                                Text(model.settings.book.name)
+                                Text(activeBook.name)
                                     .foregroundStyle(.secondary)
                             } label: {
                                 Label {
@@ -678,6 +684,12 @@ struct SettingsView: View {
                             }
                         }
                         .accessibilityIdentifier("renameRealBook")
+                    } else {
+                        LabeledContent {
+                            Text(activeBook.name).foregroundStyle(.secondary)
+                        } label: {
+                            Label("Card name", systemImage: "creditcard.fill")
+                        }
                     }
 
                     NavigationLink {
@@ -724,7 +736,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier("backupSettings")
 
                     NavigationLink {
-                        CSVInterchangeView(model: model)
+                        CSVInterchangeView(model: model, showsDismissButton: false)
                     } label: {
                         Label {
                             Text("CSV export & import")
@@ -887,7 +899,7 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("Monocle — Single-card daily expense ledger with Liquid Glass design.")
+                    Text("Monocle — Multi-card daily expense ledger with Liquid Glass design.")
                 }
             }
             .navigationTitle("Settings")
@@ -903,6 +915,7 @@ struct SettingsView: View {
 
 private struct RenameBookView: View {
     let model: AppModel
+    let book: BookProfile
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var error: String?
@@ -912,10 +925,10 @@ private struct RenameBookView: View {
             TextField("Card name", text: $name).accessibilityIdentifier("renameBookName")
         }
         .navigationTitle("Rename card").navigationBarTitleDisplayMode(.inline)
-        .onAppear { name = model.settings.book.name }
+        .onAppear { name = book.name }
         .toolbar { ToolbarItem(placement: .confirmationAction) {
             Button("Save") {
-                do { try model.renameRealBook(to: name); dismiss() }
+                do { try model.renameBook(id: book.id, to: name); dismiss() }
                 catch { self.error = error.localizedDescription }
             }
         } }

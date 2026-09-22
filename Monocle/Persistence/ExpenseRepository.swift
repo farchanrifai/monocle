@@ -595,7 +595,7 @@ final class ExpenseRepository: ExpenseStore {
                     if targetBook == nil || ruleBook == targetBook {
                         if occ.value(forKey: "expenseID") != nil {
                             occ.setValue(nil, forKey: "expenseID")
-                            occ.setValue(BillOccurrenceStatus.pending.rawValue, forKey: "status")
+                            occ.setValue(BillOccurrenceStatus.skipped.rawValue, forKey: "status")
                             occ.setValue(Date.now, forKey: "updatedAt")
                         }
                     }

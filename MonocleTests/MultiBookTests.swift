@@ -652,7 +652,7 @@ final class MultiBookTests: XCTestCase {
         model.backups = backups
 
         let book = try model.createBook(named: "Trip Card")
-        try model.selectBook(book.id)
+        XCTAssertTrue(model.selectBook(book.id))
 
         let categories = model.categories
         let exp = Expense(id: UUID(), amount: 45_000_00, day: Day.string(.now), note: "Taxi",
@@ -666,6 +666,30 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(model.expenses.count, 0)
         XCTAssertEqual(model.categories.count, categories.count)
         XCTAssertTrue(FileManager.default.fileExists(atPath: backups.safetyURL.path))
+    }
+
+    func testSelectingCardsSwapsAndPreservesPerCardDrafts() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let second = try store.createBook(named: "Travel")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let state = FileLocalStateStore(directory: directory)
+        var travelDraft = ExpenseDraft()
+        travelDraft.note = "Train"
+        try state.saveDraft(travelDraft, for: second.id)
+        let service = try ExpenseService(store: store)
+        let model = AppModel(expenses: service, state: state)
+        model.draft.note = "Coffee"
+        model.draft.bookID = BookProfile.sample.id
+
+        XCTAssertTrue(model.selectBook(second.id))
+        XCTAssertEqual(model.draft.note, "Train")
+        XCTAssertEqual(try state.loadDraft(for: BookProfile.sample.id).note, "Coffee")
+
+        XCTAssertTrue(model.selectBook(BookProfile.sample.id))
+        XCTAssertEqual(model.draft.note, "Coffee")
     }
 
     func testClearAllTransactionsAcrossMultipleCards() throws {
@@ -730,5 +754,59 @@ final class MultiBookTests: XCTestCase {
         XCTAssertNotNil(decodedWorkspace)
         XCTAssertEqual(decodedWorkspace?.books.count, 3)
     }
-}
 
+    func testDailyLedgerStressKeepsHundredsOfWritesIsolatedAcrossCards() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        let books = try (1...3).map { try store.createBook(named: "Stress Card \($0)") }
+        var expectedTotals: [UUID: Int64] = [:]
+
+        for (bookIndex, book) in books.enumerated() {
+            let category = try XCTUnwrap(store.categories(in: book.id).first)
+            var total: Int64 = 0
+            var ids: [UUID] = []
+            for entryIndex in 0..<250 {
+                let id = UUID()
+                let amount = Int64((bookIndex + 1) * 10_000 + entryIndex)
+                try store.save(
+                    Expense(id: id, amount: amount, day: "2026-09-19", note: "Entry \(entryIndex)",
+                            allocations: [.init(categoryID: category.id, amount: amount)], bookID: book.id),
+                    in: book.id
+                )
+                ids.append(id)
+                total += amount
+            }
+
+            for entryIndex in stride(from: 0, to: 250, by: 25) {
+                let amount = Int64((bookIndex + 1) * 10_000 + entryIndex + 500)
+                try store.save(
+                    Expense(id: ids[entryIndex], amount: amount, day: "2026-09-19", note: "Updated \(entryIndex)",
+                            allocations: [.init(categoryID: category.id, amount: amount)], bookID: book.id),
+                    in: book.id
+                )
+                total += 500
+            }
+
+            for entryIndex in stride(from: 0, to: 250, by: 50) {
+                try store.delete(ids[entryIndex])
+                total -= Int64((bookIndex + 1) * 10_000 + entryIndex + 500)
+            }
+            expectedTotals[book.id] = total
+        }
+
+        let service = try ExpenseService(store: store)
+        for index in 0..<150 {
+            let book = books[index % books.count]
+            try service.selectBook(book.id)
+            XCTAssertEqual(service.activeBookID, book.id)
+            XCTAssertEqual(service.expenses.count, 245)
+        }
+
+        for book in books {
+            let expenses = try store.expenses(in: book.id)
+            XCTAssertEqual(expenses.count, 245)
+            XCTAssertEqual(expenses.reduce(Int64(0)) { $0 + $1.amount }, try XCTUnwrap(expectedTotals[book.id]))
+            XCTAssertTrue(expenses.allSatisfy { $0.bookID == book.id })
+            XCTAssertEqual(Set(expenses.map(\.id)).count, expenses.count)
+        }
+    }
+}

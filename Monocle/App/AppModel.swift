@@ -374,12 +374,12 @@ final class AppModel {
 
     func openEntry(for bookID: UUID? = nil, categoryID: UUID? = nil) {
         originalDraft = nil
-        if let bookID {
-            draft.bookID = bookID
-        } else if draft.bookID == nil {
-            draft.bookID = selectedBookID ?? activeBookID
+        let targetBookID = bookID ?? selectedBookID ?? activeBookID
+        if targetBookID != activeBookID || draft.bookID != targetBookID {
+            guard selectBook(targetBookID) else { return }
         }
-        if let categoryID, let cat = category(categoryID) {
+        draft.bookID = targetBookID
+        if let categoryID, let cat = activeCategories(for: targetBookID).first(where: { $0.id == categoryID }) {
             draft.categoryID = cat.id
         }
         if !draft.editing {
@@ -448,10 +448,29 @@ final class AppModel {
         setActiveStack(id: id)
     }
 
-    func selectBook(_ id: UUID) {
-        selectedBookID = id
-        if let expenseService {
-            try? expenseService.selectBook(id)
+    @discardableResult
+    func selectBook(_ id: UUID) -> Bool {
+        guard let expenseService, books.contains(where: { $0.id == id }) else {
+            error = "The selected card is no longer available."
+            return false
+        }
+        do {
+            if draft.bookID != id {
+                try requireState().saveDraft(draft, for: draft.bookID ?? activeBookID)
+            }
+            let targetDraft = try requireState().loadDraft(for: id)
+            try expenseService.selectBook(id)
+            selectedBookID = id
+            if draft.bookID != id {
+                draft = targetDraft
+                draft.bookID = id
+                originalDraft = nil
+            }
+            invalidateExpenseCaches()
+            return true
+        } catch {
+            self.error = "The selected card could not be opened: \(error.localizedDescription)"
+            return false
         }
     }
 
@@ -856,11 +875,19 @@ final class AppModel {
         }
 
         targetExpenses.sort { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
-        let allCats = categories
+        let rawCategories: [ExpenseCategory]
+        if let bookID {
+            rawCategories = (try? expenseService?.categories(for: bookID)) ?? categories
+        } else {
+            rawCategories = books.flatMap { (try? expenseService?.categories(for: $0.id)) ?? [] }
+        }
+        var seenCategoryIDs = Set<UUID>()
+        let allCats = rawCategories.filter { seenCategoryIDs.insert($0.id).inserted }
         return CSVExportGenerator.generate(expenses: targetExpenses, categories: allCats, books: books)
     }
 
-    func saveDraft() {
+    @discardableResult
+    func saveDraft() -> Bool {
         do {
             var expense = try draft.expense()
             let targetID = draft.bookID ?? selectedBookID ?? activeBookID
@@ -871,16 +898,21 @@ final class AppModel {
             draft = ExpenseDraft(); persistDraft(); showEntry = false
             undoExpense = nil
             saveFeedback += 1
-            if SpendingSessionManager.shared.isSessionActive {
-                let cat = categories.first(where: { $0.id == expense.allocations.first?.categoryID })
+            if !editing, SpendingSessionManager.shared.isSessionActive {
+                let cat = activeCategories(for: targetID).first(where: { $0.id == expense.allocations.first?.categoryID })
                 SpendingSessionManager.shared.recordExpense(
                     amount: expense.amount,
                     note: expense.note,
-                    categorySymbol: cat?.symbol
+                    categorySymbol: cat?.symbol,
+                    bookID: targetID
                 )
             }
             showToast(editing ? "Expense updated" : "Expense recorded")
-        } catch { self.error = error.localizedDescription }
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
     }
     func save(_ expense: Expense) throws {
         guard let expenseService else { throw EntryError.corruptStore }
@@ -1130,14 +1162,19 @@ final class AppModel {
         guard let backups else { throw BackupError.unsupported }
         do {
             try backups.restoreWorkspace(backup, currentDraft: draft, settings: settings)
-            if let first = backup.books.first {
-                draft = first.draft ?? ExpenseDraft()
+            let restoredBookID = expenseService?.activeBookID ?? backup.books[0].book.id
+            if let active = backup.books.first(where: { $0.book.id == restoredBookID }) {
+                draft = active.draft ?? ExpenseDraft()
             }
+            selectedBookID = restoredBookID
             settings = backup.settings
             workspacePreferences = backup.preferences
-            hiddenBookIDs = Set(books.map(\.id).filter { !backup.preferences.visibleBookIDs.contains($0) })
+            hiddenBookIDs = backup.preferences.visibleBookIDs.isEmpty
+                ? []
+                : Set(books.map(\.id).filter { !backup.preferences.visibleBookIDs.contains($0) })
             expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             undoExpense = nil; pendingEntry = nil; toast = nil
+            invalidateExpenseCaches()
         } catch {
             if backups.requiresRecovery { startupError = error.localizedDescription }
             throw error

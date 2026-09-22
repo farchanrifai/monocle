@@ -14,7 +14,7 @@ struct BackupView: View {
     @State private var document = BackupDocument(data: Data())
     @State private var exporting = false
     @State private var importing = false
-    @State private var candidate: BookBackup?
+    @State private var candidate: WorkspaceBackup?
     @State private var confirm = false
     @State private var message: String?
     var body: some View {
@@ -23,7 +23,7 @@ struct BackupView: View {
                 Button("Export full backup", systemImage: "square.and.arrow.up") {
                     do {
                         guard let backups = model.backups else { throw BackupError.unsupported }
-                        document = BackupDocument(data: try backups.snapshot(draft: model.draft, settings: model.settings).encoded())
+                        document = BackupDocument(data: try backups.workspaceSnapshot(currentDraft: model.draft, settings: model.settings).encoded())
                         exporting = true
                     } catch { message = error.localizedDescription }
                 }.accessibilityIdentifier("exportBackup")
@@ -32,14 +32,14 @@ struct BackupView: View {
             } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups are readable JSON files; store them somewhere you trust.") }
             if let candidate {
                 Section("Review replacement") {
-                    LabeledContent("Card", value: candidate.bookName)
+                    LabeledContent("Cards", value: String(candidate.books.count))
                     LabeledContent("Exported", value: candidate.exportedAt.formatted(date: .abbreviated, time: .shortened))
-                    LabeledContent("Expenses", value: String(candidate.expenses.count))
-                    LabeledContent("Categories", value: String(candidate.categories.count))
-                    LabeledContent("Budget versions", value: String(max(1, candidate.budgets.count)))
-                    LabeledContent("Total", value: Money.format(candidate.total))
-                    LabeledContent("Current expenses replaced", value: String(model.expenses.count))
-                    Button("Replace current card", role: .destructive) { confirm = true }
+                    LabeledContent("Expenses", value: String(candidate.books.reduce(0) { $0 + $1.expenses.count }))
+                    LabeledContent("Categories", value: String(candidate.books.reduce(0) { $0 + $1.categories.count }))
+                    LabeledContent("Budget versions", value: String(candidate.books.reduce(0) { $0 + $1.budgets.count }))
+                    LabeledContent("Total", value: Money.format(candidate.books.flatMap(\.expenses).reduce(0) { $0 + $1.amount }))
+                    LabeledContent("Current expenses replaced", value: String(model.allExpenses().count))
+                    Button("Replace all app data", role: .destructive) { confirm = true }
                         .accessibilityIdentifier("restoreBackup")
                     Button("Cancel review") { self.candidate = nil }
                 }
@@ -71,17 +71,17 @@ struct BackupView: View {
                     let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
                     guard size <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
                     guard let backups = model.backups else { throw BackupError.unsupported }
-                    candidate = try backups.preview(data: Data(contentsOf: url, options: .mappedIfSafe))
+                    candidate = try backups.previewWorkspace(data: Data(contentsOf: url, options: .mappedIfSafe))
                 } catch { candidate = nil; message = error.localizedDescription }
             }
-            .alert("Replace your current card?", isPresented: $confirm) {
-                Button("Replace card", role: .destructive) {
+            .alert("Replace all app data?", isPresented: $confirm) {
+                Button("Replace all data", role: .destructive) {
                     guard let candidate else { return }
-                    do { try model.restoreBackup(candidate); self.candidate = nil; message = "Card restored. Your previous card is available as the safety backup." }
+                    do { try model.restoreWorkspaceBackup(candidate); self.candidate = nil; message = "Backup restored. Your previous data is available as the safety backup." }
                     catch { message = error.localizedDescription }
                 }
                 Button("Cancel", role: .cancel) {}
-            } message: { Text("Current expenses, categories, draft and settings will be replaced. A safety backup will be saved first.") }
+            } message: { Text("All cards, expenses, categories, bills, budgets, drafts, artwork and settings will be replaced. A safety backup will be saved first.") }
             .alert("Backup & restore", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK") { message = nil }
             } message: { Text(message ?? "") }

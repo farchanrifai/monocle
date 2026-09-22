@@ -480,7 +480,9 @@ struct BookHomeView: View {
             }
         }
         .sheet(isPresented: $model.showCSVInterchange) {
-            CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
+            NavigationStack {
+                CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
+            }
         }
         .sheet(isPresented: $model.showAnalytics) {
             AnalyticsView(model: model)
@@ -836,9 +838,8 @@ struct BookHomeView: View {
         dismissX = 0
         detailScroll = 0
         releaseVelocity = 0
+        guard model.selectBook(book.id) else { return }
         selectedID = book.id
-        model.selectedBookID = book.id
-        model.selectBook(book.id)
         withAnimation(reduceMotion ? .easeOut(duration: 0.15) : opening) {
             expanded = true
         }
@@ -1478,6 +1479,7 @@ struct CardPresentationView: View {
                         model.sessionManager.startSession(
                             name: model.sessionSheetName,
                             bookName: bookName,
+                            bookID: activeBook?.id,
                             budgetLimit: limit
                         )
                         model.sessionSheetName = ""

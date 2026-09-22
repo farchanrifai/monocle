@@ -260,7 +260,7 @@ struct CardCustomizerView: View {
                                     if let custom = drafts[bookID] {
                                         model.updateCustomization(custom, for: created.id)
                                     }
-                                    model.selectedBookID = created.id
+                                    model.selectBook(created.id)
                                 }
                             }
                         }

@@ -240,10 +240,12 @@ public struct SpendingActivityAttributes: ActivityAttributes {
     public var sessionName: String
     public var bookName: String
     public var startTime: Date
+    public var bookID: UUID?
 
-    public init(sessionName: String, bookName: String, startTime: Date = .now) {
+    public init(sessionName: String, bookName: String, startTime: Date = .now, bookID: UUID? = nil) {
         self.sessionName = sessionName
         self.bookName = bookName
         self.startTime = startTime
+        self.bookID = bookID
     }
 }

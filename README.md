@@ -2,7 +2,7 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current release: 0.6.20, build 56.** Local-first expense tracking with multiple books, budgets, recurring bills, CSV interchange, and backup/restore. See the [quality and reliability audit](docs/audit/2026-09-12.md) for changes, verification, and remaining device-validation limits.
+**Current release: 0.7.20, build 83.** Local-first expense tracking with multiple cards, budgets, recurring bills, CSV interchange, widgets, Shortcuts, and full-workspace backup/restore. See the [latest quality and reliability audit](docs/audit/2026-09-19.md) for changes, verification, and remaining device-validation limits.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)
@@ -11,7 +11,7 @@ A personal expense tracker for iPhone, with a native Mac app planned later.
 
 ## Run locally
 
-Open `Monocle.xcodeproj`, select the **Monocle** scheme and an available iPhone simulator, and Run. Minimum deployment target: iOS 26.0. Development verified with Xcode 26.6 / iOS 26.5 SDK.
+Open `Monocle.xcodeproj`, select the **Monocle** scheme and an available iPhone simulator, and Run. Minimum deployment target: iOS 26.0. Development verified with Xcode 27.0 / iOS 26.5 simulator runtime.
 
 The Xcode project is committed so opening it requires no project-generation tool. After changing `project.yml`, regenerate it with `xcodegen generate` (validated with XcodeGen 2.46.0). No third-party runtime packages are used.
 
@@ -33,7 +33,7 @@ Add the printed `sidestore://source?...` link to SideStore once. Later builds ap
 
 ## Repository
 
-Local branch: `main`. The planning baseline is committed separately from implementation. Remote repository: https://github.com/farchanrifai/monocle.
+Audit work is isolated on `gpt-review`. The planning baseline is committed separately from implementation. Remote repository: https://github.com/farchanrifai/monocle.
 
 ## Development continuity
 

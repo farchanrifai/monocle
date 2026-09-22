@@ -276,12 +276,14 @@ struct AddExpenseIntent: AppIntent {
             throw EntryError.corruptStore
         }
 
-        if resolvedCategory == nil {
-            let active = AppEnvironment.shared.model.activeCategories(for: targetBookID)
-            if let first = active.first {
-                resolvedCategory = ExpenseCategoryEntity(first)
-            } else if let fallback = AppEnvironment.shared.model.categories.first {
-                resolvedCategory = ExpenseCategoryEntity(fallback)
+        let active = AppEnvironment.shared.model.activeCategories(for: targetBookID)
+        let resolvedCategoryID = resolvedCategory.flatMap { UUID(uuidString: $0.id) }
+        if !active.contains(where: { $0.id == resolvedCategoryID }) {
+            let entities = active.map(ExpenseCategoryEntity.init)
+            if entities.count > 1 {
+                resolvedCategory = try await $category.requestDisambiguation(among: entities, dialog: IntentDialog("Which category?"))
+            } else {
+                resolvedCategory = entities.first
             }
         }
         guard let targetCategory = resolvedCategory, let categoryID = UUID(uuidString: targetCategory.id) else {
@@ -298,6 +300,7 @@ struct AddExpenseIntent: AppIntent {
         let finalNote = resolvedNote ?? ""
         let expense = try service.record(amountInRupiah: Int64(validAmount), categoryID: categoryID, note: finalNote, date: date ?? .now, in: targetBookID)
         let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? targetCard.name
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: targetCategory.symbol, bookID: targetBookID)
         return .result(
             dialog: "Recorded \(Money.format(expense.amount)) in \(targetCategory.name) on \(bookName).",
             view: ExpenseReceiptSnippetView(expense: expense, categoryName: targetCategory.name, categorySymbol: targetCategory.symbol, cardName: bookName)
@@ -340,9 +343,10 @@ struct AddExpenseFromTextIntent: AppIntent {
         let targetBookID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedBookID ?? AppEnvironment.shared.model.activeBookID
         let expense = try service.record(text: text, in: targetBookID)
         let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? "Card"
-        let cat = AppEnvironment.shared.model.categories.first(where: { $0.id == expense.allocations.first?.categoryID })
+        let cat = AppEnvironment.shared.model.activeCategories(for: targetBookID).first(where: { $0.id == expense.allocations.first?.categoryID })
         let catName = cat?.name ?? "Expense"
         let catSymbol = cat?.symbol ?? "creditcard"
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: catSymbol, bookID: targetBookID)
 
         return .result(
             dialog: "Recorded \(Money.format(expense.amount)) on \(bookName).",
@@ -400,8 +404,13 @@ struct StartSpendingSessionIntent: AppIntent {
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
         let targetBookID = card.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedBookID ?? AppEnvironment.shared.model.activeBookID
         let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? "Card"
-        let limit = (budgetLimit.flatMap { $0 > 0 ? Int64($0) : nil }).map { $0 * 100 }
-        SpendingSessionManager.shared.startSession(name: name, bookName: bookName, budgetLimit: limit)
+        var limit: Int64?
+        if let budgetLimit, budgetLimit > 0 {
+            let converted = Int64(budgetLimit).multipliedReportingOverflow(by: 100)
+            guard !converted.overflow, converted.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
+            limit = converted.partialValue
+        }
+        SpendingSessionManager.shared.startSession(name: name, bookName: bookName, bookID: targetBookID, budgetLimit: limit)
         return .result(dialog: "Started spending session '\(name)' on \(bookName).")
     }
 }
@@ -478,4 +487,3 @@ struct MonocleShortcuts: AppShortcutsProvider {
         )
     }
 }
-

@@ -194,7 +194,7 @@ struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
     }
 }
 
-enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Sendable {
+enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Hashable, Sendable {
     case card
     case category
     case note
@@ -306,7 +306,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         globalCategories = try container.decodeIfPresent([GlobalCategory].self, forKey: .globalCategories) ?? []
         cardInactiveCategoryIDs = try container.decodeIfPresent([UUID: [UUID]].self, forKey: .cardInactiveCategoryIDs) ?? [:]
         let decodedOrder = try container.decodeIfPresent([ShortcutInputField].self, forKey: .shortcutInputOrder) ?? [.card, .category, .note, .amount]
-        var sanitized = decodedOrder.filter { ShortcutInputField.allCases.contains($0) }
+        var seen = Set<ShortcutInputField>()
+        var sanitized = decodedOrder.filter { ShortcutInputField.allCases.contains($0) && seen.insert($0).inserted }
         for field in ShortcutInputField.allCases where !sanitized.contains(field) {
             sanitized.append(field)
         }
@@ -389,6 +390,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
         }
         let expenseIDs = books.flatMap { $0.expenses.map(\.id) }
         guard Set(expenseIDs).count == expenseIDs.count else { throw BackupError.invalid }
+        var total: Int64 = 0
         for item in books {
             guard !item.book.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, item.book.name.count <= 40 else { throw BackupError.invalid }
             guard item.expenses.count <= 10_000, item.categories.count <= 500 else { throw BackupError.tooLarge }
@@ -398,10 +400,20 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
                 guard try cat.validated(against: item.categories) == cat else { throw BackupError.invalid }
             }
             for exp in item.expenses {
+                guard exp.bookID == nil || exp.bookID == item.book.id else { throw BackupError.invalid }
                 try exp.validate(categories: item.categories)
+                let next = total.addingReportingOverflow(exp.amount)
+                guard !next.overflow else { throw BackupError.invalid }
+                total = next.partialValue
             }
             for budget in item.budgets {
+                guard budget.bookID == nil || budget.bookID == item.book.id else { throw BackupError.invalid }
                 try budget.validate(categories: item.categories)
+            }
+            if let draft = item.draft {
+                guard draft.bookID == nil || draft.bookID == item.book.id,
+                      draft.categoryID == nil || item.categories.contains(where: { $0.id == draft.categoryID }),
+                      !draft.editing || item.expenses.contains(where: { $0.id == draft.id }) else { throw BackupError.invalid }
             }
             if let bills = item.bills {
                 guard bills.count <= 1_000, Set(bills.map(\.id)).count == bills.count else { throw BackupError.invalid }
@@ -413,9 +425,11 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             if let occurrences = item.billOccurrences {
                 guard occurrences.count <= 10_000, Set(occurrences.map(\.id)).count == occurrences.count else { throw BackupError.invalid }
                 let ruleIDs = Set((item.bills ?? []).map(\.id))
+                let itemExpenseIDs = Set(item.expenses.map(\.id))
                 for occurrence in occurrences {
                     guard occurrence.bookID == item.book.id, ruleIDs.contains(occurrence.billRuleID),
-                          Day.date(occurrence.dueDay) != nil else { throw BackupError.invalid }
+                          Day.date(occurrence.dueDay) != nil,
+                          occurrence.expenseID.map(itemExpenseIDs.contains) ?? true else { throw BackupError.invalid }
                 }
             }
         }

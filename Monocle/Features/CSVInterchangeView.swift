@@ -30,6 +30,7 @@ struct CSVFileDocument: FileDocument {
 struct CSVInterchangeView: View {
     @Bindable var model: AppModel
     var initialTab: Int = 0
+    var showsDismissButton = true
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTab: Int
@@ -59,20 +60,20 @@ struct CSVInterchangeView: View {
         var id: String { rawValue }
     }
 
-    init(model: AppModel, initialTab: Int = 0) {
+    init(model: AppModel, initialTab: Int = 0, showsDismissButton: Bool = true) {
         self.model = model
         self.initialTab = initialTab
+        self.showsDismissButton = showsDismissButton
         _selectedTab = State(initialValue: initialTab)
         _targetBookID = State(initialValue: model.activeBookID)
     }
 
     private var targetBookCategories: [ExpenseCategory] {
-        model.activeCategories
+        model.activeCategories(for: targetBookID)
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 Picker("Interchange Mode", selection: $selectedTab) {
                     Text("Export").tag(0)
                     Text("Import").tag(1)
@@ -91,9 +92,11 @@ struct CSVInterchangeView: View {
             .navigationTitle("CSV Data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("dismissCSVView")
+                if showsDismissButton {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismiss() }
+                            .accessibilityIdentifier("dismissCSVView")
+                    }
                 }
             }
             .fileExporter(
@@ -130,7 +133,6 @@ struct CSVInterchangeView: View {
                     defaultCategoryID = targetBookCategories.first?.id
                 }
             }
-        }
     }
 
     // MARK: - Export View

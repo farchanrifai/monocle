@@ -39,7 +39,7 @@ struct QuickCaptureWidgetView: View {
 
             HStack(spacing: 12) {
                 ForEach(entry.snapshot.quickCategories) { category in
-                    Link(destination: URL(string: "monocle://entry?category=\(category.id.uuidString)")!) {
+                    Link(destination: URL(string: "monocle://entry?book=\(entry.snapshot.activeBook.id.uuidString)&category=\(category.id.uuidString)")!) {
                         VStack(spacing: 6) {
                             Image(systemName: category.symbol)
                                 .font(.system(size: 20))
@@ -55,7 +55,7 @@ struct QuickCaptureWidgetView: View {
                     }
                 }
 
-                Link(destination: URL(string: "monocle://entry")!) {
+                Link(destination: URL(string: "monocle://entry?book=\(entry.snapshot.activeBook.id.uuidString)")!) {
                     VStack(spacing: 6) {
                         Image(systemName: "plus")
                             .font(.system(size: 20, weight: .semibold))

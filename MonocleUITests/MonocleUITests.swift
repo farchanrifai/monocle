@@ -147,7 +147,9 @@ final class MonocleUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launchEnvironment["MONOCLE_MANY_CATEGORIES"] = "1"
         app.launch()
-        XCTAssertFalse(app.tabBars.firstMatch.exists, "Native bar must not overlap the two custom islands")
+        let nativeBar = app.tabBars.firstMatch
+        XCTAssertTrue(nativeBar.waitForExistence(timeout: 5))
+        XCTAssertFalse(nativeBar.frame.intersects(app.buttons["addExpense"].frame), "Native tabs must not overlap the add button")
         let home = XCTAttachment(screenshot: app.screenshot())
         home.name = "home-011"; home.lifetime = .keepAlways; add(home)
         app.buttons["addExpense"].tap()
@@ -350,12 +352,18 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["newCategory"].waitForExistence(timeout: 5))
 
         let allCategoriesShot = app.screenshot()
-        try allCategoriesShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch/categories_all.png"))
+        let allCategories = XCTAttachment(screenshot: allCategoriesShot)
+        allCategories.name = "categories-all"
+        allCategories.lifetime = .keepAlways
+        add(allCategories)
 
         app.buttons["By Card"].tap()
         Thread.sleep(forTimeInterval: 0.5)
         let byCardShot = app.screenshot()
-        try byCardShot.pngRepresentation.write(to: URL(fileURLWithPath: "/Users/farchan/.gemini/antigravity/brain/9295e8b0-77c2-4707-8c5c-b22c108a649d/scratch/categories_by_card.png"))
+        let byCard = XCTAttachment(screenshot: byCardShot)
+        byCard.name = "categories-by-card"
+        byCard.lifetime = .keepAlways
+        add(byCard)
     }
 
     @MainActor
@@ -455,8 +463,9 @@ final class MonocleUITests: XCTestCase {
         app.launch()
         openSettings(app)
 
-        XCTAssertTrue(app.switches["autoAppearanceToggle"].waitForExistence(timeout: 5))
         let autoToggle = app.switches["autoAppearanceToggle"]
+        if !autoToggle.waitForExistence(timeout: 2) { app.swipeUp() }
+        XCTAssertTrue(autoToggle.waitForExistence(timeout: 5))
         XCTAssertEqual(autoToggle.value as? String, "0")
 
         // Tapping Dark in appearanceModePicker
@@ -597,8 +606,8 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Cards & Stacks"].tap()
-        XCTAssertTrue(app.buttons["Create New Book"].waitForExistence(timeout: 5))
-        app.buttons["Create New Book"].tap()
+        XCTAssertTrue(app.buttons["menuNewBook"].waitForExistence(timeout: 5))
+        app.buttons["menuNewBook"].tap()
 
         let inlineField = app.textFields["cardNameInlineTextField"]
         if inlineField.waitForExistence(timeout: 5) {
@@ -742,12 +751,12 @@ final class MonocleUITests: XCTestCase {
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Cards & Stacks"].tap()
 
-        let createButton = app.buttons["Create New Book"]
+        let createButton = app.buttons["menuNewBook"]
         XCTAssertTrue(createButton.waitForExistence(timeout: 5))
         createButton.tap()
 
         // 2. Verify we are directly in the customization panel
-        XCTAssertTrue(app.staticTexts["New Book"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["New Card"].waitForExistence(timeout: 5))
 
         // Capture screenshot of direct new book customizer entry
         let directEntryShot = app.screenshot()
@@ -1535,5 +1544,3 @@ final class MonocleUITests: XCTestCase {
         app.buttons["presetCardFirst"].tap()
     }
 }
-
-
