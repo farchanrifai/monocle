@@ -32,7 +32,11 @@ final class AppEnvironment {
 
     private static func storageDirectory() throws -> URL {
         let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        #if os(macOS)
+        var folder = "monocle-mac"
+        #else
         var folder = "monocle-prototype"
+        #endif
         #if DEBUG
         if let run = ProcessInfo.processInfo.environment["MONOCLE_TEST_RUN"], UUID(uuidString: run) != nil {
             folder = "monocle-ui-test-" + run

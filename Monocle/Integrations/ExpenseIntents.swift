@@ -384,6 +384,7 @@ struct OpenQuickEntryIntent: AppIntent {
 
 // MARK: - Spending Session Intents
 
+#if os(iOS)
 struct StartSpendingSessionIntent: AppIntent {
     static let title: LocalizedStringResource = "Start Spending Session"
     static let description = IntentDescription("Start a live spending session and Live Activity in Monocle.")
@@ -432,6 +433,7 @@ struct EndSpendingSessionIntent: AppIntent {
         return .result(dialog: "Ended session. Total spent: \(Money.format(total)) across \(count) items.")
     }
 }
+#endif
 
 // MARK: - App Shortcuts Provider
 
@@ -467,6 +469,7 @@ struct MonocleShortcuts: AppShortcutsProvider {
             shortTitle: "Expense from text",
             systemImageName: "text.bubble"
         )
+        #if os(iOS)
         AppShortcut(
             intent: StartSpendingSessionIntent(),
             phrases: [
@@ -485,5 +488,6 @@ struct MonocleShortcuts: AppShortcutsProvider {
             shortTitle: "End session",
             systemImageName: "cart.badge.minus"
         )
+        #endif
     }
 }

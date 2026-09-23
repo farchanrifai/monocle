@@ -683,12 +683,14 @@ final class AppModel {
     }
 
     @ObservationIgnored private var expensesCache: [UUID: [Expense]] = [:]
+    @ObservationIgnored private var expenseByIDCache: [UUID: Expense]? = nil
     @ObservationIgnored private var spentCache: [UUID: Int64] = [:]
     @ObservationIgnored private var memoizedActivities: [Expense]? = nil
     @ObservationIgnored private var memoizedActivitiesKey: String = ""
 
     func invalidateExpenseCaches() {
         expensesCache.removeAll()
+        expenseByIDCache = nil
         spentCache.removeAll()
         memoizedActivities = nil
         memoizedActivitiesKey = ""
@@ -743,6 +745,13 @@ final class AppModel {
             result.append(contentsOf: expenses(for: book.id))
         }
         return result
+    }
+
+    func expense(id: UUID) -> Expense? {
+        if expenseByIDCache == nil {
+            expenseByIDCache = Dictionary(allExpenses().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        }
+        return expenseByIDCache?[id]
     }
 
     func allExpensesByBook() -> [UUID: [Expense]] {

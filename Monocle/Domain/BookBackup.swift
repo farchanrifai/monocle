@@ -221,6 +221,25 @@ enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Hashable, 
     }
 }
 
+struct KeyModifiers: OptionSet, Codable, Hashable, Sendable {
+    let rawValue: Int
+
+    static let command = Self(rawValue: 1 << 0)
+    static let option = Self(rawValue: 1 << 1)
+    static let control = Self(rawValue: 1 << 2)
+    static let shift = Self(rawValue: 1 << 3)
+}
+
+struct KeyChord: Codable, Equatable, Hashable, Sendable {
+    var key: String
+    var modifiers: KeyModifiers
+
+    init(_ key: String, modifiers: KeyModifiers) {
+        self.key = key.lowercased()
+        self.modifiers = modifiers
+    }
+}
+
 struct WorkspacePreferences: Codable, Equatable, Sendable {
     var visibleBookIDs: [UUID] = []
     var bookOrder: [UUID] = []
@@ -236,6 +255,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var globalCategories: [GlobalCategory] = []
     var cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
     var shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount]
+    var macShortcutBindings: [String: KeyChord] = [:]
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
@@ -255,7 +275,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
         case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
-        case shortcutInputOrder
+        case shortcutInputOrder, macShortcutBindings
     }
 
     init(
@@ -272,7 +292,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         entryMode: EntryMode = .keypad,
         globalCategories: [GlobalCategory] = [],
         cardInactiveCategoryIDs: [UUID: [UUID]] = [:],
-        shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount]
+        shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount],
+        macShortcutBindings: [String: KeyChord] = [:]
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
@@ -288,6 +309,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.globalCategories = globalCategories
         self.cardInactiveCategoryIDs = cardInactiveCategoryIDs
         self.shortcutInputOrder = shortcutInputOrder
+        self.macShortcutBindings = macShortcutBindings
     }
 
     init(from decoder: any Decoder) throws {
@@ -312,6 +334,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
             sanitized.append(field)
         }
         self.shortcutInputOrder = sanitized.isEmpty ? [.card, .category, .note, .amount] : sanitized
+        macShortcutBindings = try container.decodeIfPresent([String: KeyChord].self, forKey: .macShortcutBindings) ?? [:]
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -330,6 +353,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(globalCategories, forKey: .globalCategories)
         try container.encode(cardInactiveCategoryIDs, forKey: .cardInactiveCategoryIDs)
         try container.encode(shortcutInputOrder, forKey: .shortcutInputOrder)
+        try container.encode(macShortcutBindings, forKey: .macShortcutBindings)
     }
 }
 
