@@ -4,6 +4,8 @@ A personal expense tracker for iPhone, with a native Mac app planned later.
 
 **Current release: 0.7.20, build 83.** Local-first expense tracking with multiple cards, budgets, recurring bills, CSV interchange, widgets, Shortcuts, and full-workspace backup/restore. See the [latest quality and reliability audit](docs/audit/2026-09-19.md) for changes, verification, and remaining device-validation limits.
 
+The [backend audit](docs/audit/2026-10-04-backend.md) records the current integrity, recovery, integration, and performance findings. Follow its [prioritized implementation plan](docs/planning/backend-improvement-plan.md) to execute the fixes on the Mac; this audit branch contains documentation only.
+
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)
 - [Milestones, goals, and continuation roadmap](docs/planning/roadmap.md)
