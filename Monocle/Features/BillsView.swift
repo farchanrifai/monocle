@@ -36,19 +36,16 @@ struct BillsView: View {
             .sorted { $0.dueDay > $1.dueDay }
     }
 
-    private var monthlyCommitment: Int64 {
-        activeRules.reduce(0) { total, rule in
-            let monthlyEquivalent: Int64
-            switch rule.recurrence {
-            case .monthly:
-                monthlyEquivalent = rule.amount
-            case .weekly:
-                monthlyEquivalent = Int64(Double(rule.amount) * 52.0 / 12.0)
-            case .yearly:
-                monthlyEquivalent = rule.amount / 12
-            }
-            return total + monthlyEquivalent
-        }
+    private var monthlyCommitment: Int64? {
+        do {
+            return try Money.checkedSum(activeRules.map { rule in
+                switch rule.recurrence {
+                case .monthly: return rule.amount
+                case .weekly: return try Money.checkedScale(rule.amount, numerator: 52, denominator: 12)
+                case .yearly: return rule.amount / 12
+                }
+            })
+        } catch { return nil }
     }
 
     var body: some View {
@@ -59,10 +56,14 @@ struct BillsView: View {
                         .font(.largeTitle.weight(.medium))
                         .tracking(-1)
 
+                    if let status = model.billReminderStatus {
+                        Text(status).font(.footnote).foregroundStyle(MC.red)
+                    }
+
                     // Summary Card
                     VStack(alignment: .leading, spacing: 14) {
                         Eyebrow(text: "Estimated Monthly Total")
-                        Text(Money.format(monthlyCommitment))
+                        Text(monthlyCommitment.map { Money.format($0) } ?? "Exceeds supported total")
                             .font(.system(size: 34, weight: .medium, design: .monospaced))
                             .tracking(-1)
                             .minimumScaleFactor(0.7)
@@ -247,7 +248,7 @@ struct BillsView: View {
             HStack(spacing: 12) {
                 Button {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    _ = try? model.confirmBillOccurrence(occurrence.id)
+                    model.performUIAction { _ = try model.confirmBillOccurrence(occurrence.id) }
                 } label: {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -264,7 +265,7 @@ struct BillsView: View {
 
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    try? model.skipBillOccurrence(occurrence.id)
+                    model.performUIAction { try model.skipBillOccurrence(occurrence.id) }
                 } label: {
                     Text("Skip")
                         .font(.subheadline.weight(.medium))
@@ -351,7 +352,7 @@ struct BillsView: View {
                     Text("Auto-records").font(.caption2).foregroundStyle(.secondary)
                 } else {
                     Button("Pay now") {
-                        _ = try? model.confirmBillOccurrence(occurrence.id)
+                        model.performUIAction { _ = try model.confirmBillOccurrence(occurrence.id) }
                     }
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(MC.red)
@@ -464,7 +465,7 @@ struct BillEditor: View {
                     } else if recurrenceKind == 1 {
                         Picker("Weekday", selection: $weeklyWeekday) {
                             ForEach(1...7, id: \.self) { weekday in
-                                let name = Calendar.current.weekdaySymbols[weekday - 1]
+                                let name = Day.calendar.weekdaySymbols[weekday - 1]
                                 Text(name).tag(weekday)
                             }
                         }
@@ -472,7 +473,7 @@ struct BillEditor: View {
                         HStack {
                             Picker("Month", selection: $yearlyMonth) {
                                 ForEach(1...12, id: \.self) { month in
-                                    let name = Calendar.current.monthSymbols[month - 1]
+                                    let name = Day.calendar.monthSymbols[month - 1]
                                     Text(name).tag(month)
                                 }
                             }
@@ -553,7 +554,7 @@ struct BillEditor: View {
             .alert("Delete this bill?", isPresented: $confirmDelete) {
                 Button("Delete", role: .destructive) {
                     if let id = existingRule?.id {
-                        try? model.deleteBill(id)
+                        model.performUIAction { try model.deleteBill(id) }
                     }
                     dismiss()
                 }
@@ -587,7 +588,7 @@ struct BillEditor: View {
             }
         } else {
             selectedCategoryID = model.categories.first?.id
-            monthlyDay = min(Calendar.current.component(.day, from: .now), 28)
+            monthlyDay = min(Day.calendar.component(.day, from: .now), 28)
         }
     }
 

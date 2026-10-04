@@ -249,49 +249,12 @@ struct CardCustomizerView: View {
                             commitEditingName(for: editingID)
                         }
 
-                        // 1. Create newly added books
-                        for bookID in newBookIDs {
-                            if let book = customizerBooks.first(where: { $0.id == bookID }) {
-                                let rawName = draftNames[bookID] ?? book.name
-                                let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
-                                let finalName = trimmed.isEmpty ? "New Card" : String(trimmed.prefix(40))
-                                let selectedCats = cardCategorySelections[bookID]
-                                if let created = try? model.createBook(named: finalName, selectedCategoryIDs: selectedCats) {
-                                    if let custom = drafts[bookID] {
-                                        model.updateCustomization(custom, for: created.id)
-                                    }
-                                    model.selectBook(created.id)
-                                }
-                            }
-                        }
+                        do {
+                            try model.applyCardCustomizations(names: draftNames, customizations: drafts,
+                                                              newBookIDs: Set(newBookIDs), selections: cardCategorySelections)
+                            onDismiss()
+                        } catch { model.error = error.localizedDescription }
 
-                        // 2. Rename existing books
-                        for (bookID, newName) in draftNames where !newBookIDs.contains(bookID) {
-                            let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !trimmed.isEmpty,
-                               let book = customizerBooks.first(where: { $0.id == bookID }),
-                               book.name != trimmed {
-                                try? model.renameBook(id: bookID, to: trimmed)
-                            }
-                        }
-
-                        // 3. Update customizations for existing books
-                        for (bookID, custom) in drafts where !newBookIDs.contains(bookID) {
-                            if custom != model.customization(for: bookID) {
-                                model.updateCustomization(custom, for: bookID)
-                            }
-                        }
-
-                        // 4. Update category activations for existing books
-                        for (bookID, selectedCats) in cardCategorySelections where !newBookIDs.contains(bookID) {
-                            for cat in model.globalCategories {
-                                let shouldBeActive = selectedCats.contains(cat.id)
-                                if shouldBeActive != model.isCategoryActive(cat.id, on: bookID) {
-                                    try? model.setCategory(cat.id, active: shouldBeActive, for: bookID)
-                                }
-                            }
-                        }
-                        onDismiss()
                     }
                     .font(.headline)
                     .accessibilityIdentifier("saveCardCustomization")

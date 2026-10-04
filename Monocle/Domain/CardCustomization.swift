@@ -144,7 +144,7 @@ public enum CardPalette {
 
     public static func color(for index: Int) -> Color {
         let palette = standard
-        let safeIndex = abs(index) % palette.count
+        let safeIndex = Int(index.magnitude % UInt(palette.count))
         return palette[safeIndex].color
     }
 
@@ -199,7 +199,7 @@ public enum CardPalette {
         case .auto:
             switch customization.style {
             case .palette(let index):
-                let safeIndex = abs(index) % standard.count
+                let safeIndex = Int(index.magnitude % UInt(standard.count))
                 let hex = standard[safeIndex].hex
                 return isDark(hex: hex) ? .white : .black
             case .customColor(let hex):

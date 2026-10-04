@@ -182,7 +182,7 @@ struct CategoryManager: View {
                     Spacer()
                     Button("Activate All") {
                         for cat in model.globalCategories {
-                            try? model.setCategory(cat.id, active: true, for: currentID)
+                            model.performUIAction { try model.setCategory(cat.id, active: true, for: currentID) }
                         }
                     }
                     .font(.caption.weight(.semibold))
@@ -190,7 +190,7 @@ struct CategoryManager: View {
 
                     Button("Reset") {
                         for cat in model.globalCategories {
-                            try? model.setCategory(cat.id, active: cat.defaultActiveForNewCards, for: currentID)
+                            model.performUIAction { try model.setCategory(cat.id, active: cat.defaultActiveForNewCards, for: currentID) }
                         }
                     }
                     .font(.caption.weight(.semibold))
@@ -509,7 +509,7 @@ struct CategoryRuleManager: View {
             } else {
                 ForEach(rules) { rule in
                     CategoryRuleRow(rule: rule, categoryName: model.category(rule.categoryID)?.name ?? "Missing category") { editing = rule }
-                        .swipeActions { Button("Delete", role: .destructive) { try? model.deleteCategoryRule(rule) } }
+                        .swipeActions { Button("Delete", role: .destructive) { model.performUIAction { try model.deleteCategoryRule(rule) } } }
                 }
             }
         }

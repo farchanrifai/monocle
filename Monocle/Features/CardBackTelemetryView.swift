@@ -9,19 +9,29 @@ struct CardBackTelemetryView: View {
     let onOpenAnalytics: () -> Void
     let onCustomize: () -> Void
 
+    var body: some View {
+        let report = AnalyticsReport.build(data: model.reportingData(for: .card(id: book.id, name: book.name)), horizon: .thisCycle)
+        CardBackReportView(model: model, book: book, index: index, onFlipBack: onFlipBack,
+                           onOpenAnalytics: onOpenAnalytics, onCustomize: onCustomize, report: report)
+    }
+}
+
+private struct CardBackReportView: View {
+    @Bindable var model: AppModel
+    let book: BookProfile
+    let index: Int
+    let onFlipBack: () -> Void
+    let onOpenAnalytics: () -> Void
+    let onCustomize: () -> Void
+
+    let report: AnalyticsReport
     @ScaledMetric(relativeTo: .caption) private var tagSize = 10
 
     private var customization: BookCardCustomization {
         model.customization(for: book.id)
     }
 
-    private var cycle: BudgetCycle {
-        model.cycle
-    }
-
-    private var activeBudget: BudgetVersion {
-        model.activeBudget
-    }
+    private var activeBudget: BudgetVersion? { report.period?.budget }
 
     private var technicalTag: String {
         let clean = book.id.uuidString.replacingOccurrences(of: "-", with: "").prefix(4).uppercased()
@@ -32,48 +42,17 @@ struct CardBackTelemetryView: View {
         Day.string(.now)
     }
 
-    private var dateRange: (startDate: Date, endDate: Date, startDay: String, endDay: String) {
-        AnalyticsEngine.dateRange(
-            for: .thisCycle,
-            currentCycle: cycle
-        )
-    }
-
-    private var metrics: AnalyticsMetrics {
-        let allExpenses = model.expenses(for: book.id)
-        let filtered = AnalyticsEngine.filterExpenses(allExpenses, startDay: dateRange.startDay, endDay: dateRange.endDay)
-        let dailyPoints = AnalyticsEngine.calculateDailySpendPoints(
-            expenses: filtered,
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
-            overallBudgetLimit: activeBudget.overallLimit
-        )
-        let categoryPoints = AnalyticsEngine.calculateCategoryDistribution(
-            expenses: filtered,
-            categories: model.categories,
-            budgetLimits: Dictionary(uniqueKeysWithValues: activeBudget.categoryLimits.map { ($0.categoryID, $0.limit) })
-        )
-        return AnalyticsEngine.calculateMetrics(
-            dailyPoints: dailyPoints,
-            categoryPoints: categoryPoints,
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
-            overallBudgetLimit: activeBudget.overallLimit
-        )
-    }
-
+    private var dateRange: (startDate: Date, endDate: Date, startDay: String, endDay: String) { report.range }
+    private var metrics: AnalyticsMetrics { report.metrics }
     private var nextUpcomingBill: (name: String, dueDay: String, amount: Int64)? {
-        let pending = model.billOccurrences
-            .filter { $0.bookID == book.id && $0.status == .pending && $0.dueDay >= todayString }
-            .sorted { $0.dueDay < $1.dueDay }
-            .first
-
-        guard let occ = pending, let rule = model.bills.first(where: { $0.id == occ.billRuleID }) else { return nil }
-        return (rule.name, occ.dueDay, rule.amount)
+        let pending = report.data.billOccurrences.filter { $0.status == .pending && $0.dueDay >= todayString && $0.dueDay <= dateRange.endDay }
+            .min { $0.dueDay < $1.dueDay }
+        guard let occurrence = pending, let rule = report.data.bills.first(where: { $0.id == occurrence.billRuleID }) else { return nil }
+        return (rule.name, occurrence.dueDay, rule.amount)
     }
 
     private var daysRemaining: Int {
-        let calendar = Calendar.current
+        let calendar = Day.calendar
         let today = calendar.startOfDay(for: .now)
         let end = calendar.startOfDay(for: dateRange.endDate)
         let days = calendar.dateComponents([.day], from: today, to: end).day ?? 0
@@ -120,6 +99,9 @@ struct CardBackTelemetryView: View {
             }
 
             // Monospace Telemetry Grid
+            if let error = report.errorMessage {
+                Text(error).font(.caption).foregroundStyle(.white)
+            } else {
             HStack(spacing: 8) {
                 // Compartment 1: Cycle & Pace
                 VStack(alignment: .leading, spacing: 4) {
@@ -158,7 +140,7 @@ struct CardBackTelemetryView: View {
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
-                    if activeBudget.overallLimit > 0 {
+                    if let activeBudget {
                         let targetDaily = activeBudget.overallLimit / Int64(max(1, metrics.totalDaysInPeriod))
                         Text("TARGET \(compactMoney(targetDaily))")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
@@ -183,7 +165,7 @@ struct CardBackTelemetryView: View {
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
 
-                    if activeBudget.overallLimit > 0 {
+                    if let activeBudget {
                         let remaining = activeBudget.overallLimit - metrics.totalSpend
                         Text(compactMoney(remaining))
                             .font(.system(size: 11, weight: .heavy, design: .monospaced))
@@ -211,6 +193,7 @@ struct CardBackTelemetryView: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.white.opacity(0.15), lineWidth: 0.5))
             }
 
+            }
             // Next commitment banner
             HStack(spacing: 6) {
                 Image(systemName: "calendar.badge.clock")
@@ -324,7 +307,7 @@ struct CardBackTelemetryView: View {
         switch pace {
         case .underPace: return .green
         case .onTrack: return .blue
-        case .accelerated: return .orange
+        case .accelerated, .beyondRange: return .orange
         }
     }
 
@@ -334,6 +317,7 @@ struct CardBackTelemetryView: View {
         case .underPace(let pct): return "\(pct)% UNDER"
         case .onTrack: return "ON PACE"
         case .accelerated(let pct): return "\(pct)% AHEAD"
+        case .beyondRange: return "PACE EXCEEDS RANGE"
         }
     }
 

@@ -46,7 +46,7 @@ final class IntentTests: XCTestCase {
         XCTAssertEqual(amountNoteFirst, [.amount, .note, .category, .card])
     }
 
-    func testWorkspacePreferencesShortcutOrderSerializationAndSanitization() throws {
+    func testWorkspacePreferencesShortcutOrderSerializationAndValidation() throws {
         var prefs = WorkspacePreferences()
         XCTAssertEqual(prefs.shortcutInputOrder, [.card, .category, .note, .amount])
 
@@ -61,8 +61,9 @@ final class IntentTests: XCTestCase {
         XCTAssertEqual(decoded.shortcutInputOrder, [.amount, .note, .category, .card])
 
         prefs.shortcutInputOrder = [.card, .card]
-        let deduplicated = try decoder.decode(WorkspacePreferences.self, from: encoder.encode(prefs))
-        XCTAssertEqual(deduplicated.shortcutInputOrder, [.card, .category, .note, .amount])
+        let invalid = try decoder.decode(WorkspacePreferences.self, from: encoder.encode(prefs))
+        XCTAssertEqual(invalid.shortcutInputOrder, [.card, .card], "Preserve malformed evidence instead of rewriting it")
+        XCTAssertThrowsError(try invalid.validate(books: [], categoriesByBook: [:]))
     }
 
     func testAppModelShortcutOrderCustomization() throws {

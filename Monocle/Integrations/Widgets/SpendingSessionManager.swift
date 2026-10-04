@@ -2,6 +2,40 @@
 import Foundation
 import Observation
 
+@MainActor
+protocol SessionActivityHandle: AnyObject {
+    var attributes: SpendingActivityAttributes { get }
+    var state: SpendingActivityAttributes.ContentState { get }
+    func update(_ state: SpendingActivityAttributes.ContentState) async
+    func end(_ state: SpendingActivityAttributes.ContentState) async
+}
+
+@MainActor
+protocol SessionActivityClient {
+    var isEnabled: Bool { get }
+    var existing: [any SessionActivityHandle] { get }
+    func request(attributes: SpendingActivityAttributes, state: SpendingActivityAttributes.ContentState) throws -> any SessionActivityHandle
+}
+
+@MainActor
+private final class SystemSessionActivity: SessionActivityHandle {
+    let activity: Activity<SpendingActivityAttributes>
+    init(_ activity: Activity<SpendingActivityAttributes>) { self.activity = activity }
+    var attributes: SpendingActivityAttributes { activity.attributes }
+    var state: SpendingActivityAttributes.ContentState { activity.content.state }
+    func update(_ state: SpendingActivityAttributes.ContentState) async { await activity.update(ActivityContent(state: state, staleDate: nil)) }
+    func end(_ state: SpendingActivityAttributes.ContentState) async { await activity.end(ActivityContent(state: state, staleDate: nil), dismissalPolicy: .immediate) }
+}
+
+@MainActor
+private struct SystemSessionActivityClient: SessionActivityClient {
+    var isEnabled: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
+    var existing: [any SessionActivityHandle] { Activity<SpendingActivityAttributes>.activities.map { SystemSessionActivity($0) } }
+    func request(attributes: SpendingActivityAttributes, state: SpendingActivityAttributes.ContentState) throws -> any SessionActivityHandle {
+        SystemSessionActivity(try Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil)))
+    }
+}
+
 @MainActor @Observable
 public final class SpendingSessionManager {
     public static let shared = SpendingSessionManager()
@@ -16,22 +50,26 @@ public final class SpendingSessionManager {
     public private(set) var latestItemNote: String? = nil
     public private(set) var latestItemCategorySymbol: String? = nil
 
-    private var currentActivity: Activity<SpendingActivityAttributes>?
+    public private(set) var activityError: String?
+    private let activityClient: any SessionActivityClient
+    private var currentActivity: (any SessionActivityHandle)?
 
-    private init() {
+    init(activityClient: (any SessionActivityClient)? = nil) {
+        let client = activityClient ?? SystemSessionActivityClient()
+        self.activityClient = client
         // Reconnect to active running Live Activity on app launch
-        if ActivityAuthorizationInfo().areActivitiesEnabled {
-            if let existing = Activity<SpendingActivityAttributes>.activities.first {
+        if client.isEnabled {
+            if let existing = client.existing.first {
                 self.currentActivity = existing
                 self.isSessionActive = true
                 self.sessionName = existing.attributes.sessionName
                 self.sessionBookID = existing.attributes.bookID
                 self.sessionStartTime = existing.attributes.startTime
-                self.sessionSpent = existing.content.state.currentSpent
-                self.sessionItemCount = existing.content.state.itemCount
-                self.sessionBudgetLimit = existing.content.state.sessionBudgetLimit
-                self.latestItemNote = existing.content.state.latestItemNote
-                self.latestItemCategorySymbol = existing.content.state.latestItemCategorySymbol
+                self.sessionSpent = existing.state.currentSpent
+                self.sessionItemCount = existing.state.itemCount
+                self.sessionBudgetLimit = existing.state.sessionBudgetLimit
+                self.latestItemNote = existing.state.latestItemNote
+                self.latestItemCategorySymbol = existing.state.latestItemCategorySymbol
             }
         }
     }
@@ -54,7 +92,11 @@ public final class SpendingSessionManager {
         self.latestItemCategorySymbol = nil
         self.isSessionActive = true
 
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        activityError = nil
+        guard activityClient.isEnabled else {
+            activityError = "Live Activities are disabled. The session remains available in Monocle."
+            return
+        }
 
         let attributes = SpendingActivityAttributes(sessionName: finalName, bookName: bookName, startTime: start, bookID: bookID)
         let state = SpendingActivityAttributes.ContentState(
@@ -67,20 +109,17 @@ public final class SpendingSessionManager {
         )
 
         do {
-            let activity = try Activity.request(
-                attributes: attributes,
-                content: .init(state: state, staleDate: nil)
-            )
+            let activity = try activityClient.request(attributes: attributes, state: state)
             self.currentActivity = activity
         } catch {
-            print("Failed to start Live Activity: \(error)")
+            activityError = "The Live Activity could not start: \(error.localizedDescription)"
         }
     }
 
     public func recordExpense(amount: Int64, note: String?, categorySymbol: String?, bookID: UUID? = nil) {
         guard isSessionActive, amount > 0, sessionBookID == nil || bookID == sessionBookID else { return }
         let nextSpent = sessionSpent.addingReportingOverflow(amount)
-        guard !nextSpent.overflow else { return }
+        guard !nextSpent.overflow else { activityError = "The session total exceeds the supported amount range."; return }
         sessionSpent = nextSpent.partialValue
         sessionItemCount += 1
         latestItemNote = note
@@ -94,10 +133,8 @@ public final class SpendingSessionManager {
             sessionBudgetLimit: sessionBudgetLimit,
             isPaused: false
         )
-        let content = ActivityContent(state: state, staleDate: nil)
-        Task { @MainActor [weak self] in
-            await self?.currentActivity?.update(content)
-        }
+        let activity = currentActivity
+        Task { await activity?.update(state) }
     }
 
     public func endSession() {
@@ -111,10 +148,9 @@ public final class SpendingSessionManager {
             sessionBudgetLimit: sessionBudgetLimit,
             isPaused: false
         )
-        Task { @MainActor [weak self] in
-            await self?.currentActivity?.end(ActivityContent(state: state, staleDate: nil), dismissalPolicy: .immediate)
-            self?.currentActivity = nil
-        }
+        let activity = currentActivity
+        currentActivity = nil
+        Task { await activity?.end(state) }
         sessionStartTime = nil
         sessionBookID = nil
     }

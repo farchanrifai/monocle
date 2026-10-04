@@ -30,6 +30,9 @@ struct BudgetWidgetEntryView: View {
     var entry: BudgetTimelineProvider.Entry
 
     var body: some View {
+        if let reason = entry.snapshot.unavailableReason {
+            Text(reason).font(.caption).foregroundStyle(.secondary).widgetURL(URL(string: "monocle://home"))
+        } else {
         switch family {
         case .systemSmall:
             smallView
@@ -44,10 +47,11 @@ struct BudgetWidgetEntryView: View {
         default:
             smallView
         }
+        }
     }
 
     private var budget: WidgetBudgetSummary {
-        entry.snapshot.cycleBudget ?? WidgetSnapshot.sample.cycleBudget!
+        entry.snapshot.cycleBudget ?? WidgetBudgetSummary(limit: 0, spent: 0, remaining: 0, percentage: 0, daysRemaining: 0, dailyPaceRemaining: 0, cycleStartDate: entry.date, cycleEndDate: entry.date, cycleLabel: "No budget")
     }
 
     private var smallView: some View {

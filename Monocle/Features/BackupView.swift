@@ -2,7 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct BackupDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
+    static let backupType = UTType(exportedAs: "com.farchan.monocle.backup", conformingTo: .data)
+    static var readableContentTypes: [UTType] { [backupType, .json] }
     var data: Data
     init(data: Data) { self.data = data }
     init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
@@ -29,7 +30,7 @@ struct BackupView: View {
                 }.accessibilityIdentifier("exportBackup")
                 Button("Choose backup to restore", systemImage: "arrow.counterclockwise") { importing = true }
                     .accessibilityIdentifier("importBackup")
-            } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups are readable JSON files; store them somewhere you trust.") }
+            } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. Older JSON backups remain supported.") }
             if let candidate {
                 Section("Review replacement") {
                     LabeledContent("Cards", value: String(candidate.books.count))
@@ -37,7 +38,7 @@ struct BackupView: View {
                     LabeledContent("Expenses", value: String(candidate.books.reduce(0) { $0 + $1.expenses.count }))
                     LabeledContent("Categories", value: String(candidate.books.reduce(0) { $0 + $1.categories.count }))
                     LabeledContent("Budget versions", value: String(candidate.books.reduce(0) { $0 + $1.budgets.count }))
-                    LabeledContent("Total", value: Money.format(candidate.books.flatMap(\.expenses).reduce(0) { $0 + $1.amount }))
+                    LabeledContent("Total", value: Money.format(Money.sum(candidate.books.flatMap(\.expenses).map(\.amount))))
                     LabeledContent("Current expenses replaced", value: String(model.allExpenses().count))
                     Button("Replace all app data", role: .destructive) { confirm = true }
                         .accessibilityIdentifier("restoreBackup")
@@ -57,19 +58,17 @@ struct BackupView: View {
                 }
             } footer: { Text("Restoring replaces this card, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
         }.navigationTitle("Backup & restore")
-            .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "monocle-\(Day.string(.now)).json") { result in
+            .fileExporter(isPresented: $exporting, document: document, contentType: BackupDocument.backupType, defaultFilename: "monocle-\(Day.string(.now)).monoclebackup") { result in
                 switch result {
                 case .success: message = "Backup exported."
                 case .failure(let error): message = error.localizedDescription
                 }
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
+            .fileImporter(isPresented: $importing, allowedContentTypes: [BackupDocument.backupType, .json, .data]) { result in
                 do {
                     let url = try result.get()
                     let access = url.startAccessingSecurityScopedResource()
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
-                    let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                    guard size <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
                     guard let backups = model.backups else { throw BackupError.unsupported }
                     candidate = try backups.previewWorkspace(data: Data(contentsOf: url, options: .mappedIfSafe))
                 } catch { candidate = nil; message = error.localizedDescription }

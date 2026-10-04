@@ -1,6 +1,7 @@
 import Foundation
 
 enum WidgetSnapshotUpdater {
+    @discardableResult
     static func update(
         activeBook: BookProfile,
         activeStack: CardStack? = nil,
@@ -8,18 +9,20 @@ enum WidgetSnapshotUpdater {
         expenses: [Expense],
         stackExpenses: [Expense] = [],
         categories: [ExpenseCategory],
+        captureCategories: [ExpenseCategory]? = nil,
         budget: BudgetVersion?,
-        cycle: BudgetCycle?
-    ) {
+        cycle: BudgetCycle?,
+        revision: UInt64? = nil
+    ) -> WidgetSnapshot {
         let budgetSummary: WidgetBudgetSummary? = {
             guard let budget, let cycle else { return nil }
             let cycleExpenses = expenses.filter { cycle.contains($0) }
-            let spent = cycleExpenses.reduce(0) { $0 + $1.amount }
+            let spent = Money.sum(cycleExpenses.map(\.amount))
             let remaining = budget.overallLimit - spent
             let percentage = min(1.0, max(0.0, Double(spent) / Double(max(1, budget.overallLimit))))
-            let nowDay = Calendar.current.startOfDay(for: .now)
-            let endDay = Calendar.current.startOfDay(for: cycle.end)
-            let days = max(0, Calendar.current.dateComponents([.day], from: nowDay, to: endDay).day ?? 0)
+            let nowDay = Day.calendar.startOfDay(for: .now)
+            let endDay = Day.calendar.startOfDay(for: cycle.end)
+            let days = max(0, Day.calendar.dateComponents([.day], from: nowDay, to: endDay).day ?? 0)
             let dailyPace = days > 0 ? max(0, remaining / Int64(days)) : 0
 
             return WidgetBudgetSummary(
@@ -38,7 +41,7 @@ enum WidgetSnapshotUpdater {
         let stackSummary: WidgetStackSummary? = {
             guard let activeStack else { return nil }
             let cardNames = allBooks.filter { activeStack.cardIDs.contains($0.id) }.map(\.name)
-            let total = stackExpenses.reduce(0) { $0 + $1.amount }
+            let total = Money.sum(stackExpenses.map(\.amount))
             return WidgetStackSummary(
                 id: activeStack.id,
                 name: activeStack.name,
@@ -51,7 +54,7 @@ enum WidgetSnapshotUpdater {
 
         let todayStr = Day.string(.now)
         let todayExpenses = expenses.filter { $0.day == todayStr }
-        let todaySpent = todayExpenses.reduce(0) { $0 + $1.amount }
+        let todaySpent = Money.sum(todayExpenses.map(\.amount))
 
         let recentItems: [WidgetTransactionItem] = expenses.prefix(3).map { exp in
             let cat = categories.first(where: { $0.id == exp.allocations.first?.categoryID })
@@ -69,12 +72,14 @@ enum WidgetSnapshotUpdater {
             )
         }
 
-        let quickCategories: [WidgetCategoryItem] = categories.prefix(3).map { cat in
+        let quickCategories: [WidgetCategoryItem] = (captureCategories ?? categories).prefix(3).map { cat in
             WidgetCategoryItem(id: cat.id, name: cat.name, symbol: cat.symbol)
         }
 
         let snapshot = WidgetSnapshot(
             updatedAt: .now,
+            reportingDay: todayStr,
+            revision: revision,
             activeBook: WidgetBookSummary(id: activeBook.id, name: activeBook.name),
             activeStack: stackSummary,
             cycleBudget: budgetSummary,
@@ -86,6 +91,8 @@ enum WidgetSnapshotUpdater {
             quickCategories: quickCategories
         )
 
-        WidgetSnapshotStore.writeSnapshot(snapshot)
+        do { try WidgetSnapshotStore.writeSnapshot(snapshot) }
+        catch { BackendDiagnostics.widgetPublicationFailed() }
+        return snapshot
     }
 }

@@ -15,15 +15,38 @@ final class AppEnvironment {
             let repository = try ExpenseRepository(url: directory.appendingPathComponent("Monocle.sqlite"))
             try BackupService.recoverIfNeeded(directory: directory, repository: repository, state: state)
             let draft = try state.loadDraft()
-            let settings = try state.loadSettings()
+            var settings = try state.loadSettings()
+            let preferences = try state.loadWorkspacePreferences()
+            let books = try repository.books()
+            var categoriesByBook: [UUID: [ExpenseCategory]] = [:]
+            for book in books { categoriesByBook[book.id] = try repository.categories(in: book.id) }
+            try preferences.validate(books: books, categoriesByBook: categoriesByBook)
+            let settingsBooks: [BookBackupItem] = books.isEmpty
+                ? [BookBackupItem(book: .sample, categories: Self.initialCategories(directory: directory), expenses: [], budgets: [])]
+                : books.map { BookBackupItem(book: $0, categories: categoriesByBook[$0.id] ?? [], expenses: [], budgets: []) }
+            try settings.validate(books: settingsBooks, globalCategories: preferences.globalCategories, allowLegacySampleProfile: true)
+            let originalSettings = settings
+            if let stored = books.first(where: { $0.id == settings.book.id }) { settings.book = stored }
+            else if settings.book == .sample, let stored = books.first { settings.book = stored }
+            if settings != originalSettings { try state.saveSettings(settings) }
             try repository.prepareSampleBook(categories: Self.initialCategories(directory: directory))
             try repository.prepareInitialBudget(settings: settings)
             try SampleBookSeeder.seedIfNeeded(repository: repository, directory: directory)
+            #if DEBUG
+            if directory.lastPathComponent.hasPrefix("monocle-ui-test-"),
+               ProcessInfo.processInfo.environment["MONOCLE_TEST_THREE_CARDS"] == "1",
+               try repository.books().count == 1 {
+                try repository.transaction {
+                    _ = try repository.createBook(named: "UI card two")
+                    _ = try repository.createBook(named: "UI card three")
+                }
+            }
+            #endif
             let expenses = try ExpenseService(store: repository)
             expenses.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             self.expenses = expenses
-            model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings)
-            model.backups = BackupService(directory: directory, repository: repository, state: state, expenses: expenses)
+            let backups = BackupService(directory: directory, repository: repository, state: state, expenses: expenses)
+            model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings, backups: backups)
         } catch {
             expenses = nil
             model = AppModel(startupFailure: error.localizedDescription)

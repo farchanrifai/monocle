@@ -69,12 +69,14 @@ enum SpendingPaceStatus: Equatable, Sendable {
     case underPace(percentage: Int)
     case onTrack
     case accelerated(percentage: Int)
+    case beyondRange
 
     var label: String {
         switch self {
         case .underPace(let pct): return "\(pct)% under budget pace"
         case .onTrack: return "On track with budget"
         case .accelerated(let pct): return "\(pct)% above budget pace"
+        case .beyondRange: return "Above supported budget pace"
         }
     }
 }
@@ -141,7 +143,7 @@ struct BookSpendPoint: Identifiable, Equatable, Sendable {
 struct AnalyticsMetrics: Equatable, Sendable {
     let totalSpend: Int64
     let dailyAverage: Int64
-    let projectedPeriodTotal: Int64
+    let projectedPeriodTotal: Int64?
     let highestSpendDay: (day: String, amount: Int64)?
     let topCategory: (name: String, amount: Int64)?
     let transactionCount: Int
@@ -172,9 +174,10 @@ enum AnalyticsEngine {
     static func dateRange(
         for horizon: AnalyticsTimeHorizon,
         currentCycle: BudgetCycle? = nil,
-        calendar: Calendar = .current,
+        calendar: Calendar = Day.calendar,
         now: Date = .now
     ) -> (startDate: Date, endDate: Date, startDay: String, endDay: String) {
+        let calendar = Day.reportingCalendar(calendar)
         let startOfToday = calendar.startOfDay(for: now)
 
         switch horizon {
@@ -239,11 +242,14 @@ enum AnalyticsEngine {
         startDate: Date,
         endDate: Date,
         overallBudgetLimit: Int64? = nil,
-        calendar: Calendar = .current,
+        calendar: Calendar = Day.calendar,
         now: Date = .now
     ) -> [DailySpendPoint] {
+        let calendar = Day.reportingCalendar(calendar)
         let startOfToday = calendar.startOfDay(for: now)
-        let latestExpenseDate = expenses.compactMap { Day.date($0.day, calendar: calendar) }.max()
+        guard (try? Money.checkedSum(expenses.map(\.amount))) != nil else { return [] }
+        // Validated Gregorian civil strings sort chronologically; parse only the latest day.
+        let latestExpenseDate = expenses.lazy.map(\.day).max().flatMap { Day.date($0, calendar: calendar) }
         let lastActualDate = max(startOfToday, latestExpenseDate ?? startOfToday)
         let endOfPeriod = calendar.startOfDay(for: endDate)
 
@@ -273,7 +279,7 @@ enum AnalyticsEngine {
 
             var targetCumulative: Int64? = nil
             if let budgetLimit = overallBudgetLimit, budgetLimit > 0 {
-                targetCumulative = Int64(Double(budgetLimit) * (Double(dayIndex) / Double(fullPeriodDays)))
+                targetCumulative = try? Money.checkedScale(budgetLimit, numerator: dayIndex, denominator: fullPeriodDays)
             }
 
             points.append(DailySpendPoint(
@@ -297,10 +303,12 @@ enum AnalyticsEngine {
     /// Computes Month-over-Month Day 1..31 cumulative spending comparison with high-performance string matching.
     static func calculateMonthOverMonthComparison(
         expenses: [Expense],
-        calendar: Calendar = .current,
+        calendar: Calendar = Day.calendar,
         now: Date = .now
     ) -> [ComparativePeriodPoint] {
+        let calendar = Day.reportingCalendar(calendar)
         let startOfToday = calendar.startOfDay(for: now)
+        guard (try? Money.checkedSum(expenses.map(\.amount))) != nil else { return [] }
         let thisMonthComps = calendar.dateComponents([.year, .month], from: startOfToday)
         guard let thisYear = thisMonthComps.year,
               let thisMonth = thisMonthComps.month,
@@ -389,8 +397,11 @@ enum AnalyticsEngine {
         categories: [ExpenseCategory],
         budgetLimits: [UUID: Int64] = [:]
     ) -> [CategorySpendPoint] {
-        let totalSpend = expenses.reduce(0) { $0 + $1.amount }
-        guard totalSpend > 0 else { return [] }
+        guard let totalSpend = try? Money.checkedSum(expenses.map(\.amount)), totalSpend > 0,
+              expenses.allSatisfy({ expense in
+                  guard let allocated = try? Money.checkedSum(expense.allocations.map(\.amount)) else { return false }
+                  return allocated <= expense.amount && expense.allocations.allSatisfy { $0.amount >= 0 }
+              }) else { return [] }
 
         let catMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
         var spendByCat: [UUID: (amount: Int64, count: Int)] = [:]
@@ -446,6 +457,7 @@ enum AnalyticsEngine {
         expensesByBook: [UUID: [Expense]],
         books: [BookProfile]
     ) -> [BookSpendPoint] {
+        guard (try? Money.checkedSum(expensesByBook.values.flatMap { $0.map(\.amount) })) != nil else { return [] }
         var bookTotals: [UUID: (amount: Int64, count: Int)] = [:]
         var grandTotal: Int64 = 0
 
@@ -485,9 +497,10 @@ enum AnalyticsEngine {
         startDate: Date,
         endDate: Date,
         overallBudgetLimit: Int64? = nil,
-        calendar: Calendar = .current,
+        calendar: Calendar = Day.calendar,
         now: Date = .now
     ) -> AnalyticsMetrics {
+        let calendar = Day.reportingCalendar(calendar)
         let elapsedPoints = dailyPoints.filter { !$0.isFuture }
         let totalSpend = elapsedPoints.last?.cumulativeAmount ?? 0
         let txCount = elapsedPoints.reduce(0) { $0 + $1.transactionCount }
@@ -496,7 +509,7 @@ enum AnalyticsEngine {
         let daysElapsed = max(1, elapsedPoints.count)
 
         let dailyAvg: Int64 = daysElapsed > 0 ? (totalSpend / Int64(daysElapsed)) : 0
-        let projectedTotal: Int64 = dailyAvg * Int64(fullPeriodDays)
+        let projectedTotal = try? Money.checkedScale(dailyAvg, numerator: fullPeriodDays)
 
         // Highest spend day
         let highestDay = elapsedPoints.max { $0.amount < $1.amount }
@@ -510,16 +523,20 @@ enum AnalyticsEngine {
         // Pace calculation
         var paceStatus: SpendingPaceStatus? = nil
         if let budget = overallBudgetLimit, budget > 0 {
-            let expectedPaceSpend = Int64((Double(budget) * Double(daysElapsed)) / Double(fullPeriodDays))
+            // Pace is an approximate percentage, not a ledger amount. Retain the
+            // fractional expected pace so even a one-minor-unit budget has a result.
+            let expectedPaceSpend = Double(budget) * (Double(daysElapsed) / Double(fullPeriodDays))
             if expectedPaceSpend > 0 {
-                let diff = totalSpend - expectedPaceSpend
-                let pctDiff = Int(round(abs(Double(diff)) / Double(expectedPaceSpend) * 100.0))
-                if pctDiff <= 5 {
+                let diff = Double(totalSpend) - expectedPaceSpend
+                let percentage = (abs(diff) / expectedPaceSpend * 100.0).rounded()
+                if percentage >= Double(Int.max) {
+                    paceStatus = .beyondRange
+                } else if percentage <= 5 {
                     paceStatus = .onTrack
                 } else if diff > 0 {
-                    paceStatus = .accelerated(percentage: pctDiff)
+                    paceStatus = .accelerated(percentage: Int(percentage))
                 } else {
-                    paceStatus = .underPace(percentage: pctDiff)
+                    paceStatus = .underPace(percentage: Int(percentage))
                 }
             }
         }
@@ -535,5 +552,48 @@ enum AnalyticsEngine {
             totalDaysInPeriod: fullPeriodDays,
             paceStatus: paceStatus
         )
+    }
+}
+
+
+/// Immutable scoped inputs. Budgets are supplied only for a single-card scope; aggregate
+/// scopes use Gregorian calendar-month boundaries and show no combined budget/pace.
+struct AnalyticsReportingData {
+    var expenses: [Expense] = []
+    var categories: [ExpenseCategory] = []
+    var budgets: [BudgetVersion] = []
+    var books: [BookProfile] = []
+    var expensesByBook: [UUID: [Expense]] = [:]
+    var bills: [BillRule] = []
+    var billOccurrences: [BillOccurrence] = []
+    var errorMessage: String? = nil
+}
+
+/// One computation feeds every chart and label in a rendered report.
+struct AnalyticsReport {
+    let data: AnalyticsReportingData
+    let range: (startDate: Date, endDate: Date, startDay: String, endDay: String)
+    let period: BudgetPeriod?
+    let dailyPoints: [DailySpendPoint]
+    let categoryPoints: [CategorySpendPoint]
+    let bookPoints: [BookSpendPoint]
+    let monthPoints: [ComparativePeriodPoint]
+    let metrics: AnalyticsMetrics
+    let errorMessage: String?
+
+    static func build(data: AnalyticsReportingData, horizon: AnalyticsTimeHorizon, calendar: Calendar = Day.calendar, now: Date = .now) -> Self {
+        let period = BudgetHistory.period(containing: now, budgets: data.budgets, calendar: calendar)
+        let range = AnalyticsEngine.dateRange(for: horizon, currentCycle: period?.cycle, calendar: calendar, now: now)
+        let budget = horizon == .thisCycle ? period?.budget : nil
+        let filtered = AnalyticsEngine.filterExpenses(data.expenses, startDay: range.startDay, endDay: range.endDay)
+        let overflow = (try? Money.checkedSum(data.expenses.map(\.amount))) == nil
+        let error = data.errorMessage ?? (overflow ? EntryError.aggregateOverflow.localizedDescription : nil)
+        let daily = error == nil ? AnalyticsEngine.calculateDailySpendPoints(expenses: filtered, startDate: range.startDate, endDate: range.endDate, overallBudgetLimit: budget?.overallLimit, calendar: calendar, now: now) : []
+        let limits = Dictionary((budget?.categoryLimits ?? []).map { ($0.categoryID, $0.limit) }) { first, _ in first }
+        let category = error == nil ? AnalyticsEngine.calculateCategoryDistribution(expenses: filtered, categories: data.categories, budgetLimits: limits) : []
+        let books = error == nil ? AnalyticsEngine.calculateBookDistribution(expensesByBook: data.expensesByBook.mapValues { AnalyticsEngine.filterExpenses($0, startDay: range.startDay, endDay: range.endDay) }, books: data.books) : []
+        let months = error == nil ? AnalyticsEngine.calculateMonthOverMonthComparison(expenses: data.expenses, calendar: calendar, now: now) : []
+        let metrics = AnalyticsEngine.calculateMetrics(dailyPoints: daily, categoryPoints: category, startDate: range.startDate, endDate: range.endDate, overallBudgetLimit: budget?.overallLimit, calendar: calendar, now: now)
+        return .init(data: data, range: range, period: period, dailyPoints: daily, categoryPoints: category, bookPoints: books, monthPoints: months, metrics: metrics, errorMessage: error)
     }
 }

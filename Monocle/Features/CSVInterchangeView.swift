@@ -36,7 +36,7 @@ struct CSVInterchangeView: View {
     @State private var selectedTab: Int
     @State private var exportScope: ExportScope = .activeBook
     @State private var exportDateRange: CSVDateRangeScope = .allTime
-    @State private var customStartDate: Date = Calendar.current.date(byAdding: .day, value: -30, to: .now) ?? .now
+    @State private var customStartDate: Date = Day.calendar.date(byAdding: .day, value: -30, to: .now) ?? .now
     @State private var customEndDate: Date = .now
     @State private var isExporting = false
     @State private var exportDocument = CSVFileDocument()
@@ -53,6 +53,10 @@ struct CSVInterchangeView: View {
     @State private var processedRows: [CSVImportRow] = []
     @State private var importErrorMessage: String?
     @State private var showImportConfirmation = false
+    @State private var isProcessing = false
+    @State private var processingGeneration = UUID()
+    @State private var importTask: Task<Void, Never>?
+    @State private var processingTask: Task<Void, Never>?
 
     enum ExportScope: String, CaseIterable, Identifiable {
         case activeBook = "Current card"
@@ -128,6 +132,7 @@ struct CSVInterchangeView: View {
                 let bookName = model.books.first { $0.id == targetBookID }?.name ?? "selected card"
                 Text("Are you sure you want to import \(count) expenses into \(bookName)?")
             }
+            .onDisappear { cancelProcessing() }
             .onAppear {
                 if defaultCategoryID == nil {
                     defaultCategoryID = targetBookCategories.first?.id
@@ -161,7 +166,9 @@ struct CSVInterchangeView: View {
             }
 
             let exportExpenses = currentExportExpenses()
-            let totalSpent = exportExpenses.reduce(0) { $0 + $1.amount }
+            let totalSpent = Money.sum(exportExpenses.map(\.amount))
+            let csvContent = model.csvExportText(for: exportScope == .activeBook ? model.activeBookID : nil,
+                dateRange: exportDateRange, customStartDate: customStartDate, customEndDate: customEndDate)
 
             Section("Summary") {
                 LabeledContent("Transactions", value: "\(exportExpenses.count)")
@@ -169,13 +176,7 @@ struct CSVInterchangeView: View {
             }
 
             Section("Preview (First 3 Rows)") {
-                let sampleCSV = model.csvExportText(
-                    for: exportScope == .activeBook ? model.activeBookID : nil,
-                    dateRange: exportDateRange,
-                    customStartDate: customStartDate,
-                    customEndDate: customEndDate
-                )
-                let previewLines = sampleCSV.components(separatedBy: "\r\n").prefix(4).joined(separator: "\n")
+                let previewLines = csvContent.split(separator: "\r\n", maxSplits: 4).prefix(4).joined(separator: "\n")
                 Text(previewLines.isEmpty ? "No records to export" : previewLines)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -184,13 +185,7 @@ struct CSVInterchangeView: View {
 
             Section {
                 Button {
-                    let csvText = model.csvExportText(
-                        for: exportScope == .activeBook ? model.activeBookID : nil,
-                        dateRange: exportDateRange,
-                        customStartDate: customStartDate,
-                        customEndDate: customEndDate
-                    )
-                    exportDocument = CSVFileDocument(text: csvText)
+                    exportDocument = CSVFileDocument(text: csvContent)
                     isExporting = true
                 } label: {
                     Label("Export to File", systemImage: "square.and.arrow.up")
@@ -201,12 +196,6 @@ struct CSVInterchangeView: View {
                 .accessibilityIdentifier("exportCSVButton")
 
                 if !exportExpenses.isEmpty {
-                    let csvContent = model.csvExportText(
-                        for: exportScope == .activeBook ? model.activeBookID : nil,
-                        dateRange: exportDateRange,
-                        customStartDate: customStartDate,
-                        customEndDate: customEndDate
-                    )
                     ShareLink(item: csvContent, preview: SharePreview("Monocle Expenses CSV", image: Image(systemName: "tablecells"))) {
                         Label("Share CSV", systemImage: "square.and.arrow.up.circle")
                             .frame(maxWidth: .infinity)
@@ -214,7 +203,7 @@ struct CSVInterchangeView: View {
                     .accessibilityIdentifier("shareCSVLink")
                 }
             } footer: {
-                Text("Exports RFC 4180 standard CSV including Date, Time, Book, Category, whole IDR Amount, Note, and Source.")
+                Text("Exports RFC 4180 standard CSV including Date, Time, Book, Category, exact IDR Amount, reversible Splits, Note, and Source.")
             }
         }
     }
@@ -231,7 +220,7 @@ struct CSVInterchangeView: View {
             rawList = all
         }
 
-        let calendar = Calendar.current
+        let calendar = Day.calendar
         let now = Date.now
         switch exportDateRange {
         case .allTime:
@@ -239,7 +228,8 @@ struct CSVInterchangeView: View {
         case .thisMonth:
             let start = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
             let startDay = Day.string(start)
-            return rawList.filter { $0.day >= startDay }
+            let endDay = Day.string(calendar.date(byAdding: .month, value: 1, to: start) ?? start)
+            return rawList.filter { $0.day >= startDay && $0.day < endDay }
         case .lastMonth:
             guard let prevMonth = calendar.date(byAdding: .month, value: -1, to: now),
                   let startOfLast = calendar.date(from: calendar.dateComponents([.year, .month], from: prevMonth)),
@@ -286,6 +276,17 @@ struct CSVInterchangeView: View {
                 Text("Source File")
             }
 
+            if isProcessing {
+                Section {
+                    HStack {
+                        ProgressView()
+                        Text("Preparing CSV review…")
+                        Spacer()
+                        Button("Cancel") { cancelProcessing() }
+                    }
+                }
+            }
+
             if let importErrorMessage {
                 Section {
                     Label(importErrorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -319,13 +320,7 @@ struct CSVInterchangeView: View {
                     }
 
                     Toggle("Skip Suspected Duplicates", isOn: $skipDuplicates)
-                        .onChange(of: skipDuplicates) { _, skip in
-                            for idx in processedRows.indices {
-                                if processedRows[idx].isDuplicate {
-                                    processedRows[idx].isSelectedForImport = !skip
-                                }
-                            }
-                        }
+                        .onChange(of: skipDuplicates) { _, _ in reprocessImportRows() }
                         .accessibilityIdentifier("skipDuplicatesToggle")
                 }
 
@@ -384,7 +379,7 @@ struct CSVInterchangeView: View {
                     }
                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
 
-                    LabeledContent("Total Spending to Add", value: Money.format(summary.totalSpending))
+                    LabeledContent("Total Spending to Add", value: summary.totalSpending.map { Money.format($0) } ?? "Exceeds supported total")
                 } header: {
                     Text("Import Preview & Review")
                 }
@@ -408,7 +403,7 @@ struct CSVInterchangeView: View {
                             .foregroundStyle(Color.white)
                     }
                     .listRowBackground(eligible.isEmpty ? Color.gray.opacity(0.3) : MC.red)
-                    .disabled(eligible.isEmpty)
+                    .disabled(isProcessing || eligible.isEmpty || summary.totalSpending == nil)
                     .accessibilityIdentifier("executeImportButton")
                 }
             }
@@ -498,77 +493,97 @@ struct CSVInterchangeView: View {
 
     // MARK: - Import Logic
 
+    private func cancelProcessing() {
+        processingGeneration = UUID()
+        importTask?.cancel(); processingTask?.cancel()
+        isProcessing = false
+    }
+
+    private nonisolated static func readImportFile(_ url: URL) throws -> (name: String, delimiter: Character, rows: [[String]], mapping: CSVColumnMapping) {
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        try Task.checkCancellation()
+        let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard fileSize <= 10 * 1_024 * 1_024 else { throw BackupError.tooLarge }
+        let data = try Data(contentsOf: url)
+        try Task.checkCancellation()
+        guard data.count <= 10 * 1_024 * 1_024 else { throw BackupError.tooLarge }
+        guard let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
+            throw CSVParseError(record: 1, reason: "Unable to read text encoding")
+        }
+        let delimiter = CSVTokenizer.sniffDelimiter(from: content)
+        let rows = try CSVTokenizer.parse(content: content, delimiter: delimiter)
+        guard rows.count > 1 else { throw CSVParseError(record: 1, reason: "No data records") }
+        try Task.checkCancellation()
+        return (url.lastPathComponent, delimiter, rows, CSVImportParser.detectColumnMapping(headers: rows.first ?? []))
+    }
+
     private func handleFileSelection(_ result: Result<URL, any Error>) {
+        cancelProcessing()
+        importedRawRows = []; processedRows = []; importErrorMessage = nil
         do {
             let url = try result.get()
-            let access = url.startAccessingSecurityScopedResource()
-            defer { if access { url.stopAccessingSecurityScopedResource() } }
-
-            let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            guard fileSize <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
-            let data = try Data(contentsOf: url)
-            guard data.count <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
-            guard let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
-                throw NSError(domain: "MonocleCSV", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to read CSV text encoding."])
+            let generation = processingGeneration
+            isProcessing = true
+            importTask = Task { @MainActor in
+                let worker = Task.detached(priority: .userInitiated) { try Self.readImportFile(url) }
+                do {
+                    let prepared = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
+                    try Task.checkCancellation()
+                    guard processingGeneration == generation else { return }
+                    importedFileName = prepared.name; detectedDelimiter = prepared.delimiter
+                    importedRawRows = prepared.rows; columnMapping = prepared.mapping
+                    reprocessImportRows()
+                } catch is CancellationError {
+                    if processingGeneration == generation { isProcessing = false }
+                } catch {
+                    guard processingGeneration == generation else { return }
+                    importErrorMessage = error.localizedDescription
+                    importedRawRows = []; processedRows = []; isProcessing = false
+                }
             }
-
-            importedFileName = url.lastPathComponent
-            detectedDelimiter = CSVTokenizer.sniffDelimiter(from: content)
-            let rows = CSVTokenizer.parse(content: content, delimiter: detectedDelimiter)
-            guard rows.count <= 10_001 else { throw BackupError.tooLarge }
-            guard rows.count > 1 else {
-                throw NSError(domain: "MonocleCSV", code: 2, userInfo: [NSLocalizedDescriptionKey: "CSV has no data rows."])
-            }
-
-            importedRawRows = rows
-            importErrorMessage = nil
-
-            // Auto-detect column mapping
-            let headers = rows.first ?? []
-            columnMapping = CSVImportParser.detectColumnMapping(headers: headers)
-
-            reprocessImportRows()
-        } catch {
-            importErrorMessage = error.localizedDescription
-            importedRawRows = []
-            processedRows = []
-        }
+        } catch { importErrorMessage = error.localizedDescription }
     }
 
     private func reprocessImportRows() {
+        processingTask?.cancel()
+        processingGeneration = UUID()
+        let generation = processingGeneration
         let categories = targetBookCategories
         if !categories.contains(where: { $0.id == defaultCategoryID }) { defaultCategoryID = categories.first?.id }
-        guard !importedRawRows.isEmpty, let defaultCat = defaultCategoryID else {
-            processedRows = []
-            return
-        }
-        let existingExpenses = model.expenses(for: targetBookID)
-
-        let parsed = CSVImportParser.processRows(
-            rawRows: importedRawRows,
-            hasHeader: true,
-            mapping: columnMapping,
-            targetBookID: targetBookID,
-            categories: targetBookCategories,
-            defaultCategoryID: defaultCat,
-            existingExpenses: existingExpenses
-        )
-
-        // Apply skipDuplicates filter
-        var adjusted = parsed
-        if skipDuplicates {
-            for i in adjusted.indices {
-                if adjusted[i].isDuplicate {
-                    adjusted[i].isSelectedForImport = false
-                }
+        processedRows = []
+        guard !importedRawRows.isEmpty, let defaultCat = defaultCategoryID else { isProcessing = false; return }
+        let rows = importedRawRows
+        let mapping = columnMapping
+        let destination = targetBookID
+        let existing = model.expenses(for: destination)
+        let skip = skipDuplicates
+        isProcessing = true
+        processingTask = Task { @MainActor in
+            let worker = Task.detached(priority: .userInitiated) {
+                var parsed = CSVImportParser.processRows(rawRows: rows, hasHeader: true, mapping: mapping,
+                    targetBookID: destination, categories: categories, defaultCategoryID: defaultCat, existingExpenses: existing)
+                for index in parsed.indices where parsed[index].isDuplicate { parsed[index].isSelectedForImport = !skip }
+                try Task.checkCancellation()
+                return parsed
+            }
+            do {
+                let parsed = try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
+                try Task.checkCancellation()
+                guard processingGeneration == generation else { return }
+                processedRows = parsed; isProcessing = false
+            } catch is CancellationError {
+                if processingGeneration == generation { isProcessing = false }
+            } catch {
+                guard processingGeneration == generation else { return }
+                importErrorMessage = error.localizedDescription; isProcessing = false
             }
         }
-        processedRows = adjusted
     }
 
     private func executeImport() {
         let toImport = processedRows.filter { $0.isSelectedForImport }.compactMap { $0.parsedExpense }
-        guard !toImport.isEmpty else { return }
+        guard !isProcessing, !toImport.isEmpty else { return }
 
         do {
             try model.importExpenses(toImport, to: targetBookID)

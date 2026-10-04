@@ -30,6 +30,9 @@ struct StackWidgetEntryView: View {
     var entry: StackTimelineProvider.Entry
 
     var body: some View {
+        if let reason = entry.snapshot.unavailableReason {
+            Text(reason).font(.caption).foregroundStyle(.secondary).widgetURL(URL(string: "monocle://home"))
+        } else {
         switch family {
         case .systemSmall:
             smallView
@@ -42,10 +45,11 @@ struct StackWidgetEntryView: View {
         default:
             smallView
         }
+        }
     }
 
     private var stack: WidgetStackSummary {
-        entry.snapshot.activeStack ?? WidgetSnapshot.sample.activeStack!
+        entry.snapshot.activeStack ?? WidgetStackSummary(id: entry.snapshot.activeBook.id, name: "No stack", totalSpent: 0)
     }
 
     private var smallView: some View {

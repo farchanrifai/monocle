@@ -1482,6 +1482,7 @@ struct CardPresentationView: View {
                             bookID: activeBook?.id,
                             budgetLimit: limit
                         )
+                        if let error = model.sessionManager.activityError { model.error = error }
                         model.sessionSheetName = ""
                         model.sessionSheetBudget = ""
                         model.showStartSessionSheet = false

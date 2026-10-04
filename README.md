@@ -2,9 +2,9 @@
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
-**Current release: 0.7.20, build 83.** Local-first expense tracking with multiple cards, budgets, recurring bills, CSV interchange, widgets, Shortcuts, and full-workspace backup/restore. See the [latest quality and reliability audit](docs/audit/2026-09-19.md) for changes, verification, and remaining device-validation limits.
+**Current version: 0.7.21, build 84.** Local-first expense tracking with multiple cards, budgets, recurring bills, CSV interchange, widgets, Shortcuts, and full-workspace backup/restore. See the [backend implementation report](docs/audit/2026-10-05-backend-implementation.md) for changes, verification, and remaining device/performance limits.
 
-The [backend audit](docs/audit/2026-10-04-backend.md) records the current integrity, recovery, integration, and performance findings. Follow its [prioritized implementation plan](docs/planning/backend-improvement-plan.md) to execute the fixes on the Mac; this audit branch contains documentation only.
+The [backend audit](docs/audit/2026-10-04-backend.md) and [implementation plan](docs/planning/backend-improvement-plan.md) retain the original findings and acceptance gates. Fixes are implemented on `codex/backend-reliability`; the report records each finding's implementation and follow-up status.
 
 - [Prototype review and device checklist](docs/prototype/README.md)
 - [Product and architecture planning](docs/planning/overview.md)
@@ -29,13 +29,13 @@ The IPA script builds an **unsigned arm64 device app**, packaged for SideStore t
 
 ## Wireless SideStore updates
 
-`scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in iCloud Drive, publishes it to the public `farchanrifai/monocle-releases` repository, and updates its SideStore source. The public repository contains only release artifacts and metadata; this source repository can remain private. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package. Set `IPA_DELIVERY_DIR="$PWD/build/delivery"` when a task requires all artifacts to stay inside the project.
+`scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/`, publishes it to the public `farchanrifai/monocle-releases` repository, and updates Monocle's entry in its shared SideStore source. Prior IPA files and other apps' feed entries are preserved. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package.
 
 Add the printed `sidestore://source?...` link to SideStore once. Later builds appear as updates automatically; keep the bundle identifier unchanged and increment the build number before each IPA build.
 
 ## Repository
 
-Audit work is isolated on `gpt-review`. The planning baseline is committed separately from implementation. Remote repository: https://github.com/farchanrifai/monocle.
+The audit branch is `audit/backend-2026-10-04`; implementation is on `codex/backend-reliability`. Source repository: [farchanrifai/monocle](https://github.com/farchanrifai/monocle). Public release artifacts: [farchanrifai/monocle-releases](https://github.com/farchanrifai/monocle-releases).
 
 ## Development continuity
 

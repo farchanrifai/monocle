@@ -2,6 +2,9 @@ import ActivityKit
 import Foundation
 
 public struct WidgetSnapshot: Codable, Sendable, Equatable {
+    public var reportingDay: String?
+    public var revision: UInt64?
+    public var unavailableReason: String?
     public var updatedAt: Date
     public var activeBook: WidgetBookSummary
     public var activeStack: WidgetStackSummary?
@@ -11,18 +14,34 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
 
     public init(
         updatedAt: Date = .now,
+        reportingDay: String? = nil,
+        revision: UInt64? = nil,
+        unavailableReason: String? = nil,
         activeBook: WidgetBookSummary,
         activeStack: WidgetStackSummary? = nil,
         cycleBudget: WidgetBudgetSummary?,
         todaySpending: WidgetTodaySummary,
         quickCategories: [WidgetCategoryItem]
     ) {
+        self.reportingDay = reportingDay
+        self.revision = revision
+        self.unavailableReason = unavailableReason
         self.updatedAt = updatedAt
         self.activeBook = activeBook
         self.activeStack = activeStack
         self.cycleBudget = cycleBudget
         self.todaySpending = todaySpending
         self.quickCategories = quickCategories
+    }
+
+    public static func unavailable(_ reason: String) -> WidgetSnapshot {
+        WidgetSnapshot(activeBook: WidgetBookSummary(id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!, name: "Open Monocle"),
+                       cycleBudget: nil, todaySpending: WidgetTodaySummary(totalSpent: 0, transactionCount: 0, recentTransactions: []),
+                       quickCategories: []).withUnavailableReason(reason)
+    }
+
+    private func withUnavailableReason(_ reason: String) -> WidgetSnapshot {
+        var value = self; value.unavailableReason = reason; return value
     }
 
     public static let sample = WidgetSnapshot(

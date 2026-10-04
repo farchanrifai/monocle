@@ -6,27 +6,67 @@ public final class CardArtworkStore: @unchecked Sendable {
 
     private let cache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
+    private let customDirectory: URL?
+    var writeFault: ((String) throws -> Void)? // deterministic write failures for recovery tests
+    static let maximumDimension = 1_200
+    static let maximumAssetBytes = 8 * 1024 * 1024
 
     public var artworkDirectory: URL {
+        if let customDirectory { return customDirectory }
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.temporaryDirectory
-        let dir = appSupport.appendingPathComponent("CardArtwork", isDirectory: true)
-        if !fileManager.fileExists(atPath: dir.path) {
-            try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
-        }
-        return dir
+        return appSupport.appendingPathComponent("CardArtwork", isDirectory: true)
     }
 
-    public init() {
+    public init(directory: URL? = nil) {
+        customDirectory = directory
         cache.countLimit = 50
         cache.totalCostLimit = 48 * 1024 * 1024
+    }
+
+    /// Inspect dimensions before decoding, so a small compressed input cannot
+    /// allocate an unbounded image during preview or ordinary card rendering.
+    static func validateArtworkData(_ data: Data) throws {
+        guard !data.isEmpty, data.count <= maximumAssetBytes,
+              let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              CGImageSourceGetStatus(source) == .statusComplete,
+              CGImageSourceGetCount(source) == 1,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue,
+              let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue,
+              (1...maximumDimension).contains(width), (1...maximumDimension).contains(height),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary),
+              image.width == width, image.height == height else { throw BackupError.invalid }
+    }
+
+    /// Stage validated bytes in the operation's private directory before SQLite
+    /// activation. No active artwork or cache changes occur while previewing.
+    func stageArtworks(_ artworks: [String: Data], in directory: URL) throws -> URL {
+        let staging = directory.appendingPathComponent("restore-artworks-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+        do {
+            for (filename, data) in artworks {
+                guard Self.isValidFilename(filename) else { throw BackupError.invalid }
+                try Self.validateArtworkData(data)
+                try data.write(to: staging.appendingPathComponent(filename), options: .atomic)
+            }
+            return staging
+        } catch {
+            try? fileManager.removeItem(at: staging)
+            throw error
+        }
+    }
+
+    func installStagedArtworks(_ directory: URL) throws {
+        for url in try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            try importArtworkData(Data(contentsOf: url), filename: url.lastPathComponent)
+        }
     }
 
     public func saveArtwork(_ rawData: Data, for bookID: UUID) throws -> String {
         let filename = "\(bookID.uuidString)-\(UUID().uuidString).jpg"
         guard let downsampled = downsample(imageData: rawData, maxDimension: 1200) else { throw BackupError.invalid }
-        let targetURL = artworkDirectory.appendingPathComponent(filename)
-        try downsampled.write(to: targetURL, options: .atomic)
+        try importArtworkData(downsampled, filename: filename)
 
         if let image = UIImage(data: downsampled) {
             cache.setObject(image, forKey: filename as NSString, cost: (image.cgImage?.bytesPerRow ?? 0) * (image.cgImage?.height ?? 0))
@@ -41,6 +81,7 @@ public final class CardArtworkStore: @unchecked Sendable {
         }
         let url = artworkDirectory.appendingPathComponent(filename)
         guard let data = try? Data(contentsOf: url),
+              (try? Self.validateArtworkData(data)) != nil,
               let image = UIImage(data: data) else {
             return nil
         }
@@ -56,7 +97,9 @@ public final class CardArtworkStore: @unchecked Sendable {
 
     public func importArtworkData(_ data: Data, filename: String) throws {
         guard Self.isValidFilename(filename) else { throw BackupError.invalid }
-        guard UIImage(data: data) != nil else { throw BackupError.invalid }
+        try Self.validateArtworkData(data)
+        try writeFault?(filename)
+        try fileManager.createDirectory(at: artworkDirectory, withIntermediateDirectories: true)
         let url = artworkDirectory.appendingPathComponent(filename)
         cache.removeObject(forKey: filename as NSString)
         try data.write(to: url, options: .atomic)
@@ -83,7 +126,7 @@ public final class CardArtworkStore: @unchecked Sendable {
     }
 
     public static func isValidFilename(_ filename: String) -> Bool {
-        !filename.isEmpty && filename != "." && filename != ".." &&
+        !filename.isEmpty && filename.utf8.count <= 255 && filename != "." && filename != ".." &&
         !filename.contains("/") && !filename.contains("\\") &&
         filename.rangeOfCharacter(from: .controlCharacters) == nil
     }

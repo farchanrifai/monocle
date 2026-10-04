@@ -2,6 +2,8 @@
 
 Prepared 2026-10-04 for Monocle 0.7.20/build 83 at `b7621cc`. This is the execution plan for [the backend audit](../audit/2026-10-04-backend.md). No fixes have been applied on the audit branch.
 
+Execution update, 2026-10-05: see the [implementation report](../audit/2026-10-05-backend-implementation.md) for source changes, fixture evidence and verification. The plan below preserves the original acceptance gates. Background persistence/streaming memory work and signed-phone profiling/integration gates remain outstanding; simulator results do not satisfy those gates.
+
 The sequence protects durable data first, then establishes consistent command/publication contracts, repairs integrations/reporting, and measures performance before changing concurrency or indexing. Each change should remain independently reviewable and keep existing user data recoverable.
 
 ## Start on the Mac

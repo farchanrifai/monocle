@@ -137,8 +137,8 @@ struct StackCustomizerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        saveChanges()
-                        onDismiss()
+                        do { try saveChanges(); onDismiss() }
+                        catch { model.error = error.localizedDescription }
                     }
                     .font(.headline)
                     .accessibilityIdentifier("saveStackCustomizer")
@@ -731,24 +731,13 @@ struct StackCustomizerView: View {
         }
     }
 
-    private func saveChanges() {
+    private func saveChanges() throws {
         if let idx = currentStackIndex {
             let trimmed = editingName.trimmingCharacters(in: .whitespacesAndNewlines)
             workingStacks[idx].name = trimmed.isEmpty ? "Stack" : String(trimmed.prefix(40))
             workingStacks[idx].icon = selectedIcon
         }
 
-        for book in model.books {
-            let shouldBeHidden = alwaysHiddenIDs.contains(book.id)
-            let wasHidden = model.alwaysHiddenBookIDs.contains(book.id)
-            if shouldBeHidden != wasHidden {
-                model.setCardAlwaysHidden(id: book.id, isHidden: shouldBeHidden)
-            }
-        }
-
-        model.stacks = workingStacks
-        model.activeStackID = currentStackID
-        model.filterScope = .activeStack
-        model.persistWorkspacePreferences()
+        try model.saveStackConfiguration(workingStacks, activeStackID: currentStackID, alwaysHiddenIDs: alwaysHiddenIDs)
     }
 }

@@ -4,11 +4,25 @@ import Charts
 struct AnalyticsView: View {
     @Bindable var model: AppModel
     var showsDismissButton = true
+    @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
+    @State private var selectedScope: AnalyticsFilterScope = .allCards
+
+    var body: some View {
+        let report = AnalyticsReport.build(data: model.reportingData(for: selectedScope), horizon: selectedHorizon)
+        AnalyticsReportView(model: model, showsDismissButton: showsDismissButton,
+                            selectedHorizon: $selectedHorizon, selectedScope: $selectedScope, report: report)
+    }
+}
+
+private struct AnalyticsReportView: View {
+    @Bindable var model: AppModel
+    var showsDismissButton = true
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
-    @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
-    @State private var selectedScope: AnalyticsFilterScope = .allCards
+    @Binding var selectedHorizon: AnalyticsTimeHorizon
+    @Binding var selectedScope: AnalyticsFilterScope
+    let report: AnalyticsReport
     @State private var scrubbedDate: Date? = nil
     @State private var selectedCategoryID: UUID? = nil
     @State private var selectedChartAngle: Int64? = nil
@@ -59,13 +73,16 @@ struct AnalyticsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
                         controlsHeader
-                        kpiSummaryCard
-                        burnUpTrajectoryCard
-                        dailyRhythmCard
-                        monthOverMonthCard
-                        categoryBreakdownCard
-                        if !selectedScope.isCard && bookPoints.count > 1 {
-                            crossBookBreakdownCard
+                        if let error = report.errorMessage {
+                            Label(error, systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(MC.red)
+                        } else {
+                            kpiSummaryCard
+                            burnUpTrajectoryCard
+                            dailyRhythmCard
+                            monthOverMonthCard
+                            categoryBreakdownCard
+                            if !selectedScope.isCard && bookPoints.count > 1 { crossBookBreakdownCard }
                         }
                     }
                     .padding(.horizontal, 20)
@@ -176,122 +193,24 @@ struct AnalyticsView: View {
 
     // MARK: - Filtered Data Queries
 
-    private var targetExpenses: [Expense] {
-        switch selectedScope {
-        case .stack(let id, _):
-            guard let stack = model.stacks.first(where: { $0.id == id }) else {
-                return model.allExpenses()
-            }
-            let cardIDs = Set(stack.cardIDs)
-            return model.allExpenses().filter { exp in
-                guard let bid = exp.bookID else { return false }
-                return cardIDs.contains(bid)
-            }
-        case .card(let id, _):
-            return model.expenses(for: id)
-        case .allCards:
-            return model.allExpenses()
-        }
-    }
-
-    private var currentRange: (startDate: Date, endDate: Date, startDay: String, endDay: String) {
-        AnalyticsEngine.dateRange(
-            for: selectedHorizon,
-            currentCycle: model.cycle
-        )
-    }
-
-    private var horizonExpenses: [Expense] {
-        AnalyticsEngine.filterExpenses(
-            targetExpenses,
-            startDay: currentRange.startDay,
-            endDay: currentRange.endDay
-        )
-    }
-
-    private var budgetLimit: Int64? {
-        guard !selectedScope.isAllCards, (selectedHorizon == .thisCycle || selectedHorizon == .thisMonth) else {
-            return nil
-        }
-        return model.activeBudget.overallLimit
-    }
-
-    private var dailyPoints: [DailySpendPoint] {
-        AnalyticsEngine.calculateDailySpendPoints(
-            expenses: horizonExpenses,
-            startDate: currentRange.startDate,
-            endDate: currentRange.endDate,
-            overallBudgetLimit: budgetLimit
-        )
-    }
-
-    private var categoryPoints: [CategorySpendPoint] {
-        let limits: [UUID: Int64]
-        if !selectedScope.isAllCards {
-            limits = Dictionary(uniqueKeysWithValues: model.categories.compactMap { cat in
-                model.activeBudget.limit(for: cat.id).map { (cat.id, $0) }
-            })
-        } else {
-            limits = [:]
-        }
-
-        return AnalyticsEngine.calculateCategoryDistribution(
-            expenses: horizonExpenses,
-            categories: model.categories,
-            budgetLimits: limits
-        )
-    }
-
-    private var bookPoints: [BookSpendPoint] {
-        let allByBook = model.allExpensesByBook()
-        let relevantBooks: [BookProfile]
-        let relevantMap: [UUID: [Expense]]
-
-        switch selectedScope {
-        case .stack(let id, _):
-            if let stack = model.stacks.first(where: { $0.id == id }) {
-                let cardIDs = Set(stack.cardIDs)
-                relevantBooks = model.books.filter { cardIDs.contains($0.id) }
-                relevantMap = allByBook.filter { cardIDs.contains($0.key) }
-            } else {
-                relevantBooks = model.books
-                relevantMap = allByBook
-            }
-        case .card(let id, _):
-            relevantBooks = model.books.filter { $0.id == id }
-            relevantMap = allByBook.filter { $0.key == id }
-        case .allCards:
-            relevantBooks = model.books
-            relevantMap = allByBook
-        }
-
-        return AnalyticsEngine.calculateBookDistribution(
-            expensesByBook: relevantMap.mapValues { values in
-                AnalyticsEngine.filterExpenses(values, startDay: currentRange.startDay, endDay: currentRange.endDay)
-            },
-            books: relevantBooks
-        )
-    }
-
-    private var momPoints: [ComparativePeriodPoint] {
-        AnalyticsEngine.calculateMonthOverMonthComparison(expenses: targetExpenses)
-    }
-
-    private var metrics: AnalyticsMetrics {
-        AnalyticsEngine.calculateMetrics(
-            dailyPoints: dailyPoints,
-            categoryPoints: categoryPoints,
-            startDate: currentRange.startDate,
-            endDate: currentRange.endDate,
-            overallBudgetLimit: budgetLimit
-        )
-    }
+    private var currentRange: (startDate: Date, endDate: Date, startDay: String, endDay: String) { report.range }
+    private var budgetLimit: Int64? { selectedHorizon == .thisCycle ? report.period?.budget.overallLimit : nil }
+    private var dailyPoints: [DailySpendPoint] { report.dailyPoints }
+    private var categoryPoints: [CategorySpendPoint] { report.categoryPoints }
+    private var bookPoints: [BookSpendPoint] { report.bookPoints }
+    private var momPoints: [ComparativePeriodPoint] { report.monthPoints }
+    private var metrics: AnalyticsMetrics { report.metrics }
 
     // MARK: - Controls Header
 
     private var controlsHeader: some View {
         VStack(spacing: 12) {
             scopeMenu
+            if !selectedScope.isCard {
+                Text("Multiple-card cycles use the calendar month. Select a card to see its budget pace.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             // Horizon Chips
             ScrollView(.horizontal, showsIndicators: false) {
@@ -423,7 +342,7 @@ struct AnalyticsView: View {
                 metricColumn(title: "Transactions", value: "\(metrics.transactionCount)")
                 metricColumn(title: "Daily average", value: Money.format(metrics.dailyAverage))
                 if selectedHorizon == .thisCycle || selectedHorizon == .thisMonth {
-                    metricColumn(title: "Projected", value: Money.format(metrics.projectedPeriodTotal))
+                    metricColumn(title: "Projected", value: metrics.projectedPeriodTotal.map { Money.format($0) } ?? "Exceeds supported total")
                 } else if let highest = metrics.highestSpendDay {
                     metricColumn(title: "Peak day", value: Money.format(highest.amount))
                 } else {
@@ -465,7 +384,7 @@ struct AnalyticsView: View {
         switch status {
         case .underPace: return "arrow.down.right"
         case .onTrack: return "checkmark"
-        case .accelerated: return "arrow.up.right"
+        case .accelerated, .beyondRange: return "arrow.up.right"
         }
     }
 
@@ -473,7 +392,7 @@ struct AnalyticsView: View {
         switch status {
         case .underPace: return .green
         case .onTrack: return .blue
-        case .accelerated: return MC.red
+        case .accelerated, .beyondRange: return MC.red
         }
     }
 
@@ -493,7 +412,7 @@ struct AnalyticsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cumulative Trajectory")
                         .font(.headline)
-                    Text("Pacing vs period budget")
+                    Text(budgetLimit == nil ? "Actual cumulative spending" : "Pacing vs period budget")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -714,13 +633,13 @@ struct AnalyticsView: View {
     }
 
     private var currentMonthName: String {
-        let cal = Calendar.current
+        let cal = Day.calendar
         let m = cal.component(.month, from: .now)
         return cal.monthSymbols[m - 1]
     }
 
     private var previousMonthName: String {
-        let cal = Calendar.current
+        let cal = Day.calendar
         let prev = cal.date(byAdding: .month, value: -1, to: .now) ?? .now
         let m = cal.component(.month, from: prev)
         return cal.monthSymbols[m - 1]
@@ -1061,7 +980,7 @@ struct AnalyticsView: View {
         if id == AnalyticsEngine.otherCategoryID {
             return Color.secondary
         }
-        let allIDs = model.categories.map(\.id)
+        let allIDs = report.data.categories.map(\.id)
         if let idx = allIDs.firstIndex(of: id) {
             return categoryPalette[idx % categoryPalette.count]
         }
@@ -1081,7 +1000,7 @@ struct AnalyticsView: View {
     }
 
     private func dayMonthLabel(_ date: Date) -> String {
-        let cal = Calendar.current
+        let cal = Day.calendar
         let d = cal.component(.day, from: date)
         let m = cal.component(.month, from: date)
         return "\(d)/\(m)"

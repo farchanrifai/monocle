@@ -109,8 +109,13 @@ struct BudgetEditor: View {
     @State private var startDay = 1
     @State private var applyToNextCycle = false
     @State private var categoryAmounts: [UUID: String] = [:]
+    @State private var originalBudget: BudgetVersion?
     @State private var error: String?
 
+    private func resolveInput(_ input: String, preserving previous: Int64?) throws -> Int64 {
+        if let previous, input == Money.exactDigits(previous) { return previous }
+        return try Money.parse(input)
+    }
     private var changingStartDay: Bool { startDay != model.activeBudget.startDay }
     private var transitionCycle: BudgetCycle {
         .init(start: model.cycle.end, end: BudgetHistory.transitionEnd(after: model.cycle.end, startDay: startDay))
@@ -162,9 +167,9 @@ struct BudgetEditor: View {
                                 let limits = try model.categories.compactMap { category -> CategoryBudget? in
                                     let value = categoryAmounts[category.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                                     guard !value.isEmpty else { return nil }
-                                    return CategoryBudget(categoryID: category.id, limit: try Money.parse(value))
+                                    return CategoryBudget(categoryID: category.id, limit: try resolveInput(value, preserving: originalBudget?.limit(for: category.id)))
                                 }
-                                try model.saveBudget(overallLimit: try Money.parse(amount), startDay: startDay,
+                                try model.saveBudget(overallLimit: try resolveInput(amount, preserving: originalBudget?.overallLimit), startDay: startDay,
                                                      categoryLimits: limits,
                                                      applyToNextCycle: !changingStartDay && applyToNextCycle)
                                 dismiss()
@@ -173,10 +178,11 @@ struct BudgetEditor: View {
                     }
                 }
                 .onAppear {
-                    amount = Money.digits(model.activeBudget.overallLimit)
+                    originalBudget = model.activeBudget
+                    amount = Money.exactDigits(model.activeBudget.overallLimit)
                     startDay = model.activeBudget.startDay
                     categoryAmounts = Dictionary(uniqueKeysWithValues: model.categories.map { category in
-                        (category.id, model.activeBudget.limit(for: category.id).map { Money.digits($0) } ?? "")
+                        (category.id, model.activeBudget.limit(for: category.id).map { Money.exactDigits($0) } ?? "")
                     })
                 }
         }

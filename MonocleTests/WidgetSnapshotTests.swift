@@ -23,9 +23,11 @@ final class WidgetSnapshotTests: XCTestCase {
     }
 
     func testWidgetSnapshotStoreFallbackWhenEmpty() {
-        let snapshot = WidgetSnapshotStore.loadSnapshot()
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let snapshot = WidgetSnapshotStore.loadSnapshot(from: missing)
         XCTAssertFalse(snapshot.activeBook.name.isEmpty)
-        XCTAssertNotNil(snapshot.cycleBudget)
+        XCTAssertNotNil(snapshot.unavailableReason)
+        XCTAssertNil(snapshot.cycleBudget)
     }
 
     func testWidgetSnapshotUpdaterCalculations() throws {
@@ -55,7 +57,7 @@ final class WidgetSnapshotTests: XCTestCase {
 
         let cycle = BudgetCycle.containing(.now, startDay: 1)
 
-        WidgetSnapshotUpdater.update(
+        let snapshot = WidgetSnapshotUpdater.update(
             activeBook: book,
             activeStack: stack,
             allBooks: [book],
@@ -66,7 +68,6 @@ final class WidgetSnapshotTests: XCTestCase {
             cycle: cycle
         )
 
-        let snapshot = WidgetSnapshotStore.loadSnapshot()
         XCTAssertEqual(snapshot.activeBook.name, "Personal")
         XCTAssertEqual(snapshot.activeStack?.name, "Daily Living")
         XCTAssertEqual(snapshot.activeStack?.totalSpent, 35_000_00)
@@ -96,7 +97,7 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertEqual(model.selectedBookID, bookID)
 
         // Test openStackInHome
-        model.createStack(name: "Test Stack", icon: "folder", cardIDs: [bookID])
+        try model.createStack(name: "Test Stack", icon: "folder", cardIDs: [bookID])
         if let created = model.stacks.first(where: { $0.name == "Test Stack" }) {
             model.openStackInHome(id: created.id)
             XCTAssertEqual(model.selectedTab, 0)

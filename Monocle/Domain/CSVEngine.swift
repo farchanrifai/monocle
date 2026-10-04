@@ -16,12 +16,14 @@ struct CSVColumnMapping: Equatable, Sendable {
     var amountIndex: Int?
     var noteIndex: Int?
     var categoryIndex: Int?
+    var splitsIndex: Int?
 
-    init(dateIndex: Int? = nil, amountIndex: Int? = nil, noteIndex: Int? = nil, categoryIndex: Int? = nil) {
+    init(dateIndex: Int? = nil, amountIndex: Int? = nil, noteIndex: Int? = nil, categoryIndex: Int? = nil, splitsIndex: Int? = nil) {
         self.dateIndex = dateIndex
         self.amountIndex = amountIndex
         self.noteIndex = noteIndex
         self.categoryIndex = categoryIndex
+        self.splitsIndex = splitsIndex
     }
 
     var isValid: Bool {
@@ -62,9 +64,9 @@ struct CSVImportSummary: Equatable, Sendable {
     let validRows: Int
     let duplicateRows: Int
     let errorRows: Int
-    let totalSpending: Int64
+    let totalSpending: Int64?
 
-    init(totalRows: Int, validRows: Int, duplicateRows: Int, errorRows: Int, totalSpending: Int64) {
+    init(totalRows: Int, validRows: Int, duplicateRows: Int, errorRows: Int, totalSpending: Int64?) {
         self.totalRows = totalRows
         self.validRows = validRows
         self.duplicateRows = duplicateRows
@@ -75,11 +77,28 @@ struct CSVImportSummary: Equatable, Sendable {
 
 // MARK: - RFC 4180 CSV Tokenizer
 
+struct CSVParseError: LocalizedError, Equatable {
+    let record: Int
+    let reason: String
+    var errorDescription: String? { "CSV record \(record): \(reason). No records were imported." }
+}
+
+struct CSVExactSplit: Codable {
+    let category: String
+    let amount: String
+}
+
 enum CSVTokenizer {
     /// Sniffs the most probable delimiter (, ; \t) from the header or sample lines.
     static func sniffDelimiter(from content: String) -> Character {
-        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        guard let first = lines.first else { return "," }
+        var first = ""
+        for character in content {
+            if character.isNewline {
+                if !first.trimmingCharacters(in: .whitespaces).isEmpty { break }
+                first = ""
+            } else { first.append(character) }
+        }
+        guard !first.isEmpty else { return "," }
 
         var commaCount = 0
         var semiCount = 0
@@ -101,62 +120,58 @@ enum CSVTokenizer {
         return ","
     }
 
-    /// Parses CSV content into rows and fields per RFC 4180.
-    static func parse(content: String, delimiter: Character = ",") -> [[String]] {
+    /// Strict quoted fields, escaped quotes and multiline values. Limits are enforced while
+    /// tokenizing so malformed/oversized input never reaches a partial import review.
+    static func parse(content: String, delimiter: Character = ",", maximumRecords: Int = 10_001, maximumFieldBytes: Int = 1_048_576) throws -> [[String]] {
+        guard content.utf8.count <= 10 * 1_024 * 1_024 else { throw CSVParseError(record: 1, reason: "File exceeds 10 MiB") }
+        enum State { case start, unquoted, quoted, closed }
+        var state = State.start
         var rows: [[String]] = []
-        var currentRow: [String] = []
-        var currentField = ""
-        var inQuotes = false
-
+        var fields: [String] = []
+        var field = ""
+        var fieldBytes = 0
+        var record = 1
         var iterator = content.makeIterator()
-        var peekChar: Character? = iterator.next()
-
-        while let char = peekChar {
-            peekChar = iterator.next()
-
-            if inQuotes {
+        var character = iterator.next()
+        func finishField() throws {
+            guard fields.count < 100 else { throw CSVParseError(record: record, reason: "More than 100 columns") }
+            fields.append(field)
+            field = ""; fieldBytes = 0; state = .start
+        }
+        func finishRecord() throws {
+            try Task.checkCancellation()
+            try finishField()
+            // Keep interior blank records so review record numbers remain accurate.
+            guard rows.count < maximumRecords else { throw CSVParseError(record: record, reason: "Too many records") }
+            rows.append(fields); fields = []; record += 1
+        }
+        while let char = character {
+            character = iterator.next()
+            let newline = char == "\n" || char == "\r" || char == "\r\n"
+            if state == .quoted {
                 if char == "\"" {
-                    if peekChar == "\"" {
-                        // Escaped quote: "" -> "
-                        currentField.append("\"")
-                        peekChar = iterator.next()
-                    } else {
-                        // Closing quote
-                        inQuotes = false
-                    }
-                } else {
-                    currentField.append(char)
-                }
+                    if character == "\"" { field.append("\""); fieldBytes += 1; character = iterator.next() }
+                    else { state = .closed }
+                } else { field.append(char); fieldBytes += char.utf8.count }
+            } else if char == delimiter {
+                try finishField()
+            } else if newline {
+                if char == "\r" && character == "\n" { character = iterator.next() }
+                try finishRecord()
+            } else if state == .closed {
+                throw CSVParseError(record: record, reason: "Unexpected character after closing quote")
+            } else if char == "\"" {
+                guard state == .start else { throw CSVParseError(record: record, reason: "Quote inside an unquoted field") }
+                state = .quoted
             } else {
-                if char == "\"" {
-                    inQuotes = true
-                } else if char == delimiter {
-                    currentRow.append(currentField.trimmingCharacters(in: .whitespaces))
-                    currentField = ""
-                } else if char.isNewline || char == "\r\n" || char == "\n" || char == "\r" {
-                    if char == "\r" && peekChar == "\n" {
-                        peekChar = iterator.next()
-                    }
-                    currentRow.append(currentField.trimmingCharacters(in: .whitespaces))
-                    currentField = ""
-                    rows.append(currentRow)
-                    currentRow = []
-                } else {
-                    currentField.append(char)
-                }
+                state = .unquoted; field.append(char); fieldBytes += char.utf8.count
             }
+            guard fieldBytes <= maximumFieldBytes else { throw CSVParseError(record: record, reason: "Field exceeds supported size") }
         }
-
-        // Flush any trailing field/row
-        if !currentField.isEmpty || !currentRow.isEmpty {
-            currentRow.append(currentField.trimmingCharacters(in: .whitespaces))
-            rows.append(currentRow)
-        }
-
-        // Remove completely blank trailing rows
-        return rows.filter { row in
-            !row.isEmpty && row.contains { !$0.isEmpty }
-        }
+        guard state != .quoted else { throw CSVParseError(record: record, reason: "Unclosed quoted field") }
+        if state != .start || !fields.isEmpty || !field.isEmpty { try finishRecord() }
+        while let last = rows.last, last.allSatisfy({ $0.isEmpty }) { rows.removeLast() }
+        return rows
     }
 
     /// Escapes a field according to RFC 4180.
@@ -178,7 +193,7 @@ enum CSVExportGenerator {
         categories: [ExpenseCategory],
         books: [BookProfile] = []
     ) -> String {
-        let headers = ["Date", "Time", "Book", "Category", "Amount", "Note", "Source"]
+        let headers = ["Date", "Time", "Book", "Category", "Amount", "Note", "Source", "Splits"]
         var lines: [String] = []
         lines.append(headers.map { CSVTokenizer.escape($0) }.joined(separator: ","))
 
@@ -200,20 +215,22 @@ enum CSVExportGenerator {
             } else if expense.allocations.count > 1 {
                 categoryStr = expense.allocations.map { alloc in
                     let name = categoryMap[alloc.categoryID] ?? "General"
-                    let amountInt = alloc.amount / 100
+                    let amountInt = Money.exactDigits(alloc.amount)
                     return "\(name) (\(amountInt))"
                 }.joined(separator: " + ")
             } else {
                 categoryStr = "General"
             }
 
-            // Unformatted whole IDR amount for spreadsheet math (e.g. 50000)
-            let amountInt = expense.amount / 100
-            let amountStr = String(amountInt)
+            // Exact locale-independent IDR decimals for spreadsheet math and round trips.
+            let amountStr = Money.exactDigits(expense.amount)
             let noteStr = expense.note
             let sourceStr = expense.source
 
-            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr]
+            let exactSplits = expense.allocations.map { CSVExactSplit(category: categoryMap[$0.categoryID] ?? "General", amount: Money.exactDigits($0.amount)) }
+            let splitData = (try? JSONEncoder().encode(exactSplits)) ?? Data()
+            let splits = String(data: splitData, encoding: .utf8) ?? ""
+            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr, splits]
             lines.append(row.map { CSVTokenizer.escape($0) }.joined(separator: ","))
         }
 
@@ -241,6 +258,8 @@ enum CSVImportParser {
 
         for (idx, rawHeader) in headers.enumerated() {
             let h = rawHeader.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+            if h == "splits" { mapping.splitsIndex = idx }
 
             // Date matches
             if mapping.dateIndex == nil {
@@ -345,6 +364,8 @@ enum CSVImportParser {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone.current
+        formatter.calendar = Day.calendar
+        formatter.isLenient = false
 
         for fmt in formats {
             formatter.dateFormat = fmt
@@ -383,8 +404,13 @@ enum CSVImportParser {
         } else {
             locale = Locale(identifier: "en_US")
         }
-        // Share entry validation: never strip arbitrary text or silently truncate fractions.
-        return try? Money.parse(str, locale: locale)
+        // External CSV and accepted history may retain exact minor units; never round.
+        if let whole = try? Money.parse(str, locale: locale) { return whole }
+        let decimal = locale.decimalSeparator ?? "."
+        let grouping = locale.groupingSeparator ?? ","
+        let pattern = "^(?:[0-9]+|[0-9]{1,3}(?:" + NSRegularExpression.escapedPattern(for: grouping) + "[0-9]{3})+)(?:" + NSRegularExpression.escapedPattern(for: decimal) + "[0-9]{1,2})?$"
+        guard str.range(of: pattern, options: .regularExpression) != nil else { return nil }
+        return try? Money.parseExact(str.replacingOccurrences(of: grouping, with: "").replacingOccurrences(of: decimal, with: "."))
     }
 
     /// Check if candidate matches an existing expense.
@@ -422,6 +448,7 @@ enum CSVImportParser {
         let categoryByName = Dictionary(categories.map { ($0.name.trimmingCharacters(in: .whitespaces).lowercased(), $0.id) }) { first, _ in first }
 
         for (offset, rowValues) in rowsToProcess.enumerated() {
+            if Task.isCancelled { return [] }
             let rowNumber = hasHeader ? (offset + 2) : (offset + 1)
 
             guard let dateIdx = mapping.dateIndex, rowValues.indices.contains(dateIdx),
@@ -476,19 +503,39 @@ enum CSVImportParser {
                 }
             }
 
-            let duplicate = !seen.insert(DuplicateKey(day: dateParsed.day, amount: amountParsed, note: note)).inserted
+            var allocations: [Allocation] = [.init(categoryID: categoryID, amount: amountParsed)]
+            if let splitIndex = mapping.splitsIndex, rowValues.indices.contains(splitIndex), !rowValues[splitIndex].isEmpty {
+                do {
+                    let splits = try JSONDecoder().decode([CSVExactSplit].self, from: Data(rowValues[splitIndex].utf8))
+                    allocations = try splits.map { split in
+                        guard let id = categoryByName[split.category.trimmingCharacters(in: .whitespaces).lowercased()] else { throw EntryError.missingCategory }
+                        return Allocation(categoryID: id, amount: try Money.parseExact(split.amount))
+                    }
+                    guard try Money.checkedSum(allocations.map(\.amount)) == amountParsed,
+                          !allocations.isEmpty, Set(allocations.map(\.categoryID)).count == allocations.count else { throw EntryError.splitMismatch }
+                } catch {
+                    result.append(CSVImportRow(rowNumber: rowNumber, rawValues: rowValues, errorMessage: "Invalid exact splits: \(error.localizedDescription)", isSelectedForImport: false))
+                    continue
+                }
+            }
 
             let expense = Expense(
                 id: UUID(),
                 amount: amountParsed,
                 day: dateParsed.day,
                 note: note,
-                allocations: [.init(categoryID: categoryID, amount: amountParsed)],
+                allocations: allocations,
                 source: "csv_import",
                 createdAt: dateParsed.date,
                 bookID: targetBookID
             )
 
+            do { try expense.validate(categories: categories) }
+            catch {
+                result.append(CSVImportRow(rowNumber: rowNumber, rawValues: rowValues, errorMessage: error.localizedDescription, isSelectedForImport: false))
+                continue
+            }
+            let duplicate = !seen.insert(DuplicateKey(day: dateParsed.day, amount: amountParsed, note: note)).inserted
             result.append(CSVImportRow(
                 rowNumber: rowNumber,
                 rawValues: rowValues,
@@ -506,7 +553,7 @@ enum CSVImportParser {
         var valid = 0
         var duplicates = 0
         var errors = 0
-        var totalSpending: Int64 = 0
+        var selectedAmounts: [Int64] = []
 
         for row in rows {
             if row.errorMessage != nil || row.parsedExpense == nil {
@@ -514,12 +561,12 @@ enum CSVImportParser {
             } else if row.isDuplicate {
                 duplicates += 1
                 if row.isSelectedForImport, let exp = row.parsedExpense {
-                    totalSpending += exp.amount
+                    selectedAmounts.append(exp.amount)
                 }
             } else {
                 valid += 1
                 if row.isSelectedForImport, let exp = row.parsedExpense {
-                    totalSpending += exp.amount
+                    selectedAmounts.append(exp.amount)
                 }
             }
         }
@@ -529,7 +576,7 @@ enum CSVImportParser {
             validRows: valid,
             duplicateRows: duplicates,
             errorRows: errors,
-            totalSpending: totalSpending
+            totalSpending: try? Money.checkedSum(selectedAmounts)
         )
     }
 }

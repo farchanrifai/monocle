@@ -1,0 +1,79 @@
+name: Backend regression checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'codex/**', 'fix/**']
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Record toolchain and choose an available iPhone
+        shell: bash
+        run: |
+          mkdir -p build/ci
+          xcodebuild -version | tee build/ci/toolchain.txt
+          xcrun simctl list devices available --json > build/ci/devices.json
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          devices = json.loads(Path('build/ci/devices.json').read_text())['devices']
+          candidates = []
+          for runtime, entries in devices.items():
+              match = re.search(r'iOS-(\d+)-(\d+)', runtime)
+              if not match or int(match[1]) < 26:
+                  continue
+              version = (int(match[1]), int(match[2]))
+              for device in entries:
+                  if device.get('isAvailable') and device['name'].startswith('iPhone'):
+                      candidates.append((version, device['name'], device['udid']))
+          if not candidates:
+              raise SystemExit('No available iOS 26+ iPhone simulator')
+          selected = max(candidates)[2]
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'MONOCLE_SIMULATOR={selected}\n')
+          PY
+      - name: Unit, SQLite migration, recovery and large-fixture checks
+        shell: bash
+        env:
+          MONOCLE_RUN_LARGE_BENCHMARK: ${{ github.event_name == 'schedule' && '1' || '0' }}
+        run: |
+          set -o pipefail
+          xcodebuild test -project Monocle.xcodeproj -scheme Monocle \
+            -destination "platform=iOS Simulator,id=$MONOCLE_SIMULATOR" \
+            -derivedDataPath build/ci/DerivedData -resultBundlePath build/ci/Backend.xcresult \
+            -only-testing:MonocleTests -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO MONOCLE_RUN_LARGE_BENCHMARK="$MONOCLE_RUN_LARGE_BENCHMARK" | tee build/ci/tests.log
+      - name: Build the device app and widget extension
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild build -project Monocle.xcodeproj -scheme Monocle -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build/ci/DeviceDerivedData \
+            CODE_SIGNING_ALLOWED=NO | tee build/ci/device-build.log
+      - name: Retain verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-${{ github.run_id }}
+          path: |
+            build/ci/*.txt
+            build/ci/*.json
+            build/ci/*.log
+            build/ci/*.xcresult
+          retention-days: 14

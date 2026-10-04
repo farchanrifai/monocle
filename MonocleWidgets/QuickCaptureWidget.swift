@@ -21,6 +21,9 @@ struct QuickCaptureWidgetView: View {
     let entry: TodaySpendingEntry
 
     var body: some View {
+        if let reason = entry.snapshot.unavailableReason {
+            Text(reason).font(.caption).foregroundStyle(.secondary).widgetURL(URL(string: "monocle://home"))
+        } else {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("monocle.")
@@ -69,6 +72,7 @@ struct QuickCaptureWidgetView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+        }
         }
     }
 }

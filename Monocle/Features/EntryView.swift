@@ -13,7 +13,7 @@ struct EntryView: View {
     @State private var showSplits = false
     @State private var showDiscard = false
     @State private var selectionTick = 0
-    private var amount: Int64 { (try? Money.parse(model.draft.amount)) ?? 0 }
+    private var amount: Int64 { (try? model.draft.resolvedAmount()) ?? 0 }
 
     var body: some View {
         NavigationStack {
@@ -136,7 +136,7 @@ struct EntryView: View {
                 Eyebrow(text: "Amount / IDR")
                 Spacer()
                 Button { focusedField = nil; showDate = true } label: {
-                    Label(Day.title(Day.string(model.draft.date)), systemImage: "calendar").font(.caption)
+                    Label(Day.title(model.draft.civilDay), systemImage: "calendar").font(.caption)
                 }.tint(.secondary).frame(minHeight: 32)
             }
             Text(Money.format(amount, currency: false))
@@ -221,9 +221,12 @@ private struct SplitEditor: View {
     @State private var choosingIndex: Int?
     @State private var useOneCategoryAfterDismissal = false
 
-    private var total: Int64 { (try? Money.parse(model.draft.amount)) ?? 0 }
-    private var allocated: Int64 { model.draft.splitAllocations.reduce(0) { $0 + ((try? Money.parse($1.amount)) ?? 0) } }
-    private var remaining: Int64 { total - allocated }
+    private var total: Int64 { (try? model.draft.resolvedAmount()) ?? 0 }
+    private var allocated: Int64? { try? model.draft.resolvedAllocatedAmount() }
+    private var allocationError: String? {
+        do { _ = try model.draft.resolvedAllocatedAmount(); return nil }
+        catch { return error.localizedDescription }
+    }
 
     var body: some View {
         NavigationStack {
@@ -254,12 +257,20 @@ private struct SplitEditor: View {
                 }
                 Section("Check") {
                     LabeledContent("Expense total") { Text(Money.format(total)) }
-                    LabeledContent("Allocated") { Text(Money.format(allocated)) }
-                    LabeledContent("Remaining") { Text(Money.format(abs(remaining))).foregroundStyle(remaining == 0 ? .green : MC.red) }
-                    if remaining == 0 && model.draft.splitAllocations.count > 1 {
-                        Label("Ready to record", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    if let allocated {
+                        let remaining = total - allocated
+                        LabeledContent("Allocated") { Text(Money.format(allocated)) }
+                        LabeledContent("Remaining") { Text(Money.format(abs(remaining))).foregroundStyle(remaining == 0 ? .green : MC.red) }
+                        if remaining == 0 && model.draft.splitAllocations.count > 1 &&
+                            Set(model.draft.splitAllocations.map(\.categoryID)).count == model.draft.splitAllocations.count &&
+                            model.draft.splitAllocations.allSatisfy({ (try? $0.resolvedAmount()) != nil }) {
+                            Label("Ready to record", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                        } else {
+                            Text("Use at least two categories and make allocations match the expense total.").font(.footnote).foregroundStyle(.secondary)
+                        }
                     } else {
-                        Text("Use at least two categories and make allocations match the expense total.").font(.footnote).foregroundStyle(.secondary)
+                        LabeledContent("Allocated", value: "Unavailable")
+                        Text(allocationError ?? "Check the split amounts.").font(.footnote).foregroundStyle(MC.red)
                     }
                 }
                 Section {

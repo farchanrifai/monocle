@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.7.21] - 2026-10-05
+### Backend Reliability and Data Recovery
+- Preserve historical budget categories, bill deletion/undo links, and each card's saved draft.
+- Coordinate card, category, budget and reset changes with recoverable transactions; preserve unresolved recovery journals and surface saved-versus-refresh outcomes.
+- Add version 7 backups with complete workspace validation, raw artwork records and support for workspaces beyond the previous backup limits. Existing formats 1–6 remain readable.
+- Make recurring bill edits prospective, reconcile all cards, and rebuild reminders with permission/error handling.
+- Preserve historical fractional amounts and splits through editing and CSV; reject malformed CSV and unsafe aggregate totals.
+- Use Gregorian civil dates and the selected card's reporting configuration; apply restored visibility and app-lock settings immediately.
+- Refresh caches/widgets after every committed entry path, show unavailable widget data explicitly, and prevent Live Activity replacement races.
+- Add disk-backed migration/recovery regressions, large-fixture benchmarks and Mac CI. Device integration checks and background persistence profiling remain follow-up work.
+
 ## [0.7.20] - 2026-09-16
 ### Interactive Apple Shortcuts with Customizable Prompt Order
 - **Interactive Runtime Prompting**:

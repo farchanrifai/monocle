@@ -5,7 +5,7 @@ final class CSVTests: XCTestCase {
 
     // MARK: - Tokenizer & Delimiter Sniffing
 
-    func testRFC4180TokenizerStandardComma() {
+    func testRFC4180TokenizerStandardComma() throws {
         let content = """
         Date,Amount,Note
         2026-09-11,50000,"Coffee, black"
@@ -14,7 +14,7 @@ final class CSVTests: XCTestCase {
         memo here"
         """
 
-        let rows = CSVTokenizer.parse(content: content, delimiter: ",")
+        let rows = try CSVTokenizer.parse(content: content, delimiter: ",")
         XCTAssertEqual(rows.count, 4)
 
         XCTAssertEqual(rows[0], ["Date", "Amount", "Note"])
@@ -33,9 +33,9 @@ final class CSVTests: XCTestCase {
         XCTAssertEqual(CSVTokenizer.sniffDelimiter(from: tabCSV), "\t")
     }
 
-    func testCSVTokenizerSemicolon() {
+    func testCSVTokenizerSemicolon() throws {
         let content = "Tanggal;Nominal;Keterangan\r\n2026-09-11;45000;Kopi Pagi\r\n2026-09-12;80000;Bensin"
-        let rows = CSVTokenizer.parse(content: content, delimiter: ";")
+        let rows = try CSVTokenizer.parse(content: content, delimiter: ";")
         XCTAssertEqual(rows.count, 3)
         XCTAssertEqual(rows[1], ["2026-09-11", "45000", "Kopi Pagi"])
         XCTAssertEqual(rows[2], ["2026-09-12", "80000", "Bensin"])
@@ -124,7 +124,7 @@ final class CSVTests: XCTestCase {
 
     // MARK: - CSV Export Generator
 
-    func testCSVExportGenerator() {
+    func testCSVExportGenerator() throws {
         let bookID = UUID()
         let foodCat = ExpenseCategory(id: UUID(), name: "Food & Drink", symbol: "cup.and.saucer")
         let transCat = ExpenseCategory(id: UUID(), name: "Transport", symbol: "tram")
@@ -157,10 +157,10 @@ final class CSVTests: XCTestCase {
         )
 
         let csv = CSVExportGenerator.generate(expenses: [exp1, exp2], categories: categories, books: books)
-        let rows = CSVTokenizer.parse(content: csv, delimiter: ",")
+        let rows = try CSVTokenizer.parse(content: csv, delimiter: ",")
 
         XCTAssertEqual(rows.count, 3)
-        XCTAssertEqual(rows[0], ["Date", "Time", "Book", "Category", "Amount", "Note", "Source"])
+        XCTAssertEqual(rows[0], ["Date", "Time", "Book", "Category", "Amount", "Note", "Source", "Splits"])
 
         // Row 1
         XCTAssertEqual(rows[1][0], "2026-09-10")
@@ -288,8 +288,11 @@ final class CSVTests: XCTestCase {
 extension CSVTests {
     func testMalformedAmountsAreNotSilentlyChanged() {
         XCTAssertNil(CSVImportParser.parseAmount("abc123"))
-        XCTAssertNil(CSVImportParser.parseAmount("50.50"))
-        XCTAssertNil(CSVImportParser.parseAmount("50,50"))
+        // External CSV preserves exact minor units; manual Money.parse remains whole IDR.
+        XCTAssertEqual(CSVImportParser.parseAmount("50.50"), 5_050)
+        XCTAssertEqual(CSVImportParser.parseAmount("50,50"), 5_050)
+        XCTAssertNil(CSVImportParser.parseAmount("50.5001"))
+        XCTAssertNil(CSVImportParser.parseAmount("50,5001"))
         XCTAssertNil(CSVImportParser.parseAmount("1,2,3"))
         XCTAssertEqual(CSVImportParser.parseAmount("1.5k"), 150000)
         XCTAssertEqual(CSVImportParser.parseAmount("1,5k"), 150000)

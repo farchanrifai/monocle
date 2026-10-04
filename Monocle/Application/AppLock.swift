@@ -48,6 +48,7 @@ final class AppLockController {
     private(set) var isAuthenticating = false
     private(set) var privacyShieldVisible = false
     private var suspendedAt: Date?
+    private var configurationRevision: UInt64 = 0
 
     init(timeout: AppLockTimeout?, authenticator: any DeviceAuthenticating = DeviceAuthenticator()) {
         self.timeout = timeout
@@ -75,8 +76,10 @@ final class AppLockController {
         guard timeout != nil else { return .success(()) }
         guard !isAuthenticating else { return .failure(.failed) }
         isAuthenticating = true
+        let revision = configurationRevision
         let result = await authenticator.authenticate(reason: "Unlock your spending records.")
         isAuthenticating = false
+        guard revision == configurationRevision else { return .failure(.failed) }
         if case .success = result { needsAuthentication = false }
         return result
     }
@@ -84,8 +87,10 @@ final class AppLockController {
     func enable(timeout: AppLockTimeout) async -> Result<Void, AppLockError> {
         guard !isAuthenticating else { return .failure(.failed) }
         isAuthenticating = true
+        let revision = configurationRevision
         let result = await authenticator.authenticate(reason: "Confirm app lock for your spending records.")
         isAuthenticating = false
+        guard revision == configurationRevision else { return .failure(.failed) }
         if case .success = result {
             self.timeout = timeout
             needsAuthentication = false
@@ -96,13 +101,26 @@ final class AppLockController {
     }
 
     func disable() {
+        configurationRevision &+= 1
         timeout = nil
         needsAuthentication = false
         privacyShieldVisible = false
         suspendedAt = nil
     }
 
+    /// Restored protection applies immediately; unchanged foreground configuration keeps its grace period.
+    func applyPersistedConfiguration(_ timeout: AppLockTimeout?, requireAuthentication: Bool = false) {
+        let changed = self.timeout != timeout
+        guard changed || requireAuthentication else { return }
+        configurationRevision &+= 1
+        self.timeout = timeout
+        needsAuthentication = timeout != nil && (changed || requireAuthentication)
+        privacyShieldVisible = false
+        suspendedAt = nil
+    }
+
     func restorePersistedConfiguration(_ timeout: AppLockTimeout?) {
+        configurationRevision &+= 1
         self.timeout = timeout
         needsAuthentication = false
         privacyShieldVisible = false

@@ -7,7 +7,7 @@ enum CategoryError: LocalizedError {
         case .invalidName: "Use a category name between 1 and 40 characters."
         case .duplicateName: "A category with this name already exists."
         case .invalidSymbol: "Choose an icon from the list."
-        case .inUse: "This category is used by an expense, a bill, your draft, or an expense available to undo. You can rename it, but it cannot be deleted."
+        case .inUse: "This category is used by an expense, a budget, a bill, your draft, or an expense available to undo. You can rename it, but it cannot be deleted."
         case .invalidRule: "Use one keyword between 1 and 40 characters."
         case .duplicateRule: "That keyword already has a rule."
         }

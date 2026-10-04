@@ -13,18 +13,23 @@ ditto build/device/Build/Products/Release-iphoneos/Monocle.app "$package_stage/P
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$package_stage/Payload/Monocle.app/Info.plist")
 build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$package_stage/Payload/Monocle.app/Info.plist")
 output_path="$project_root/build/packages/monocle-$version-build-$build_number-unsigned.ipa"
-if [ -e "$output_path" ]; then
-  output_path="$project_root/build/packages/monocle-$version-build-$build_number-unsigned-$(date +%Y%m%d-%H%M%S).ipa"
-fi
+package_suffix=0
+while [ -e "$output_path" ]; do
+  package_suffix=$((package_suffix + 1))
+  output_path="$project_root/build/packages/monocle-$version-build-$build_number-unsigned-$(date +%Y%m%d-%H%M%S)-$package_suffix.ipa"
+done
 (cd "$package_stage" && /usr/bin/zip -qr "$output_path" Payload)
 /usr/bin/unzip -t "$output_path"
 sha256="$(/usr/bin/shasum -a 256 "$output_path" | /usr/bin/awk '{print $1}')"
 delivery_dir="${IPA_DELIVERY_DIR:-/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex}"
 mkdir -p "$delivery_dir"
 delivery_path="$delivery_dir/$(basename "$output_path")"
-if [ -e "$delivery_path" ]; then
-  delivery_path="${delivery_path%.ipa}-$(date +%Y%m%d-%H%M%S).ipa"
-fi
+delivery_base="${delivery_path%.ipa}"
+delivery_suffix=0
+while [ -e "$delivery_path" ]; do
+  delivery_suffix=$((delivery_suffix + 1))
+  delivery_path="$delivery_base-$(date +%Y%m%d-%H%M%S)-$delivery_suffix.ipa"
+done
 /usr/bin/ditto "$output_path" "$delivery_path"
 printf 'Unsigned IPA: %s\nSHA-256: %s\nDelivery copy: %s\n' "$output_path" "$sha256" "$delivery_path"
 changelog_notes=""

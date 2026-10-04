@@ -90,6 +90,8 @@ final class AppModel {
     var sessionSheetBudget: String = ""
     var pendingRepeat = false
     var undoExpense: Expense?
+    private var undoOccurrences: [BillOccurrence] = []
+    @ObservationIgnored private var durablePreferences = WorkspacePreferences()
     private let expenseService: ExpenseService?
     private let state: (any LocalStateStore)?
 
@@ -186,7 +188,6 @@ final class AppModel {
         set {
             workspacePreferences.activeStackID = newValue
             persistWorkspacePreferences()
-            syncWidgetSnapshot()
         }
     }
 
@@ -253,24 +254,36 @@ final class AppModel {
         let currentCycle = cycle
         return expenses.filter { currentCycle.contains($0) }
     }
-    var spent: Int64 { cycleExpenses.reduce(0) { $0 + $1.amount } }
+    var spent: Int64 { Money.sum(cycleExpenses.map(\.amount)) }
     var remaining: Int64 { activeBudget.overallLimit - spent }
 
-    init(expenses: ExpenseService, state: any LocalStateStore, draft: ExpenseDraft = ExpenseDraft(), settings: PrototypeSettings = PrototypeSettings(), appLock: AppLockController? = nil) {
+    init(expenses: ExpenseService, state: any LocalStateStore, draft: ExpenseDraft = ExpenseDraft(), settings: PrototypeSettings = PrototypeSettings(), appLock: AppLockController? = nil, backups: BackupService? = nil) {
         self.expenseService = expenses
         self.state = state
         self.draft = draft
         self.settings = settings
         self.appLock = appLock ?? AppLockController(timeout: settings.appLockTimeout)
-        if let prefs = try? state.loadWorkspacePreferences() {
-            self.workspacePreferences = prefs
-            self.hiddenBookIDs = Set(prefs.visibleBookIDs.isEmpty ? [] : expenses.books.map(\.id).filter { !prefs.visibleBookIDs.contains($0) })
-            self.alwaysHiddenBookIDs = Set(prefs.alwaysHiddenBookIDs)
+        self.backups = backups
+        do {
+            let prefs = try state.loadWorkspacePreferences()
+            var categoryMap: [UUID: [ExpenseCategory]] = [:]
+            for book in expenses.books { categoryMap[book.id] = try expenses.categories(for: book.id) }
+            try prefs.validate(books: expenses.books, categoriesByBook: categoryMap)
+            let settingsBooks = expenses.books.map { BookBackupItem(book: $0, categories: categoryMap[$0.id] ?? [], expenses: [], budgets: []) }
+            try self.settings.validate(books: settingsBooks, globalCategories: prefs.globalCategories, allowLegacySampleProfile: true)
+            if let stored = expenses.books.first(where: { $0.id == settings.book.id }) { self.settings.book = stored }
+            else if settings.book == .sample, let active = expenses.books.first(where: { $0.id == expenses.activeBookID }) { self.settings.book = active }
+            if self.settings.book != settings.book { try state.saveSettings(self.settings) }
+            publishPreferences(prefs)
+            try ensureGlobalCategories()
+            try ensureDefaultStack()
+            try expenses.reconcileBills()
+            expenses.onCommit = { [weak self] in self?.committedWorkspaceChanged() }
+            syncWidgetSnapshot()
+        } catch {
+            startupError = error.localizedDescription
+            expenses.isBlocked = true
         }
-        ensureDefaultStack()
-        ensureGlobalCategories()
-        try? expenses.reconcileBills()
-        syncWidgetSnapshot()
     }
 
     init(startupFailure: String) {
@@ -280,54 +293,114 @@ final class AppModel {
         startupError = startupFailure
     }
 
-    func ensureDefaultStack() {
-        if workspacePreferences.bookOrder.isEmpty {
-            workspacePreferences.bookOrder = books.map(\.id)
-            persistWorkspacePreferences()
+    func ensureDefaultStack() throws {
+        var proposed = workspacePreferences
+        if proposed.bookOrder.isEmpty { proposed.bookOrder = books.map(\.id) }
+        if proposed.stacks.isEmpty {
+            let initial = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: orderedBooks.map(\.id).filter { !alwaysHiddenBookIDs.contains($0) })
+            proposed.stacks = [initial]; proposed.activeStackID = initial.id
+        } else if !proposed.stacks.contains(where: { $0.id == proposed.activeStackID }) { proposed.activeStackID = proposed.stacks.first?.id }
+        if proposed != workspacePreferences { try commitPresentationPreferences(proposed) }
+    }
+
+    private func commitPresentationPreferences(_ proposed: WorkspacePreferences) throws {
+        guard startupError == nil, expenseService?.isBlocked != true else { throw BackupError.recoveryRequired }
+        var categoriesByBook: [UUID: [ExpenseCategory]] = [:]
+        for book in books { categoriesByBook[book.id] = try expenseService?.categories(for: book.id) }
+        try proposed.validate(books: books, categoriesByBook: categoriesByBook)
+        try requireState().saveWorkspacePreferences(proposed)
+        publishPreferences(proposed); syncWidgetSnapshot()
+    }
+
+    func ensureGlobalCategories() throws {
+        guard workspacePreferences.globalCategories.isEmpty, let expenseService else { return }
+        var catalog: [GlobalCategory] = []
+        var seenNames = Set<String>()
+        var seenIDs = Set<UUID>()
+        for book in books {
+            for cat in try expenseService.categories(for: book.id) {
+                let name = cat.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+                guard seenNames.insert(name).inserted else { continue }
+                let id = seenIDs.insert(cat.id).inserted ? cat.id : UUID()
+                catalog.append(GlobalCategory(id: id, name: cat.name, symbol: cat.symbol, defaultActiveForNewCards: true))
+            }
         }
-        if workspacePreferences.stacks.isEmpty {
-            let initialCardIDs = orderedBooks.map(\.id).filter { !alwaysHiddenBookIDs.contains($0) }
-            let defaultStack = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: initialCardIDs)
-            workspacePreferences.stacks = [defaultStack]
-            workspacePreferences.activeStackID = defaultStack.id
-            persistWorkspacePreferences()
-        } else if workspacePreferences.activeStackID == nil || !workspacePreferences.stacks.contains(where: { $0.id == workspacePreferences.activeStackID }) {
-            workspacePreferences.activeStackID = workspacePreferences.stacks.first?.id
-            persistWorkspacePreferences()
+        if catalog.isEmpty { catalog = GlobalCategory.defaults }
+        let mapping = try expenseService.categoryMigrationMapping(to: catalog)
+        var preferences = workspacePreferences
+        preferences.globalCategories = catalog
+        for (bookID, ids) in preferences.cardInactiveCategoryIDs {
+            preferences.cardInactiveCategoryIDs[bookID] = ids.map { mapping[bookID]?[$0] ?? $0 }
+        }
+        var updatedSettings = settings
+        let settingsMap = mapping[settings.book.id] ?? [:]
+        updatedSettings.archivedCategoryIDs = Set(settings.archivedCategoryIDs.map { settingsMap[$0] ?? $0 })
+        updatedSettings.categoryRules = settings.categoryRules.map { rule in
+            var value = rule; value.categoryID = settingsMap[rule.categoryID] ?? rule.categoryID; return value
+        }
+        var drafts: [UUID: ExpenseDraft] = [:]
+        for book in books {
+            var value = book.id == (draft.bookID ?? settings.book.id) ? draft : try requireState().loadDraft(for: book.id)
+            value.bookID = book.id
+            if let categoryID = value.categoryID { value.categoryID = mapping[book.id]?[categoryID] ?? categoryID }
+            value.splitAllocations = value.splitAllocations.map { allocation in
+                var result = allocation; result.categoryID = mapping[book.id]?[allocation.categoryID] ?? allocation.categoryID; return result
+            }
+            drafts[book.id] = value
+        }
+        try performWorkspaceCommand {
+            try expenseService.unifyCategoriesToGlobalCatalog(catalog)
+            for (bookID, value) in drafts { try requireState().saveDraft(value, for: bookID) }
+            try requireState().saveSettings(updatedSettings)
+            try requireState().saveWorkspacePreferences(preferences)
+        }
+        settings = updatedSettings
+        expenseService.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
+        if let value = drafts[draft.bookID ?? settings.book.id] { draft = value }
+        publishPreferences(preferences)
+    }
+
+    private func performWorkspaceCommand(_ operation: () throws -> Void) throws {
+        guard let expenseService, startupError == nil else { throw BackupError.recoveryRequired }
+        do {
+            if let backups {
+                try backups.withRecovery(currentDraft: draft, settings: settings) {
+                    try expenseService.performTransaction(operation)
+                }
+            } else {
+                let local = try requireState()
+                let oldSettings = try local.loadSettings()
+                let oldPreferences = try local.loadWorkspacePreferences()
+                var oldDrafts: [UUID: ExpenseDraft] = [:]
+                for book in books { oldDrafts[book.id] = try local.loadDraft(for: book.id) }
+                do { try expenseService.performTransaction(operation) }
+                catch {
+                    let originalError = error
+                    do {
+                        try local.saveSettings(oldSettings)
+                        try local.saveWorkspacePreferences(oldPreferences)
+                        for (id, value) in oldDrafts { try local.saveDraft(value, for: id) }
+                    } catch {
+                        expenseService.isBlocked = true
+                        startupError = BackupError.recoveryRequired.localizedDescription
+                        throw BackupError.recoveryRequired
+                    }
+                    throw originalError
+                }
+            }
+        } catch {
+            if backups?.requiresRecovery == true { startupError = BackupError.recoveryRequired.localizedDescription }
+            throw error
         }
     }
 
-    func ensureGlobalCategories() {
-        if workspacePreferences.globalCategories.isEmpty {
-            var existing: [GlobalCategory] = []
-            var seenNames = Set<String>()
-            func norm(_ name: String) -> String {
-                name.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
-            }
-            for cat in categories {
-                let n = norm(cat.name)
-                if !seenNames.contains(n) {
-                    seenNames.insert(n)
-                    existing.append(GlobalCategory(id: cat.id, name: cat.name, symbol: cat.symbol, defaultActiveForNewCards: true))
-                }
-            }
-            for book in books {
-                let otherCats = (try? expenseService?.categories(for: book.id)) ?? []
-                for cat in otherCats {
-                    let n = norm(cat.name)
-                    if !seenNames.contains(n) {
-                        seenNames.insert(n)
-                        existing.append(GlobalCategory(id: cat.id, name: cat.name, symbol: cat.symbol, defaultActiveForNewCards: true))
-                    }
-                }
-            }
-            if existing.isEmpty {
-                existing = GlobalCategory.defaults
-            }
-            workspacePreferences.globalCategories = existing
-            persistWorkspacePreferences()
-            try? expenseService?.unifyCategoriesToGlobalCatalog(existing)
-        }
+    private func publishPreferences(_ preferences: WorkspacePreferences) {
+        workspacePreferences = preferences
+        durablePreferences = preferences
+        hiddenBookIDs = Set(preferences.visibleBookIDs.isEmpty ? [] : books.map(\.id).filter { !preferences.visibleBookIDs.contains($0) })
+        alwaysHiddenBookIDs = Set(preferences.alwaysHiddenBookIDs)
+        memoizedActivities = nil
     }
 
     func reload() throws {
@@ -335,8 +408,9 @@ final class AppModel {
         try expenseService.reload()
         try expenseService.reconcileBills()
         invalidateExpenseCaches()
-        ensureDefaultStack()
-        ensureGlobalCategories()
+        try ensureDefaultStack()
+        try ensureGlobalCategories()
+        appLock.applyPersistedConfiguration(settings.appLockTimeout)
     }
     func category(_ id: UUID?) -> ExpenseCategory? {
         guard let id else { return nil }
@@ -350,7 +424,7 @@ final class AppModel {
     }
     func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.allocations.first?.categoryID)?.name ?? "Expense" : expense.note }
     func spent(in category: ExpenseCategory) -> Int64 {
-        cycleExpenses.flatMap(\.allocations).filter { $0.categoryID == category.id }.reduce(0) { $0 + $1.amount }
+        Money.sum(cycleExpenses.flatMap(\.allocations).filter { $0.categoryID == category.id }.map(\.amount))
     }
     var draftNeedsConfirmation: Bool {
         if draft.editing {
@@ -409,7 +483,7 @@ final class AppModel {
     @discardableResult
     func discardDraft() -> Bool {
         originalDraft = nil
-        let cleared = ExpenseDraft()
+        var cleared = ExpenseDraft(); cleared.bookID = draft.bookID ?? activeBookID
         do {
             if let bookID = draft.bookID {
                 try requireState().saveDraft(cleared, for: bookID)
@@ -476,51 +550,125 @@ final class AppModel {
 
     func createBook(named name: String, selectedCategoryIDs: Set<UUID>? = nil) throws -> BookProfile {
         guard let expenseService else { throw EntryError.corruptStore }
-        let initialCategories: [GlobalCategory]
-        if let selected = selectedCategoryIDs {
-            initialCategories = globalCategories.filter { selected.contains($0.id) }
-        } else {
-            let defaults = globalCategories.filter { $0.defaultActiveForNewCards }
-            initialCategories = defaults.isEmpty ? globalCategories : defaults
+        let initialCategories = globalCategories.filter { selectedCategoryIDs?.contains($0.id) ?? $0.defaultActiveForNewCards }
+        var created: BookProfile?
+        var proposed = workspacePreferences
+        try performWorkspaceCommand {
+            let book = try expenseService.createBook(named: name, initialCategories: initialCategories)
+            created = book
+            proposed.bookOrder.append(book.id)
+            if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(book.id) }
+            try requireState().saveWorkspacePreferences(proposed)
         }
-        let book = try expenseService.createBook(named: name, initialCategories: initialCategories)
-        workspacePreferences.bookOrder.append(book.id)
-        if let activeID = workspacePreferences.activeStackID,
-           let index = workspacePreferences.stacks.firstIndex(where: { $0.id == activeID }) {
-            if !workspacePreferences.stacks[index].cardIDs.contains(book.id) {
-                workspacePreferences.stacks[index].cardIDs.append(book.id)
-            }
-        }
-        persistWorkspacePreferences()
-        showToast("Book created")
-        return book
+        guard let created else { throw EntryError.corruptStore }
+        publishPreferences(proposed); invalidateExpenseCaches(); showToast("Book created")
+        return created
     }
 
     func renameBook(id: UUID, to name: String) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.renameBook(id: id, to: name)
-        showToast("Book renamed")
+        guard let existing = books.first(where: { $0.id == id }) else { throw BackupError.invalid }
+        var renamed = existing
+        renamed.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        try renamed.validate()
+        var proposed = settings
+        if proposed.book.id == id { proposed.book = renamed }
+        try performWorkspaceCommand {
+            try expenseService.renameBook(id: id, to: name)
+            try requireState().saveSettings(proposed)
+        }
+        settings = proposed; invalidateExpenseCaches(); showToast("Book renamed")
     }
 
     func deleteBook(id: UUID) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.deleteBook(id: id)
-        if let custom = workspacePreferences.cardCustomizations[id],
-           case .customPhoto(let filename) = custom.style {
+        var proposed = workspacePreferences
+        var updatedSettings = settings
+        let remainingBooks = books.filter { $0.id != id }
+        guard !remainingBooks.isEmpty else { throw BackupError.invalid }
+        let ownsDeletedDraft = (draft.bookID ?? settings.book.id) == id
+        let replacementDraftID = activeBookID == id ? remainingBooks[0].id : activeBookID
+        let replacementDraft = ownsDeletedDraft ? try requireState().loadDraft(for: replacementDraftID) : nil
+        if updatedSettings.book.id == id, let replacement = remainingBooks.first {
+            updatedSettings.book = replacement
+            if let budget = BudgetHistory.active(on: .now, budgets: try expenseService.budgets(for: replacement.id)) {
+                updatedSettings.budget = budget.overallLimit; updatedSettings.startDay = budget.startDay
+            }
+        }
+        let oldCustom = proposed.cardCustomizations.removeValue(forKey: id)
+        proposed.cardInactiveCategoryIDs.removeValue(forKey: id)
+        proposed.bookOrder.removeAll { $0 == id }
+        proposed.visibleBookIDs.removeAll { $0 == id }
+        proposed.alwaysHiddenBookIDs.removeAll { $0 == id }
+        for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == id } }
+        try performWorkspaceCommand {
+            try expenseService.deleteBook(id: id)
+            try requireState().saveSettings(updatedSettings)
+            try requireState().saveWorkspacePreferences(proposed)
+        }
+        settings = updatedSettings
+        expenseService.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
+        publishPreferences(proposed)
+        if selectedBookID == id { selectedBookID = nil }
+        if var replacementDraft { replacementDraft.bookID = activeBookID; draft = replacementDraft; originalDraft = nil }
+        if let oldCustom, case .customPhoto(let filename) = oldCustom.style,
+           !proposed.cardCustomizations.values.contains(where: { $0.style == oldCustom.style }) {
             CardArtworkStore.shared.deleteArtwork(filename: filename)
         }
-        workspacePreferences.cardCustomizations.removeValue(forKey: id)
-        workspacePreferences.cardInactiveCategoryIDs.removeValue(forKey: id)
-        workspacePreferences.bookOrder.removeAll { $0 == id }
-        workspacePreferences.visibleBookIDs.removeAll { $0 == id }
-        hiddenBookIDs.remove(id)
-        alwaysHiddenBookIDs.remove(id)
-        for i in workspacePreferences.stacks.indices {
-            workspacePreferences.stacks[i].cardIDs.removeAll { $0 == id }
+        invalidateExpenseCaches(); showToast("Book deleted")
+    }
+
+    func applyCardCustomizations(names: [UUID: String], customizations: [UUID: BookCardCustomization],
+                                 newBookIDs: Set<UUID>, selections: [UUID: Set<UUID>]) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        var proposed = workspacePreferences
+        var updatedSettings = settings
+        var lastCreated: UUID?
+        try performWorkspaceCommand {
+            for placeholder in newBookIDs.sorted(by: { $0.uuidString < $1.uuidString }) {
+                let raw = names[placeholder]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let selected = selections[placeholder]
+                let initial = globalCategories.filter { selected?.contains($0.id) ?? $0.defaultActiveForNewCards }
+                let book = try expenseService.createBook(named: raw.isEmpty ? "New Card" : String(raw.prefix(40)), initialCategories: initial)
+                lastCreated = book.id
+                proposed.bookOrder.append(book.id)
+                if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(book.id) }
+                proposed.cardCustomizations[book.id] = customizations[placeholder]
+            }
+            for book in books where !newBookIDs.contains(book.id) {
+                if let name = names[book.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty, name != book.name {
+                    var renamed = book
+                    renamed.name = String(name.prefix(40))
+                    try renamed.validate()
+                    try expenseService.renameBook(id: book.id, to: renamed.name)
+                    if updatedSettings.book.id == book.id { updatedSettings.book = renamed }
+                }
+                if let customization = customizations[book.id] { proposed.cardCustomizations[book.id] = customization }
+                if let selection = selections[book.id] {
+                    for category in globalCategories {
+                        var inactive = proposed.cardInactiveCategoryIDs[book.id] ?? []
+                        if selection.contains(category.id) {
+                            try expenseService.activateCategory(category, in: book.id)
+                            inactive.removeAll { $0 == category.id }
+                        } else {
+                            try expenseService.deactivateCategory(category.id, in: book.id)
+                            if !inactive.contains(category.id) { inactive.append(category.id) }
+                        }
+                        proposed.cardInactiveCategoryIDs[book.id] = inactive
+                    }
+                }
+            }
+            try requireState().saveSettings(updatedSettings)
+            try requireState().saveWorkspacePreferences(proposed)
         }
-        if selectedBookID == id { selectedBookID = nil }
-        persistWorkspacePreferences()
-        showToast("Book deleted")
+        settings = updatedSettings
+        publishPreferences(proposed); invalidateExpenseCaches()
+        if let lastCreated { selectBook(lastCreated) }
+        showToast("Cards saved")
+    }
+
+    func performUIAction(_ action: () throws -> Void) {
+        do { try action() } catch { self.error = error.localizedDescription }
     }
 
     func customization(for bookID: UUID) -> BookCardCustomization {
@@ -532,44 +680,47 @@ final class AppModel {
     }
 
     func updateCustomization(_ customization: BookCardCustomization, for bookID: UUID) {
-        workspacePreferences.cardCustomizations[bookID] = customization
-        persistWorkspacePreferences()
+        var proposed = workspacePreferences
+        proposed.cardCustomizations[bookID] = customization
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     func setBookHidden(id: UUID, isHidden: Bool) {
-        if isHidden {
-            hiddenBookIDs.insert(id)
-        } else {
-            hiddenBookIDs.remove(id)
-        }
-        persistWorkspacePreferences()
+        var hidden = hiddenBookIDs
+        if isHidden { hidden.insert(id) } else { hidden.remove(id) }
+        var proposed = workspacePreferences
+        proposed.visibleBookIDs = books.map(\.id).filter { !hidden.contains($0) }
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     func setCardAlwaysHidden(id: UUID, isHidden: Bool) {
+        var proposed = workspacePreferences
+        var hidden = Set(proposed.alwaysHiddenBookIDs)
+        var ordinary = hiddenBookIDs
         if isHidden {
-            alwaysHiddenBookIDs.insert(id)
-            hiddenBookIDs.insert(id)
-            var updatedStacks = stacks
-            for i in updatedStacks.indices {
-                updatedStacks[i].cardIDs.removeAll { $0 == id }
-            }
-            stacks = updatedStacks
-            if selectedBookID == id { selectedBookID = nil }
-            showToast("Card archived")
+            hidden.insert(id); ordinary.insert(id)
+            for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == id } }
         } else {
-            alwaysHiddenBookIDs.remove(id)
-            hiddenBookIDs.remove(id)
-            if let activeID = activeStackID, let index = stacks.firstIndex(where: { $0.id == activeID }) {
-                if !stacks[index].cardIDs.contains(id) {
-                    var updatedStacks = stacks
-                    updatedStacks[index].cardIDs.append(id)
-                    stacks = updatedStacks
-                }
-            }
-            showToast("Card unarchived")
+            hidden.remove(id); ordinary.remove(id)
+            if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }), !proposed.stacks[index].cardIDs.contains(id) { proposed.stacks[index].cardIDs.append(id) }
         }
-        workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
-        persistWorkspacePreferences()
+        proposed.alwaysHiddenBookIDs = Array(hidden)
+        proposed.visibleBookIDs = books.map(\.id).filter { !ordinary.contains($0) }
+        do {
+            try commitPresentationPreferences(proposed)
+            if isHidden, selectedBookID == id { selectedBookID = nil }
+            showToast(isHidden ? "Card archived" : "Card unarchived")
+        } catch { self.error = error.localizedDescription }
+    }
+
+    func saveStackConfiguration(_ stacks: [CardStack], activeStackID: UUID?, alwaysHiddenIDs: Set<UUID>) throws {
+        var proposed = workspacePreferences
+        proposed.stacks = stacks; proposed.activeStackID = activeStackID
+        proposed.alwaysHiddenBookIDs = Array(alwaysHiddenIDs)
+        proposed.visibleBookIDs = books.map(\.id).filter { !alwaysHiddenIDs.contains($0) }
+        proposed.filterScope = .activeStack
+        try commitPresentationPreferences(proposed)
+        if let selectedBookID, alwaysHiddenIDs.contains(selectedBookID) { self.selectedBookID = nil }
     }
 
     func toggleFilterScope() {
@@ -577,91 +728,80 @@ final class AppModel {
     }
 
     func cycleFilterOrStack() {
+        var proposed = workspacePreferences
         if filterScope == .allCards {
-            if let first = stacks.first {
-                activeStackID = first.id
-                filterScope = .activeStack
-            } else {
-                filterScope = .activeStack
-            }
+            if let first = stacks.first { proposed.activeStackID = first.id }
+            proposed.filterScope = .activeStack
         } else {
             if stacks.count > 1, let currentID = activeStackID, let currentIndex = stacks.firstIndex(where: { $0.id == currentID }) {
                 let nextIndex = currentIndex + 1
                 if nextIndex < stacks.count {
-                    activeStackID = stacks[nextIndex].id
-                    filterScope = .activeStack
+                    proposed.activeStackID = stacks[nextIndex].id
+                    proposed.filterScope = .activeStack
                 } else {
-                    filterScope = .allCards
+                    proposed.filterScope = .allCards
                 }
             } else {
-                filterScope = .allCards
+                proposed.filterScope = .allCards
             }
         }
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     func setActiveStack(id: UUID) {
         guard stacks.contains(where: { $0.id == id }) else { return }
-        activeStackID = id
-        filterScope = .activeStack
+        var proposed = workspacePreferences; proposed.activeStackID = id; proposed.filterScope = .activeStack
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     @discardableResult
-    func createStack(name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) -> CardStack {
+    func createStack(name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) throws -> CardStack {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalName = trimmed.isEmpty ? "New Stack" : String(trimmed.prefix(40))
-        let newStack = CardStack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
-        var updated = stacks
-        updated.append(newStack)
-        stacks = updated
-        activeStackID = newStack.id
-        filterScope = .activeStack
+        let stack = CardStack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
+        var proposed = workspacePreferences
+        proposed.stacks.append(stack); proposed.activeStackID = stack.id; proposed.filterScope = .activeStack
+        try commitPresentationPreferences(proposed)
         showToast("Stack '\(finalName)' created")
-        return newStack
+        return stack
     }
 
-    func updateStack(_ stack: CardStack) {
-        if let index = stacks.firstIndex(where: { $0.id == stack.id }) {
-            var updated = stacks
-            updated[index] = stack
-            stacks = updated
-        }
+    func updateStack(_ stack: CardStack) throws {
+        guard let index = stacks.firstIndex(where: { $0.id == stack.id }) else { throw BackupError.invalid }
+        var proposed = workspacePreferences; proposed.stacks[index] = stack
+        try commitPresentationPreferences(proposed)
     }
 
     func deleteStack(id: UUID) {
-        guard stacks.count > 1 else {
-            showToast("Cannot delete the only stack")
-            return
-        }
-        var updated = stacks
-        updated.removeAll { $0.id == id }
-        stacks = updated
-        if activeStackID == id {
-            activeStackID = updated.first?.id
-        }
-        showToast("Stack deleted")
+        guard stacks.count > 1 else { showToast("Cannot delete the only stack"); return }
+        var proposed = workspacePreferences
+        proposed.stacks.removeAll { $0.id == id }
+        if proposed.activeStackID == id { proposed.activeStackID = proposed.stacks.first?.id }
+        do { try commitPresentationPreferences(proposed); showToast("Stack deleted") }
+        catch { self.error = error.localizedDescription }
     }
 
     func moveBookToFront(_ bookID: UUID) {
+        var proposed = workspacePreferences
         if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
             var cardIDs = stacks[idx].cardIDs.filter { $0 != bookID }
             cardIDs.insert(bookID, at: 0)
-            stacks[idx].cardIDs = cardIDs
-            persistWorkspacePreferences()
+            proposed.stacks[idx].cardIDs = cardIDs
         } else {
             var currentOrder = orderedBooks.map(\.id).filter { $0 != bookID }
             currentOrder.insert(bookID, at: 0)
-            workspacePreferences.bookOrder = currentOrder
-            persistWorkspacePreferences()
+            proposed.bookOrder = currentOrder
         }
-        showToast("Moved to front")
+        do { try commitPresentationPreferences(proposed); showToast("Moved to front") }
+        catch { self.error = error.localizedDescription }
     }
 
     func reorderCardsInCurrentStack(fromOffsets: IndexSet, toOffset: Int) {
         if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
             var cardIDs = stacks[idx].cardIDs
             cardIDs.move(fromOffsets: fromOffsets, toOffset: toOffset)
-            stacks[idx].cardIDs = cardIDs
-            persistWorkspacePreferences()
+            var proposed = workspacePreferences; proposed.stacks[idx].cardIDs = cardIDs
+            do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
         } else {
             reorderBooks(fromOffsets: fromOffsets, toOffset: toOffset)
         }
@@ -670,22 +810,44 @@ final class AppModel {
     func reorderBooks(fromOffsets: IndexSet, toOffset: Int) {
         var currentOrder = orderedBooks.map(\.id)
         currentOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)
-        workspacePreferences.bookOrder = currentOrder
-        persistWorkspacePreferences()
+        var proposed = workspacePreferences; proposed.bookOrder = currentOrder
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     func persistWorkspacePreferences() {
-        workspacePreferences.visibleBookIDs = visibleBooks.map(\.id)
+        guard startupError == nil else { return }
+        workspacePreferences.visibleBookIDs = books.map(\.id).filter { !hiddenBookIDs.contains($0) }
         workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
-        invalidateExpenseCaches()
-        do { try state?.saveWorkspacePreferences(workspacePreferences) }
-        catch { self.error = error.localizedDescription }
+        do {
+            try requireState().saveWorkspacePreferences(workspacePreferences)
+            let changedScope = durablePreferences.stacks != workspacePreferences.stacks ||
+                durablePreferences.activeStackID != workspacePreferences.activeStackID ||
+                durablePreferences.visibleBookIDs != workspacePreferences.visibleBookIDs ||
+                durablePreferences.alwaysHiddenBookIDs != workspacePreferences.alwaysHiddenBookIDs ||
+                durablePreferences.filterScopeRaw != workspacePreferences.filterScopeRaw
+            durablePreferences = workspacePreferences
+            if changedScope { memoizedActivities = nil; syncWidgetSnapshot() }
+        } catch {
+            publishPreferences(durablePreferences)
+            self.error = error.localizedDescription
+        }
     }
 
     @ObservationIgnored private var expensesCache: [UUID: [Expense]] = [:]
     @ObservationIgnored private var spentCache: [UUID: Int64] = [:]
     @ObservationIgnored private var memoizedActivities: [Expense]? = nil
     @ObservationIgnored private var memoizedActivitiesKey: String = ""
+
+    var billReminderStatus: String? { expenseService?.notifications.lastError }
+
+    private func committedWorkspaceChanged() {
+        if let refreshError = expenseService?.projectionRefreshError {
+            expensesCache.removeAll(); spentCache.removeAll(); memoizedActivities = nil
+            error = "Your change was saved, but the display could not refresh: \(refreshError)"
+            do { try WidgetSnapshotStore.writeSnapshot(.unavailable("Open Monocle to refresh")) }
+            catch { BackendDiagnostics.widgetPublicationFailed() }
+        } else { invalidateExpenseCaches() }
+    }
 
     func invalidateExpenseCaches() {
         expensesCache.removeAll()
@@ -696,11 +858,13 @@ final class AppModel {
     }
 
     func syncWidgetSnapshot() {
+        guard startupError == nil, expenseService?.projectionRefreshError == nil else { return }
         guard let activeBook = books.first(where: { $0.id == activeBookID }) ?? books.first else { return }
-        let stack = currentStack
+        var stack = currentStack
+        stack?.cardIDs.removeAll { alwaysHiddenBookIDs.contains($0) }
         let stackExp: [Expense] = {
             if let stack {
-                return books.filter { stack.cardIDs.contains($0.id) }.flatMap { expenses(for: $0.id) }
+                return books.filter { stack.cardIDs.contains($0.id) && !alwaysHiddenBookIDs.contains($0.id) }.flatMap { expenses(for: $0.id) }
             }
             return expenses
         }()
@@ -711,8 +875,10 @@ final class AppModel {
             expenses: expenses,
             stackExpenses: stackExp,
             categories: categories,
+            captureCategories: activeCategories(for: activeBookID),
             budget: activeBudget,
-            cycle: cycle
+            cycle: cycle,
+            revision: expenseService?.committedRevision
         )
     }
 
@@ -732,9 +898,36 @@ final class AppModel {
         if let cached = spentCache[bookID] {
             return cached
         }
-        let total = expenses(for: bookID).reduce(0) { $0 + $1.amount }
+        let total = Money.sum(expenses(for: bookID).map(\.amount))
         spentCache[bookID] = total
         return total
+    }
+
+    func reportingData(for scope: AnalyticsFilterScope) -> AnalyticsReportingData {
+        let selected: [BookProfile]
+        switch scope {
+        case .card(let id, _): selected = books.filter { $0.id == id }
+        case .stack(let id, _):
+            let ids = Set(stacks.first(where: { $0.id == id })?.cardIDs ?? [])
+            selected = books.filter { ids.contains($0.id) && !alwaysHiddenBookIDs.contains($0.id) }
+        case .allCards: selected = unhiddenBooks
+        }
+        var data = AnalyticsReportingData()
+        data.books = selected
+        do {
+            guard let expenseService else { throw EntryError.corruptStore }
+            var seen = Set<UUID>()
+            for book in selected {
+                let values = try expenseService.expenses(for: book.id)
+                data.expensesByBook[book.id] = values
+                data.expenses.append(contentsOf: values)
+                data.categories += try expenseService.categories(for: book.id).filter { seen.insert($0.id).inserted }
+                data.bills += try expenseService.bills(for: book.id)
+                data.billOccurrences += try expenseService.billOccurrences(for: book.id)
+            }
+            if case .card(let id, _) = scope { data.budgets = try expenseService.budgets(for: id) }
+        } catch { data.errorMessage = error.localizedDescription }
+        return data
     }
 
     func allExpenses() -> [Expense] {
@@ -775,16 +968,16 @@ final class AppModel {
 
     func startEmptyRealBook(named name: String) throws {
         guard let backups else { throw BackupError.unsupported }
-        let settings = try backups.startEmptyRealBook(named: name, currentDraft: draft, settings: settings)
+        let settings = try recoveryCommand { try backups.startEmptyRealBook(named: name, currentDraft: draft, settings: settings) }
         self.settings = settings
-        draft = ExpenseDraft()
+        draft = ExpenseDraft(); draft.bookID = settings.book.id
         undoExpense = nil; pendingEntry = nil
         invalidateExpenseCaches()
         showToast("Your real book is ready")
     }
     func renameRealBook(to name: String) throws {
         guard let backups else { throw BackupError.unsupported }
-        settings = try backups.renameRealBook(to: name, currentDraft: draft, settings: settings)
+        try recoveryCommand { settings = try backups.renameRealBook(to: name, currentDraft: draft, settings: settings) }
         invalidateExpenseCaches()
         showToast("Book renamed")
     }
@@ -792,8 +985,8 @@ final class AppModel {
     func clearActiveCardExpenses() throws {
         guard let backups else { throw BackupError.unsupported }
         let targetID = selectedBookID ?? activeBookID
-        try backups.clearExpenses(in: targetID, currentDraft: draft, settings: settings)
-        draft = ExpenseDraft()
+        try recoveryCommand { try backups.clearExpenses(in: targetID, currentDraft: draft, settings: settings) }
+        draft = ExpenseDraft(); draft.bookID = activeBookID
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
         try reload()
@@ -802,8 +995,8 @@ final class AppModel {
 
     func clearAllTransactions() throws {
         guard let backups else { throw BackupError.unsupported }
-        try backups.clearExpenses(in: nil, currentDraft: draft, settings: settings)
-        draft = ExpenseDraft()
+        try recoveryCommand { try backups.clearExpenses(in: nil, currentDraft: draft, settings: settings) }
+        draft = ExpenseDraft(); draft.bookID = activeBookID
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
         try reload()
@@ -812,10 +1005,11 @@ final class AppModel {
 
     func resetAllData(cardName: String) throws {
         guard let backups else { throw BackupError.unsupported }
-        let newSettings = try backups.resetAllData(cardName: cardName, currentDraft: draft, settings: settings)
+        let newSettings = try recoveryCommand { try backups.resetAllData(cardName: cardName, currentDraft: draft, settings: settings) }
         self.settings = newSettings
-        self.workspacePreferences = (try? state?.loadWorkspacePreferences()) ?? WorkspacePreferences()
-        self.draft = ExpenseDraft()
+        publishPreferences(try requireState().loadWorkspacePreferences())
+        expenseService?.configure(categoryRules: newSettings.categoryRules, archivedCategoryIDs: newSettings.archivedCategoryIDs)
+        self.draft = ExpenseDraft(); self.draft.bookID = newSettings.book.id
         self.originalDraft = nil
         self.undoExpense = nil; pendingEntry = nil
         self.hiddenBookIDs = []
@@ -824,6 +1018,14 @@ final class AppModel {
         self.selectedBookID = newSettings.book.id
         try reload()
         showToast("App reset to clean state")
+    }
+
+    private func recoveryCommand<T>(_ command: () throws -> T) throws -> T {
+        do { return try command() }
+        catch {
+            if backups?.requiresRecovery == true || expenseService?.isBlocked == true { startupError = BackupError.recoveryRequired.localizedDescription }
+            throw error
+        }
     }
 
     func showToast(_ text: String) { toast = text; toastID = UUID() }
@@ -840,7 +1042,7 @@ final class AppModel {
         customStartDate: Date = .now,
         customEndDate: Date = .now
     ) -> String {
-        let calendar = Calendar.current
+        let calendar = Day.calendar
         var targetExpenses: [Expense]
         if let bookID {
             targetExpenses = expenses(for: bookID)
@@ -859,7 +1061,8 @@ final class AppModel {
         case .thisMonth:
             let start = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
             let startDay = Day.string(start)
-            targetExpenses = targetExpenses.filter { $0.day >= startDay }
+            let endDay = Day.string(calendar.date(byAdding: .month, value: 1, to: start) ?? now)
+            targetExpenses = targetExpenses.filter { $0.day >= startDay && $0.day < endDay }
         case .lastMonth:
             guard let prevMonth = calendar.date(byAdding: .month, value: -1, to: now) else { break }
             let comps = calendar.dateComponents([.year, .month], from: prevMonth)
@@ -895,7 +1098,12 @@ final class AppModel {
             try save(expense)
             let editing = draft.editing
             originalDraft = nil
-            draft = ExpenseDraft(); persistDraft(); showEntry = false
+            var cleared = ExpenseDraft(); cleared.bookID = targetID
+            draft = cleared
+            // The expense is already durable. Cleanup failure must never invite a second save.
+            do { try requireState().saveDraft(cleared, for: targetID) }
+            catch { self.error = "Expense saved, but its draft could not be cleared: \(error.localizedDescription)" }
+            showEntry = false
             undoExpense = nil
             saveFeedback += 1
             if !editing, SpendingSessionManager.shared.isSessionActive {
@@ -922,14 +1130,21 @@ final class AppModel {
     func delete(_ expense: Expense) {
         do {
             guard let expenseService else { throw EntryError.corruptStore }
-            try expenseService.delete(expense.id)
+            let owner = expense.bookID ?? activeBookID
+            let linked = try expenseService.billOccurrences(for: owner).filter { $0.expenseID == expense.id }
+            try expenseService.delete(expense.id, in: owner)
+            undoOccurrences = linked
             invalidateExpenseCaches()
             undoExpense = expense; showToast("Expense deleted")
         } catch { self.error = error.localizedDescription }
     }
     func undoDelete() {
         guard let undoExpense else { return }
-        do { try save(undoExpense); self.undoExpense = nil; showToast("Expense restored") }
+        do {
+            guard let expenseService else { throw EntryError.corruptStore }
+            try expenseService.restoreExpense(undoExpense, occurrences: undoOccurrences, in: undoExpense.bookID ?? activeBookID)
+            self.undoExpense = nil; undoOccurrences = []; invalidateExpenseCaches(); showToast("Expense restored")
+        }
         catch { self.error = error.localizedDescription }
     }
     func saveBill(_ bill: BillRule, in bookID: UUID? = nil) throws {
@@ -971,7 +1186,8 @@ final class AppModel {
     }
     func reconcileBills(asOf date: Date = .now, in bookID: UUID? = nil) {
         guard let expenseService else { return }
-        try? expenseService.reconcileBills(asOf: date, in: bookID)
+        do { try expenseService.reconcileBills(asOf: date, in: bookID) }
+        catch { self.error = error.localizedDescription }
         invalidateExpenseCaches()
     }
     func repeatExpense(_ expense: Expense) {
@@ -982,18 +1198,8 @@ final class AppModel {
         showEntry = true
     }
     func saveCategory(_ category: ExpenseCategory) throws {
-        guard let expenseService else { throw EntryError.corruptStore }
         let validated = try category.validated(against: categories)
-        try expenseService.saveCategory(validated)
-        var catalog = globalCategories
-        if let idx = catalog.firstIndex(where: { $0.id == validated.id }) {
-            catalog[idx].name = validated.name
-            catalog[idx].symbol = validated.symbol
-            try? expenseService.updateGlobalCategoryMetadata(id: validated.id, name: validated.name, symbol: validated.symbol)
-        } else {
-            catalog.append(GlobalCategory(category: validated, defaultActiveForNewCards: true))
-        }
-        globalCategories = catalog
+        try saveGlobalCategory(GlobalCategory(category: validated, defaultActiveForNewCards: true), activeBookIDs: activeBookIDs(for: validated.id).union([activeBookID]))
     }
 
     func isCategoryActive(_ categoryID: UUID, on bookID: UUID) -> Bool {
@@ -1021,74 +1227,63 @@ final class AppModel {
     }
 
     func setCategory(_ categoryID: UUID, active: Bool, for bookID: UUID) throws {
-        guard let global = globalCategories.first(where: { $0.id == categoryID }) else { return }
-        if active {
-            var inactives = workspacePreferences.cardInactiveCategoryIDs[bookID] ?? []
-            inactives.removeAll { $0 == categoryID }
-            workspacePreferences.cardInactiveCategoryIDs[bookID] = inactives
-            try expenseService?.activateCategory(global, in: bookID)
-        } else {
-            var inactives = workspacePreferences.cardInactiveCategoryIDs[bookID] ?? []
-            if !inactives.contains(categoryID) {
-                inactives.append(categoryID)
-            }
-            workspacePreferences.cardInactiveCategoryIDs[bookID] = inactives
-            try expenseService?.deactivateCategory(categoryID, in: bookID)
+        guard let expenseService, let global = globalCategories.first(where: { $0.id == categoryID }) else { throw EntryError.missingCategory }
+        var proposed = workspacePreferences
+        var inactive = proposed.cardInactiveCategoryIDs[bookID] ?? []
+        if active { inactive.removeAll { $0 == categoryID } }
+        else if !inactive.contains(categoryID) { inactive.append(categoryID) }
+        proposed.cardInactiveCategoryIDs[bookID] = inactive
+        try performWorkspaceCommand {
+            if active { try expenseService.activateCategory(global, in: bookID) }
+            else { try expenseService.deactivateCategory(categoryID, in: bookID) }
+            try requireState().saveWorkspacePreferences(proposed)
         }
-        persistWorkspacePreferences()
-        invalidateExpenseCaches()
+        publishPreferences(proposed); invalidateExpenseCaches()
     }
 
     func saveGlobalCategory(_ category: GlobalCategory, activeBookIDs: Set<UUID>) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         let validated = try category.validated(against: globalCategories)
-        var catalog = globalCategories
-        if let idx = catalog.firstIndex(where: { $0.id == validated.id }) {
-            catalog[idx] = validated
-        } else {
-            catalog.append(validated)
+        var proposed = workspacePreferences
+        proposed.globalCategories.removeAll { $0.id == validated.id }
+        proposed.globalCategories.append(validated)
+        try performWorkspaceCommand {
+            try expenseService.updateGlobalCategoryMetadata(id: validated.id, name: validated.name, symbol: validated.symbol)
+            for book in books {
+                var inactive = proposed.cardInactiveCategoryIDs[book.id] ?? []
+                if activeBookIDs.contains(book.id) {
+                    try expenseService.activateCategory(validated, in: book.id)
+                    inactive.removeAll { $0 == validated.id }
+                } else {
+                    try expenseService.deactivateCategory(validated.id, in: book.id)
+                    if !inactive.contains(validated.id) { inactive.append(validated.id) }
+                }
+                proposed.cardInactiveCategoryIDs[book.id] = inactive
+            }
+            try requireState().saveWorkspacePreferences(proposed)
         }
-        globalCategories = catalog
-        
-        try expenseService.updateGlobalCategoryMetadata(id: validated.id, name: validated.name, symbol: validated.symbol)
-        
-        for book in books {
-            let shouldBeActive = activeBookIDs.contains(book.id)
-            try setCategory(validated.id, active: shouldBeActive, for: book.id)
-        }
-        try expenseService.reload()
-        invalidateExpenseCaches()
+        publishPreferences(proposed); invalidateExpenseCaches()
     }
 
     func deleteGlobalCategory(_ category: GlobalCategory) throws {
-        guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
-              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
-        
         guard let expenseService else { throw EntryError.corruptStore }
+        guard undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
+              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
         for book in books {
-            let bookExpenses = try expenseService.expenses(for: book.id)
-            if bookExpenses.contains(where: { $0.allocations.contains(where: { $0.categoryID == category.id }) }) {
-                throw CategoryError.inUse
-            }
-            let bookBills = try expenseService.bills(for: book.id)
-            if bookBills.contains(where: { $0.categoryID == category.id }) {
-                throw CategoryError.inUse
-            }
+            let savedDraft = book.id == draft.bookID ? draft : try requireState().loadDraft(for: book.id)
+            guard savedDraft.categoryID != category.id, !savedDraft.splitAllocations.contains(where: { $0.categoryID == category.id }),
+                  !(try expenseService.expenses(for: book.id)).contains(where: { $0.allocations.contains(where: { $0.categoryID == category.id }) }),
+                  !(try expenseService.bills(for: book.id)).contains(where: { $0.categoryID == category.id }),
+                  !(try expenseService.budgets(for: book.id)).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == category.id }) }) else { throw CategoryError.inUse }
         }
-        
-        for book in books {
-            try expenseService.deactivateCategory(category.id, in: book.id)
-            var inactives = workspacePreferences.cardInactiveCategoryIDs[book.id] ?? []
-            inactives.removeAll { $0 == category.id }
-            workspacePreferences.cardInactiveCategoryIDs[book.id] = inactives
+        var proposed = workspacePreferences
+        proposed.globalCategories.removeAll { $0.id == category.id }
+        for book in books { proposed.cardInactiveCategoryIDs[book.id]?.removeAll { $0 == category.id } }
+        try performWorkspaceCommand {
+            for book in books { try expenseService.deactivateCategory(category.id, in: book.id) }
+            try requireState().saveWorkspacePreferences(proposed)
         }
-        
-        var catalog = globalCategories
-        catalog.removeAll { $0.id == category.id }
-        globalCategories = catalog
-        persistWorkspacePreferences()
-        try expenseService.reload()
-        invalidateExpenseCaches()
+        publishPreferences(proposed); invalidateExpenseCaches()
     }
 
     func isArchived(_ category: ExpenseCategory) -> Bool { settings.archivedCategoryIDs.contains(category.id) }
@@ -1118,7 +1313,8 @@ final class AppModel {
         guard draft.splitAllocations.isEmpty else { return }
         guard let categoryID = draft.categoryID ?? activeCategories.first?.id else { error = EntryError.missingCategory.localizedDescription; return }
         draft.categoryID = categoryID
-        draft.splitAllocations = [.init(categoryID: categoryID, amount: draft.amount)]
+        let value = try? draft.resolvedAmount()
+        draft.splitAllocations = [.init(categoryID: categoryID, amount: value.map(Money.exactDigits) ?? draft.amount, preservedAmount: value)]
     }
     func addSplitAllocation() {
         beginSplitting()
@@ -1137,28 +1333,16 @@ final class AppModel {
         if let categoryID = draft.splitAllocations.first?.categoryID { draft.categoryID = categoryID }
     }
     func deleteCategory(_ category: ExpenseCategory) throws {
-        guard draft.categoryID != category.id, undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
-              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
-        guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.deleteCategory(category.id)
-        var catalog = globalCategories
-        catalog.removeAll { $0.id == category.id }
-        globalCategories = catalog
-    }
-    func restoreBackup(_ backup: BookBackup) throws {
-        guard let backups else { throw BackupError.unsupported }
-        do {
-            try backups.restore(backup, currentDraft: draft, settings: settings)
-            draft = backup.draft; settings = backup.settings
-            expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
-            undoExpense = nil; pendingEntry = nil; toast = nil
-        } catch {
-            if backups.requiresRecovery { startupError = error.localizedDescription }
-            throw error
-        }
+        guard let global = globalCategories.first(where: { $0.id == category.id }) else { throw EntryError.missingCategory }
+        try deleteGlobalCategory(global)
     }
 
-    func restoreWorkspaceBackup(_ backup: WorkspaceBackup) throws {
+    func restoreBackup(_ backup: BookBackup) throws {
+        try restoreWorkspaceBackup(WorkspaceBackup(singleBook: backup))
+    }
+
+    func restoreWorkspaceBackup(_ source: WorkspaceBackup) throws {
+        let backup = try source.normalized()
         guard let backups else { throw BackupError.unsupported }
         do {
             try backups.restoreWorkspace(backup, currentDraft: draft, settings: settings)
@@ -1166,8 +1350,11 @@ final class AppModel {
             if let active = backup.books.first(where: { $0.book.id == restoredBookID }) {
                 draft = active.draft ?? ExpenseDraft()
             }
+            draft.bookID = restoredBookID
             selectedBookID = restoredBookID
             settings = backup.settings
+            appLock.applyPersistedConfiguration(settings.appLockTimeout, requireAuthentication: true)
+            publishPreferences(backup.preferences)
             workspacePreferences = backup.preferences
             hiddenBookIDs = backup.preferences.visibleBookIDs.isEmpty
                 ? []
@@ -1201,17 +1388,15 @@ final class AppModel {
         let id = budgetHistory.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
         let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
                                    startDay: startDay, categoryLimits: categoryLimits, transitionEndDay: transitionEndDay)
-        try expenseService.save(budget)
         var proposed = settings
         proposed.budget = overallLimit
         proposed.startDay = startDay
-        do {
+        try performWorkspaceCommand {
+            try expenseService.save(budget)
             try requireState().saveSettings(proposed)
-        } catch {
-            settings = proposed
-            throw error
         }
         settings = proposed
+        invalidateExpenseCaches()
     }
 
     func saveSettings(_ proposed: PrototypeSettings) throws {

@@ -27,7 +27,7 @@ struct RecentsView: View {
                             HStack {
                                 Eyebrow(text: Day.title(day))
                                 Spacer()
-                                Text(Money.format(model.expenses.filter { $0.day == day }.reduce(0) { $0 + $1.amount }))
+                                Text(Money.format(Money.sum(model.expenses.filter { $0.day == day }.map(\.amount))))
                                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }.padding(.bottom, 8)
                             ForEach(model.expenses.filter { $0.day == day }) { expense in

@@ -1,105 +1,51 @@
-# monocle — architecture direction
+# Monocle — implemented local architecture
 
-Updated: 2026-09-09. Local foundation and the first budget persistence slice are implemented; future capabilities are identified below.
+Updated: 2026-10-05, 0.7.21/build 84. See the [implementation report](../audit/2026-10-05-backend-implementation.md) for evidence and remaining gates.
 
-## Structure
+## Composition and persistence
 
-Use SwiftUI for the iPhone interface. Keep screen state and presentation logic with each feature; keep financial calculations and validation in plain Swift independently testable types. Introduce focused repositories/services for persistence, importing, scheduling, backup, and authentication. Prefer one app target and a small reusable core over many speculative packages.
+AppEnvironment opens the existing SQLite store and replays a retained recovery journal before reading preferences, settings or drafts. Workspace/settings semantics validate before initialization writes. Missing files receive defaults; malformed files remain intact and startup blocks. Legacy settings metadata resolves by stable card identity; unknown real identities are rejected.
 
-Intended source organisation: App, Features (Recents, Entry, Budgets, Bills, Settings), Domain, Persistence, Integrations, and DesignSystem. Future Mac UI can reuse the domain and data code without reusing the iPhone navigation.
+ExpenseRepository implements the value-only ExpenseStore boundary. The V4 Core Data model adds prospective bill schedule metadata and persisted card color, with inferred migration from older models. Managed objects remain in one main-actor context. Nested transactions share one commit; a caught inner failure still prevents the outer commit. Failed writes roll back. This is serialization inside this process; CloudKit sync is not implemented.
 
-Both views and App Intents call the same expense commands. Confine managed objects to their Core Data contexts; pass stable IDs and value snapshots across boundaries. Serialize writes requiring validation and idempotency; explicit save failures propagate to the caller. Do not report success on an uncommitted in-memory change.
+ExpenseService is the shared command boundary for UI, CSV, bills and App Intents. Durable commits advance committedRevision, publish immutable card values and invoke onCommit. Failed post-commit reads populate projectionRefreshError without turning a successful save into a failed command. Simple saves/deletes publish known deltas; compound commands stage complete readback.
 
-## Implemented dependency boundaries
+AppModel holds drafts, navigation and presentation preferences. It invalidates financial caches/widgets from committed events; appearance-only changes avoid financial cache rebuilds. Production compound card/category/budget commands use BackupService.withRecovery to coordinate SQLite and atomic JSON files. Presentation-only commands save one proposed preference value before publishing success.
 
-```mermaid
-flowchart TD
-    Environment[AppEnvironment: composition and startup] --> Model[AppModel: presentation and draft interaction]
-    Environment --> Service[ExpenseService: shared commands and snapshots]
-    Environment --> State[FileLocalStateStore: atomic draft/settings files]
-    Model --> Service
-    Model --> State
-    Intent[App Intents] --> Service
-    Service --> Store[ExpenseStore protocol]
-    Store --> CoreData[ExpenseRepository: local Core Data]
-```
+## Workspace identity and integrity
 
-- `AppEnvironment` is the single production composition root. It selects the existing storage directory, loads local files, opens the repository, seeds the sample book and initial budget when needed, and constructs dependencies. Startup failure produces a blocked screen without overwriting malformed draft/settings files.
-- `ExpenseService` owns observable value snapshots and save/delete/text commands. Both UI and background text intents use this same instance. It publishes only after a successful store write, without a second fallible fetch after commit. Reload publishes a complete snapshot or leaves the previous snapshot intact.
-- `ExpenseStore` is an injectable value-only persistence boundary. `ExpenseRepository` confines managed objects to its main-actor context, validates writes, and rolls back failed changes. Main-actor commands have no suspension points; this provides local serialization, not cross-process/cloud coordination.
-- `FileLocalStateStore` retains the original JSON filenames and encoding. Missing files use defaults; malformed files throw. `LocalStateStore` permits write-failure tests independently of Core Data.
-- `AppModel` owns navigation, the editable draft, settings presentation, and user feedback. It no longer opens databases, selects filesystem paths, seeds records, or encodes files. It is explicitly constructible with test dependencies.
-- `SampleBookSeeder` is isolated from normal expense commands. Stable IDs preserve already-created sample records if first-run setup was interrupted. The existing marker prevents reseeding an emptied sample book.
+Cards are generic expense containers with stable UUIDs. Expenses, category rows, budgets, bills, occurrences and drafts retain explicit card scope. Global categories live in workspace preferences; book-local rows retain historical dependencies. Migration maps (bookID, oldCategoryID) to global IDs and updates budgets, bills, drafts, inactive flags, rules and archive state together. Completion follows the recoverable command.
 
-Keep this as one target for now. A future Mac target can share the Application, Domain, and Persistence sources; it will supply its own navigation. Extract a package only when an actual second consumer makes that useful.
+Deactivation retains categories used by historical budgets, expenses or bills. Hard deletion rejects dependencies including drafts/Undo. Deleting a bill expense marks its occurrence skipped and detaches its expense ID; Undo restores both atomically. Sample promotion detaches removed sample links.
 
-## Category and presentation refinements
+FileLocalStateStore stores settings/workspace JSON and one atomic draft per card. Committed cleanup explicitly targets its owner and reports a separate cleanup error when the expense already saved. Reset republishes service configuration, hidden state and owner-scoped drafts.
 
-Category commands use the same ExpenseService/ExpenseStore boundary as expenses. Validation runs both in the service and in the Core Data adapter: trimmed nonempty names (maximum 40 characters), case/diacritic-insensitive duplicate rejection and curated SF Symbols. Stable IDs retain expense references during rename. Deletion checks persisted allocations; presentation additionally protects the active draft and Undo. No schema change is required for create/rename/delete. Archive requires a versioned model change in a later checkpoint.
+Shared graph validators reject duplicate identities/budget boundaries, dangling references, invalid rule recurrence/status/linkage, invalid customization values and incomplete artwork. Malformed persisted financial records fail closed; reconciliation does not guess damaged state. Settings rules/archive IDs resolve against both persisted categories and the global catalog, so deleting their last active card preserves user configuration.
 
-Number display and strict text parsing use the current system locale, while IDR currency and exact minor-unit storage stay fixed. Fractional entry policy has not expanded. Locale tests explicitly cover US and Indonesian separators.
+## Money, dates and reporting
 
-BottomNavigation supplies two separate glass surfaces while each TabView child hides the native tab bar. This preserves tab view state without overlapping navigation surfaces. Glass uses public SwiftUI APIs; spacing keeps the dark add circle separate from the destination capsule. [Apple custom glass documentation](https://developer.apple.com/documentation/SwiftUI/Applying-Liquid-Glass-to-custom-views)
+Money is exact Int64 minor units, currency IDR, scale two. Individual values retain the existing range; the nonnegative workspace total must fit Int64.max. Admission and reads enforce this policy. Forecasts/percentages expose unavailable or beyond-range state when projected arithmetic cannot fit.
 
-## Remaining foundation work
+New manual input remains whole-IDR. Accepted historical fractions survive unchanged fields/note-only edits. Canonical CSV preserves fractions and allocations through a reversible Splits column. Strict tokenization rejects malformed quotes with record locations and preserves valid escaped/multiline fields.
 
-Backup/restore is implemented for current durable state, with candidate validation, a safety document and a rollback journal spanning database and local files. See [format and recovery protocol](backup-format.md). Phone export/import/update validation remains required before real-data use. App lock and split editing are implemented; category archiving/rules, structured Shortcut parameters, and a real-book onboarding path remain next in the reliable-capture milestone. Budget history and V1-to-V2 migration are implemented locally; bill persistence and sync are later milestones.
+Stored days use Gregorian yyyy-MM-dd civil dates. Draft civilDay is independent of DatePicker instants and changes only on deliberate date selection. Legacy drafts without that field resolve their old instant in the current timezone once; the original timezone cannot be inferred. Reporting uses current timezone and civil-midnight inclusive start/exclusive end.
 
-The current repository still exposes one fixed sample book. The next local extension is a user-defined multi-book workspace: books are generic transaction containers, not bank/card/account entities, and the Wallet-style cards are derived presentation projections rather than persisted WalletCard objects. Book identity must become explicit across every expense, category, budget, bill, occurrence, draft and Shortcut path. Stack visibility/order and All Activities scope are presentation preferences; hero images belong in app-owned file storage and portable backups. This remains a future local feature, distinct from multi-user CloudKit sharing. Small local saves currently run on the main actor; imports and backup operations will need bounded work/background contexts as their implementation requires. Do not infer finished performance, app locking, or backup safety from this refactor.
+Scoped reports resolve the selected card's categories, budgets and bills. Stack/all-card reports use calendar months and omit a combined budget/pace because card cycles differ. Permanently hidden cards are excluded from aggregate scopes, including restored preferences. One immutable report supplies a rendered chart and its labels.
 
-## Storage and CloudKit path
+## Recovery and integrations
 
-Start with a local Core Data SQLite store. Introduce cloud mirroring only at the sync milestone. Core Data's documented CloudKit integration supports same-user device sync and sharing with other iCloud users, including separate private and shared stores. This is the reason for choosing it for monocle. [Apple sample](https://developer.apple.com/documentation/coredata/sharing-core-data-objects-between-icloud-users)
+Format 7 uses length-framed records and raw artwork; legacy formats 1–6 remain readable. See [backup/crash protocol](backup-format.md). Destructive commands reject existing journals before overwriting safety artifacts. After database/files commit, candidate values stage without notifications/publication; journal removal establishes completion. Failed rollback retains original bytes and blocks mutation. Startup seeding is atomic and only targets the explicit sample identity.
 
-Design the model to satisfy CloudKit restrictions: optional relationships with inverses, no Deny deletion rule, and no reliance on unique constraints. Enforce application invariants at the domain/write boundary. Synchronized relationships can arrive separately; future sync must handle incomplete graphs without reporting incorrect totals. [Apple model requirements](https://developer.apple.com/documentation/coredata/creating-a-core-data-model-for-cloudkit)
+App Intents use the same service publication path. Widget snapshots carry day/revision and reject missing, malformed, future or stale data. Production widgets show unavailable state, with App Group diagnostics. Capture categories are active categories; historical labels retain historical ones.
 
-Book data must stay within its sharing boundary. Categories, budgets, bill rules, and expenses belong to a book; avoid relationships to globally shared category records. Sharing is future work and is not a switch that can simply be turned on without tests.
+Notifications derive a bounded complete workspace schedule, request authorization when reminders are enabled and expose permission/add failures. Restore/reset/card/rule changes rebuild/cancel. Bill schedule edits are prospective, retire old pending entries and preserve handled history. Launch/reload reconcile all cards idempotently.
 
-An active Apple Developer Program membership is needed for the CloudKit container used by Apple's sharing sample. The first local build does not depend on cloud entitlements. [Apple CloudKit sharing sample](https://github.com/apple/sample-cloudkit-sharing)
+Restored app lock immediately synchronizes the controller and requires authentication when enabled. Configuration revisions reject stale authentication results. Credentials are not backed up. Live Activity tasks capture immutable handles; old tasks cannot update/end a replacement. Startup reconnects an available activity, errors reach the app, and NSSupportsLiveActivities is present in both generated/source configuration.
 
-## Initial domain model
+## Performance and verification limits
 
-| Type | Responsibility |
-| --- | --- |
-| Book | Stable UUID, user-facing name, optional visual metadata, reporting calendar/timezone, currency; one visible book initially |
-| Expense | Stable UUID, book, exact total, transaction calendar date, optional note, origin, creation/update timestamps |
-| Allocation | Expense, category, exact allocated amount; one or more per expense |
-| Category | Book-local stable UUID, label, display metadata, archive status |
-| Budget configuration/version | Book, effective period boundary, overall/category limits, start-day configuration and transition boundary |
-| Budget period | Explicit start/end dates and applicable limits; historical periods retained |
-| Bill rule | Book, recurrence, amount/allocations, independent reminder setting and recording mode |
-| Bill occurrence | Rule plus scheduled occurrence identity; pending/recorded/skipped state and optional resulting expense |
-| Parsing rule | Book-local keyword-to-category mapping |
-| Draft | Durable unfinished entry and input mode, explicit target book, separate from recorded expenses |
+CSV read/tokenization/value parsing runs in a cancellable worker task with generation checks. Batch persistence preloads categories/candidate IDs and commits once. Predicate/date paging is bounded and deterministic. Redacted signposts instrument commands/commits/import/preview; logs omit user notes and amounts.
 
-Budget version fields are implemented in the V2 local model; bill rules and occurrences remain conceptual until their persistence slice. Do not add speculative repayment/account/subscription entities now. Reserve stable book identifiers and origin metadata without creating a fake cloud identity for local users.
+Full snapshot reads, SQLite writes and backup materialization/activation remain on the main actor. Format 7 removes legacy capacity ceilings/base64 expansion but still holds whole graph/output Data. Serialized background contexts, bounded-memory streaming, feature page consumption and indexes selected from SQL/device profiling remain follow-up work. Simulator timings do not establish physical latency/memory targets.
 
-## Invariants
-
-- Represent money as checked Int64 scaled units plus a currency code and defined scale. Proposed IDR storage scale is two decimal places; default UI displays whole rupiah. Parse with decimal-safe conversion and reject unsupported precision/overflow instead of silently rounding. Import policy for fractional rupiah remains explicit implementation work.
-- A valid recorded expense has a positive total and valid allocations in the same book. Allocations sum exactly to the total; each ordinary expense has one allocation.
-- All entry paths run the same validators. Future refunds require an explicit policy; do not implement them as unexplained negative expenses.
-- Budget totals count the expense once overall and allocations once in their categories; pending bill occurrences are excluded.
-- Transaction reporting dates are calendar dates, distinct from audit timestamps. Periods use inclusive starts and exclusive ends. Preserve reporting dates when timezone changes.
-- Persist one scheduled occurrence identity per rule/date and serialize local materialization. Preserve handled/skipped markers to prevent recreation. Multi-device convergence is a separate future test obligation; local serialization does not solve cloud duplication.
-- User-entered identical purchases may be legitimate. CSV fingerprints only flag suspected duplicates; do not silently collapse entries.
-
-## Backup and migrations
-
-Use a versioned portable document, proposed as a JSON-based .monoclebackup file. Preserve IDs and references, not Core Data object URIs. Include format version, export time, currency precision, and validation metadata. It is a manual backup, not an encrypted vault or sync mechanism.
-
-Parse and validate into a separate candidate store; verify references, allocation totals, object counts, periods, and occurrence state. Reject corrupted/unsupported backups before mutating the active store. Initially restore by replacement with user-visible scope, safety backup, and recoverable store replacement. Reconcile notifications and refresh UI after successful restoration.
-
-Version the Core Data model from the first persistent release. The current V2 model adds budget versions and uses supported automatic/inferred migration from V1; the old-store fixture preserves expenses through that upgrade. Use supported migration paths; test old-store fixtures before upgrades. Never recover a migration failure by deleting the user's store. Keep backup schema versioning separate from store schema versioning.
-
-## Integration boundaries
-
-- App Intents: all current shortcuts require system device authentication. The structured Add Expense command accepts whole-IDR amount, a live `AppEntity` category, optional note and optional date, then calls `ExpenseService` just like manual capture. The background text/structured commands never unlock the app UI; the foreground quick-entry command may still arrive at the app lock. Signed-phone category-resolution and execution validation remains required.
-- LocalAuthentication: optional app lock uses `deviceOwnerAuthentication`, so Face ID falls back to the device passcode. Its setting is stored with local settings/backup but credentials are never stored. A privacy shield covers the app switcher immediately; immediate/1-minute/5-minute applies to the next foreground unlock. No monocle password backend.
-- UserNotifications: reminders are optional and independent of persisted spending. Background execution is opportunistic; reconcile occurrences on app execution.
-- CSV: staged parsing/mapping/validation/review followed by a controlled commit and summary.
-- Design system: centralise colours, type, spacing, motion, haptics, and accessibility adaptations.
-
-## Verification emphasis
-
-Test exact arithmetic and splits, period boundaries including leap years, migration preservation, full backup restoration, scheduled retries and duplicate prevention, and simultaneous entry attempts. Validate parsing ambiguity and import errors with realistic examples. Test UI primarily through the user's capture flow and accessibility behaviours. Avoid arbitrary coverage targets or tests that just restate view implementation.
+Mac CI runs unit, migration, failure/recovery and fixture checks plus unsigned device Release builds, retains evidence, and enables the optional 50k fixture weekly. Signed-phone checks remain necessary for SideStore update preservation, App Groups/Shortcuts, notifications, authentication, Live Activities and physical performance.

@@ -1,59 +1,51 @@
-# Backup and restore — formats 1, 2 and 3
+# Backup and restore — formats 1–7
 
-Updated: 2026-09-09. Implementation: BookBackup, BackupService, ExpenseRepository.replace, BackupView.
+Updated: 2026-10-05, 0.7.21/build 84. Implementation: WorkspaceBackup, BookBackup, BackupService, ExpenseRepository.replace, CardArtworkStore and BackupView.
 
-## User flow
+## User flow and portable scope
 
-Settings → Backup & restore → Export full backup opens the system Files destination picker. Choose backup to restore opens Files, validates the document and presents its export time, book, expense/category counts, total, and number of current expenses being replaced. Replace current book requires explicit confirmation. Cancel review does not mutate the current store.
+Settings → Backup & restore exports to Files. Import validates/materializes a separate candidate, then shows its scope/counts/total before replacement confirmation. Cancel writes no active state. Files are unencrypted financial documents.
 
-Before activation, monocle retains a local safety backup. Export last safety backup makes it portable. One local safety backup is kept; export it before a subsequent restore to retain an older version. Files are unencrypted JSON with a `.monoclebackup` extension and registered type `com.farchan.monocle.backup` conforming to `public.json`. File access uses the picker-granted security scope.
+New exports use .monoclebackup, registered com.farchan.monocle.backup conforming to public.data. The picker also accepts legacy JSON/generic data and validates contents. Picker-granted security scope controls file access. Export last safety backup preserves the old workspace; export older safety copies before another admitted mutation replaces them.
 
-The Files picker accepts a selected file regardless of its reported type and validates its size and backup contents inside monocle. This avoids Files metadata hiding a valid monocle export; unrelated or malformed files are still rejected before review.
+Backups retain all card profiles/color, categories, exact expenses/allocations/sources/timestamps, effective-dated budgets, recurring rules/occurrences/schedule revisions, owner-scoped drafts with civil day/exact unchanged values, settings/rules/archive IDs, global categories, stacks/order/visibility/appearance and every referenced artwork byte. App-lock preferences are retained; biometric/passcode credentials, navigation, toast and Undo are not.
 
-## Scope and format
+## Format 7 stream
 
-The format preserves all currently implemented durable application data:
+The ASCII magic is `MONOCLE-BACKUP-7\n`. Every following frame has an unsigned 64-bit big-endian byte length followed by exactly that many bytes:
 
-- `formatVersion` (1 for legacy sample backups, 2 for pre-history backups, 3 for the current format), `exportedAt` (Foundation JSON Date encoding: seconds since 2001-01-01).
-- `bookID`, `bookName`, `bookKind` (`sample` or `real`), `currency` (`IDR`), `minorUnitScale` (2), and `sampleSeeded`.
-- Categories with stable IDs, names and icons.
-- Expenses with IDs, exact Int64 amounts, reporting date strings, notes, allocations, source and creation timestamp.
-- Effective-dated budget versions with overall/category limits, cycle start day, and any explicit transition end.
-- Draft including input mode, unfinished text, category reference, exact split allocations, expense identity and editing status.
-- Prototype settings: budget amount, cycle start day, bill recording mode and reminder preference, plus the optional app-lock timeout. The backup retains the preference, never a biometric credential or passcode.
+1. JSON header: export date, currency/scale, settings/preferences, book/asset counts.
+2. For each book: JSON profile/draft/counts header, then one JSON frame per category, expense, budget, bill and occurrence in that order.
+3. For each artwork: JSON filename frame, then raw binary asset frame.
 
-Transient navigation, toast and Undo state are cleared after restore and are not exported. Format 1 accepts only the historical sample-book identity. Format 2 binds the book profile to the persisted settings, allowing one real local book with a stable UUID and name. Format 3 requires at least one budget version; format 1/2 documents without budget history are upgraded from their exported settings and date during restore. Starting an empty real book is explicit: it retains categories and settings, removes recorded sample entries and the unfinished draft, and writes a safety backup before changing the book profile.
+Foundation JSON dates encode seconds since 2001-01-01. UUIDs and exact minor units remain stable. Lengths/counts check remaining input; truncated/trailing frames fail. Individual JSON frames are bounded; artwork is at most 8 MiB per file and must decode at no more than 1,200 × 1,200 pixels. Filenames cannot escape storage. Every referenced asset must be present; missing artwork explicitly fails export.
 
-## Validation
+Version 7 removes the former whole-workspace 100-card/10,000-expense/10 MiB ceilings and base64 expansion. It still holds the complete graph/output Data in memory; bounded-memory file streaming and a physically profiled supported envelope remain outstanding.
 
-Maximum 10 MB, 10,000 expenses, 500 categories. Reject unsupported versions/book identities/currency scale, duplicate IDs, invalid category names/icons, broken category references, invalid dates or money, incorrect allocation totals, aggregate Int64 overflow, invalid settings, and invalid or duplicate budget versions. Editing drafts must reference a recorded expense; unfinished draft text and amount may remain invalid so recovery does not lose work in progress.
+## Legacy compatibility and validation
 
-The imported snapshot is first materialized into an independent in-memory Core Data candidate. Compare canonical complete expense values (including IDs and sorted allocations) and categories against the decoded snapshot. No active writes occur during preview. Activation validates the candidate again so a mutated value cannot bypass the gate.
+Formats 1–3 are single-book JSON; 4–6 are workspace JSON. Historical external-input limits remain (10 MiB document, 100 workspace books, 10,000 expenses per book and bounded record/category counts). Magic selects format 7; otherwise decoding routes legacy JSON.
 
-Amounts remain exact integers. The human preview formats totals with the device locale; locale does not affect stored values. JSON encoding is sorted and readable. This is structural consistency checking, not a cryptographic authenticity mechanism.
+Missing legacy budgets/drafts materialize deterministically from exported settings/date/card identity. Formats 4–6 accept exact sample settings beside real cards or stale metadata for an existing same-kind identity; normalization adopts the authoritative exported card metadata. Absent real identities or malformed records fail. Version 7 requires exact settings-profile metadata. No damaged financial identity is silently guessed.
 
-## Replacement and restart protocol
+Validators cover currency/scale/version, identities, references, allocation totals, bounded positive amounts/workspace aggregate, Gregorian dates, unique budgets/effective days, recurrence/occurrence uniqueness and same-card status/expense linkage. Draft text may remain unfinished, but category/edit references must exist. Preferences/settings validate global catalog, rules/archive, stacks/order/visibility, palette/color and artwork completeness.
 
-All local expense commands and restore activation are main-actor isolated without suspension points, so same-process commands cannot interleave with the snapshot/replacement. Bulk graph creation uses a category-ID map and one context save, avoiding per-expense database fetches. This is a bounded local implementation; sustained 10,000-record performance and device storage-pressure behaviour still require profiling.
+Preview materializes an independent Core Data store plus temporary state/artwork stores and compares full canonical readback: profiles, categories, expenses, budgets, rules, occurrences, drafts, settings/preferences and raw assets, including legacy defaults. Activation repeats this gate.
 
-1. Snapshot the original repository plus current draft/settings.
-2. Atomically write `last-safety-backup.monoclebackup`.
-3. Atomically write the same original snapshot to `restore-journal.json`. No active data changes before both writes succeed.
-4. Replace all managed records in one Core Data context transaction. Validation precedes mutation; save failures roll back the context.
-5. Atomically replace draft.json and settings.json; write the sample seed marker.
-6. Reload the shared expense service. Remove the journal as the completion point. Keep the safety backup.
-7. Publish restored draft/settings and clear transient state.
+## Crash and mutation protocol
 
-If any activation stage fails, replay the journal to restore database, draft, settings and marker. If rollback fails, block UI/expense commands and retain recovery artifacts. On startup, open the repository and recover a retained journal before reading local state or sample seeding. A corrupt journal fails closed; it is never deleted as an error recovery shortcut.
+1. Reject a retained/unresolved journal or blocked service before replacing safety artifacts.
+2. Encode the old workspace and atomically write last-safety-backup.monoclebackup, then identical bytes to restore-journal.json. The journal filename stays compatible; new contents are format 7.
+3. Stage validated artwork, execute SQLite changes in one transaction and atomically write affected owner drafts/settings/preferences.
+4. Stage a validated committed service snapshot without exposing it or scheduling candidate notifications, and load committed service configuration.
+5. Remove the journal as completion; publish revision/snapshot and root projections. Keep the safety copy.
 
-The journal is idempotent: a restart during recovery repeats restoration of the same original snapshot. An interruption before journal removal may roll back even if the candidate had been written; this conservative rule prevents a mixed book. Atomic writes and SQLite transactions cover process interruption; sudden hardware/storage failure is not claimed to be eliminated.
+Failure replays old database/artwork/state and verifies complete canonical readback before journal removal. Double failure preserves original journal/safety bytes, blocks further mutation and exposes recovery-required state. Startup replays retained journals before ordinary initialization or seeding.
 
-## Compatibility and verification
+An interruption before removal conservatively restores old data even if candidate files were written. After removal startup opens committed new data. Atomic files/SQLite protect process interruption, not every hardware/storage loss. Orphaned unreferenced files are not workspace identities.
 
-Existing bundle ID, SQLite filename, draft/settings encoding, and sample folder stay unchanged. The V2 Core Data model adds budget entities and uses automatic/inferred migration from V1; no store reset is introduced. The existing disk-reopen regression remains applicable.
+## Verification limits
 
-Tests cover portable round-trip with exact IDs/splits/draft/settings/budget history, invalid candidates, failures at every activation stage, failed safety-file creation, disk close/reopen recovery, V1-to-V2 migration, malformed journal retention, and empty-book seed prevention. UI checks cover reaching backup settings and presenting the system export picker. Actual Files save/import and successful/failed replacement should also be exercised on the user's signed iPhone installation before daily-use readiness.
+Fixtures cover model migration, malformed graphs, exact fractions/splits, activation fault stages, byte-preserved retry journals, reopen/replay, 101 cards/10,001 expenses, raw artwork above 10 MiB, incomplete assets and partial artwork rollback. See [implementation evidence](../audit/2026-10-05-backend-implementation.md).
 
-## Next milestone
-
-M3 budget history is implemented locally. Bills still need persisted rules and occurrences, pending/automatic recording, reminders, catch-up and skip handling. First collect phone backup/restore/update evidence using sample data. Full daily-use gate remains in roadmap.md; budget implementation alone does not satisfy it.
+SQLite/full materialization remains synchronous on the main actor. Recovery capacity is improved; large-store responsiveness, bounded peak memory, cancellation during persistence, storage pressure and signed Files/SideStore update behavior remain follow-up gates. Synthetic tests did not open or mutate the original user store.

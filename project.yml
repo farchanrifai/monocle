@@ -10,8 +10,9 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: '26.0'
     DEVELOPMENT_TEAM: ''
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    MARKETING_VERSION: '0.7.20'
-    CURRENT_PROJECT_VERSION: '83'
+    MARKETING_VERSION: '0.7.21'
+    CURRENT_PROJECT_VERSION: '84'
+    MONOCLE_RUN_LARGE_BENCHMARK: '0'
 targets:
   Monocle:
     type: application
@@ -22,6 +23,12 @@ targets:
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.farchan.monocle.backup
+            UTTypeDescription: Monocle workspace backup
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [monoclebackup]
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -32,6 +39,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_NSFaceIDUsageDescription: Unlock your spending records.
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -88,3 +96,5 @@ schemes:
         MonocleWidgets: all
     test:
       targets: [MonocleTests, MonocleUITests]
+      environmentVariables:
+        MONOCLE_RUN_LARGE_BENCHMARK: $(MONOCLE_RUN_LARGE_BENCHMARK)

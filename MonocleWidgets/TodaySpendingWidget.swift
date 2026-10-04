@@ -30,6 +30,9 @@ struct TodaySpendingWidgetEntryView: View {
     var entry: TodaySpendingTimelineProvider.Entry
 
     var body: some View {
+        if let reason = entry.snapshot.unavailableReason {
+            Text(reason).font(.caption).foregroundStyle(.secondary).widgetURL(URL(string: "monocle://home"))
+        } else {
         switch family {
         case .systemSmall:
             smallView
@@ -41,6 +44,7 @@ struct TodaySpendingWidgetEntryView: View {
             inlineView
         default:
             smallView
+        }
         }
     }
 

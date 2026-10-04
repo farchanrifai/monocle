@@ -368,8 +368,11 @@ final class MultiBookTests: XCTestCase {
         try repo.save(Expense(id: UUID(), amount: 30_000_00, day: "2026-09-10", note: "Souvenir", allocations: [.init(categoryID: catShopping.id, amount: 30_000_00)], bookID: shopping.id), in: shopping.id)
         try repo.save(Expense(id: UUID(), amount: 99_000_00, day: "2026-09-10", note: "Old Resort", allocations: [.init(categoryID: catOldTrip.id, amount: 99_000_00)], bookID: oldTrip.id), in: oldTrip.id)
 
+        // Fixture writes bypass the command service; reload publishes their committed state.
+        try model.reload()
+
         // 1. Create Travel Stack with travel & shopping cards
-        let travelStack = model.createStack(name: "Tokyo Trip", icon: "airplane", cardIDs: [travel.id, shopping.id])
+        let travelStack = try model.createStack(name: "Tokyo Trip", icon: "airplane", cardIDs: [travel.id, shopping.id])
         XCTAssertEqual(model.activeStackID, travelStack.id)
         XCTAssertEqual(model.filterScope, StackFilterScope.activeStack)
         let inCurrent: [UUID] = model.cardsInCurrentStack.map { $0.id }
@@ -409,7 +412,7 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(oldTripDirect.first?.note, "Old Resort")
 
         // 4. Multiple stacks: Shopping card can also be in Daily Stack
-        let dailyStack = model.createStack(name: "Home Daily", icon: "house", cardIDs: [daily.id, shopping.id])
+        let dailyStack = try model.createStack(name: "Home Daily", icon: "house", cardIDs: [daily.id, shopping.id])
         model.setActiveStack(id: dailyStack.id)
         let inDaily: [UUID] = model.cardsInCurrentStack.map { $0.id }
         XCTAssertEqual(inDaily, [daily.id, shopping.id])
@@ -433,7 +436,7 @@ final class MultiBookTests: XCTestCase {
         let expenseService = try ExpenseService(store: store)
         let model = AppModel(expenses: expenseService, state: state)
 
-        let stack = model.createStack(name: "Test Stack", icon: "folder", cardIDs: [b1.id, b2.id, b3.id])
+        let stack = try model.createStack(name: "Test Stack", icon: "folder", cardIDs: [b1.id, b2.id, b3.id])
         model.setActiveStack(id: stack.id)
 
         let initialIDs: [UUID] = model.cardsInCurrentStack.map { $0.id }
@@ -463,7 +466,7 @@ final class MultiBookTests: XCTestCase {
         let expenseService = try ExpenseService(store: store)
         let model = AppModel(expenses: expenseService, state: state)
 
-        let stack = model.createStack(name: "Test Stack", icon: "folder", cardIDs: [b1.id, b2.id, b3.id])
+        let stack = try model.createStack(name: "Test Stack", icon: "folder", cardIDs: [b1.id, b2.id, b3.id])
         model.setActiveStack(id: stack.id)
         model.filterScope = .activeStack
 

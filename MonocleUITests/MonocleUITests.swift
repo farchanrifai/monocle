@@ -403,8 +403,8 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Browse"].waitForExistence(timeout: 5))
         let picker = XCTAttachment(screenshot: app.screenshot())
         picker.name = "backup-restore-picker"; picker.lifetime = .keepAlways; add(picker)
-        let backup = app.cells.matching(NSPredicate(format: "identifier CONTAINS %@", ".json")).firstMatch
-        XCTAssertTrue(backup.waitForExistence(timeout: 5), "The exported JSON must be selectable")
+        let backup = app.cells.matching(NSPredicate(format: "identifier CONTAINS %@ OR identifier CONTAINS %@", ".monoclebackup", ".json")).firstMatch
+        XCTAssertTrue(backup.waitForExistence(timeout: 5), "The exported workspace backup must be selectable")
         backup.tap()
         XCTAssertTrue(app.buttons["restoreBackup"].waitForExistence(timeout: 5), "The exported file must open for review")
     }
@@ -1168,6 +1168,8 @@ final class MonocleUITests: XCTestCase {
 
     func testAppleWalletCardOpeningAndClosingAnimation() {
         let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_TEST_THREE_CARDS"] = "1"
         app.launch()
 
         // 1. Test Card 01
@@ -1242,6 +1244,8 @@ final class MonocleUITests: XCTestCase {
     @MainActor
     func testCardContextMenuLongPressOnHomeScreen() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_TEST_THREE_CARDS"] = "1"
         app.launch()
 
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
@@ -1369,6 +1373,8 @@ final class MonocleUITests: XCTestCase {
     @MainActor
     func testRapidCardOpenCloseAndMidwayCancellation() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_TEST_THREE_CARDS"] = "1"
         app.launch()
 
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))

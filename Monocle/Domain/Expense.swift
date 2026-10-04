@@ -101,7 +101,7 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
 }
 
 enum EntryError: LocalizedError {
-    case invalidAmount, missingCategory, invalidDate, splitMismatch, duplicateSplitCategory, ambiguousAmount, corruptStore
+    case invalidAmount, missingCategory, invalidDate, splitMismatch, duplicateSplitCategory, ambiguousAmount, corruptStore, aggregateOverflow
     var errorDescription: String? {
         switch self {
         case .invalidAmount: "Enter an amount greater than zero, in whole rupiah."
@@ -111,6 +111,7 @@ enum EntryError: LocalizedError {
         case .duplicateSplitCategory: "Choose each split category only once."
         case .ambiguousAmount: "Use one amount, for example Coffee 28k."
         case .corruptStore: "Some stored records could not be read. Your data has been kept intact."
+        case .aggregateOverflow: "The combined spending exceeds the supported exact total. No records were changed."
         }
     }
 }
@@ -140,6 +141,50 @@ enum Money {
         return NSDecimalNumber(decimal: decimal * 100).int64Value
     }
 
+    /// Every admitted workspace must have a representable exact total, including all cards.
+    static func checkedSum<S: Sequence>(_ amounts: S) throws -> Int64 where S.Element == Int64 {
+        var total: Int64 = 0
+        for amount in amounts {
+            let next = total.addingReportingOverflow(amount)
+            guard !next.overflow else { throw EntryError.aggregateOverflow }
+            total = next.partialValue
+        }
+        return total
+    }
+
+    /// For subsets of the validated/admitted workspace only. Broken invariants must never
+    /// produce a plausible rounded or clipped financial total.
+    static func sum<S: Sequence>(_ amounts: S) -> Int64 where S.Element == Int64 {
+        do { return try checkedSum(amounts) }
+        catch { preconditionFailure("Financial aggregate admission invariant violated") }
+    }
+
+    /// Decimal avoids intermediate multiplication overflow; forecasts truncate to minor units.
+    static func checkedScale(_ amount: Int64, numerator: Int, denominator: Int = 1) throws -> Int64 {
+        guard denominator > 0, numerator >= 0 else { throw EntryError.aggregateOverflow }
+        var value = Decimal(amount) * Decimal(numerator) / Decimal(denominator)
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &value, 0, .down)
+        guard rounded >= Decimal(Int64.min), rounded <= Decimal(Int64.max) else { throw EntryError.aggregateOverflow }
+        return NSDecimalNumber(decimal: rounded).int64Value
+    }
+
+    /// Locale-independent reversible CSV/historical-edit representation, in rupiah.
+    static func exactDigits(_ amount: Int64) -> String {
+        let whole = amount / 100
+        let fraction = abs(amount % 100)
+        let prefix = amount < 0 && whole == 0 ? "-0" : String(whole)
+        return fraction == 0 ? String(whole) : "\(prefix).\(String(format: "%02d", fraction))"
+    }
+
+    /// CSV accepts exact cents; manual capture remains whole rupiah through `parse`.
+    static func parseExact(_ input: String) throws -> Int64 {
+        guard input.range(of: "^[0-9]+(?:\\.[0-9]{1,2})?$", options: .regularExpression) != nil,
+              let amount = Decimal(string: input, locale: Locale(identifier: "en_US_POSIX")),
+              amount > 0, amount * 100 <= Decimal(maximum) else { throw EntryError.invalidAmount }
+        return NSDecimalNumber(decimal: amount * 100).int64Value
+    }
+
     static func digits(_ amount: Int64) -> String { String(amount / 100) }
     static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent) -> String {
         let value = Decimal(amount) / 100
@@ -149,11 +194,22 @@ enum Money {
 }
 
 enum Day {
-    static func string(_ date: Date, calendar: Calendar = .current) -> String {
+    /// Stored days always use Gregorian civil dates; reporting follows the local time zone.
+    static var calendar: Calendar { reportingCalendar(.current) }
+    static func reportingCalendar(_ input: Calendar) -> Calendar {
+        var result = Calendar(identifier: .gregorian)
+        result.timeZone = input.timeZone
+        result.locale = input.locale
+        result.firstWeekday = input.firstWeekday
+        return result
+    }
+    static func string(_ date: Date, calendar: Calendar = Day.calendar) -> String {
+        let calendar = reportingCalendar(calendar)
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 2000, parts.month ?? 1, parts.day ?? 1)
     }
-    static func date(_ value: String, calendar: Calendar = .current) -> Date? {
+    static func date(_ value: String, calendar: Calendar = Day.calendar) -> Date? {
+        let calendar = reportingCalendar(calendar)
         let parts = value.split(separator: "-").compactMap { Int($0) }
         guard parts.count == 3, value.count == 10,
               let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)),
@@ -172,6 +228,13 @@ struct DraftAllocation: Identifiable, Codable, Equatable {
     var id = UUID()
     var categoryID: UUID
     var amount: String
+    /// Only unchanged accepted historical input may retain fractional minor units.
+    var preservedAmount: Int64? = nil
+    func resolvedAmount() throws -> Int64 {
+        if let preservedAmount, preservedAmount > 0, preservedAmount <= Money.maximum,
+           amount == Money.exactDigits(preservedAmount) { return preservedAmount }
+        return try Money.parse(amount)
+    }
 }
 
 struct ExpenseDraft: Codable, Equatable {
@@ -180,7 +243,11 @@ struct ExpenseDraft: Codable, Equatable {
     var amount = ""
     var categoryID: UUID?
     var note = ""
-    var date = Date.now
+    var date = Date.now {
+        didSet { civilDay = Day.string(date) }
+    }
+    var civilDay = Day.string(.now)
+    var preservedAmount: Int64? = nil
     var text = ""
     var mode = EntryMode.keypad
     var editing = false
@@ -190,28 +257,39 @@ struct ExpenseDraft: Codable, Equatable {
     var splitAllocations: [DraftAllocation] = []
     var isSplit: Bool { !splitAllocations.isEmpty }
     var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil || !splitAllocations.isEmpty }
+    func resolvedAmount() throws -> Int64 {
+        if let preservedAmount, preservedAmount > 0, preservedAmount <= Money.maximum,
+           amount == Money.exactDigits(preservedAmount) { return preservedAmount }
+        return try Money.parse(amount)
+    }
+    func resolvedAllocatedAmount() throws -> Int64 {
+        try Money.checkedSum(splitAllocations.map { $0.amount.isEmpty ? 0 : try $0.resolvedAmount() })
+    }
     func expense() throws -> Expense {
-        let value = try Money.parse(amount)
+        let value = try resolvedAmount()
         let allocations: [Allocation]
         if splitAllocations.isEmpty {
             guard let categoryID else { throw EntryError.missingCategory }
             allocations = [.init(categoryID: categoryID, amount: value)]
         } else {
             guard splitAllocations.count > 1 else { throw EntryError.splitMismatch }
-            allocations = try splitAllocations.map { .init(categoryID: $0.categoryID, amount: try Money.parse($0.amount)) }
+            allocations = try splitAllocations.map { split in
+                let value = try split.resolvedAmount()
+                return .init(categoryID: split.categoryID, amount: value)
+            }
         }
-        return Expense(id: id, amount: value, day: Day.string(date), note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt, bookID: bookID)
+        return Expense(id: id, amount: value, day: civilDay, note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt, bookID: bookID)
     }
     init() {}
     init(expense: Expense) {
-        id = expense.id; bookID = expense.bookID; amount = Money.digits(expense.amount); categoryID = expense.allocations.first?.categoryID
-        note = expense.note; date = Day.date(expense.day) ?? .now; editing = true; createdAt = expense.createdAt; source = expense.source
+        id = expense.id; bookID = expense.bookID; amount = Money.exactDigits(expense.amount); preservedAmount = expense.amount; categoryID = expense.allocations.first?.categoryID
+        note = expense.note; date = Day.date(expense.day) ?? .now; civilDay = expense.day; editing = true; createdAt = expense.createdAt; source = expense.source
         if expense.allocations.count > 1 {
-            splitAllocations = expense.allocations.map { .init(categoryID: $0.categoryID, amount: Money.digits($0.amount)) }
+            splitAllocations = expense.allocations.map { .init(categoryID: $0.categoryID, amount: Money.exactDigits($0.amount), preservedAmount: $0.amount) }
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations }
+    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations, civilDay, preservedAmount }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -219,7 +297,11 @@ struct ExpenseDraft: Codable, Equatable {
         amount = try values.decodeIfPresent(String.self, forKey: .amount) ?? ""
         categoryID = try values.decodeIfPresent(UUID.self, forKey: .categoryID)
         note = try values.decodeIfPresent(String.self, forKey: .note) ?? ""
-        date = try values.decodeIfPresent(Date.self, forKey: .date) ?? .now
+        let legacyDate = try values.decodeIfPresent(Date.self, forKey: .date) ?? .now
+        civilDay = try values.decodeIfPresent(String.self, forKey: .civilDay) ?? Day.string(legacyDate)
+        guard let restoredDate = Day.date(civilDay) else { throw EntryError.invalidDate }
+        date = restoredDate
+        preservedAmount = try values.decodeIfPresent(Int64.self, forKey: .preservedAmount)
         text = try values.decodeIfPresent(String.self, forKey: .text) ?? ""
         mode = try values.decodeIfPresent(EntryMode.self, forKey: .mode) ?? .keypad
         editing = try values.decodeIfPresent(Bool.self, forKey: .editing) ?? false
@@ -234,6 +316,7 @@ struct ExpenseDraft: Codable, Equatable {
         try values.encode(date, forKey: .date); try values.encode(text, forKey: .text); try values.encode(mode, forKey: .mode)
         try values.encode(editing, forKey: .editing); try values.encode(createdAt, forKey: .createdAt); try values.encode(source, forKey: .source)
         try values.encode(splitAllocations, forKey: .splitAllocations)
+        try values.encode(civilDay, forKey: .civilDay); try values.encodeIfPresent(preservedAmount, forKey: .preservedAmount)
     }
 
     static func == (lhs: ExpenseDraft, rhs: ExpenseDraft) -> Bool {
@@ -241,7 +324,8 @@ struct ExpenseDraft: Codable, Equatable {
         lhs.amount == rhs.amount &&
         lhs.categoryID == rhs.categoryID &&
         lhs.note == rhs.note &&
-        lhs.date == rhs.date &&
+        lhs.civilDay == rhs.civilDay &&
+        lhs.preservedAmount == rhs.preservedAmount &&
         lhs.text == rhs.text &&
         lhs.mode == rhs.mode &&
         lhs.editing == rhs.editing &&
@@ -285,7 +369,15 @@ enum ExpenseParser {
 struct BudgetCycle: Equatable, Sendable {
     let start: Date
     let end: Date
-    static func containing(_ date: Date, startDay: Int, calendar: Calendar = .current) -> Self {
+    let calendar: Calendar
+    init(start: Date, end: Date, calendar: Calendar = Day.calendar) {
+        self.calendar = Day.reportingCalendar(calendar)
+        self.start = self.calendar.startOfDay(for: start)
+        self.end = self.calendar.startOfDay(for: end)
+    }
+    static func containing(_ date: Date, startDay: Int, calendar: Calendar = Day.calendar) -> Self {
+        let calendar = Day.reportingCalendar(calendar)
+        let date = calendar.startOfDay(for: date)
         let day = min(31, max(1, startDay))
         let month = calendar.dateInterval(of: .month, for: date)!.start
         func boundary(_ month: Date) -> Date {
@@ -294,16 +386,16 @@ struct BudgetCycle: Equatable, Sendable {
         }
         let current = boundary(month)
         if date >= current {
-            return .init(start: current, end: boundary(calendar.date(byAdding: .month, value: 1, to: month)!))
+            return .init(start: current, end: boundary(calendar.date(byAdding: .month, value: 1, to: month)!), calendar: calendar)
         }
-        return .init(start: boundary(calendar.date(byAdding: .month, value: -1, to: month)!), end: current)
+        return .init(start: boundary(calendar.date(byAdding: .month, value: -1, to: month)!), end: current, calendar: calendar)
     }
     func contains(_ expense: Expense) -> Bool {
-        guard let date = Day.date(expense.day) else { return false }
-        return date >= start && date < end
+        guard Day.date(expense.day, calendar: calendar) != nil else { return false }
+        return expense.day >= Day.string(start, calendar: calendar) && expense.day < Day.string(end, calendar: calendar)
     }
     var label: String {
-        let last = Calendar.current.date(byAdding: .day, value: -1, to: end) ?? end
+        let last = calendar.date(byAdding: .day, value: -1, to: end) ?? end
         return start.formatted(.dateTime.day().month(.abbreviated)) + " – " + last.formatted(.dateTime.day().month(.abbreviated))
     }
 }
@@ -325,7 +417,7 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
     var transitionEndDay: String?
     var bookID: UUID? = nil
 
-    static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = .current, bookID: UUID? = nil) -> Self {
+    static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = Day.calendar, bookID: UUID? = nil) -> Self {
         let validStartDay = min(31, max(1, startDay))
         let cycle = BudgetCycle.containing(date, startDay: validStartDay, calendar: calendar)
         let id = (bookID == nil || bookID == BookProfile.sample.id) ? legacyID : UUID()
@@ -368,27 +460,27 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
 struct BudgetPeriod: Equatable, Sendable {
     let budget: BudgetVersion
     let cycle: BudgetCycle
-    var isTransition: Bool { budget.transitionEndDay == Day.string(cycle.end) }
+    var isTransition: Bool { budget.transitionEndDay == Day.string(cycle.end, calendar: cycle.calendar) }
 }
 
 enum BudgetHistory {
-    static func active(on date: Date, budgets: [BudgetVersion], calendar: Calendar = .current) -> BudgetVersion? {
+    static func active(on date: Date, budgets: [BudgetVersion], calendar: Calendar = Day.calendar) -> BudgetVersion? {
         let day = Day.string(date, calendar: calendar)
         return budgets.filter { $0.effectiveDay <= day }.max { $0.effectiveDay < $1.effectiveDay }
     }
 
-    static func period(containing date: Date, budgets: [BudgetVersion], calendar: Calendar = .current) -> BudgetPeriod? {
+    static func period(containing date: Date, budgets: [BudgetVersion], calendar: Calendar = Day.calendar) -> BudgetPeriod? {
         guard let budget = active(on: date, budgets: budgets, calendar: calendar) else { return nil }
         let day = Day.string(date, calendar: calendar)
         if let start = Day.date(budget.effectiveDay, calendar: calendar),
            let endDay = budget.transitionEndDay, let end = Day.date(endDay, calendar: calendar),
            day >= budget.effectiveDay, day < endDay {
-            return BudgetPeriod(budget: budget, cycle: BudgetCycle(start: start, end: end))
+            return BudgetPeriod(budget: budget, cycle: BudgetCycle(start: Day.reportingCalendar(calendar).startOfDay(for: start), end: Day.reportingCalendar(calendar).startOfDay(for: end), calendar: calendar))
         }
         return BudgetPeriod(budget: budget, cycle: BudgetCycle.containing(date, startDay: budget.startDay, calendar: calendar))
     }
 
-    static func transitionEnd(after date: Date, startDay: Int, calendar: Calendar = .current) -> Date {
+    static func transitionEnd(after date: Date, startDay: Int, calendar: Calendar = Day.calendar) -> Date {
         BudgetCycle.containing(date, startDay: startDay, calendar: calendar).end
     }
 }

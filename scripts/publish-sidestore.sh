@@ -44,14 +44,13 @@ if gh release view "$tag" --repo "$distribution_repo" >/dev/null 2>&1; then
 fi
 release_notes="$(printf '%s\n\nSHA-256: %s' "$notes" "$sha256")"
 printf '%s\n' "$release_notes" > "$stage/release-notes.md"
-gh release create "$tag" "$ipa" --repo "$distribution_repo" --title "Monocle $version ($build_number)" --notes-file "$stage/release-notes.md"
-
 gh repo clone "$distribution_repo" "$stage/source" -- --depth=1
 source_file="$stage/source/source.json"
 if [ -f "$source_file" ]; then
+  jq -e --arg bundle "$bundle_id" '[.apps[] | select(.bundleIdentifier == $bundle)] | length == 1' "$source_file" >/dev/null
   jq --arg version "$version" --arg build "$build_number" --arg date "$(date +%F)" \
-    --arg notes "$notes" --arg url "$download_url" --argjson size "$size" \
-    '.apps[0].versions = ([{version: $version, buildVersion: $build, date: $date, localizedDescription: $notes, downloadURL: $url, size: $size, minOSVersion: "26.0"}] + [.apps[0].versions[] | select(.version != $version or .buildVersion != $build)])' \
+    --arg notes "$notes" --arg url "$download_url" --argjson size "$size" --arg bundle "$bundle_id" \
+    '(.apps[] | select(.bundleIdentifier == $bundle) | .versions) |= ([{version: $version, buildVersion: $build, date: $date, localizedDescription: $notes, downloadURL: $url, size: $size, minOSVersion: "26.0"}] + [.[] | select(.version != $version or .buildVersion != $build)])' \
     "$source_file" > "$source_file.tmp"
   mv "$source_file.tmp" "$source_file"
 else
@@ -64,6 +63,7 @@ fi
 
 /usr/bin/ditto Monocle/Resources/Assets.xcassets/AppIcon.appiconset/Icon.png "$stage/source/icon.png"
 jq empty "$source_file"
+gh release create "$tag" "$ipa" --repo "$distribution_repo" --title "Monocle $version ($build_number)" --notes-file "$stage/release-notes.md"
 git -C "$stage/source" add source.json icon.png
 if ! git -C "$stage/source" diff --cached --quiet; then
   git -C "$stage/source" commit -m "Publish Monocle $version ($build_number)"

@@ -3,10 +3,12 @@ import Foundation
 struct ReconciliationResult: Equatable {
     var newOccurrences: [BillOccurrence]
     var autoExpenses: [Expense]
+    var retiredOccurrenceIDs: [UUID]
 
-    init(newOccurrences: [BillOccurrence] = [], autoExpenses: [Expense] = []) {
+    init(newOccurrences: [BillOccurrence] = [], autoExpenses: [Expense] = [], retiredOccurrenceIDs: [UUID] = []) {
         self.newOccurrences = newOccurrences
         self.autoExpenses = autoExpenses
+        self.retiredOccurrenceIDs = retiredOccurrenceIDs
     }
 }
 
@@ -16,8 +18,9 @@ enum BillReconciliationEngine {
         for rule: BillRule,
         from startDate: Date,
         to endDate: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = Day.calendar
     ) -> [String] {
+        let calendar = Day.reportingCalendar(calendar)
         guard startDate <= endDate else { return [] }
         let startDayString = Day.string(startDate, calendar: calendar)
         let endDayString = Day.string(endDate, calendar: calendar)
@@ -95,15 +98,18 @@ enum BillReconciliationEngine {
         existingOccurrences: [BillOccurrence],
         asOf date: Date = .now,
         lookaheadDays: Int = 30,
-        calendar: Calendar = .current
+        calendar: Calendar = Day.calendar
     ) -> ReconciliationResult {
         guard rule.isActive else { return ReconciliationResult() }
+        let calendar = Day.reportingCalendar(calendar)
 
         let todayString = Day.string(date, calendar: calendar)
-        let startDate = calendar.startOfDay(for: rule.createdAt)
+        let effectiveDate = rule.scheduleEffectiveDay.flatMap { Day.date($0, calendar: calendar) } ?? rule.createdAt
+        let startDate = max(calendar.startOfDay(for: rule.createdAt), calendar.startOfDay(for: effectiveDate))
         let endDate = calendar.date(byAdding: .day, value: max(0, lookaheadDays), to: date) ?? date
 
         let allDueDays = dueDays(for: rule, from: startDate, to: endDate, calendar: calendar)
+        let scheduledDays = Set(allDueDays)
         let existing = existingOccurrences.filter { $0.billRuleID == rule.id && $0.bookID == rule.bookID }
         let existingDueDays = Set(existing.map(\.dueDay))
 
@@ -111,7 +117,7 @@ enum BillReconciliationEngine {
         var autoExpenses: [Expense] = []
 
         // Lookahead creates pending occurrences; promote them when their due day arrives.
-        for var occurrence in existing where occurrence.status == .pending && occurrence.dueDay <= todayString && rule.recordingMode == .automatic {
+        for var occurrence in existing where occurrence.status == .pending && scheduledDays.contains(occurrence.dueDay) && occurrence.dueDay <= todayString && rule.recordingMode == .automatic {
             let expenseID = UUID()
             let occurrenceDate = Day.date(occurrence.dueDay, calendar: calendar) ?? date
             autoExpenses.append(Expense(id: expenseID, amount: rule.amount, day: occurrence.dueDay,
@@ -176,6 +182,10 @@ enum BillReconciliationEngine {
             }
         }
 
-        return ReconciliationResult(newOccurrences: newOccurrences, autoExpenses: autoExpenses)
+        let effectiveDay = Day.string(startDate, calendar: calendar)
+        let retired = existing.filter {
+            $0.status == .pending && $0.dueDay >= effectiveDay && $0.dueDay <= Day.string(endDate, calendar: calendar) && !scheduledDays.contains($0.dueDay)
+        }.map(\.id)
+        return ReconciliationResult(newOccurrences: newOccurrences, autoExpenses: autoExpenses, retiredOccurrenceIDs: retired)
     }
 }
