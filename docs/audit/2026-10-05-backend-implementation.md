@@ -61,13 +61,13 @@ Card rename/delete also update the settings profile within the coordinated comma
 - Final package rebuild succeeded (`ipa-build.log`); ZIP integrity, arm64 app/extension, stable bundle IDs, version 0.7.21/build 84, iPhone-only/minimum iOS 26, V4 model, ActivityKit support and backup UTI were verified. Debug three-card fixtures are excluded from the Release binary.
 - IPA: `monocle-0.7.21-build-84-unsigned.ipa`, preserved in the mandated Monocle-codex iCloud folder. SHA-256: `b83a893235cec36a99bb6f54340795c5c160357c1e139e802897ca37d657b5d2`; delivery copy matches.
 
-Published [Monocle 0.7.21/build 84](https://github.com/farchanrifai/monocle-releases/releases/tag/v0.7.21-build.84). GitHub reports the matching SHA-256 asset digest and size (2,939,800 bytes); SideStore source points to the new asset/version. All prior Monocle versions and the four other apps' complete feed entries are preserved. Release feed commit: `5d8efd7`; source implementation commit: `6ea3d04` on `codex/backend-reliability` (local, not pushed).
+Published [Monocle 0.7.21/build 84](https://github.com/farchanrifai/monocle-releases/releases/tag/v0.7.21-build.84). GitHub reports the matching SHA-256 asset digest and size (2,939,800 bytes); SideStore source points to the new asset/version. All prior Monocle versions and the four other apps' complete feed entries are preserved. Release feed commit: `5d8efd7`; source implementation commit: `6ea3d04` on [`codex/backend-reliability`](https://github.com/farchanrifai/monocle/tree/codex/backend-reliability), pushed to the source repo for app review. The user will merge later; the branch is unmerged.
 
 Final 10k confirmation: per-row writes 188.563 s wall / 188.408 s CPU versus batch 0.465 s / 0.464 s; 100-row page approximately 4.34–5.04 ms. These are synthetic Debug simulator measurements with concurrent UI work, not physical-device performance claims.
 
 Result bundles/logs are local ignored build artifacts; they are not source-controlled or embedded in public releases.
 
-Mac CI: `.github/workflows/backend.yml` builds/tests migration/recovery/large fixtures on macOS, retains results, builds the unsigned device app/widget extension and enables optional 50k fixtures weekly. YAML and shell syntax are checked locally; hosted execution is unverified until the branch is pushed.
+Mac CI: `.github/workflows/backend.yml` builds/tests migration/recovery/large fixtures on macOS, retains results, builds the unsigned device app/widget extension and enables optional 50k fixtures weekly. YAML and shell syntax are checked locally; the branch is pushed for review, but hosted execution has not been verified.
 
 ## Remaining gates
 
