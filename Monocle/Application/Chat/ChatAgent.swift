@@ -21,8 +21,9 @@ final class ChatAgent {
     private let model: AppModel
     private let transport: (Data) async throws -> Data
 
-    init(model: AppModel, transport: @escaping (Data) async throws -> Data) {
+    init(model: AppModel, messages: [[String: Any]] = [], transport: @escaping (Data) async throws -> Data) {
         self.model = model
+        self.messages = messages
         self.transport = transport
     }
 

@@ -13,7 +13,6 @@ struct MonocleApp: App {
 struct RootView: View {
     @Bindable var model: AppModel
     @Environment(\.scenePhase) private var phase
-    @State private var chat = ChatSession()
     var body: some View {
         Group {
             if let failure = model.startupError {
@@ -43,7 +42,7 @@ struct RootView: View {
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
                 } message: { Text("You have an unfinished expense from an interruption. Discard it to open this transaction.") }
                 .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
-                .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: chat) }
+                .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: model.chat) }
                 .alert("Check this", isPresented: Binding(get: { model.error != nil && !model.showEntry }, set: { if !$0 { model.error = nil } })) {
                     Button("OK") { model.error = nil }
                 } message: { Text(model.error ?? "") }

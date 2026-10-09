@@ -1,36 +1,5 @@
 import SwiftUI
 
-struct ChatRow: Identifiable, Equatable {
-    enum Kind: Equatable {
-        case user(String)
-        case assistant(String)
-        case proposal(Expense, ProposalState)
-        case summary([CategorySpendPoint])
-        case notice(String)
-        case error(String)
-    }
-    let id = UUID()
-    var kind: Kind
-
-    var isUser: Bool { if case .user = kind { true } else { false } }
-    var isBubble: Bool {
-        switch kind { case .user, .assistant: true; default: false }
-    }
-}
-
-/// The conversation outlives the full-screen cover: RootView owns it for as long as the app runs.
-// ponytail: in-memory only; persist to chat.json (CHAT_SPEC §7) when history across launches matters.
-@MainActor @Observable
-final class ChatSession {
-    var rows: [ChatRow] = []
-    var isTyping = false
-    /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
-    var scope: AnalyticsFilterScope?
-    @ObservationIgnored var agent: ChatAgent?
-
-    func clear() { rows = []; agent?.reset() }
-}
-
 /// Full-screen chat (CHAT_SPEC §1). Claude proposes and answers through ChatAgent; only the Save button writes.
 struct ChatView: View {
     @Bindable var model: AppModel
@@ -257,7 +226,7 @@ struct ChatView: View {
         session.rows.append(ChatRow(kind: .user(text)))
         session.isTyping = true
         // The key is read per request, so changing it in Settings keeps the conversation.
-        let agent = session.agent ?? ChatAgent(model: model) { body in
+        let agent = session.agent ?? ChatAgent(model: model, messages: session.restoredMessages) { body in
             guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
             return try await ClaudeClient(apiKey: key).send(body)
         }

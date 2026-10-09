@@ -354,6 +354,30 @@ final class MonocleUITests: XCTestCase {
         app.buttons["chatClose"].tap()
     }
 
+    @MainActor
+    func testAppLockHidesChat() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_TEST_APP_LOCK"] = "1"
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        XCTAssertTrue(app.otherElements["appLockScreen"].waitForExistence(timeout: 10) || app.buttons["Unlock"].waitForExistence(timeout: 5))
+        app.buttons["Unlock"].tap()
+        app.buttons["chatButton"].tap()
+        XCTAssertTrue(app.buttons["chatClose"].waitForExistence(timeout: 5))
+
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.buttons["Unlock"].waitForExistence(timeout: 5), "Returning to the app locks it")
+        XCTAssertFalse(app.buttons["chatClose"].exists, "Chat must not be visible while locked")
+        XCTAssertFalse(app.buttons["chatScopeMenu"].exists)
+        keepScreenshot(app.screenshot())
+
+        app.buttons["Unlock"].tap()
+        XCTAssertTrue(app.buttons["chatButton"].waitForExistence(timeout: 5) || app.buttons["chatClose"].waitForExistence(timeout: 5))
+    }
+
     private func keepScreenshot(_ screenshot: XCUIScreenshot) {
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.lifetime = .keepAlways

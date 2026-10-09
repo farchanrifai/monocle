@@ -124,6 +124,41 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertTrue(model.expenses(for: bookID).contains { $0.id == expense.id && $0.source == "chat" })
     }
 
+    func testChatSessionRestoresBothSidesOfTheConversationFromDisk() async throws {
+        let file = tempDir.appendingPathComponent("chat.json")
+        let session = ChatSession(fileURL: file)
+        let agent = agent(replies: [reply([text("Rp28.000 so far.")], stop: "end_turn")])
+        session.agent = agent
+        session.scope = .allCards
+        let outputs = await agent.send("spent today?", scope: .allCards)
+        session.rows = [ChatRow(kind: .user("spent today?"))] + outputs.map { _ in ChatRow(kind: .assistant("Rp28.000 so far.")) }
+
+        let restored = ChatSession(fileURL: file)
+        XCTAssertEqual(restored.rows, session.rows)
+        XCTAssertEqual(restored.scope, .allCards)
+        XCTAssertEqual(restored.restoredMessages.count, 2, "Claude's history is restored with the transcript")
+
+        // A restored agent continues the same append-only conversation.
+        let next = ChatAgent(model: model, messages: restored.restoredMessages) { [unowned self] body in
+            sent.append(try JSONSerialization.jsonObject(with: body) as? [String: Any] ?? [:])
+            return try JSONSerialization.data(withJSONObject: Self.reply([Self.text("ok")], stop: "end_turn"))
+        }
+        _ = await next.send("and yesterday?", scope: .allCards)
+        XCTAssertEqual((sent.last?["messages"] as? [[String: Any]])?.count, 3)
+
+        restored.clear()
+        let cleared = ChatSession(fileURL: file)
+        XCTAssertTrue(cleared.rows.isEmpty)
+        XCTAssertTrue(cleared.restoredMessages.isEmpty)
+        XCTAssertNil(cleared.scope)
+    }
+
+    func testUnreadableHistoryStartsEmpty() throws {
+        let file = tempDir.appendingPathComponent("chat.json")
+        try Data("not json".utf8).write(to: file)
+        XCTAssertTrue(ChatSession(fileURL: file).rows.isEmpty)
+    }
+
     // MARK: - Helpers
 
     private func agent(replies: [[String: Any]]) -> ChatAgent {

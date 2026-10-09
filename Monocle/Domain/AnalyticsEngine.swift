@@ -20,7 +20,7 @@ enum AnalyticsScope: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-enum AnalyticsFilterScope: Equatable, Hashable, Sendable {
+enum AnalyticsFilterScope: Equatable, Hashable, Sendable, Codable {
     case stack(id: UUID, name: String)
     case card(id: UUID, name: String)
     case allCards
@@ -110,7 +110,7 @@ struct DailySpendPoint: Identifiable, Equatable, Sendable {
     }
 }
 
-struct CategorySpendPoint: Identifiable, Equatable, Sendable {
+struct CategorySpendPoint: Identifiable, Equatable, Sendable, Codable {
     var id: UUID { categoryID }
     let categoryID: UUID
     let categoryName: String

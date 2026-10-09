@@ -51,7 +51,15 @@ final class AppEnvironment {
             expenses.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             self.expenses = expenses
             let backups = BackupService(directory: directory, repository: repository, state: state, expenses: expenses)
-            model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings, backups: backups)
+            var appLock: AppLockController?
+            #if DEBUG
+            if directory.lastPathComponent.hasPrefix("monocle-ui-test-"), ProcessInfo.processInfo.environment["MONOCLE_TEST_APP_LOCK"] == "1" {
+                settings.appLockTimeout = .immediately // reload() re-applies the saved setting
+                appLock = AppLockController(timeout: .immediately, authenticator: TestAuthenticator())
+            }
+            #endif
+            model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings, appLock: appLock, backups: backups)
+            model.chat = ChatSession(fileURL: directory.appendingPathComponent("chat.json"))
         } catch {
             expenses = nil
             model = AppModel(startupFailure: error.localizedDescription)
@@ -83,3 +91,11 @@ final class AppEnvironment {
         return categories
     }
 }
+
+#if DEBUG
+/// UI tests only: stands in for Face ID so lock behavior can be exercised on the simulator.
+@MainActor
+private final class TestAuthenticator: DeviceAuthenticating {
+    func authenticate(reason: String) async -> Result<Void, AppLockError> { .success(()) }
+}
+#endif

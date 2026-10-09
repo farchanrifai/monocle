@@ -69,6 +69,7 @@
 		ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */; };
 		AE96304FEA75BDDC336291AB /* MonocleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57F4157D596D4DED7003596D /* MonocleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82F954B55004100EBACB8D /* AppModel.swift */; };
+		B2286718B9150562984000B4 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 528ED8945811020013D20C79 /* ChatSession.swift */; };
 		B258A8D3BADE921642CE86D5 /* ResetDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516DB1D73497124210D8A80B /* ResetDataView.swift */; };
 		B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D433FF1198DE03E544B102E2 /* BudgetsView.swift */; };
 		B42BEC75B82DAD88D288D4CC /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
@@ -159,6 +160,7 @@
 		4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureWidget.swift; sourceTree = "<group>"; };
 		4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingActivityWidget.swift; sourceTree = "<group>"; };
 		516DB1D73497124210D8A80B /* ResetDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataView.swift; sourceTree = "<group>"; };
+		528ED8945811020013D20C79 /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
 		55C6F2F7E78348046E865E34 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		5717053E6A3C91B893ADB5DA /* BackendSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSessionTests.swift; sourceTree = "<group>"; };
 		57F4157D596D4DED7003596D /* MonocleWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MonocleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -339,6 +341,7 @@
 			children = (
 				3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */,
 				FD14F3361CFDC5E8013E693F /* ChatAgent.swift */,
+				528ED8945811020013D20C79 /* ChatSession.swift */,
 				0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */,
 				36A5A20992A825EF1360FD47 /* ToolExecutor.swift */,
 			);
@@ -655,6 +658,7 @@
 				E4744CA94D57CE96A6BD7C60 /* ChatAgent.swift in Sources */,
 				18625E8091F4974B32DFD62A /* ChatBubble.swift in Sources */,
 				2E30B021C9D46E6D22A37A33 /* ChatInputBar.swift in Sources */,
+				B2286718B9150562984000B4 /* ChatSession.swift in Sources */,
 				BF7952BD0D8546FEC5893871 /* ChatSettingsView.swift in Sources */,
 				E7BB8D07916484323C56329B /* ChatSummaryChart.swift in Sources */,
 				9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */,
@@ -792,7 +796,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 90;
+				CURRENT_PROJECT_VERSION = 91;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -813,7 +817,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.25;
+				MARKETING_VERSION = 0.7.26;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -904,7 +908,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 90;
+				CURRENT_PROJECT_VERSION = 91;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -919,7 +923,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.25;
+				MARKETING_VERSION = 0.7.26;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;

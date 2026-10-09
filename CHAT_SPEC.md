@@ -140,7 +140,7 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 - Off by default; opt-in disclosure.
 - Sent: user message, category/card/stack names, tool results for the requested range (rows capped at 50; prefer aggregates).
 - Never sent: app-lock settings, backups, card artwork, cards outside the resolved scope.
-- Chat history stays on device (`chat.json`); included in "Clear chat history"; **not** in workspace backups in v1.
+- Chat history stays on device (`chat.json` next to the ledger, transcript and Claude's message history together); wiped by Clear chat, Reset data, Clear all transactions and backup restore; **not** in workspace backups in v1.
 
 ## 10. Testing
 

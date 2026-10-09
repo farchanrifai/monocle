@@ -76,6 +76,8 @@ final class AppModel {
     var csvInterchangeInitialTab = 0
     var showAnalytics = false
     var showChat = false
+    /// Replaced by AppEnvironment with a file-backed session; tests keep this in-memory one.
+    var chat = ChatSession()
     var selectedTab = 0
     var error: String?
     var startupError: String?
@@ -1008,6 +1010,7 @@ final class AppModel {
     func clearAllTransactions() throws {
         guard let backups else { throw BackupError.unsupported }
         try recoveryCommand { try backups.clearExpenses(in: nil, currentDraft: draft, settings: settings) }
+        chat.clear()
         draft = ExpenseDraft(); draft.bookID = activeBookID
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
@@ -1018,6 +1021,7 @@ final class AppModel {
     func resetAllData(cardName: String) throws {
         guard let backups else { throw BackupError.unsupported }
         let newSettings = try recoveryCommand { try backups.resetAllData(cardName: cardName, currentDraft: draft, settings: settings) }
+        chat.clear()
         self.settings = newSettings
         publishPreferences(try requireState().loadWorkspacePreferences())
         expenseService?.configure(categoryRules: newSettings.categoryRules, archivedCategoryIDs: newSettings.archivedCategoryIDs)
@@ -1376,6 +1380,7 @@ final class AppModel {
         guard let backups else { throw BackupError.unsupported }
         do {
             try backups.restoreWorkspace(backup, currentDraft: draft, settings: settings)
+            chat.clear()
             let restoredBookID = expenseService?.activeBookID ?? backup.books[0].book.id
             if let active = backup.books.first(where: { $0.book.id == restoredBookID }) {
                 draft = active.draft ?? ExpenseDraft()
