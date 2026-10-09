@@ -261,7 +261,7 @@ struct ToolExecutor {
     }
 
     /// Open or active card when it is in scope, else the scope's first card (CHAT_SPEC §2).
-    private func targetCard() throws -> BookProfile {
+    func targetCard() throws -> BookProfile {
         let inScope = model.books(in: scope)
         let preferred = model.selectedBookID ?? model.activeBookID
         if let book = inScope.first(where: { $0.id == preferred }) ?? inScope.first { return book }

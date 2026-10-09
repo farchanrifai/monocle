@@ -293,7 +293,7 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
-    func testChatPreviewOpensFromBottomBarAndCloses() throws {
+    func testChatOptInFromBottomBarAndCloses() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
@@ -309,30 +309,36 @@ final class MonocleUITests: XCTestCase {
         keepScreenshot(app.screenshot())
 
         chat.tap()
-        XCTAssertTrue(app.buttons["proposalSave"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["chatSetup"].waitForExistence(timeout: 5), "Chat is opt-in")
         XCTAssertFalse(chat.isHittable, "Bottom bar must be hidden behind full-screen chat")
+        XCTAssertTrue(app.buttons["Kopi 28rb"].exists, "Empty state offers suggestions")
         keepScreenshot(app.screenshot())
 
-        app.buttons["proposalSave"].tap()
-        XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 5))
+        // Opt in and add a (fake) key; nothing is sent until a message is.
+        app.buttons["chatSetup"].tap()
+        let toggle = app.switches["chatEnabledToggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.tap()
+        let keyField = app.secureTextFields["chatAPIKeyField"]
+        XCTAssertTrue(keyField.waitForExistence(timeout: 3))
+        keyField.tap()
+        keyField.typeText("sk-ant-test")
+        app.buttons["Save key"].tap()
+        keepScreenshot(app.screenshot())
+        app.buttons["Done"].tap()
+
         let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
         input.tap()
-        input.typeText("bensin 100rb kemarin")
-        app.buttons["chatSend"].tap()
-        XCTAssertTrue(app.staticTexts["bensin 100rb kemarin"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["AI isn't connected yet. This is a preview of the chat screen."].waitForExistence(timeout: 5))
-        keepScreenshot(app.screenshot())
-
-        // Tapping the transcript dismisses the keyboard.
+        input.typeText("draft only")
         XCTAssertTrue(app.keyboards.firstMatch.exists)
-        app.staticTexts["bensin 100rb kemarin"].tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        app.buttons["Kopi 28rb"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: -4)).tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3), "Tapping the transcript dismisses the keyboard")
 
         // The subtitle is a scope menu; switching adds a notice and keeps the Home filter untouched.
         app.buttons["chatScopeMenu"].tap()
         let allCards = app.buttons["All Cards"]
         XCTAssertTrue(allCards.waitForExistence(timeout: 5))
-        keepScreenshot(app.screenshot())
         allCards.tap()
         XCTAssertTrue(app.staticTexts["Now answering about All cards"].waitForExistence(timeout: 5))
         keepScreenshot(app.screenshot())

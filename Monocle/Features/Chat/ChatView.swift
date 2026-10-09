@@ -18,7 +18,7 @@ struct ChatRow: Identifiable, Equatable {
     }
 }
 
-/// Full-screen chat. Step 1 of CHAT_SPEC §11: UI preview with mock content, no AI and no writes.
+/// Full-screen chat (CHAT_SPEC §1). Claude proposes and answers through ChatAgent; only the Save button writes.
 struct ChatView: View {
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -29,6 +29,10 @@ struct ChatView: View {
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     @State private var scope: AnalyticsFilterScope = .allCards
     @FocusState private var inputFocused: Bool
+    @AppStorage("chatEnabled") private var chatEnabled = false
+    @State private var hasKey = APIKeyStore.read() != nil
+    @State private var showingSetup = false
+    @State private var agent: ChatAgent?
 
     private static let suggestions = ["Kopi 28rb", "How much did I spend this month?", "Am I over budget?"]
 
@@ -42,11 +46,6 @@ struct ChatView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 4) {
-                    Text("Preview: AI isn't connected yet. Nothing here is saved.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.bottom, 8)
                     if rows.isEmpty && !isTyping { emptyState }
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         rowView(row, hasTail: isLastInRun(index))
@@ -71,7 +70,15 @@ struct ChatView: View {
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
+                if chatEnabled && hasKey {
+                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
+                } else {
+                    Button(chatEnabled ? "Add your API key" : "Turn on AI chat") { showingSetup = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(MC.red)
+                        .padding(12)
+                        .accessibilityIdentifier("chatSetup")
+                }
             }
             .sensoryFeedback(.impact(weight: .light), trigger: sentCount)
             .navigationTitle("monocle")
@@ -99,7 +106,7 @@ struct ChatView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Clear chat", systemImage: "trash", role: .destructive) { rows = [] }
+                        Button("Clear chat", systemImage: "trash", role: .destructive) { rows = []; agent?.reset() }
                     } label: {
                         Image(systemName: "ellipsis")
                     }
@@ -108,7 +115,13 @@ struct ChatView: View {
             }
         }
         .tint(MC.red)
-        .onAppear(perform: seedPreview)
+        .onAppear { scope = homeScope }
+        .sheet(isPresented: $showingSetup, onDismiss: { hasKey = APIKeyStore.read() != nil; agent = nil }) {
+            NavigationStack {
+                ChatSettingsView()
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }
+            }
+        }
     }
 
     @ViewBuilder
@@ -170,7 +183,7 @@ struct ChatView: View {
         case .proposal(let expense, let state):
             ExpenseProposalCard(
                 expense: expense,
-                category: model.categories.first { $0.id == expense.allocations.first?.categoryID },
+                category: expense.bookID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.allocations.first?.categoryID },
                 cardName: model.books.first { $0.id == expense.bookID }?.name ?? "",
                 state: state,
                 onSave: { setProposal(row.id, expense, .saved) },
@@ -199,47 +212,42 @@ struct ChatView: View {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
     }
 
-    // ponytail: preview "Save" only flips the card state; real saves go through AppModel.save in step 4.
     private func setProposal(_ id: UUID, _ expense: Expense, _ state: ProposalState) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
+        let summary = "\(Money.format(expense.amount)) \(expense.note.isEmpty ? "" : "\"\(expense.note)\" ")on \(expense.day)"
+        if state == .saved {
+            do { try model.save(expense) } catch {
+                rows.append(ChatRow(kind: .error(error.localizedDescription)))
+                return
+            }
+            agent?.note("The user saved the proposed expense \(summary).")
+        } else {
+            agent?.note("The user discarded the proposed expense \(summary).")
+        }
         rows[index].kind = .proposal(expense, state)
     }
 
     private func send(_ input: String) {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isTyping else { return }
+        guard !text.isEmpty, !isTyping, let key = APIKeyStore.read() else { return }
         draft = ""
         sentCount += 1
         rows.append(ChatRow(kind: .user(text)))
         isTyping = true
+        let agent = agent ?? ChatAgent(model: model) { body in try await ClaudeClient(apiKey: key).send(body) }
+        self.agent = agent
         Task {
-            try? await Task.sleep(for: .seconds(1))
+            let outputs = await agent.send(text, scope: scope)
             isTyping = false
-            rows.append(ChatRow(kind: .assistant("AI isn't connected yet. This is a preview of the chat screen.")))
+            rows += outputs.map { output in
+                switch output {
+                case .text(let text): ChatRow(kind: .assistant(text))
+                case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
+                case .chart(let points): ChatRow(kind: .summary(points))
+                case .notice(let text): ChatRow(kind: .notice(text))
+                case .error(let text): ChatRow(kind: .error(text))
+                }
+            }
         }
-    }
-
-    private func seedPreview() {
-        guard rows.isEmpty else { return }
-        scope = homeScope
-        var seeded = [ChatRow(kind: .user("kopi 28rb"))]
-        if let category = model.categories.first {
-            let amount: Int64 = 2_800_000
-            let expense = Expense(amount: amount, day: Day.string(.now), note: "Kopi",
-                                  allocations: [Allocation(categoryID: category.id, amount: amount)],
-                                  source: "chat", bookID: model.activeBookID)
-            seeded.append(ChatRow(kind: .assistant("Got it. Check the details and tap **Save**.")))
-            seeded.append(ChatRow(kind: .proposal(expense, .pending)))
-        }
-        seeded.append(ChatRow(kind: .user("How much did I spend this month?")))
-        let report = AnalyticsReport.build(data: model.reportingData(for: scope), horizon: .thisMonth)
-        if let error = report.errorMessage {
-            seeded.append(ChatRow(kind: .error(error)))
-        } else {
-            let total = (try? Money.checkedSum(report.categoryPoints.map(\.amount))) ?? 0
-            seeded.append(ChatRow(kind: .assistant("This month so far: **\(Money.format(total))**. Here it is by category.")))
-            seeded.append(ChatRow(kind: .summary(report.categoryPoints)))
-        }
-        rows = seeded
     }
 }

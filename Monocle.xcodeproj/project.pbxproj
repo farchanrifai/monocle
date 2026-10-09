@@ -52,6 +52,8 @@
 		80364D118C92475DFC998503 /* QuickEntryControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8339F3A026D71C9C88AFC132 /* QuickEntryControl.swift */; };
 		82656E5ED834FC2CE64BE243 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
 		85CEEF28F521F31304E69058 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CD7790B75B1AA86918043C /* CardCustomizerView.swift */; };
+		8934E3DC238F21D7D643E592 /* ChatAgentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7CC8CAA14DB700C397EDA62 /* ChatAgentTests.swift */; };
+		8B4D549408E90FE0BCBE063D /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */; };
 		8F2B2BAF7BEBD04DE9D4060B /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */; };
 		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
 		9321C8B23F73EED9EA109E04 /* LocalStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */; };
@@ -62,6 +64,7 @@
 		9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B77094E961D5E3F21A0C865A /* ChatView.swift */; };
 		A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */; };
 		A5DF105D10DC5C7A4FB122C1 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */; };
+		A75084F321F54945FD5190C3 /* ClaudeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */; };
 		A915ADE62CAC7D29C79F273F /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */; };
 		ABBF0586A6C7FB9B6802122B /* BottomNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */; };
 		AE96304FEA75BDDC336291AB /* MonocleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57F4157D596D4DED7003596D /* MonocleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -71,6 +74,7 @@
 		B42BEC75B82DAD88D288D4CC /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
 		B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8205E545FE1B914526921654 /* RecentsView.swift */; };
 		BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */; };
+		BF7952BD0D8546FEC5893871 /* ChatSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */; };
 		C5DC8F7BE36766741920CD01 /* ChatToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDBB1B75740C243E89A417B8 /* ChatToolTests.swift */; };
 		C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CE487DA359818BA92D7DC9 /* MonocleStyle.swift */; };
 		C8E13ADF4E646F830D5BC69A /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE369F72DE2591D9D60E1B77 /* BackupView.swift */; };
@@ -79,6 +83,7 @@
 		CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */; };
 		CFB8E20EE4A6884CF4AB5146 /* ShortcutOrderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */; };
 		DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */; };
+		E4744CA94D57CE96A6BD7C60 /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD14F3361CFDC5E8013E693F /* ChatAgent.swift */; };
 		E5CA71EA06D9743D4013FC2A /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A5A20992A825EF1360FD47 /* ToolExecutor.swift */; };
 		E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */; };
 		E7BB8D07916484323C56329B /* ChatSummaryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */; };
@@ -134,6 +139,7 @@
 		06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutOrderSettingsView.swift; sourceTree = "<group>"; };
 		0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
 		0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
+		0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeClient.swift; sourceTree = "<group>"; };
 		10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
 		15119B5A62BE722F4E6FA3B4 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleWidgetsBundle.swift; sourceTree = "<group>"; };
@@ -145,6 +151,7 @@
 		36A5A20992A825EF1360FD47 /* ToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
 		37911938CA6DB5DDAECA328B /* CSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVTests.swift; sourceTree = "<group>"; };
 		3A53A2197A6A4C601ECF6066 /* MultiBookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiBookTests.swift; sourceTree = "<group>"; };
+		3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		41C095F291D89DF974579CA6 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		4391823DC40DCB9EC94E3F48 /* AnalyticsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEngine.swift; sourceTree = "<group>"; };
 		43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
@@ -169,6 +176,7 @@
 		6C573062CE2769892729F737 /* CategoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryManager.swift; sourceTree = "<group>"; };
 		6E5D48F2860CCEE4CCF07F5C /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
 		71073E7844EEEC92CAB6515F /* WidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotTests.swift; sourceTree = "<group>"; };
+		727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSettingsView.swift; sourceTree = "<group>"; };
 		7626BE09A6EE4CB31A47D198 /* BackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
 		7F1E5ADD2F79A00BBA98572F /* MonocleV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV3.xcdatamodel; sourceTree = "<group>"; };
 		80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
@@ -213,8 +221,10 @@
 		F27F454BBE1A750AB3A31B55 /* IntentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentTests.swift; sourceTree = "<group>"; };
 		F5B62852A29171B87745473F /* BackendPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendPersistenceTests.swift; sourceTree = "<group>"; };
 		F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseRepository.swift; sourceTree = "<group>"; };
+		F7CC8CAA14DB700C397EDA62 /* ChatAgentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAgentTests.swift; sourceTree = "<group>"; };
 		F85F8DBB20CD055FF10D332F /* SpendingSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingSessionManager.swift; sourceTree = "<group>"; };
 		FA7E73DA5D3738FE6EB575D4 /* MonocleV4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV4.xcdatamodel; sourceTree = "<group>"; };
+		FD14F3361CFDC5E8013E693F /* ChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAgent.swift; sourceTree = "<group>"; };
 		FDBB1B75740C243E89A417B8 /* ChatToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatToolTests.swift; sourceTree = "<group>"; };
 		FDEB4F6A31934928B688178D /* BillReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillReconciliationEngine.swift; sourceTree = "<group>"; };
 		FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV2.xcdatamodel; sourceTree = "<group>"; };
@@ -327,6 +337,9 @@
 		868577581FC31D6AAAB43D65 /* Chat */ = {
 			isa = PBXGroup;
 			children = (
+				3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */,
+				FD14F3361CFDC5E8013E693F /* ChatAgent.swift */,
+				0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */,
 				36A5A20992A825EF1360FD47 /* ToolExecutor.swift */,
 			);
 			path = Chat;
@@ -417,6 +430,7 @@
 				7626BE09A6EE4CB31A47D198 /* BackupTests.swift */,
 				0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */,
 				AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */,
+				F7CC8CAA14DB700C397EDA62 /* ChatAgentTests.swift */,
 				FDBB1B75740C243E89A417B8 /* ChatToolTests.swift */,
 				37911938CA6DB5DDAECA328B /* CSVTests.swift */,
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
@@ -433,6 +447,7 @@
 			children = (
 				6E5D48F2860CCEE4CCF07F5C /* ChatBubble.swift */,
 				E7C985068FF1DDAD18749F35 /* ChatInputBar.swift */,
+				727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */,
 				A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */,
 				B77094E961D5E3F21A0C865A /* ChatView.swift */,
 				89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */,
@@ -589,6 +604,7 @@
 				97C85326D836EB3446CC59B6 /* BillTests.swift in Sources */,
 				110FAD1B3C0E0290C56184FC /* CSVTests.swift in Sources */,
 				4F6ECEAEF550F957029CEB09 /* CategoryAndLocaleTests.swift in Sources */,
+				8934E3DC238F21D7D643E592 /* ChatAgentTests.swift in Sources */,
 				C5DC8F7BE36766741920CD01 /* ChatToolTests.swift in Sources */,
 				E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */,
 				385B102CD99B88F0C2E0F9B2 /* IntentTests.swift in Sources */,
@@ -610,6 +626,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B4D549408E90FE0BCBE063D /* APIKeyStore.swift in Sources */,
 				EA063225367C0294629084A8 /* AnalyticsEngine.swift in Sources */,
 				12321F76FEE42D2EAFE3275B /* AnalyticsView.swift in Sources */,
 				5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */,
@@ -635,10 +652,13 @@
 				0D620B558ECBCB24392F65FD /* CategoryManager.swift in Sources */,
 				2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */,
 				F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */,
+				E4744CA94D57CE96A6BD7C60 /* ChatAgent.swift in Sources */,
 				18625E8091F4974B32DFD62A /* ChatBubble.swift in Sources */,
 				2E30B021C9D46E6D22A37A33 /* ChatInputBar.swift in Sources */,
+				BF7952BD0D8546FEC5893871 /* ChatSettingsView.swift in Sources */,
 				E7BB8D07916484323C56329B /* ChatSummaryChart.swift in Sources */,
 				9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */,
+				A75084F321F54945FD5190C3 /* ClaudeClient.swift in Sources */,
 				E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */,
 				017729CBC6933B915C34CB21 /* EntryView.swift in Sources */,
 				2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */,
@@ -772,7 +792,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 87;
+				CURRENT_PROJECT_VERSION = 88;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -793,7 +813,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.22;
+				MARKETING_VERSION = 0.7.23;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -884,7 +904,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 87;
+				CURRENT_PROJECT_VERSION = 88;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -899,7 +919,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.7.22;
+				MARKETING_VERSION = 0.7.23;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
