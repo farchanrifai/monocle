@@ -1,52 +1,107 @@
 import AppKit
 import SwiftUI
 
+private enum SettingsPane: String, CaseIterable, Identifiable {
+    case general, appearance, shortcuts, security, chat, data
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .general: "General"; case .appearance: "Appearance"; case .shortcuts: "Shortcuts"
+        case .security: "Security"; case .chat: "AI Chat"; case .data: "Data"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"; case .appearance: "circle.lefthalf.filled"; case .shortcuts: "keyboard"
+        case .security: "lock"; case .chat: "bubble.left.and.text.bubble.right"; case .data: "externaldrive"
+        }
+    }
+}
+
+/// Sidebar settings, matching the main window's sidebar rather than a toolbar of tabs.
 struct MacSettingsView: View {
     @Bindable var state: MacAppState
     @Bindable private var model: AppModel
     @State private var lockError: String?
+    @AppStorage("MacSettingsPane") private var savedPane: SettingsPane = .general
+    @State private var selection: SettingsPane?
+    private var pane: SettingsPane { selection ?? savedPane }
 
     init(state: MacAppState) { self.state = state; model = state.model }
 
     var body: some View {
-        TabView {
-            Form {
-                Picker("Preferred entry mode", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
-                    Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
-                }
-                Text("The global shortcut opens Quick Record while Monocle is running.").foregroundStyle(.secondary)
-            }.formStyle(.grouped).tabItem { Label("General", systemImage: "gear") }
+        NavigationSplitView {
+            List(SettingsPane.allCases, selection: $selection) { pane in
+                Label(pane.title, systemImage: pane.symbol).tag(pane)
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(190)
+            .toolbar(removing: .sidebarToggle)
+        } detail: {
+            detail
+                .formStyle(.grouped)
+                .navigationTitle(pane.title)
+                .id(pane) // the detail column otherwise keeps showing the first pane
+        }
+        .frame(width: 760, height: 540)
+        .onAppear { if selection == nil { selection = savedPane } }
+        .onChange(of: selection) { _, value in if let value { savedPane = value } }
+    }
 
+    @ViewBuilder private var detail: some View {
+        switch pane {
+        case .general:
+            Form {
+                Section {
+                    Picker("Preferred entry mode", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
+                        Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
+                    }
+                } footer: {
+                    Text("The global shortcut opens Quick Record while Monocle is running.")
+                }
+            }
+        case .appearance:
             Form {
                 Picker("Appearance", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
                     if value == "automatic" { model.autoAppearance = true }
                     else { model.manualAppearance = value == "light" ? .light : .dark }
                 })) { Text("Automatic").tag("automatic"); Text("Light").tag("light"); Text("Dark").tag("dark") }
-            }.formStyle(.grouped).tabItem { Label("Appearance", systemImage: "circle.lefthalf.filled") }
-
-            ShortcutSettings(state: state).tabItem { Label("Shortcuts", systemImage: "keyboard") }
-
+                    .pickerStyle(.segmented)
+            }
+        case .shortcuts:
+            ShortcutSettings(state: state)
+        case .security:
             Form {
-                Picker("App lock", selection: Binding(get: { model.settings.appLockTimeout }, set: { value in
-                    Task { if case .failure(let error) = await model.setAppLockTimeout(value) { lockError = error.localizedDescription } }
-                })) {
-                    Text("Off").tag(AppLockTimeout?.none)
-                    ForEach(AppLockTimeout.allCases) { Text($0.title).tag(Optional($0)) }
+                Section {
+                    Picker("App lock", selection: Binding(get: { model.settings.appLockTimeout }, set: { value in
+                        Task { if case .failure(let error) = await model.setAppLockTimeout(value) { lockError = error.localizedDescription } }
+                    })) {
+                        Text("Off").tag(AppLockTimeout?.none)
+                        ForEach(AppLockTimeout.allCases) { Text($0.title).tag(Optional($0)) }
+                    }
+                } footer: {
+                    Text("Uses Touch ID or your Mac login password.")
+                    if let lockError { Text(lockError).foregroundStyle(.red) }
                 }
-                Text("Uses Touch ID or your Mac login password.").foregroundStyle(.secondary)
-                if let lockError { Text(lockError).foregroundStyle(.red) }
-            }.formStyle(.grouped).tabItem { Label("Security", systemImage: "lock") }
-
-            ChatSettingsView().tabItem { Label("AI Chat", systemImage: "bubble.left.and.text.bubble.right") }
-
+            }
+        case .chat:
+            ChatSettingsView()
+        case .data:
             Form {
-                Button("Import CSV…") { state.perform(.importCSV) }
-                Button("Export CSV…") { state.perform(.exportCSV) }
-                Button("Export Backup…") { state.perform(.exportBackup) }
-                Button("Restore Backup…") { state.perform(.restoreBackup) }
-                Text("Backups use the same format as Monocle for iPhone.").foregroundStyle(.secondary)
-            }.formStyle(.grouped).tabItem { Label("Data", systemImage: "externaldrive") }
-        }.padding(18).frame(width: 680, height: 560)
+                Section {
+                    LabeledContent("CSV") {
+                        Button("Import…") { state.perform(.importCSV) }
+                        Button("Export…") { state.perform(.exportCSV) }
+                    }
+                    LabeledContent("Backup") {
+                        Button("Export…") { state.perform(.exportBackup) }
+                        Button("Restore…") { state.perform(.restoreBackup) }
+                    }
+                } footer: {
+                    Text("Backups use the same format as Monocle for iPhone.")
+                }
+            }
+        }
     }
 }
 
@@ -55,30 +110,33 @@ private struct ShortcutSettings: View {
     @State private var recording: MacCommandID?
     @State private var error: String?
 
-    private let customizable: [MacCommandID] = MacCommandID.allCases
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack { Text("Shortcuts").font(.title2.bold()); Spacer(); Button("Reset Defaults") { state.resetShortcuts(); error = nil } }
-            Text("Select a shortcut, then press one key with modifiers. Conflicts are rejected immediately.").foregroundStyle(.secondary)
-            List(customizable) { id in
-                HStack {
-                    Text(title(for: id)); Spacer()
-                    if recording == id {
-                        KeyChordRecorder { chord in assign(chord, to: id) }.frame(width: 130, height: 26)
-                    } else {
-                        Button(state.shortcut(for: id)?.displayName ?? "None") { recording = id; error = nil }
-                            .frame(minWidth: 110)
+        Form {
+            Section {
+                ForEach(MacCommandID.allCases) { id in
+                    LabeledContent(title(for: id)) {
+                        if recording == id {
+                            KeyChordRecorder { chord in assign(chord, to: id) }.frame(width: 130, height: 24)
+                        } else {
+                            Button(state.shortcut(for: id)?.displayName ?? "None") { recording = id; error = nil }
+                                .frame(minWidth: 110)
+                        }
                     }
-                }.padding(.vertical, 3)
+                }
+            } header: {
+                Text("Click a shortcut, then press a key with modifiers.")
+            } footer: {
+                if let error { Text(error).foregroundStyle(.red) }
+                Text("Quit, Hide, Close, Undo, Cut, Copy, Paste, and Select All keep their standard macOS shortcuts.")
             }
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
-            Text("Quit, Hide, Close, Undo, Cut, Copy, Paste, and Select All keep their standard macOS shortcuts.").font(.caption).foregroundStyle(.secondary)
-        }.padding(8)
+            Section {
+                Button("Restore Defaults") { state.resetShortcuts(); error = nil; recording = nil }
+            }
+        }
     }
 
     private func title(for id: MacCommandID) -> String {
-        state.commands.first(where: { $0.commandID == id })?.title ?? id.rawValue
+        id == .commandBar ? "Command Bar" : state.commands.first(where: { $0.commandID == id })?.title ?? id.rawValue
     }
     private func assign(_ chord: KeyChord, to id: MacCommandID) {
         do { try state.setShortcut(chord, for: id); recording = nil; error = nil }

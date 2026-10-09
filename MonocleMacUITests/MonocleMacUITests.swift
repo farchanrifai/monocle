@@ -173,4 +173,23 @@ import XCTest
         XCTAssertTrue(app.buttons["chatSetup"].waitForExistence(timeout: 3), "Chat stays off until enabled in Settings")
         XCTAssertFalse(app.textFields["chatInput"].exists)
     }
+
+    func testSettingsUseSidebarPanes() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-MacSettingsPane", "general"]
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launch()
+        app.typeKey(",", modifierFlags: .command)
+        let settings = app.windows["com_apple_SwiftUI_Settings_window"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 3))
+        for pane in ["General", "Appearance", "Shortcuts", "Security", "AI Chat", "Data"] {
+            let row = settings.outlines.staticTexts[pane]
+            XCTAssertTrue(row.exists, "\(pane) missing from the sidebar")
+            row.click()
+            let titled = expectation(for: NSPredicate(format: "title == %@", pane), evaluatedWith: settings)
+            wait(for: [titled], timeout: 2)
+            let shot = XCTAttachment(screenshot: settings.screenshot())
+            shot.name = pane; shot.lifetime = .keepAlways; add(shot)
+        }
+    }
 }
