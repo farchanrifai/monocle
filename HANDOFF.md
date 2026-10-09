@@ -4,6 +4,8 @@
 
 Then (also committed): Overview "Recent Activity" now uses the shared `MacExpenseTable` (newest 50, memoized, same columns/menus as Activity), filling the window below the tiles; old button list `MacCompactExpenseList` deleted.
 
+Then (also committed): card shadow no longer clipped on Overview (`scrollClipDisabled`); `MacCardView` hover tilt (3D rotation + glare + text parallax, off with Reduce Motion) everywhere cards appear; toolbar search is a magnifier button that expands into an AppKit `ToolbarSearchField` (NSSearchField; SwiftUI FocusState did not reach toolbar fields) — ⌘F opens/focuses, Esc clears + collapses, empty field collapses on blur, no focus ring.
+
 Next: user runs `MonocleMac` and reviews inspector + list feel (first launch may ask "Reopen windows?" because of crashes during dev — harmless). Then port AI chat to Mac shell. Not done: multi-select (bulk actions), bill pause (no pause support anywhere yet).
 
 Other pending: proxy (Cloudflare Worker; user deploys), golden-prompt script; when billing works: live golden prompts + verify cache reads.

@@ -7,7 +7,14 @@ import XCTest
         app.launch()
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["newExpense"].exists)
-        XCTAssertTrue(app.textFields["searchField"].exists)
+        app.typeKey("f", modifierFlags: .command)
+        let search = app.searchFields["searchField"]
+        XCTAssertTrue(search.waitForExistence(timeout: 2))
+        app.typeText("coffee")
+        XCTAssertEqual(search.value as? String, "coffee")
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(search.waitForNonExistence(timeout: 2), "Esc clears and collapses the search")
+        XCTAssertTrue(app.buttons["searchButton"].exists)
     }
 
     func testKeyboardCommandsOpenAndDismissNativeOverlays() {
@@ -129,6 +136,6 @@ import XCTest
         table.staticTexts["Ride home"].click()
         XCTAssertEqual(app.staticTexts.matching(identifier: "Ride home").count, 1, "only the table row, no inspector")
         app.buttons["toggleInspector"].firstMatch.click()
-        XCTAssertGreaterThanOrEqual(app.staticTexts.matching(identifier: "Ride home").count, 2)
+        XCTAssertTrue(app.staticTexts.matching(identifier: "Ride home").element(boundBy: 1).waitForExistence(timeout: 3), "inspector slides in showing the selection")
     }
 }

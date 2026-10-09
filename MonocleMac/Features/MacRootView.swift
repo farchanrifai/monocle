@@ -12,7 +12,7 @@ struct MacRootView: View {
     @Bindable var state: MacAppState
     @Bindable private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
-    @FocusState private var searchFocused: Bool
+    @State private var searchExpanded = false
 
     init(state: MacAppState) {
         self.state = state
@@ -47,7 +47,7 @@ struct MacRootView: View {
         .alert("Monocle", isPresented: Binding(get: { model.error != nil || state.shortcutError != nil }, set: { if !$0 { model.error = nil; state.shortcutError = nil } })) {
             Button("OK") { model.error = nil; state.shortcutError = nil }
         } message: { Text(model.error ?? state.shortcutError ?? "") }
-        .onChange(of: state.searchFocusToken) { _, _ in searchFocused = true }
+        .onChange(of: state.searchFocusToken) { _, _ in searchExpanded = true } // an open field refocuses on the token itself
         .onChange(of: model.showEntry) { _, shouldShow in
             if shouldShow { model.showEntry = false; state.regularEntryVisible = true }
         }
@@ -93,13 +93,21 @@ struct MacRootView: View {
         }
     }
 
+    /// Magnifier when idle; expands on click or ⌘F. Esc clears and collapses; clicking away collapses an empty field.
+    @ViewBuilder private var searchField: some View {
+        if searchExpanded || !state.searchText.isEmpty {
+            ToolbarSearchField(text: $state.searchText, focusToken: state.searchFocusToken) { searchExpanded = false }
+                .frame(width: 220)
+        } else {
+            Button { searchExpanded = true } label: { Label("Search", systemImage: "magnifyingglass") }
+                .help("Search (\(state.shortcut(for: .focusSearch)?.displayName ?? ""))")
+                .accessibilityIdentifier("searchButton")
+        }
+    }
+
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItemGroup {
-            TextField("Search", text: $state.searchText)
-                .textFieldStyle(.roundedBorder)
-                .focused($searchFocused)
-                .frame(width: 220)
-                .accessibilityIdentifier("searchField")
+            searchField
             Button { state.perform(.commandBar) } label: { Label("Commands", systemImage: "command") }
                 .help("Command Bar (\(state.shortcut(for: .commandBar)?.displayName ?? ""))")
             Button { state.perform(.newExpense) } label: { Label("Expense", systemImage: "plus") }
@@ -256,6 +264,58 @@ private struct CommandTextField: NSViewRepresentable {
     }
 }
 
+/// AppKit search field: SwiftUI focus doesn't reliably reach toolbar items, and NSSearchField brings the native
+/// magnifier, clear button, and Esc handling.
+private struct ToolbarSearchField: NSViewRepresentable {
+    @Binding var text: String
+    let focusToken: UUID
+    let onEnd: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSSearchField {
+        let field = NSSearchField()
+        field.placeholderString = "Search"
+        field.focusRingType = .none
+        field.sendsSearchStringImmediately = true
+        field.delegate = context.coordinator
+        field.setAccessibilityIdentifier("searchField")
+        DispatchQueue.main.async { field.window?.makeFirstResponder(field) } // opened to be typed into
+        return field
+    }
+
+    func updateNSView(_ field: NSSearchField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text { field.stringValue = text }
+        if context.coordinator.focusToken != focusToken {
+            context.coordinator.focusToken = focusToken
+            DispatchQueue.main.async { field.window?.makeFirstResponder(field) }
+        }
+    }
+
+    @MainActor final class Coordinator: NSObject, NSSearchFieldDelegate {
+        var parent: ToolbarSearchField
+        var focusToken: UUID
+        init(_ parent: ToolbarSearchField) { self.parent = parent; focusToken = parent.focusToken }
+
+        func controlTextDidChange(_ note: Notification) {
+            parent.text = (note.object as? NSSearchField)?.stringValue ?? ""
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            guard selector == #selector(NSResponder.cancelOperation(_:)) else { return false }
+            parent.text = ""
+            control.window?.makeFirstResponder(nil)
+            parent.onEnd()
+            return true
+        }
+
+        func controlTextDidEndEditing(_ note: Notification) {
+            if parent.text.isEmpty { parent.onEnd() }
+        }
+    }
+}
+
 private final class FirstResponderTextField: NSTextField {
     var onTextChange: ((String) -> Void)?
 
@@ -312,8 +372,8 @@ struct MacOverviewView: View {
                         MacCardView(model: model, book: book)
                             .onTapGesture { state.selectCard(book.id) }
                     }
-                }.padding(.vertical, 8) // room for the card shadow
-            }.scrollIndicators(.hidden)
+                }.padding(.vertical, 12) // room for the shadow and hover lift
+            }.scrollIndicators(.hidden).scrollClipDisabled() // clipping cut the shadow into a hard edge
             HStack {
                 SummaryTile(title: "Cycle spending", value: Money.format(model.spent), detail: model.cycle.label)
                 SummaryTile(title: "Remaining", value: Money.format(model.remaining), detail: "of \(Money.format(model.activeBudget.overallLimit))")
@@ -328,17 +388,48 @@ struct MacOverviewView: View {
 private struct MacCardView: View {
     let model: AppModel
     let book: BookProfile
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var tilt: CGSize = .zero // pointer position, -1...1 from the centre
+    @State private var hovering = false
+    private static let size = CGSize(width: 250, height: 150)
     private var customization: BookCardCustomization { model.customization(for: book.id) }
+
     var body: some View {
         VStack(alignment: .leading) {
             HStack { Image(systemName: "circle.grid.cross.fill"); Spacer(); Text("MONOCLE").font(.caption2.bold()) }
             Spacer()
             Text(book.name).font(.title3.bold())
             Text(Money.format(model.expenses(for: book.id).reduce(0) { $0 + $1.amount })).font(.system(.headline, design: .monospaced))
-        }.foregroundStyle(CardPalette.resolvedTextColor(for: customization)).padding(16).frame(width: 250, height: 150)
-            .background { background.clipShape(RoundedRectangle(cornerRadius: 16)) }
-            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+        }
+            .offset(x: tilt.width * 4, y: tilt.height * 4) // text floats above the face for depth
+            .foregroundStyle(CardPalette.resolvedTextColor(for: customization)).padding(16).frame(width: Self.size.width, height: Self.size.height)
+            .background {
+                background
+                    .overlay {
+                        RadialGradient(colors: [.white.opacity(0.28), .clear],
+                                       center: UnitPoint(x: (tilt.width + 1) / 2, y: (tilt.height + 1) / 2), startRadius: 0, endRadius: 200)
+                            .opacity(hovering ? 1 : 0)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .rotation3DEffect(.degrees(-tilt.height * 8), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+            .rotation3DEffect(.degrees(tilt.width * 10), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+            .scaleEffect(hovering ? 1.03 : 1)
+            .shadow(color: .black.opacity(hovering ? 0.2 : 0.12), radius: hovering ? 14 : 8, x: -tilt.width * 6, y: 4 - tilt.height * 4)
             .contentShape(RoundedRectangle(cornerRadius: 16))
+            .onContinuousHover { phase in
+                guard !reduceMotion else { return }
+                switch phase {
+                case .active(let point):
+                    hovering = true
+                    tilt = CGSize(width: max(-1, min(1, point.x / Self.size.width * 2 - 1)),
+                                  height: max(-1, min(1, point.y / Self.size.height * 2 - 1)))
+                case .ended:
+                    hovering = false; tilt = .zero
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: tilt)
+            .animation(.easeOut(duration: 0.2), value: hovering)
             .accessibilityElement(children: .combine).accessibilityAddTraits(.isButton)
     }
 
