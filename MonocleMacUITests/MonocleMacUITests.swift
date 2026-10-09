@@ -138,4 +138,29 @@ import XCTest
         app.buttons["toggleInspector"].firstMatch.click()
         XCTAssertTrue(app.staticTexts.matching(identifier: "Ride home").element(boundBy: 1).waitForExistence(timeout: 3), "inspector slides in showing the selection")
     }
+
+    func testInspectorToggleKeepsLayoutInsideNarrowWindow() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_TEST_WINDOW_WIDTH"] = "900" // narrowest allowed
+        app.launch()
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 5))
+        app.staticTexts["Sample book"].firstMatch.click() // card page: fixed-width card above the table was the trigger
+        sleep(1) // let the width hook apply
+        let toggle = app.buttons["toggleInspector"].firstMatch
+        for _ in 0..<2 {
+            toggle.click(); sleep(1)
+            let bounds = window.frame
+            for element in [toggle, app.buttons["newExpense"].firstMatch] {
+                XCTAssertTrue(element.exists && element.isHittable, "\(element) hidden at width \(bounds.width)")
+                if element.exists { XCTAssertLessThanOrEqual(element.frame.maxX, bounds.maxX + 1, "toolbar spills past window \(bounds)") }
+            }
+            let empty = app.staticTexts["Nothing Selected"]
+            if empty.exists { XCTAssertLessThanOrEqual(empty.frame.maxX, bounds.maxX + 1, "inspector spills past window \(bounds); text \(empty.frame)") }
+            let sidebarItem = app.staticTexts["Overview"].firstMatch
+            XCTAssertTrue(sidebarItem.exists && sidebarItem.frame.minX >= bounds.minX, "sidebar pushed out \(sidebarItem.frame) vs \(bounds)")
+        }
+    }
 }

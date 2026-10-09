@@ -6,6 +6,8 @@ Then (also committed): Overview "Recent Activity" now uses the shared `MacExpens
 
 Then (also committed): card shadow no longer clipped on Overview (`scrollClipDisabled`); `MacCardView` hover tilt (3D rotation + glare + text parallax, off with Reduce Motion) everywhere cards appear; toolbar search is a magnifier button that expands into an AppKit `ToolbarSearchField` (NSSearchField; SwiftUI FocusState did not reach toolbar fields) — ⌘F opens/focuses, Esc clears + collapses, empty field collapses on blur, no focus ring.
 
+Then (also committed): inspector background = opaque `MacTheme.paper` (Form `scrollContentBackground(.hidden)`, action bar same paper) so it no longer shows wallpaper. Inspector open/close crash + sidebar sliding away fixed: any fixed-width view in the detail column (e.g. the 250pt card on card pages) made the split view loop on minimum sizes in narrow windows; detail `content` now has `.frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)`. Table column mins lowered; SummaryTile values scale down instead of wrapping. DEBUG hook `MONOCLE_TEST_WINDOW_WIDTH` (UI-test runs default to 1180 so saved widths don't leak); new `testInspectorToggleKeepsLayoutInsideNarrowWindow` (900pt). Mac 7 unit + 6 UI pass.
+
 Next: user runs `MonocleMac` and reviews inspector + list feel (first launch may ask "Reopen windows?" because of crashes during dev — harmless). Then port AI chat to Mac shell. Not done: multi-select (bulk actions), bill pause (no pause support anywhere yet).
 
 Other pending: proxy (Cloudflare Worker; user deploys), golden-prompt script; when billing works: live golden prompts + verify cache reads.

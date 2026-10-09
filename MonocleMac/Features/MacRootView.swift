@@ -26,6 +26,7 @@ struct MacRootView: View {
                     .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 280)
             } detail: {
                 content
+                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
                     .inspector(isPresented: $state.inspectorVisible) {
                         MacInspector(state: state)
                             .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
@@ -39,6 +40,17 @@ struct MacRootView: View {
             if model.appLock.blocksContent { MacLockView(model: model) }
         }
         .frame(minWidth: 900, minHeight: 620)
+        #if DEBUG
+        .onAppear { // UI-test hook: start at a given width (tests can't drag-resize; the saved width would leak between tests)
+            let env = ProcessInfo.processInfo.environment
+            if let width = env["MONOCLE_TEST_WINDOW_WIDTH"].flatMap(Double.init) ?? (env["MONOCLE_TEST_RUN"] != nil ? 1180 : nil) {
+                DispatchQueue.main.async {
+                    guard let window = NSApp.windows.first(where: \.isVisible) else { return }
+                    var frame = window.frame; frame.size.width = width; window.setFrame(frame, display: true)
+                }
+            }
+        }
+        #endif
         .background(MacTheme.paper)
         .sheet(isPresented: $state.regularEntryVisible) {
             MacExpenseForm(model: model, quickRecord: false) { _ in state.regularEntryVisible = false }
@@ -352,9 +364,9 @@ struct SummaryTile: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Text(value).font(.system(.title2, design: .monospaced, weight: .semibold))
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
+            Text(value).font(.system(.title2, design: .monospaced, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .background(MacTheme.panel, in: RoundedRectangle(cornerRadius: 12))
     }
@@ -555,11 +567,12 @@ private struct MacActivityTable: View {
 
     var body: some View {
         Table(rows, selection: selection, sortOrder: $sortOrder) {
-                TableColumn("Date", value: \.day) { Text($0.day).font(.system(.body, design: .monospaced)) }.width(min: 96, ideal: 110)
-                TableColumn("Note", value: \.title) { Text($0.title) }
-                TableColumn("Category", value: \.category) { Text($0.category) }
-                TableColumn("Card", value: \.book) { Text($0.book) }
-                TableColumn("Amount", value: \.amountMinor) { Text(Money.format($0.amountMinor)).font(.system(.body, design: .monospaced)) }.width(min: 110, ideal: 130)
+                // Small minimums: sidebar + table + inspector must fit the 900pt window, or the split view overflows and loops.
+                TableColumn("Date", value: \.day) { Text($0.day).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 110)
+                TableColumn("Note", value: \.title) { Text($0.title) }.width(min: 60, ideal: 180)
+                TableColumn("Category", value: \.category) { Text($0.category) }.width(min: 50, ideal: 120)
+                TableColumn("Card", value: \.book) { Text($0.book) }.width(min: 50, ideal: 120)
+                TableColumn("Amount", value: \.amountMinor) { Text(Money.format($0.amountMinor)).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 130)
             }
             .contextMenu(forSelectionType: Expense.ID.self) { ids in
                 if let expense = expense(ids.first) { ExpenseMenuItems(state: state, expense: expense) }
@@ -618,12 +631,18 @@ struct MacInspector: View {
 
     var body: some View {
         let _ = model.dataRevision // refresh after edits to cards that aren't active
-        switch state.inspectorSelection {
-        case .expense(let id): if let expense = model.expense(id: id) { ExpenseInspector(state: state, expense: expense) } else { empty }
-        case .bill(let id): if let bill = model.bills.first(where: { $0.id == id }) { BillInspector(model: model, bill: bill) { state.editingBill = bill } } else { empty }
-        case .card(let id): if let book = model.books.first(where: { $0.id == id }) { CardInspector(state: state, book: book) } else { empty }
-        case nil: empty
+        Group {
+            switch state.inspectorSelection {
+            case .expense(let id): if let expense = model.expense(id: id) { ExpenseInspector(state: state, expense: expense) } else { empty }
+            case .bill(let id): if let bill = model.bills.first(where: { $0.id == id }) { BillInspector(model: model, bill: bill) { state.editingBill = bill } } else { empty }
+            case .card(let id): if let book = model.books.first(where: { $0.id == id }) { CardInspector(state: state, book: book) } else { empty }
+            case nil: empty
+            }
         }
+        // Same opaque paper as the content so the panel reads as part of the window, not a sheet over the wallpaper.
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(MacTheme.paper)
     }
 
     private var empty: some View {
@@ -661,7 +680,7 @@ private struct InspectorActions<Leading: View, Trailing: View>: View {
     @ViewBuilder let trailing: Trailing
     var body: some View {
         HStack { leading; Spacer(); trailing }
-            .padding(12).frame(maxWidth: .infinity).background(.bar)
+            .padding(12).frame(maxWidth: .infinity).background(MacTheme.paper)
             .overlay(alignment: .top) { Divider() }
     }
 }
