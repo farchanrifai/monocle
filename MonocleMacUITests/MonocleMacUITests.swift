@@ -143,11 +143,11 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
-        app.launchEnvironment["MONOCLE_TEST_WINDOW_WIDTH"] = "900" // narrowest allowed
+        app.launchEnvironment["MONOCLE_TEST_WINDOW_WIDTH"] = "1000" // narrowest allowed
         app.launch()
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 5))
-        app.staticTexts["Sample book"].firstMatch.click() // card page: fixed-width card above the table was the trigger
+        app.staticTexts["Sample book"].firstMatch.click() // card page: its fixed-width card used to break the split view
         sleep(1) // let the width hook apply
         let toggle = app.buttons["toggleInspector"].firstMatch
         for _ in 0..<2 {

@@ -25,12 +25,21 @@ struct MacRootView: View {
                 sidebar
                     .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 280)
             } detail: {
-                content
-                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                    .inspector(isPresented: $state.inspectorVisible) {
+                // ponytail: hand-rolled inspector column. The system `.inspector` inserted its full width before
+                // squeezing the content, so the sidebar slid off and the window overflowed on every toggle (and
+                // looped/crashed in narrow windows). Fixed 300pt, not resizable; add a drag handle if needed.
+                HStack(spacing: 0) {
+                    content
+                        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                    if state.inspectorVisible {
+                        Divider()
                         MacInspector(state: state)
-                            .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
+                            .frame(width: 300)
+                            .transition(.move(edge: .trailing))
                     }
+                }
+                .clipped()
+                .animation(.smooth(duration: 0.25), value: state.inspectorVisible)
             }
             .toolbar { toolbar }
             .disabled(model.appLock.blocksContent)
@@ -39,7 +48,7 @@ struct MacRootView: View {
             if state.commandBarVisible { CommandBarOverlay(state: state) }
             if model.appLock.blocksContent { MacLockView(model: model) }
         }
-        .frame(minWidth: 900, minHeight: 620)
+        .frame(minWidth: 1000, minHeight: 620) // sidebar + full-width table columns + 300pt inspector
         #if DEBUG
         .onAppear { // UI-test hook: start at a given width (tests can't drag-resize; the saved width would leak between tests)
             let env = ProcessInfo.processInfo.environment
@@ -567,7 +576,7 @@ private struct MacActivityTable: View {
 
     var body: some View {
         Table(rows, selection: selection, sortOrder: $sortOrder) {
-                // Small minimums: sidebar + table + inspector must fit the 900pt window, or the split view overflows and loops.
+                // Small minimums so sidebar + all columns + inspector fit the 1000pt minimum window.
                 TableColumn("Date", value: \.day) { Text($0.day).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 110)
                 TableColumn("Note", value: \.title) { Text($0.title) }.width(min: 60, ideal: 180)
                 TableColumn("Category", value: \.category) { Text($0.category) }.width(min: 50, ideal: 120)

@@ -170,6 +170,9 @@ final class MacAppState {
         self.model = model
         destination = Self.decode(UserDefaults.standard.string(forKey: "MacDestination"))
         inspectorVisible = UserDefaults.standard.object(forKey: "MacInspectorVisible") as? Bool ?? true
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["MONOCLE_TEST_RUN"] != nil { inspectorVisible = true } // UI tests start from a known layout
+        #endif
         registerGlobalShortcut()
     }
 

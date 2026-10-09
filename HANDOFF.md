@@ -8,6 +8,8 @@ Then (also committed): card shadow no longer clipped on Overview (`scrollClipDis
 
 Then (also committed): inspector background = opaque `MacTheme.paper` (Form `scrollContentBackground(.hidden)`, action bar same paper) so it no longer shows wallpaper. Inspector open/close crash + sidebar sliding away fixed: any fixed-width view in the detail column (e.g. the 250pt card on card pages) made the split view loop on minimum sizes in narrow windows; detail `content` now has `.frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)`. Table column mins lowered; SummaryTile values scale down instead of wrapping. DEBUG hook `MONOCLE_TEST_WINDOW_WIDTH` (UI-test runs default to 1180 so saved widths don't leak); new `testInspectorToggleKeepsLayoutInsideNarrowWindow` (900pt). Mac 7 unit + 6 UI pass.
 
+Then (also committed): system `.inspector` replaced by a hand-rolled 300pt column (HStack in the detail column, `.move(edge: .trailing)` transition, `.clipped()`): the system one inserted its full width before squeezing content, so the sidebar slid off and toolbar overflowed on every toggle (verified via in-test window screenshots). Not user-resizable. Window min width 900 → 1000 so all table columns fit with inspector open. UI-test runs force inspector visible (DEBUG). Mac 7 unit + 6 UI pass.
+
 Next: user runs `MonocleMac` and reviews inspector + list feel (first launch may ask "Reopen windows?" because of crashes during dev — harmless). Then port AI chat to Mac shell. Not done: multi-select (bulk actions), bill pause (no pause support anywhere yet).
 
 Other pending: proxy (Cloudflare Worker; user deploys), golden-prompt script; when billing works: live golden prompts + verify cache reads.
