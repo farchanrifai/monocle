@@ -1,27 +1,17 @@
 ## 1. Immediate Next Step
 
-Source branch **`codex/backend-reliability` is pushed to `origin`** for the user's app review: https://github.com/farchanrifai/monocle/tree/codex/backend-reliability . The user will merge later; do not merge it. Implementation commit is `6ea3d04`, release verification checkpoint is `0699008`; this checkpoint records the source push. No PR was created. Hosted Mac CI execution remains unverified.
+2026-10-07: On `codex/backend-reliability` at `2af9342`. Prepared one-line CI change in `.github/workflows/backend.yml`: `runs-on: macos-26` -> `runs-on: xcode-27`, aligning hosted compilation with the locally verified Xcode major version. Timeout remains 30 minutes. No app source changes. Root cause of Xcode 26.6's compile stall is not established; this is a toolchain-alignment mitigation requiring hosted verification.
 
-The delivered app is **0.7.21/build 84**, published at https://github.com/farchanrifai/monocle-releases/releases/tag/v0.7.21-build.84 . IPA: `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/monocle-0.7.21-build-84-unsigned.ipa`; SHA-256 `b83a893235cec36a99bb6f54340795c5c160357c1e139e802897ca37d657b5d2`.
+Clean local Xcode 27.0 (27A266a) arm64 simulator build-for-testing passed with compiler timing diagnostics; no prolonged type-check observed. Unit test-without-building passed: 181 executed, 1 optional 50k benchmark skipped, 0 failures, 150.836 seconds. Unsigned Release device app/widget build passed. Evidence: `/private/tmp/monocle-ci-build-open.log`, `/private/tmp/monocle-ci-tests.log`, `/private/tmp/monocle-ci-tests.xcresult`, `/private/tmp/monocle-ci-device.log`. Initial sandboxed build failed on macro sandbox restrictions; unrestricted diagnostic build succeeded.
 
-Await app review. Remaining follow-up is **F26 background SQLite/backup materialization and bounded streaming**, plus signed iPhone update-preservation and OS integration checks. See `docs/audit/2026-10-05-backend-implementation.md` for all F01–F27 outcomes, evidence and limitations. Local verification passed 181/181 unit tests and 18/18 final targeted UI checks; phone performance budgets and hosted CI remain unverified. No original user database was opened.
+Reran existing hosted run 37252515774 (attempt 2, job 112766551789) without changing remote source. It was also cancelled (completed 2026-10-07T11:52:40Z), consistent with the 30-minute timeout on Xcode 26.6. 2026-10-09: user authorized publishing; workflow change committed and pushed. Next: inspect the resulting hosted run on `xcode-27`. Do not claim hosted regression checks pass until observed.
+
+Release/app review constraints carried forward: user will merge later; do not merge. Released app remains 0.7.21/build 84; no IPA or app installation occurred. Remaining F26 and signed-phone checks are documented in `docs/audit/2026-10-05-backend-implementation.md`.
 
 ## 2. Last Completed Checkpoint
 
-Backend reliability fixes are implemented and released as **0.7.21/build 84**. The local branch is `codex/backend-reliability`, based on audit `7937472` / main `b7621cc`; implementation commit `6ea3d04`. Source has not been pushed and no PR was created. Read `docs/audit/2026-10-05-backend-implementation.md` for all F01–F27 outcomes and continuation limits.
+Checked out `codex/backend-reliability` at `2af9342` on 2026-10-07; tracking `origin/codex/backend-reliability`. Checkout was clean before the switch.
 
-Resume with **F26 background persistence/streaming and signed-phone verification**. Worker CSV parsing, batched/scoped writes, transaction caches, bounded predicate/date paging, single rendered analytics and committed publication are implemented. Full SQLite/backup materialization remains on the main actor and format 7 still holds whole graph/output Data. Profile copied/synthetic 1k/10k/50k fixtures on the phone before choosing context/index changes. Do not infer physical budgets from simulator timings.
+Inspected hosted Backend regression checks. Latest run https://github.com/farchanrifai/monocle/actions/runs/37252515774 was cancelled because the job exceeded its 30-minute execution limit (confirmed GitHub check annotation). Logs stop during Swift compilation of the app, before any test results; device build was skipped. Runner used Xcode 26.6. Earlier run 37252481719 was cancelled shortly after the subsequent push; workflow uses cancel-in-progress.
 
-Final verification: Xcode 27.0 (27A5194q), iOS 26.5; **181/181 unit tests passed**, including 10k/50k fixtures, in `build/backend-audit/fixes-unit-final-2.log/.xcresult`. Full UI run covered 42 flows; four failures (three baseline missing-card fixtures and one introduced unfinished split display) were corrected. **18/18 final targeted UI checks passed**, including all four failures and affected workspace flows, in `fixes-ui-final.log/.xcresult`. Final unsigned arm64 app/widget Release package rebuilt successfully in `ipa-build.log`; ZIP, versions/IDs, minimum iOS 26/iPhone-only, V4 model, ActivityKit flag, backup UTI and exclusion of debug fixture code verified.
-
-IPA delivered without overwriting prior files:
-`/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/monocle-0.7.21-build-84-unsigned.ipa`
-SHA-256: `b83a893235cec36a99bb6f54340795c5c160357c1e139e802897ca37d657b5d2` (2,939,800 bytes). Local/iCloud copies and GitHub asset digest match.
-
-Published release: https://github.com/farchanrifai/monocle-releases/releases/tag/v0.7.21-build.84
-SideStore feed: https://raw.githubusercontent.com/farchanrifai/monocle-releases/main/source.json
-Release-repo feed commit: `5d8efd7`. Prior Monocle versions and four other apps' complete entries are preserved. Publication was explicitly requested by the user. Mac CI is committed locally but its hosted execution is not yet verified.
-
-Next signed iPhone checks: install over the existing SideStore app with unchanged identity; verify records/drafts/V4 migration, Files backup/export/import, app-lock/authentication, reminder grant/deny/delivery, widget/Shortcut App Group refresh and Live Activity replacement/reconnect. Synthetic testing did not open or mutate the original user database.
-
-Final Debug simulator comparison: 10k writes 188.563 s per-row versus 0.465 s batch; 50k batch improved from 66.532 s to 2.562 s after caching card fetches inside transactions. Page reads ~4–11 ms. These are not Release phone p50/p95 or memory budgets.
+Next step: diagnose the hosted Swift compilation stall/toolchain difference before changing the workflow or app. No regression assertion failure was reported, but hosted tests have not passed. No code or workflow changes, commits, pushes, merges, app installs, or release publications were performed in this investigation. Preserve the release/app-review constraints in the checkpoint below.
