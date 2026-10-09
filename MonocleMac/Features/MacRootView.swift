@@ -32,7 +32,6 @@ struct MacRootView: View {
                     content
                         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
                     if state.inspectorVisible {
-                        Divider()
                         MacInspector(state: state)
                             .frame(width: 300)
                             .transition(.move(edge: .trailing))
@@ -683,14 +682,16 @@ private struct InspectorHeader: View {
     }
 }
 
-/// Actions pinned under the inspector form; the destructive one sits apart on the trailing edge.
+/// Liquid Glass actions floating under the inspector form; the destructive one sits apart on the trailing edge.
 private struct InspectorActions<Leading: View, Trailing: View>: View {
     @ViewBuilder let leading: Leading
     @ViewBuilder let trailing: Trailing
     var body: some View {
-        HStack { leading; Spacer(); trailing }
-            .padding(12).frame(maxWidth: .infinity).background(MacTheme.paper)
-            .overlay(alignment: .top) { Divider() }
+        GlassEffectContainer {
+            HStack { leading; Spacer(); trailing }
+        }
+        .buttonStyle(.glass).controlSize(.large)
+        .padding(12).frame(maxWidth: .infinity)
     }
 }
 
@@ -739,7 +740,7 @@ private struct ExpenseInspector: View {
                 Button("Edit…") { state.edit(expense) }
                 Button("Repeat…") { state.repeatExpense(expense) }
             } trailing: {
-                Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }
+                Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }.foregroundStyle(.red)
                     .help("Delete (Edit ▸ Undo restores it)")
             }
         }
