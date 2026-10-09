@@ -129,7 +129,7 @@ struct ChatView: View {
         }
         .tint(MC.red)
         .onAppear { if session.scope == nil { session.scope = homeScope } }
-        .sheet(isPresented: $showingSetup, onDismiss: { hasKey = APIKeyStore.read() != nil; session.agent = nil }) {
+        .sheet(isPresented: $showingSetup, onDismiss: { hasKey = APIKeyStore.read() != nil }) {
             NavigationStack {
                 ChatSettingsView()
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }
@@ -251,12 +251,16 @@ struct ChatView: View {
 
     private func send(_ input: String) {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isTyping, let key = APIKeyStore.read() else { return }
+        guard !text.isEmpty, !isTyping, hasKey else { return }
         draft = ""
         sentCount += 1
         session.rows.append(ChatRow(kind: .user(text)))
         session.isTyping = true
-        let agent = session.agent ?? ChatAgent(model: model) { body in try await ClaudeClient(apiKey: key).send(body) }
+        // The key is read per request, so changing it in Settings keeps the conversation.
+        let agent = session.agent ?? ChatAgent(model: model) { body in
+            guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
+            return try await ClaudeClient(apiKey: key).send(body)
+        }
         session.agent = agent
         let session = session, scope = scope
         Task {

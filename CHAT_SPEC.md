@@ -86,7 +86,8 @@ v2: `edit_expense`, `delete_expense` (confirm + existing delete undo), bills, sp
 - Raw HTTPS via `URLSession` (no official Swift SDK): `POST /v1/messages`, headers `x-api-key`, `anthropic-version: 2023-06-01`, `content-type: application/json`. Request timeout 60 s, one retry on network error or 429/5xx (honor `retry-after`).
 - `max_tokens: 16000`. Handle `stop_reason`: `tool_use` → run tools; `end_turn` → done; `max_tokens` / `refusal` → show a friendly error bubble, never run partial tool input.
 - Non-streaming in v1 (typing indicator). Streaming is v2.
-- Prompt caching: skip in v1 (prefix likely below the cacheable minimum; cost is negligible).
+- Prompt caching: explicit `cache_control` on the system block (tools + system ≈ 2k tokens, above Haiku 5.5's 512-token minimum) plus top-level automatic caching for the append-only conversation. Per-turn `<app_context>` lives in the user turn so the prefix stays byte-stable. Verify `usage.cache_read_input_tokens > 0` on the second request once the live API is reachable.
+- Cost control: prepaid credits without auto-reload are the hard cap; the API conversation restarts past 80 messages (keeps requests under Haiku's 100k-token price tier). No user-facing cost display.
 
 ## 6. Agent loop
 

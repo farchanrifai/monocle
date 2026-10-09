@@ -2,7 +2,9 @@
 
 2026-10-09: Live API still untested — user's Anthropic billing has an error, so work moved to offline tasks. Committed on `feat/ai-chat`: `ChatSession` (rows, typing, scope, agent) owned by `RootView` so the conversation survives closing chat (in-memory; chat.json later); Edit button on the confirm card → `AppModel.openInEntry` (closes chat, after 450 ms opens entry sheet with an unsaved draft; unfinished draft goes through the existing discard prompt, repeat path); `AppModel.saveFromChat` = save + Live Activity spending-session record (shared `recordInSpendingSession`, also used by `saveDraft`); VoiceOver sender labels + reply announcements; card amount uses Dynamic Type. Tests: 198 passed / 1 skipped (unit + chat + filter UI). Published 0.7.24 (89), SHA-256 d6cea135c52e3174ec1bb9903e5bcd447a5642477ce7c238451242bc71b3b372.
 
-Next: when billing works, user runs golden prompts on device (CHAT_SPEC §10) and reports any "Request failed: …". Remaining offline options: app-lock-dismisses-chat test (needs a lock test hook), chat.json persistence, proxy (needs Cloudflare account), streaming (v2), macOS target.
+Then (also committed): prompt caching — explicit `cache_control` on the system block + top-level automatic caching; API key read per request so changing it keeps the conversation (no silent agent reset). No user-facing cost meter (owner uses Console Usage). Published 0.7.25 (90), SHA-256 f2f45cd5947d98d562b2f0f90679c8eb6d18bfe518363497f7a639f4e4e31577.
+
+Next: when billing works, verify `cache_read_input_tokens > 0` on the 2nd request; user runs golden prompts on device (CHAT_SPEC §10) and reports any "Request failed: …". Remaining offline options: app-lock-dismisses-chat test (needs a lock test hook), chat.json persistence, proxy (needs Cloudflare account), streaming (v2), macOS target.
 
 ## 2. Last Completed Checkpoint
 

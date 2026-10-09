@@ -92,7 +92,10 @@ final class ChatAgent {
         ["model": ClaudeClient.model,
          "max_tokens": 16_000,
          "output_config": ["effort": "low"],
-         "system": Self.systemPrompt,
+         // Cache the static prefix (tools + system) explicitly, and let automatic caching follow the
+         // append-only conversation so each turn re-reads earlier turns at ~0.1x input price.
+         "system": [["type": "text", "text": Self.systemPrompt, "cache_control": ["type": "ephemeral"]]],
+         "cache_control": ["type": "ephemeral"],
          "tools": Self.tools,
          "messages": messages]
     }
