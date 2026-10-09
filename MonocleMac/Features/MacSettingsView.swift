@@ -37,6 +37,8 @@ struct MacSettingsView: View {
                 if let lockError { Text(lockError).foregroundStyle(.red) }
             }.formStyle(.grouped).tabItem { Label("Security", systemImage: "lock") }
 
+            ChatSettingsView().tabItem { Label("AI Chat", systemImage: "bubble.left.and.text.bubble.right") }
+
             Form {
                 Button("Import CSV…") { state.perform(.importCSV) }
                 Button("Export CSV…") { state.perform(.exportCSV) }

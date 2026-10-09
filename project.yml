@@ -101,6 +101,11 @@ targets:
       - path: Monocle/Integrations/ExpenseIntents.swift
       - path: Monocle/Integrations/BillNotificationService.swift
       - path: Monocle/Resources/Monocle.xcdatamodeld
+      - path: Monocle/Features/Chat/ChatBubble.swift
+      - path: Monocle/Features/Chat/ChatTranscript.swift
+      - path: Monocle/Features/Chat/ExpenseProposalCard.swift
+      - path: Monocle/Features/Chat/ChatSummaryChart.swift
+      - path: Monocle/Features/Chat/ChatSettingsView.swift
       - path: MonocleMac
     info:
       path: MonocleMac/Resources/Info.plist

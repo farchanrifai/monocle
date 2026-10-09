@@ -95,6 +95,7 @@ struct MacRootView: View {
             }
             Section {
                 Label("Analytics", systemImage: "chart.bar.xaxis").tag(MacDestination.analytics)
+                Label("Chat", systemImage: "bubble.left.and.text.bubble.right").tag(MacDestination.chat)
             }
         }
         .listStyle(.sidebar)
@@ -110,6 +111,7 @@ struct MacRootView: View {
         case .budgets: MacBudgetsView(state: state)
         case .bills: MacBillsView(state: state)
         case .analytics: MacAnalyticsView(state: state)
+        case .chat: MacChatView(state: state)
         }
     }
 

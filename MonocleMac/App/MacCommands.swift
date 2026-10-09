@@ -4,7 +4,7 @@ import Observation
 import SwiftUI
 
 enum MacDestination: Hashable {
-    case overview, activity, cards, card(UUID), budgets, bills, analytics
+    case overview, activity, cards, card(UUID), budgets, bills, analytics, chat
 
     var title: String {
         switch self {
@@ -15,6 +15,7 @@ enum MacDestination: Hashable {
         case .budgets: "Budgets"
         case .bills: "Bills"
         case .analytics: "Analytics"
+        case .chat: "Chat"
         }
     }
 }
@@ -25,7 +26,7 @@ enum MacInspectorSelection: Hashable {
 
 enum MacCommandID: String, CaseIterable, Identifiable {
     case commandBar, newExpense, quickRecord, focusSearch, toggleSidebar, toggleInspector
-    case overview, activity, budgets, bills, analytics, cards
+    case overview, activity, budgets, bills, analytics, cards, chat
     case importCSV, exportCSV, exportBackup, restoreBackup, settings, lock
 
     var id: String { rawValue }
@@ -63,6 +64,7 @@ extension KeyChord {
         .bills: .init("4", modifiers: .command),
         .analytics: .init("5", modifiers: .command),
         .cards: .init("6", modifiers: .command),
+        .chat: .init("7", modifiers: .command),
         .toggleInspector: .init("i", modifiers: [.option, .command]),
         .quickRecord: .init("m", modifiers: [.control, .option, .command])
     ]
@@ -183,7 +185,8 @@ final class MacAppState {
             .init(id: MacCommandID.cards.rawValue, title: "Go to Cards", symbol: "creditcard", commandID: .cards, destination: nil),
             .init(id: MacCommandID.budgets.rawValue, title: "Go to Budgets", symbol: "gauge.with.dots.needle.67percent", commandID: .budgets, destination: nil),
             .init(id: MacCommandID.bills.rawValue, title: "Go to Bills", symbol: "calendar.badge.clock", commandID: .bills, destination: nil),
-            .init(id: MacCommandID.analytics.rawValue, title: "Go to Analytics", symbol: "chart.bar.xaxis", commandID: .analytics, destination: nil)
+            .init(id: MacCommandID.analytics.rawValue, title: "Go to Analytics", symbol: "chart.bar.xaxis", commandID: .analytics, destination: nil),
+            .init(id: MacCommandID.chat.rawValue, title: "Go to Chat", symbol: "bubble.left.and.text.bubble.right", commandID: .chat, destination: nil)
         ]
         result += model.books.map { book in
             .init(id: "card.\(book.id)", title: "Open \(book.name)", symbol: "creditcard.fill", commandID: nil, destination: .card(book.id))
@@ -275,6 +278,7 @@ final class MacAppState {
         case .bills: destination = .bills
         case .analytics: destination = .analytics
         case .cards: destination = .cards
+        case .chat: destination = .chat
         case .importCSV: transferSheet = .importCSV
         case .exportCSV: transferSheet = .exportCSV
         case .exportBackup: transferSheet = .exportBackup
@@ -304,14 +308,14 @@ final class MacAppState {
     private static func encode(_ value: MacDestination) -> String {
         switch value {
         case .overview: "overview"; case .activity: "activity"; case .cards: "cards"
-        case .card(let id): "card:\(id.uuidString)"; case .budgets: "budgets"; case .bills: "bills"; case .analytics: "analytics"
+        case .card(let id): "card:\(id.uuidString)"; case .budgets: "budgets"; case .bills: "bills"; case .analytics: "analytics"; case .chat: "chat"
         }
     }
 
     private static func decode(_ value: String?) -> MacDestination {
         guard let value else { return .overview }
         if value.hasPrefix("card:"), let id = UUID(uuidString: String(value.dropFirst(5))) { return .card(id) }
-        return switch value { case "activity": .activity; case "cards": .cards; case "budgets": .budgets; case "bills": .bills; case "analytics": .analytics; default: .overview }
+        return switch value { case "activity": .activity; case "cards": .cards; case "budgets": .budgets; case "bills": .bills; case "analytics": .analytics; case "chat": .chat; default: .overview }
     }
 }
 
@@ -335,6 +339,7 @@ struct MonocleMacCommands: Commands {
             commandButton("Bills", .bills)
             commandButton("Analytics", .analytics)
             commandButton("Cards", .cards)
+            commandButton("Chat", .chat)
             Divider()
             commandButton("Focus Search", .focusSearch)
             commandButton("Toggle Sidebar", .toggleSidebar)

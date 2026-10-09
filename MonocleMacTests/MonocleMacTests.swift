@@ -82,4 +82,13 @@ final class MonocleMacTests: XCTestCase {
         let byAmount = MacExpenseRow.filter(rows, query: "", sortOrder: [KeyPathComparator(\.amountMinor)])
         XCTAssertEqual(byAmount.first?.amountMinor, 100)
     }
+
+    func testAPIKeyRoundTripsThroughSandboxedKeychain() throws {
+        try XCTSkipIf(APIKeyStore.read() != nil, "A real key is saved; leave it alone")
+        defer { APIKeyStore.delete() }
+        XCTAssertTrue(APIKeyStore.save("sk-ant-test"))
+        XCTAssertEqual(APIKeyStore.read(), "sk-ant-test")
+        APIKeyStore.delete()
+        XCTAssertNil(APIKeyStore.read())
+    }
 }

@@ -70,3 +70,54 @@ final class ChatSession {
         }
     }
 }
+
+extension ChatSession {
+    /// Sends one user message and appends Claude's reply rows. Returns the reply so the caller can announce it.
+    @discardableResult
+    func send(_ input: String, model: AppModel, scope: AnalyticsFilterScope) async -> [ChatAgent.Output] {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !isTyping else { return [] }
+        rows.append(ChatRow(kind: .user(text)))
+        isTyping = true
+        // The key is read per request, so changing it in Settings keeps the conversation.
+        let agent = agent ?? ChatAgent(model: model, messages: restoredMessages) { body in
+            guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
+            return try await ClaudeClient(apiKey: key).send(body)
+        }
+        self.agent = agent
+        let outputs = await agent.send(text, scope: scope)
+        isTyping = false
+        rows += outputs.map { output in
+            switch output {
+            case .text(let text): ChatRow(kind: .assistant(text))
+            case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
+            case .chart(let points): ChatRow(kind: .summary(points))
+            case .notice(let text): ChatRow(kind: .notice(text))
+            case .error(let text): ChatRow(kind: .error(text))
+            }
+        }
+        return outputs
+    }
+
+    /// Save, discard or open a proposal card; only Save writes, and Claude hears what the user chose.
+    func resolveProposal(_ id: UUID, _ expense: Expense, as state: ProposalState, model: AppModel) {
+        guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
+        let summary = "\(Money.format(expense.amount)) \(expense.note.isEmpty ? "" : "\"\(expense.note)\" ")on \(expense.day)"
+        switch state {
+        case .saved:
+            do { try model.saveFromChat(expense) } catch {
+                rows.append(ChatRow(kind: .error(error.localizedDescription)))
+                return
+            }
+            agent?.note("The user saved the proposed expense \(summary).")
+        case .opened:
+            agent?.note("The user opened the proposed expense \(summary) in the editor; it may have been changed or saved there.")
+            model.openInEntry(expense)
+        case .discarded:
+            agent?.note("The user discarded the proposed expense \(summary).")
+        case .pending:
+            break
+        }
+        rows[index].kind = .proposal(expense, state)
+    }
+}

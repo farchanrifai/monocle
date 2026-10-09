@@ -66,3 +66,10 @@ enum WidgetSnapshot { case unavailable(String) }
 enum WidgetSnapshotStore {
     static func writeSnapshot(_ snapshot: WidgetSnapshot) throws {}
 }
+
+import SwiftUI
+
+/// The one iOS design token the shared chat views use; the rest of MonocleStyle is UIKit-bound.
+enum MC {
+    static let red = Color(red: 0.83, green: 0.16, blue: 0.12)
+}

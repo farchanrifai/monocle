@@ -17,14 +17,16 @@ struct ChatSettingsView: View {
 
             Section {
                 if hasKey {
-                    LabeledContent("API key", value: "Saved on this iPhone")
+                    LabeledContent("API key", value: "Saved on this device")
                     Button("Remove key", role: .destructive) {
                         APIKeyStore.delete()
                         hasKey = false
                     }
                 } else {
                     SecureField("sk-ant-…", text: $keyDraft)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("chatAPIKeyField")
                     Button("Save key") {
@@ -40,6 +42,10 @@ struct ChatSettingsView: View {
             }
         }
         .navigationTitle("AI Chat")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #else
+        .formStyle(.grouped)
+        #endif
     }
 }

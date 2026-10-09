@@ -163,4 +163,14 @@ import XCTest
             XCTAssertTrue(sidebarItem.exists && sidebarItem.frame.minX >= bounds.minX, "sidebar pushed out \(sidebarItem.frame) vs \(bounds)")
         }
     }
+
+    func testChatDestinationIsOptIn() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-chatEnabled", "NO"] // argument domain beats the saved toggle
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launch()
+        app.typeKey("7", modifierFlags: .command)
+        XCTAssertTrue(app.buttons["chatSetup"].waitForExistence(timeout: 3), "Chat stays off until enabled in Settings")
+        XCTAssertFalse(app.textFields["chatInput"].exists)
+    }
 }
