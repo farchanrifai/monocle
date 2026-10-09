@@ -31,7 +31,7 @@ The IPA script builds an **unsigned arm64 device app**, packaged for SideStore t
 
 `scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/`, publishes it to the public `farchanrifai/monocle-releases` repository, and updates Monocle's entry in its shared SideStore source. Prior IPA files and other apps' feed entries are preserved. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package.
 
-Add the printed `sidestore://source?...` link to SideStore once. Later builds appear as updates automatically; keep the bundle identifier unchanged and increment the build number before each IPA build.
+Add the printed `sidestore://source?...` link to SideStore once. Later builds appear as updates automatically; keep the bundle identifier unchanged and increment both the version (`MARKETING_VERSION`) and the build number before each IPA build: SideStore only offers an update when the version string changes.
 
 ## Repository
 

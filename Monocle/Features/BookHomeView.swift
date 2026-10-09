@@ -562,6 +562,10 @@ struct BookHomeView: View {
             .accessibilityIdentifier("homeLogo")
 
             Spacer()
+            if model.selectedBookID == nil {
+                filterMenu
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
+            }
             optionsMenu
         }
         .padding(.horizontal, 20)
@@ -588,7 +592,7 @@ struct BookHomeView: View {
                     ContentUnavailableView {
                         Label("Your stack is empty", systemImage: "rectangle.stack")
                     } description: {
-                        Text("Add cards to this stack or switch stacks with the filter button.")
+                        Text("Add cards to this stack or switch stacks with the filter button at the top.")
                     } actions: {
                         Button("Manage Stacks & Cards") {
                             model.stackCustomizerMode = .manage
@@ -1216,6 +1220,62 @@ struct CardPresentationView: View {
                 model.delete(expense)
             }
         }
+    }
+
+    private var filterMenu: some View {
+        Menu {
+            Section("Stacks") {
+                ForEach(model.stacks) { stack in
+                    Button {
+                        model.setActiveStack(id: stack.id)
+                    } label: {
+                        HStack {
+                            Label(stack.name, systemImage: stack.icon)
+                            if model.activeStackID == stack.id && model.filterScope == .activeStack {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+            Section {
+                Button {
+                    model.filterScope = .allCards
+                } label: {
+                    HStack {
+                        Label("All Active Cards", systemImage: "rectangle.stack")
+                        if model.filterScope == .allCards {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+            Section {
+                Button {
+                    model.stackCustomizerMode = .create
+                    model.showStackCustomizer = true
+                } label: {
+                    Label("New Stack…", systemImage: "plus")
+                }
+                Button {
+                    model.stackCustomizerMode = .manage
+                    model.showStackCustomizer = true
+                } label: {
+                    Label("Manage Stacks & Cards…", systemImage: "slider.horizontal.3")
+                }
+            }
+        } label: {
+            Image(systemName: model.filterScope == .activeStack ? "square.stack.3d.up.fill" : "rectangle.stack")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(model.filterScope == .activeStack ? MC.red : ink)
+                .frame(width: 38, height: 38)
+                .contentShape(Circle())
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(PressFeedbackStyle())
+        .glassEffect(.regular.interactive(), in: .circle)
+        .accessibilityLabel(model.filterScope == .activeStack ? "Filter active: \(model.currentStack?.name ?? "Stack")" : "All cards")
+        .accessibilityIdentifier("activityFilterButton")
     }
 
     private var optionsMenu: some View {

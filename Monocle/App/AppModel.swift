@@ -75,6 +75,7 @@ final class AppModel {
     var showCSVInterchange = false
     var csvInterchangeInitialTab = 0
     var showAnalytics = false
+    var showChat = false
     var selectedTab = 0
     var error: String?
     var startupError: String?

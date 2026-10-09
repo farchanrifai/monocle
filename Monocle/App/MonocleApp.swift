@@ -42,6 +42,7 @@ struct RootView: View {
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
                 } message: { Text("You have an unfinished expense from an interruption. Discard it to open this transaction.") }
                 .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
+                .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model) }
                 .alert("Check this", isPresented: Binding(get: { model.error != nil && !model.showEntry }, set: { if !$0 { model.error = nil } })) {
                     Button("OK") { model.error = nil }
                 } message: { Text(model.error ?? "") }

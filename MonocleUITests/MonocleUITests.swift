@@ -111,7 +111,7 @@ final class MonocleUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
-        // 1. Verify two-bubble bottom navigation exists
+        // 1. Verify header filter and bottom add button exist
         XCTAssertTrue(app.buttons["activityFilterButton"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["addExpense"].exists)
 
@@ -290,6 +290,56 @@ final class MonocleUITests: XCTestCase {
             delBtn.tap()
         }
         XCTAssertTrue(app.staticTexts["Expense deleted"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testChatPreviewOpensFromBottomBarAndCloses() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        // Filter now lives in the Home header, above the cards; chat takes its bottom-bar slot.
+        let filter = app.buttons["activityFilterButton"]
+        let chat = app.buttons["chatButton"]
+        XCTAssertTrue(filter.waitForExistence(timeout: 10))
+        XCTAssertTrue(chat.exists)
+        XCTAssertLessThan(filter.frame.midY, app.frame.midY, "Filter must sit in the top header")
+        XCTAssertGreaterThan(chat.frame.midY, app.frame.midY, "Chat button must sit in the bottom bar")
+        keepScreenshot(app.screenshot())
+
+        chat.tap()
+        XCTAssertTrue(app.buttons["proposalSave"].waitForExistence(timeout: 5))
+        XCTAssertFalse(chat.isHittable, "Bottom bar must be hidden behind full-screen chat")
+        keepScreenshot(app.screenshot())
+
+        app.buttons["proposalSave"].tap()
+        XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 5))
+        let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
+        input.tap()
+        input.typeText("bensin 100rb kemarin")
+        app.buttons["chatSend"].tap()
+        XCTAssertTrue(app.staticTexts["bensin 100rb kemarin"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["AI isn't connected yet. This is a preview of the chat screen."].waitForExistence(timeout: 5))
+        keepScreenshot(app.screenshot())
+
+        // Tapping the transcript dismisses the keyboard.
+        XCTAssertTrue(app.keyboards.firstMatch.exists)
+        app.staticTexts["bensin 100rb kemarin"].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+
+        // The subtitle is a scope menu; switching adds a notice and keeps the Home filter untouched.
+        app.buttons["chatScopeMenu"].tap()
+        let allCards = app.buttons["All Cards"]
+        XCTAssertTrue(allCards.waitForExistence(timeout: 5))
+        keepScreenshot(app.screenshot())
+        allCards.tap()
+        XCTAssertTrue(app.staticTexts["Now answering about All cards"].waitForExistence(timeout: 5))
+        keepScreenshot(app.screenshot())
+
+        app.buttons["chatClose"].tap()
+        XCTAssertTrue(chat.waitForExistence(timeout: 5))
+        XCTAssertTrue(chat.isHittable)
     }
 
     private func keepScreenshot(_ screenshot: XCUIScreenshot) {

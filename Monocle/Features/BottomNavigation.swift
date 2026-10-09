@@ -29,7 +29,7 @@ struct BottomNavigation: View {
             GlassEffectContainer(spacing: 8) {
                 HStack(spacing: 8) {
                     if !isDetail {
-                        filterMenu
+                        chatButton
                             .transition(.scale(scale: 0.5).combined(with: .opacity))
                         tabSwitcher
                             .transition(.scale(scale: 0.8).combined(with: .opacity))
@@ -46,7 +46,6 @@ struct BottomNavigation: View {
         .padding(.horizontal, 24)
         .padding(.top, 8)
         .padding(.bottom, 8)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: model.filterScope)
         .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: model.toast)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.44, dampingFraction: 0.76), value: isDetail)
         .sensoryFeedback(.selection, trigger: model.filterScope)
@@ -66,60 +65,20 @@ struct BottomNavigation: View {
         .offset(y: 10.5)
     }
 
-    private var filterMenu: some View {
-        Menu {
-            Section("Stacks") {
-                ForEach(model.stacks) { stack in
-                    Button {
-                        model.setActiveStack(id: stack.id)
-                    } label: {
-                        HStack {
-                            Label(stack.name, systemImage: stack.icon)
-                            if model.activeStackID == stack.id && model.filterScope == .activeStack {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            }
-            Section {
-                Button {
-                    model.filterScope = .allCards
-                } label: {
-                    HStack {
-                        Label("All Active Cards", systemImage: "rectangle.stack")
-                        if model.filterScope == .allCards {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-            Section {
-                Button {
-                    model.stackCustomizerMode = .create
-                    model.showStackCustomizer = true
-                } label: {
-                    Label("New Stack…", systemImage: "plus")
-                }
-                Button {
-                    model.stackCustomizerMode = .manage
-                    model.showStackCustomizer = true
-                } label: {
-                    Label("Manage Stacks & Cards…", systemImage: "slider.horizontal.3")
-                }
-            }
+    private var chatButton: some View {
+        Button {
+            model.showChat = true
         } label: {
-            Image(systemName: model.filterScope == .activeStack ? "square.stack.3d.up.fill" : "rectangle.stack")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(model.filterScope == .activeStack ? MC.red : Color.primary)
+            Image(systemName: "bubble.left.and.bubble.right")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color.primary)
                 .frame(width: 60, height: 60)
                 .contentShape(Circle())
-                .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(PressFeedbackStyle())
         .glassEffect(.regular.interactive(), in: .circle)
-        .accessibilityLabel(model.filterScope == .activeStack ? "Filter active: \(model.currentStack?.name ?? "Stack")" : "All cards")
-        .accessibilityIdentifier("activityFilterButton")
+        .accessibilityLabel("Chat")
+        .accessibilityIdentifier("chatButton")
     }
 
     private var addButton: some View {
