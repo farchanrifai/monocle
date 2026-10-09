@@ -81,6 +81,9 @@ extension ChatSession {
         isTyping = true
         // The key is read per request, so changing it in Settings keeps the conversation.
         let agent = agent ?? ChatAgent(model: model, messages: restoredMessages) { body in
+            #if DEBUG
+            if Self.usesFakeClaude { return try Self.fakeClaude(body) }
+            #endif
             guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
             return try await ClaudeClient(apiKey: key).send(body)
         }
@@ -121,3 +124,26 @@ extension ChatSession {
         rows[index].kind = .proposal(expense, state)
     }
 }
+
+#if DEBUG
+extension ChatSession {
+    /// UI-test hook: a scripted Claude that proposes "Kopi 28rb", then confirms. No network, no key.
+    nonisolated static var usesFakeClaude: Bool { ProcessInfo.processInfo.environment["MONOCLE_FAKE_CLAUDE"] != nil }
+
+    nonisolated static func fakeClaude(_ body: Data) throws -> Data {
+        let json = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+        let last = (json?["messages"] as? [[String: Any]])?.last?["content"] as? [[String: Any]]
+        let content: [[String: Any]]
+        let stop: String
+        if last?.first?["type"] as? String == "tool_result" {
+            content = [["type": "text", "text": "Click **Save** to record it."]]; stop = "end_turn"
+        } else {
+            content = [["type": "text", "text": "Adding it."],
+                       ["type": "tool_use", "id": "fake1", "name": "propose_expense",
+                        "input": ["amount": 28000, "category": "Food & Drink", "note": "Kopi"]]]
+            stop = "tool_use"
+        }
+        return try JSONSerialization.data(withJSONObject: ["role": "assistant", "content": content, "stop_reason": stop])
+    }
+}
+#endif

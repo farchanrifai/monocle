@@ -5,7 +5,7 @@ import SwiftUI
 struct MacChatView: View {
     @Bindable var state: MacAppState
     @AppStorage("chatEnabled") private var chatEnabled = false
-    @State private var hasKey = APIKeyStore.read() != nil
+    @State private var hasKey = Self.keyAvailable
     @State private var draft = ""
     @FocusState private var inputFocused: Bool
     private var model: AppModel { state.model }
@@ -46,8 +46,15 @@ struct MacChatView: View {
         }
         // Back from the Settings window: pick up a newly saved or removed key.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            hasKey = APIKeyStore.read() != nil
+            hasKey = Self.keyAvailable
         }
+    }
+
+    private static var keyAvailable: Bool {
+        #if DEBUG
+        if ChatSession.usesFakeClaude { return true }
+        #endif
+        return APIKeyStore.read() != nil
     }
 
     private var header: some View {

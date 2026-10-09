@@ -2,7 +2,9 @@
 
 2026-10-10: Mac Settings rebuilt as a sidebar window (`MacSettingsView`), Dia / System Settings layout: `NavigationSplitView` sidebar (General / Appearance / Shortcuts / Security / AI Chat / Data, 200pt), panes are centred `.formStyle(.columns)` forms (right-aligned "Label:" column, `SettingsNote` captions wrapped at 360pt) in a ScrollView with 40pt side / 28pt top padding. Settings scene now applies `preferredColorScheme` (it ignored the app's appearance before). Radio groups for entry mode + appearance; Shortcuts grouped (app / navigate / data) with fixed-width key buttons, explicit 14pt gaps (column forms ignore Section spacing). Mac-only `ChatSettingsPane` (checkbox + SecureField with `prompt:` + `labelsHidden`, else the placeholder renders as a label); shared iOS `ChatSettingsView` reverted to iOS-only. Gotcha: detail column didn't refresh on selection via `@AppStorage` binding — now `@State selection` + `.id(pane)`. `testSettingsUseSidebarPanes` clicks every pane, asserts title, attaches screenshots (+ main window). Mac 8 unit + 8 UI pass; iOS builds.
 
-Next: user reviews Settings + chat on Mac (enable AI Chat, paste key, try "Kopi 28rb" — live API untested on Mac). Not done: multi-select (bulk actions), bill pause. iOS UI: 3 tests fail at HEAD too (chat opt-in, appearance picker, tab island) — pre-existing, uninvestigated.
+Then: DEBUG fake Claude (`MONOCLE_FAKE_CLAUDE` env → `ChatSession.fakeClaude`, scripted propose "Kopi 28rb" then confirm; Mac pane treats key as present). New `testChatProposesAndSavesWithFakeClaude`: send → proposal card → Save → "Saved" → expense in Activity. Mac 8 unit + 9 UI pass. Release build 0.7.26 (91) installed to ~/Applications (signed "Clipboard Dev").
+
+Next: user can't top up Anthropic credit, so live API still untested. Next work: multi-select in tables (bulk delete/recategorize). Not done: multi-select (bulk actions), bill pause. iOS UI: 3 tests fail at HEAD too (chat opt-in, appearance picker, tab island) — pre-existing, uninvestigated.
 
 Other pending: proxy (Cloudflare Worker; user deploys), golden-prompt script; when billing works: live golden prompts + verify cache reads.
 

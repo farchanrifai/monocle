@@ -194,4 +194,24 @@ import XCTest
             shot.name = pane; shot.lifetime = .keepAlways; add(shot)
         }
     }
+
+    func testChatProposesAndSavesWithFakeClaude() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-chatEnabled", "YES"]
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_FAKE_CLAUDE"] = "1"
+        app.launch()
+        app.typeKey("7", modifierFlags: .command)
+        let input = app.textFields["chatInput"].exists ? app.textFields["chatInput"] : app.textViews["chatInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 3))
+        input.click()
+        input.typeText("Kopi 28rb\r")
+        let save = app.buttons["proposalSave"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5), "Claude's proposal shows a confirm card")
+        let shot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot()); shot.name = "Chat"; shot.lifetime = .keepAlways; add(shot)
+        save.click()
+        XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 3))
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["Kopi"].waitForExistence(timeout: 3), "Saved expense lands in Activity")
+    }
 }
