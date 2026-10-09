@@ -214,4 +214,26 @@ import XCTest
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(app.staticTexts["Kopi"].waitForExistence(timeout: 3), "Saved expense lands in Activity")
     }
+
+    func testMultiSelectShowsSummaryAndDeletesWithOneUndo() {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
+        app.launch()
+        app.typeKey("2", modifierFlags: .command)
+        let table = app.outlines["activityTable"]
+        XCTAssertTrue(table.waitForExistence(timeout: 5))
+
+        table.staticTexts["Ride home"].click()
+        XCUIElement.perform(withKeyModifiers: .command) { table.staticTexts["Morning coffee"].click() }
+        XCTAssertTrue(app.staticTexts["2 Expenses"].waitForExistence(timeout: 3), "inspector summarises the selection")
+        let shot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot()); shot.name = "MultiSelect"; shot.lifetime = .keepAlways; add(shot)
+
+        app.typeKey(XCUIKeyboardKey.delete.rawValue, modifierFlags: [])
+        XCTAssertTrue(table.staticTexts["Ride home"].waitForNonExistence(timeout: 3))
+        XCTAssertFalse(table.staticTexts["Morning coffee"].exists)
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(table.staticTexts["Ride home"].waitForExistence(timeout: 3), "one undo restores both")
+        XCTAssertTrue(table.staticTexts["Morning coffee"].exists)
+    }
 }

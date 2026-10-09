@@ -91,4 +91,40 @@ final class MonocleMacTests: XCTestCase {
         APIKeyStore.delete()
         XCTAssertNil(APIKeyStore.read())
     }
+
+    @MainActor func testBulkDeleteAndRecategorizeUndoAsOneStep() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try ExpenseRepository(inMemory: true)
+        try repository.prepareSampleBook()
+        let model = AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory))
+        let state = MacAppState(model: model)
+        let (first, second) = (model.categories[0], model.categories[1])
+        let expenses = (1...3).map { index in
+            Expense(amount: Int64(index) * 1_000_00, day: "2026-10-0\(index)", note: "Bulk \(index)",
+                    allocations: [.init(categoryID: first.id, amount: Int64(index) * 1_000_00)], bookID: model.activeBookID)
+        }
+        for expense in expenses { try model.save(expense) }
+        let undo = UndoManager(); undo.groupsByEvent = false
+        func step(_ work: () -> Void) { undo.beginUndoGrouping(); work(); undo.endUndoGrouping() }
+
+        XCTAssertTrue(state.sharedCategories(for: expenses).contains { $0.id == second.id })
+        step { state.recategorize(expenses, to: second.id, undoManager: undo) }
+        XCTAssertEqual(expenses.map { model.expense(id: $0.id)?.allocations.first?.categoryID }, Array(repeating: second.id, count: 3))
+        undo.undo()
+        XCTAssertEqual(expenses.map { model.expense(id: $0.id)?.allocations.first?.categoryID }, Array(repeating: first.id, count: 3))
+        undo.redo()
+        XCTAssertEqual(model.expense(id: expenses[0].id)?.allocations.first?.categoryID, second.id)
+
+        state.inspect(MacInspectorSelection(expenseIDs: Set(expenses.map(\.id))))
+        XCTAssertEqual(state.inspectorSelection, .expenses(Set(expenses.map(\.id))))
+        step { state.delete(expenses, undoManager: undo) }
+        XCTAssertNil(state.inspectorSelection, "Deleting the selection clears the inspector")
+        XCTAssertTrue(expenses.allSatisfy { model.expense(id: $0.id) == nil })
+        undo.undo()
+        XCTAssertTrue(expenses.allSatisfy { model.expense(id: $0.id) != nil }, "One undo restores every deleted expense")
+        undo.redo()
+        XCTAssertTrue(expenses.allSatisfy { model.expense(id: $0.id) == nil })
+    }
 }

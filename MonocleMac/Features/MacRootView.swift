@@ -31,7 +31,7 @@ struct MacRootView: View {
                 HStack(spacing: 0) {
                     content
                         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                    if state.inspectorVisible {
+                    if state.inspectorVisible && state.destination != .chat { // chat has nothing to inspect
                         MacInspector(state: state)
                             .frame(width: 300)
                             .transition(.move(edge: .trailing))
@@ -138,6 +138,7 @@ struct MacRootView: View {
         }
         ToolbarItem {
             Button { state.perform(.toggleInspector) } label: { Label("Inspector", systemImage: "sidebar.right") }
+                .disabled(state.destination == .chat)
                 .help("Toggle Inspector (\(state.shortcut(for: .toggleInspector)?.displayName ?? ""))")
                 .accessibilityIdentifier("toggleInspector")
         }
@@ -570,9 +571,9 @@ private struct MacActivityTable: View {
     @Environment(\.undoManager) private var undoManager
 
     /// The inspector selection is the only selection, so the table and inspector can't disagree.
-    private var selection: Binding<Expense.ID?> {
-        Binding(get: { if case .expense(let id) = state.inspectorSelection { id } else { nil } },
-                set: { state.inspect($0.map { .expense($0) }) })
+    private var selection: Binding<Set<Expense.ID>> {
+        Binding(get: { state.inspectorSelection?.expenseIDs ?? [] },
+                set: { state.inspect(MacInspectorSelection(expenseIDs: $0)) })
     }
 
     var body: some View {
@@ -585,16 +586,17 @@ private struct MacActivityTable: View {
                 TableColumn("Amount", value: \.amountMinor) { Text(Money.format($0.amountMinor)).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 130)
             }
             .contextMenu(forSelectionType: Expense.ID.self) { ids in
-                if let expense = expense(ids.first) { ExpenseMenuItems(state: state, expense: expense) }
+                let picked = expenses(ids)
+                if picked.count == 1 { ExpenseMenuItems(state: state, expense: picked[0]) }
+                else if picked.count > 1 { BulkExpenseMenuItems(state: state, expenses: picked) }
             } primaryAction: { ids in
-                if let expense = expense(ids.first) { state.edit(expense) }
+                if ids.count == 1, let expense = expenses(ids).first { state.edit(expense) }
             }
-            .onDeleteCommand { if let expense = expense(selection.wrappedValue) { state.delete(expense, undoManager: undoManager) } }
+            .onDeleteCommand { state.delete(expenses(selection.wrappedValue), undoManager: undoManager) }
     }
 
-    private func expense(_ id: Expense.ID?) -> Expense? {
-        guard let id else { return nil }
-        return rows.first { $0.id == id }?.expense
+    private func expenses(_ ids: Set<Expense.ID>) -> [Expense] {
+        rows.lazy.filter { ids.contains($0.id) }.map(\.expense)
     }
 }
 
@@ -605,8 +607,38 @@ struct ExpenseMenuItems: View {
     var body: some View {
         Button("Edit…") { state.edit(expense) }
         Button("Repeat…") { state.repeatExpense(expense) }
+        if expense.allocations.count == 1 { CategoryMenu(state: state, expenses: [expense]) }
         Divider()
         Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }
+    }
+}
+
+struct BulkExpenseMenuItems: View {
+    let state: MacAppState
+    let expenses: [Expense]
+    @Environment(\.undoManager) private var undoManager
+    var body: some View {
+        CategoryMenu(state: state, expenses: expenses)
+        Divider()
+        Button("Delete \(expenses.count) Expenses", role: .destructive) { state.delete(expenses, undoManager: undoManager) }
+    }
+}
+
+/// Categories every selected card shares; split expenses are left as they are.
+struct CategoryMenu: View {
+    let state: MacAppState
+    let expenses: [Expense]
+    @Environment(\.undoManager) private var undoManager
+    var body: some View {
+        let categories = state.sharedCategories(for: expenses)
+        Menu("Change Category") {
+            ForEach(categories) { category in
+                Button { state.recategorize(expenses, to: category.id, undoManager: undoManager) } label: {
+                    Label(category.name, systemImage: category.symbol)
+                }
+            }
+        }
+        .disabled(categories.isEmpty || expenses.allSatisfy { $0.allocations.count > 1 })
     }
 }
 
@@ -644,6 +676,9 @@ struct MacInspector: View {
         Group {
             switch state.inspectorSelection {
             case .expense(let id): if let expense = model.expense(id: id) { ExpenseInspector(state: state, expense: expense) } else { empty }
+            case .expenses(let ids):
+                let expenses = ids.compactMap(model.expense(id:))
+                if expenses.isEmpty { empty } else { MultiExpenseInspector(state: state, expenses: expenses) }
             case .bill(let id): if let bill = model.bills.first(where: { $0.id == id }) { BillInspector(model: model, bill: bill) { state.editingBill = bill } } else { empty }
             case .card(let id): if let book = model.books.first(where: { $0.id == id }) { CardInspector(state: state, book: book) } else { empty }
             case nil: empty
@@ -744,6 +779,47 @@ private struct ExpenseInspector: View {
             } trailing: {
                 Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }.foregroundStyle(.red)
                     .help("Delete (Edit ▸ Undo restores it)")
+            }
+        }
+    }
+}
+
+private struct MultiExpenseInspector: View {
+    let state: MacAppState
+    let expenses: [Expense]
+    @Environment(\.undoManager) private var undoManager
+    private var model: AppModel { state.model }
+
+    var body: some View {
+        let days = expenses.map(\.day).sorted()
+        let splits = expenses.filter { $0.allocations.count > 1 }.count
+        let byCategory = Dictionary(grouping: expenses.filter { $0.allocations.count == 1 }) { $0.allocations[0].categoryID }
+            .map { (id: $0.key, category: model.category($0.key), total: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.total > $1.total }
+        Form {
+            Section {
+                InspectorHeader(symbol: "square.stack", title: "\(expenses.count) Expenses",
+                                subtitle: days.first == days.last ? Day.title(days[0]) : "\(Day.title(days[0])) – \(Day.title(days[days.count - 1]))",
+                                amount: expenses.reduce(0) { $0 + $1.amount })
+            }
+            Section("By Category") {
+                ForEach(byCategory, id: \.id) { entry in
+                    LabeledContent {
+                        Text(Money.format(entry.total)).font(.system(.body, design: .monospaced))
+                    } label: {
+                        Label(entry.category?.name ?? "No category", systemImage: entry.category?.symbol ?? "questionmark.circle")
+                    }
+                }
+                if splits > 0 { LabeledContent("Split", value: "\(splits)") }
+            }
+        }
+        .formStyle(.grouped)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            InspectorActions {
+                CategoryMenu(state: state, expenses: expenses).fixedSize()
+            } trailing: {
+                Button("Delete \(expenses.count)", role: .destructive) { state.delete(expenses, undoManager: undoManager) }.foregroundStyle(.red)
+                    .help("Delete all selected (Edit ▸ Undo restores them)")
             }
         }
     }

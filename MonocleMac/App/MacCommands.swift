@@ -21,7 +21,24 @@ enum MacDestination: Hashable {
 }
 
 enum MacInspectorSelection: Hashable {
-    case expense(UUID), bill(UUID), card(UUID)
+    case expense(UUID), expenses(Set<UUID>), bill(UUID), card(UUID)
+
+    /// The table's selection: one or many expenses, empty for anything else.
+    var expenseIDs: Set<UUID> {
+        switch self {
+        case .expense(let id): [id]
+        case .expenses(let ids): ids
+        default: []
+        }
+    }
+
+    init?(expenseIDs ids: Set<UUID>) {
+        switch ids.count {
+        case 0: return nil
+        case 1: self = .expense(ids.first!)
+        default: self = .expenses(ids)
+        }
+    }
 }
 
 enum MacCommandID: String, CaseIterable, Identifiable {
@@ -150,22 +167,65 @@ final class MacAppState {
         model.repeatExpense(expense); model.showEntry = false; regularEntryVisible = true
     }
 
-    /// Deletes without confirmation; Edit ▸ Undo (⌘Z) restores, and Redo deletes again.
-    func delete(_ expense: Expense, undoManager: UndoManager?) {
-        model.delete(expense)
-        guard model.undoExpense?.id == expense.id else { return } // failed; model.error explains
-        let occurrences = model.undoOccurrences
-        if inspectorSelection == .expense(expense.id) { inspectorSelection = nil }
+    /// Deletes without confirmation; Edit ▸ Undo (⌘Z) restores all of them, and Redo deletes again.
+    func delete(_ expenses: [Expense], undoManager: UndoManager?) {
+        var deleted: [(Expense, [BillOccurrence])] = []
+        for expense in expenses {
+            model.delete(expense)
+            guard model.undoExpense?.id == expense.id else { break } // failed; model.error explains
+            deleted.append((expense, model.undoOccurrences))
+        }
+        guard !deleted.isEmpty else { return }
+        let ids = Set(deleted.map(\.0.id))
+        if let selection = inspectorSelection, !selection.expenseIDs.isDisjoint(with: ids) { inspectorSelection = nil }
+        let name = deleted.count == 1 ? "Delete Expense" : "Delete \(deleted.count) Expenses"
         undoManager?.registerUndo(withTarget: self) { [weak undoManager] state in
             MainActor.assumeIsolated {
-                state.model.restore(expense, occurrences: occurrences)
+                for (expense, occurrences) in deleted { state.model.restore(expense, occurrences: occurrences) }
                 undoManager?.registerUndo(withTarget: state) { [weak undoManager] state in
-                    MainActor.assumeIsolated { state.delete(expense, undoManager: undoManager) }
+                    MainActor.assumeIsolated { state.delete(deleted.map(\.0), undoManager: undoManager) }
                 }
-                undoManager?.setActionName("Delete Expense")
+                undoManager?.setActionName(name)
             }
         }
-        undoManager?.setActionName("Delete Expense")
+        undoManager?.setActionName(name)
+    }
+
+    func delete(_ expense: Expense, undoManager: UndoManager?) { delete([expense], undoManager: undoManager) }
+
+    /// Moves single-category expenses to `categoryID`; splits keep their categories. Undoable.
+    func recategorize(_ expenses: [Expense], to categoryID: UUID, undoManager: UndoManager?) {
+        let originals = expenses.filter { $0.allocations.count == 1 && $0.allocations.first?.categoryID != categoryID }
+        guard !originals.isEmpty else { return }
+        let changed = originals.map { expense in
+            var copy = expense; copy.allocations = [Allocation(categoryID: categoryID, amount: expense.amount)]; return copy
+        }
+        guard apply(changed) else { return }
+        registerSwap(from: changed, to: originals, undoManager: undoManager)
+    }
+
+    /// Lists categories every selected expense's card has, so any of them is valid for all.
+    func sharedCategories(for expenses: [Expense]) -> [ExpenseCategory] {
+        let books = Set(expenses.map { $0.bookID ?? model.activeBookID })
+        guard let first = books.first else { return [] }
+        let firstCategories = model.activeCategories(for: first)
+        let common = books.dropFirst().reduce(Set(firstCategories.map(\.id))) { $0.intersection(model.activeCategories(for: $1).map(\.id)) }
+        return firstCategories.filter { common.contains($0.id) }
+    }
+
+    private func apply(_ expenses: [Expense]) -> Bool {
+        do { for expense in expenses { try model.save(expense) }; return true }
+        catch { model.error = error.localizedDescription; return false }
+    }
+
+    private func registerSwap(from current: [Expense], to previous: [Expense], undoManager: UndoManager?) {
+        let name = current.count == 1 ? "Change Category" : "Change Category of \(current.count) Expenses"
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] state in
+            MainActor.assumeIsolated {
+                if state.apply(previous) { state.registerSwap(from: previous, to: current, undoManager: undoManager) }
+            }
+        }
+        undoManager?.setActionName(name)
     }
 
     init(model: AppModel) {
