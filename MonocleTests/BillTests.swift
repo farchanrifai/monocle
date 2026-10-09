@@ -191,6 +191,30 @@ final class BillTests: XCTestCase {
         XCTAssertEqual(matchingExpense?.source, "bill-automatic")
     }
 
+    func testPauseDropsLookaheadAndResumeDoesNotBackfill() throws {
+        let store = try ExpenseRepository(inMemory: true)
+        try store.prepareSampleBook()
+        let service = try ExpenseService(store: store)
+        let start = Day.date("2026-01-01")!
+        var bill = BillRule(bookID: service.activeBookID, name: "Gym", amount: 300_000_00,
+                            categoryID: try XCTUnwrap(service.categories.first?.id),
+                            recurrence: .monthly(day: 15), recordingMode: .automatic, createdAt: start)
+        try service.saveBill(bill, asOf: Day.date("2026-01-10")!)
+        XCTAssertEqual(service.billOccurrences.filter { $0.status == .pending }.map(\.dueDay), ["2026-01-15"])
+
+        bill.isActive = false
+        try service.saveBill(bill, asOf: Day.date("2026-01-10")!)
+        XCTAssertTrue(service.billOccurrences.isEmpty, "pausing removes upcoming occurrences")
+        try service.reconcileBills(asOf: Day.date("2026-04-01")!)
+        XCTAssertTrue(service.billOccurrences.isEmpty, "paused bills generate nothing")
+
+        bill.isActive = true
+        try service.saveBill(bill, asOf: Day.date("2026-04-01")!)
+        XCTAssertTrue(service.expenses.filter { $0.source == "bill-automatic" }.isEmpty,
+                      "Jan–Mar are not backfilled on resume")
+        XCTAssertEqual(service.billOccurrences.map(\.dueDay), ["2026-04-15"])
+    }
+
     func testClearingTransactionsDoesNotRecreateAutomaticBills() throws {
         let store = try ExpenseRepository(inMemory: true)
         try store.prepareSampleBook()

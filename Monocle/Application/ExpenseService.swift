@@ -299,6 +299,15 @@ final class ExpenseService {
                     $0.billRuleID == bill.id && $0.status == .pending && $0.dueDay >= Day.string(date)
                 }.map(\.id)
             }
+            if prior.isActive && !bill.isActive {
+                // Pausing drops lookahead; bills already due stay pending for the user to resolve.
+                retired += existing.filter {
+                    $0.billRuleID == bill.id && $0.status == .pending && $0.dueDay > Day.string(date)
+                }.map(\.id)
+            } else if !prior.isActive && bill.isActive {
+                // Resuming starts a fresh schedule today, so the paused gap is never backfilled.
+                bill.scheduleEffectiveDay = Day.string(date)
+            }
         }
         try bill.validate(categories: cats)
         let eligible = existing.filter { !retired.contains($0.id) }

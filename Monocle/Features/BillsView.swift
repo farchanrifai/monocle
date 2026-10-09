@@ -11,7 +11,7 @@ struct BillsView: View {
     }
 
     private var activeRules: [BillRule] {
-        model.bills.filter(\.isActive)
+        model.bills.filter(\.isActive) + model.bills.filter { !$0.isActive }
     }
 
     private var rulesByID: [UUID: BillRule] {
@@ -297,7 +297,14 @@ struct BillsView: View {
                     Text(rule.name).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
                     HStack(spacing: 8) {
                         Text(rule.recurrence.title).font(.caption).foregroundStyle(.secondary)
-                        if rule.recordingMode == .automatic {
+                        if !rule.isActive {
+                            HStack(spacing: 2) {
+                                Image(systemName: "pause.fill")
+                                Text("Paused")
+                            }
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.orange)
+                        } else if rule.recordingMode == .automatic {
                             HStack(spacing: 2) {
                                 Image(systemName: "bolt.fill")
                                 Text("Auto")
@@ -411,6 +418,7 @@ struct BillEditor: View {
     @State private var recordingMode: BillRecordingMode = .pending
     @State private var hasReminder = true
     @State private var reminderLeadDays: Int = 0
+    @State private var isPaused = false
     @State private var confirmDelete = false
     @State private var error: String?
 
@@ -519,6 +527,15 @@ struct BillEditor: View {
 
                 if isEditing {
                     Section {
+                        Toggle("Pause bill", isOn: $isPaused)
+                            .accessibilityIdentifier("billPauseToggle")
+                    } footer: {
+                        Text(isPaused
+                             ? "No new occurrences or reminders while paused. Resuming starts again from today; missed dates are not recorded."
+                             : "Pause to stop this bill without deleting it.")
+                    }
+
+                    Section {
                         Button("Delete bill", role: .destructive) {
                             confirmDelete = true
                         }
@@ -574,6 +591,7 @@ struct BillEditor: View {
             recordingMode = rule.recordingMode
             hasReminder = rule.hasReminder
             reminderLeadDays = rule.reminderLeadDays
+            isPaused = !rule.isActive
             switch rule.recurrence {
             case .monthly(let day):
                 recurrenceKind = 0
@@ -626,7 +644,7 @@ struct BillEditor: View {
                 hasReminder: hasReminder,
                 reminderLeadDays: reminderLeadDays,
                 createdAt: existingRule?.createdAt ?? .now,
-                isActive: true
+                isActive: !isPaused
             )
 
             try model.saveBill(rule)
