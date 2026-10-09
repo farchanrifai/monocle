@@ -12,3 +12,10 @@
 
 - Put every future SideStore IPA in `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/`.
 - Preserve prior IPA artifacts there. After each build, report the filename and SHA-256; do not overwrite an existing IPA.
+
+## Testing Without Taking Over the Screen
+
+- Mac UI tests (`MonocleMacUITests`) drive the real mouse and keyboard. Do not run them unless the user says they're away or asks for them.
+- Default verification: Mac unit tests (`-only-testing:MonocleMacTests`), iOS simulator tests, and builds.
+- For layout checks, render views to images inside unit tests instead of screenshotting the live app.
+- When UI tests were skipped, say so in the report.
