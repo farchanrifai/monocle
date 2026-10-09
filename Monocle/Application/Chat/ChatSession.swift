@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+enum ProposalState: Equatable, Codable { case pending, saved, discarded, opened }
+
 struct ChatRow: Identifiable, Equatable, Codable {
     enum Kind: Equatable, Codable {
         case user(String)

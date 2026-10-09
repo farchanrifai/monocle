@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.farchan
   deploymentTarget:
     iOS: '26.0'
+    macOS: '26.0'
 settings:
   base:
     SWIFT_VERSION: '6.0'
@@ -88,6 +89,58 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+  MonocleMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: Monocle/Domain
+      - path: Monocle/Application
+      - path: Monocle/Persistence
+      - path: Monocle/App/AppModel.swift
+      - path: Monocle/App/AppEnvironment.swift
+      - path: Monocle/Integrations/ExpenseIntents.swift
+      - path: Monocle/Integrations/BillNotificationService.swift
+      - path: Monocle/Resources/Monocle.xcdatamodeld
+      - path: MonocleMac
+    info:
+      path: MonocleMac/Resources/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDisplayName: monocle
+        LSApplicationCategoryType: public.app-category.finance
+        NSHumanReadableCopyright: Copyright © 2026 Farchan. All rights reserved.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.monocle.mac
+        PRODUCT_NAME: Monocle
+        PRODUCT_MODULE_NAME: MonocleMac
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: MonocleMac/Resources/MonocleMac.entitlements
+        MACOSX_DEPLOYMENT_TARGET: '26.0'
+        ENABLE_HARDENED_RUNTIME: YES
+  MonocleMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [MonocleMacTests]
+    dependencies:
+      - target: MonocleMac
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: '26.0'
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Monocle.app/Contents/MacOS/Monocle
+        BUNDLE_LOADER: $(TEST_HOST)
+  MonocleMacUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [MonocleMacUITests]
+    dependencies:
+      - target: MonocleMac
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: '26.0'
 schemes:
   Monocle:
     build:
@@ -98,3 +151,9 @@ schemes:
       targets: [MonocleTests, MonocleUITests]
       environmentVariables:
         MONOCLE_RUN_LARGE_BENCHMARK: $(MONOCLE_RUN_LARGE_BENCHMARK)
+  MonocleMac:
+    build:
+      targets:
+        MonocleMac: all
+    test:
+      targets: [MonocleMacTests, MonocleMacUITests]

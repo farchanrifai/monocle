@@ -1,4 +1,9 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 public enum CardTextTone: String, Codable, Sendable, CaseIterable {
     case auto
@@ -165,12 +170,19 @@ public enum CardPalette {
     }
 
     public static func hexString(from color: Color) -> String {
+        #if canImport(UIKit)
         let uiColor = UIColor(color)
         var r: CGFloat = 0
         var g: CGFloat = 0
         var b: CGFloat = 0
         var a: CGFloat = 0
         uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        #elseif canImport(AppKit)
+        guard let converted = NSColor(color).usingColorSpace(.deviceRGB) else { return "#808080" }
+        let r = converted.redComponent
+        let g = converted.greenComponent
+        let b = converted.blueComponent
+        #endif
         let ri = Int(round(r * 255))
         let gi = Int(round(g * 255))
         let bi = Int(round(b * 255))

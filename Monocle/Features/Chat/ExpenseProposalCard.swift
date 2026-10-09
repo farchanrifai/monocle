@@ -1,7 +1,5 @@
 import SwiftUI
 
-enum ProposalState: Equatable, Codable { case pending, saved, discarded, opened }
-
 /// Full-width confirm card for an expense Claude proposed. Nothing is written until Save.
 struct ExpenseProposalCard: View {
     let expense: Expense
