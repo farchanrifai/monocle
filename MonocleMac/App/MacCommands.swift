@@ -114,9 +114,15 @@ extension KeyChord {
 @MainActor @Observable
 final class MacAppState {
     let model: AppModel
-    var destination: MacDestination = .overview { didSet { UserDefaults.standard.set(Self.encode(destination), forKey: "MacDestination") } }
+    var destination: MacDestination = .overview {
+        didSet {
+            UserDefaults.standard.set(Self.encode(destination), forKey: "MacDestination")
+            if inspectorSelection != nil { inspectorSelection = nil } // a selection from another screen has no row to match
+        }
+    }
     var inspectorSelection: MacInspectorSelection?
-    var inspectorVisible = true
+    var inspectorVisible = true { didSet { UserDefaults.standard.set(inspectorVisible, forKey: "MacInspectorVisible") } }
+    var editingBill: BillRule?
     var commandBarVisible = false
     var regularEntryVisible = false
     var searchText = ""
@@ -128,14 +134,42 @@ final class MacAppState {
     @ObservationIgnored private lazy var quickPanel = QuickRecordPanelController(state: self)
 
     /// Observation notifies on every set, even same value, which re-renders the whole window; only write on change.
-    func inspect(_ selection: MacInspectorSelection) {
+    /// Selecting never reopens a hidden inspector; `reveal` is for controls whose only job is to inspect.
+    func inspect(_ selection: MacInspectorSelection?, reveal: Bool = false) {
         if inspectorSelection != selection { inspectorSelection = selection }
-        if !inspectorVisible { inspectorVisible = true }
+        if reveal, !inspectorVisible { inspectorVisible = true }
+    }
+
+    func edit(_ expense: Expense) {
+        model.edit(expense); model.showEntry = false; regularEntryVisible = true
+    }
+
+    func repeatExpense(_ expense: Expense) {
+        model.repeatExpense(expense); model.showEntry = false; regularEntryVisible = true
+    }
+
+    /// Deletes without confirmation; Edit ▸ Undo (⌘Z) restores, and Redo deletes again.
+    func delete(_ expense: Expense, undoManager: UndoManager?) {
+        model.delete(expense)
+        guard model.undoExpense?.id == expense.id else { return } // failed; model.error explains
+        let occurrences = model.undoOccurrences
+        if inspectorSelection == .expense(expense.id) { inspectorSelection = nil }
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] state in
+            MainActor.assumeIsolated {
+                state.model.restore(expense, occurrences: occurrences)
+                undoManager?.registerUndo(withTarget: state) { [weak undoManager] state in
+                    MainActor.assumeIsolated { state.delete(expense, undoManager: undoManager) }
+                }
+                undoManager?.setActionName("Delete Expense")
+            }
+        }
+        undoManager?.setActionName("Delete Expense")
     }
 
     init(model: AppModel) {
         self.model = model
         destination = Self.decode(UserDefaults.standard.string(forKey: "MacDestination"))
+        inspectorVisible = UserDefaults.standard.object(forKey: "MacInspectorVisible") as? Bool ?? true
         registerGlobalShortcut()
     }
 
@@ -250,7 +284,7 @@ final class MacAppState {
     func selectCard(_ id: UUID) {
         _ = model.selectBook(id)
         destination = .card(id)
-        inspectorSelection = .card(id)
+        inspect(.card(id))
     }
 
     private func showQuickRecord() {

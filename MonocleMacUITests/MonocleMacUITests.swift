@@ -3,6 +3,7 @@ import XCTest
 @MainActor final class MonocleMacUITests: XCTestCase {
     func testLaunchesMainWindow() {
         let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] // a crash-restore prompt would block launch
         app.launch()
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["newExpense"].exists)
@@ -11,6 +12,7 @@ import XCTest
 
     func testKeyboardCommandsOpenAndDismissNativeOverlays() {
         let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] // a crash-restore prompt would block launch
         app.launch()
 
         app.typeKey("k", modifierFlags: .command)
@@ -43,6 +45,7 @@ import XCTest
     func testActivitySelectionUpdatesInspectorAcrossRows() {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] // a crash-restore prompt would block launch
         app.launch()
         app.typeKey("2", modifierFlags: .command)
         let table = app.outlines["activityTable"]
@@ -62,6 +65,7 @@ import XCTest
     func testRepeatedTransactionSelectionAcrossMacViews() {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] // a crash-restore prompt would block launch
         app.launch()
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
 
@@ -94,5 +98,41 @@ import XCTest
             report.lifetime = .keepAlways
             add(report)
         }
+    }
+
+    func testInspectorFollowsSelectionDeleteUndoAndStaysHidden() {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"] // a crash-restore prompt would block launch
+        app.launch()
+        app.typeKey("2", modifierFlags: .command)
+        let table = app.outlines["activityTable"]
+        XCTAssertTrue(table.waitForExistence(timeout: 5))
+        let coffee = { app.staticTexts.matching(identifier: "Morning coffee") }
+
+        table.staticTexts["Morning coffee"].click()
+        XCTAssertGreaterThanOrEqual(coffee().count, 2, "inspector shows selection")
+
+        // Delete key deletes without a prompt; Edit ▸ Undo restores.
+        app.typeKey(XCUIKeyboardKey.delete.rawValue, modifierFlags: [])
+        XCTAssertTrue(table.staticTexts["Morning coffee"].waitForNonExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Nothing Selected"].exists)
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(table.staticTexts["Morning coffee"].waitForExistence(timeout: 3))
+
+        // Navigating away clears the selection.
+        table.staticTexts["Lunch at work"].click()
+        app.typeKey("1", modifierFlags: .command)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(table.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Nothing Selected"].waitForExistence(timeout: 2))
+
+        // A hidden inspector stays hidden when a row is selected.
+        app.buttons["toggleInspector"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["Nothing Selected"].waitForNonExistence(timeout: 2))
+        table.staticTexts["Ride home"].click()
+        XCTAssertEqual(app.staticTexts.matching(identifier: "Ride home").count, 1, "only the table row, no inspector")
+        app.buttons["toggleInspector"].firstMatch.click()
+        XCTAssertGreaterThanOrEqual(app.staticTexts.matching(identifier: "Ride home").count, 2)
     }
 }

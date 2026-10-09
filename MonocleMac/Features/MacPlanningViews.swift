@@ -84,7 +84,6 @@ private struct BudgetEditor: View {
 
 struct MacBillsView: View {
     @Bindable var state: MacAppState
-    @State private var editing: BillRule?
     @State private var adding = false
     private var model: AppModel { state.model }
     private var pending: [BillOccurrence] { model.billOccurrences.filter { $0.status == .pending }.sorted { $0.dueDay < $1.dueDay } }
@@ -98,13 +97,19 @@ struct MacBillsView: View {
             HStack { Text("Schedule").font(.title2.bold()); Spacer(); Button("New Bill") { adding = true }.buttonStyle(.borderedProminent) }
             Table(model.bills, selection: Binding<BillRule.ID?>(get: {
                 if case .bill(let id) = state.inspectorSelection { id } else { nil }
-            }, set: { newValue in if let newValue { state.inspect(.bill(newValue)) } })) {
-                TableColumn("Name") { bill in Text(bill.name).onTapGesture(count: 2) { editing = bill } }
+            }, set: { state.inspect($0.map { .bill($0) }) })) {
+                TableColumn("Name") { Text($0.name) }
                 TableColumn("Amount") { Text(Money.format($0.amount)).font(.system(.body, design: .monospaced)) }
                 TableColumn("Schedule") { Text($0.recurrence.title) }
                 TableColumn("Mode") { Text($0.recordingMode == .automatic ? "Automatic" : "Confirm") }
                 TableColumn("Active") { Image(systemName: $0.isActive ? "checkmark.circle.fill" : "pause.circle") }
-            }.frame(minHeight: 240)
+            }
+            .contextMenu(forSelectionType: BillRule.ID.self) { ids in
+                if let bill = model.bills.first(where: { ids.contains($0.id) }) { Button("Edit Bill…") { state.editingBill = bill } }
+            } primaryAction: { ids in
+                state.editingBill = model.bills.first { ids.contains($0.id) }
+            }
+            .frame(minHeight: 240)
             if !pending.isEmpty {
                 Text("Needs attention").font(.title2.bold())
                 ForEach(pending) { occurrence in
@@ -120,7 +125,7 @@ struct MacBillsView: View {
             }
         }
         .sheet(isPresented: $adding) { BillEditor(model: model, bill: nil) { adding = false } }
-        .sheet(item: $editing) { bill in BillEditor(model: model, bill: bill) { editing = nil } }
+        .sheet(item: $state.editingBill) { bill in BillEditor(model: model, bill: bill) { state.editingBill = nil } }
         .onAppear { model.reconcileBills() }
     }
 }

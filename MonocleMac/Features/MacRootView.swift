@@ -24,14 +24,13 @@ struct MacRootView: View {
             NavigationSplitView {
                 sidebar
                     .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 280)
-            } content: {
-                content
-                    .navigationSplitViewColumnWidth(min: 540, ideal: 720)
             } detail: {
-                if state.inspectorVisible { MacInspector(state: state) }
-                else { ContentUnavailableView("Inspector Hidden", systemImage: "sidebar.right") }
+                content
+                    .inspector(isPresented: $state.inspectorVisible) {
+                        MacInspector(state: state)
+                            .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
+                    }
             }
-            .navigationSplitViewStyle(.balanced)
             .toolbar { toolbar }
             .disabled(model.appLock.blocksContent)
             .blur(radius: model.appLock.blocksContent ? 10 : 0)
@@ -106,6 +105,11 @@ struct MacRootView: View {
             Button { state.perform(.newExpense) } label: { Label("Expense", systemImage: "plus") }
                 .buttonStyle(.borderedProminent).tint(MacTheme.accent)
                 .accessibilityIdentifier("newExpense")
+        }
+        ToolbarItem {
+            Button { state.perform(.toggleInspector) } label: { Label("Inspector", systemImage: "sidebar.right") }
+                .help("Toggle Inspector (\(state.shortcut(for: .toggleInspector)?.displayName ?? ""))")
+                .accessibilityIdentifier("toggleInspector")
         }
     }
 }
@@ -375,7 +379,7 @@ private struct MacCompactExpenseList: View {
         VStack(spacing: 0) {
             ForEach(expenses) { expense in
                 Button {
-                    state.inspect(.expense(expense.id))
+                    state.inspect(.expense(expense.id), reveal: true)
                 } label: {
                     HStack {
                         Text(Day.title(expense.day)).frame(width: 90, alignment: .leading)
@@ -384,6 +388,7 @@ private struct MacCompactExpenseList: View {
                         Text(Money.format(expense.amount)).font(.system(.body, design: .monospaced)).foregroundStyle(.primary)
                     }.padding(.vertical, 8).contentShape(Rectangle())
                 }.buttonStyle(.plain)
+                .contextMenu { ExpenseMenuItems(state: state, expense: expense) }
                 if expense.id != expenses.last?.id { Divider() }
             }
         }.padding(.horizontal, 8)
@@ -400,7 +405,7 @@ struct MacActivityView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(bookID.flatMap { id in state.model.books.first(where: { $0.id == id })?.name } ?? "Activity").font(.largeTitle.bold())
-            MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder, edit: edit)
+            MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
                 .accessibilityIdentifier("activityTable")
         }.padding(24).navigationTitle("Activity")
         // Rows rebuild only when data or the card changes, not on every window refresh (selection, inspector, typing).
@@ -421,9 +426,6 @@ struct MacActivityView: View {
 
     private func refresh() { rows = MacExpenseRow.filter(allRows, query: state.searchText, sortOrder: sortOrder) }
 
-    private func edit(_ expense: Expense) {
-        state.model.edit(expense); state.model.showEntry = false; state.regularEntryVisible = true
-    }
 }
 
 struct MacExpenseRow: Identifiable {
@@ -464,19 +466,45 @@ private struct MacActivityTable: View {
     let rows: [MacExpenseRow]
     let state: MacAppState
     @Binding var sortOrder: [KeyPathComparator<MacExpenseRow>]
-    let edit: (Expense) -> Void
-    @State private var selection: Expense.ID?
+    @Environment(\.undoManager) private var undoManager
+
+    /// The inspector selection is the only selection, so the table and inspector can't disagree.
+    private var selection: Binding<Expense.ID?> {
+        Binding(get: { if case .expense(let id) = state.inspectorSelection { id } else { nil } },
+                set: { state.inspect($0.map { .expense($0) }) })
+    }
 
     var body: some View {
-        Table(rows, selection: $selection, sortOrder: $sortOrder) {
+        Table(rows, selection: selection, sortOrder: $sortOrder) {
                 TableColumn("Date", value: \.day) { Text($0.day).font(.system(.body, design: .monospaced)) }.width(min: 96, ideal: 110)
                 TableColumn("Note", value: \.title) { Text($0.title) }
                 TableColumn("Category", value: \.category) { Text($0.category) }
                 TableColumn("Card", value: \.book) { Text($0.book) }
                 TableColumn("Amount", value: \.amountMinor) { Text(Money.format($0.amountMinor)).font(.system(.body, design: .monospaced)) }.width(min: 110, ideal: 130)
             }
-            .onChange(of: selection) { _, id in if let id { state.inspect(.expense(id)) } }
-            .onKeyPress(.return) { if let row = rows.first(where: { $0.id == selection }) { edit(row.expense) }; return .handled }
+            .contextMenu(forSelectionType: Expense.ID.self) { ids in
+                if let expense = expense(ids.first) { ExpenseMenuItems(state: state, expense: expense) }
+            } primaryAction: { ids in
+                if let expense = expense(ids.first) { state.edit(expense) }
+            }
+            .onDeleteCommand { if let expense = expense(selection.wrappedValue) { state.delete(expense, undoManager: undoManager) } }
+    }
+
+    private func expense(_ id: Expense.ID?) -> Expense? {
+        guard let id else { return nil }
+        return rows.first { $0.id == id }?.expense
+    }
+}
+
+struct ExpenseMenuItems: View {
+    let state: MacAppState
+    let expense: Expense
+    @Environment(\.undoManager) private var undoManager
+    var body: some View {
+        Button("Edit…") { state.edit(expense) }
+        Button("Repeat…") { state.repeatExpense(expense) }
+        Divider()
+        Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }
     }
 }
 
@@ -507,54 +535,173 @@ struct MacCardDetailView: View {
 
 struct MacInspector: View {
     @Bindable var state: MacAppState
-    @State private var deleteCandidate: Expense?
     private var model: AppModel { state.model }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Inspector").font(.title2.bold())
-            switch state.inspectorSelection {
-            case .expense(let id): expenseInspector(model.expense(id: id))
-            case .bill(let id): billInspector(model.bills.first { $0.id == id })
-            case .card(let id): cardInspector(model.books.first { $0.id == id })
-            case nil: ContentUnavailableView("Nothing Selected", systemImage: "cursorarrow.click", description: Text("Select a transaction, bill, or card."))
+        let _ = model.dataRevision // refresh after edits to cards that aren't active
+        switch state.inspectorSelection {
+        case .expense(let id): if let expense = model.expense(id: id) { ExpenseInspector(state: state, expense: expense) } else { empty }
+        case .bill(let id): if let bill = model.bills.first(where: { $0.id == id }) { BillInspector(model: model, bill: bill) { state.editingBill = bill } } else { empty }
+        case .card(let id): if let book = model.books.first(where: { $0.id == id }) { CardInspector(state: state, book: book) } else { empty }
+        case nil: empty
+        }
+    }
+
+    private var empty: some View {
+        ContentUnavailableView("Nothing Selected", systemImage: "cursorarrow.click", description: Text("Select a transaction, bill, or card."))
+    }
+}
+
+/// Icon, title, subtitle, and amount at the top of every inspector.
+private struct InspectorHeader: View {
+    let symbol: String
+    let title: String
+    let subtitle: String
+    var amount: Int64?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).font(.title2).foregroundStyle(MacTheme.accent)
+                    .frame(width: 40, height: 40).background(MacTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline).lineLimit(2)
+                    Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+                }
             }
-            if model.undoExpense != nil { Button("Undo Delete") { model.undoDelete() } }
-            Spacer()
-        }.padding(20).navigationTitle("Inspector")
-        .alert("Delete this expense?", isPresented: Binding(get: { deleteCandidate != nil }, set: { if !$0 { deleteCandidate = nil } })) {
-            Button("Delete", role: .destructive) { if let expense = deleteCandidate { model.delete(expense); state.inspectorSelection = nil }; deleteCandidate = nil }
-            Button("Cancel", role: .cancel) { deleteCandidate = nil }
-        } message: { Text("You can undo immediately from the inspector.") }
+            if let amount {
+                Text(Money.format(amount)).font(.system(.title, design: .monospaced, weight: .semibold)).textSelection(.enabled)
+            }
+        }.padding(.vertical, 4)
     }
+}
 
-    @ViewBuilder private func expenseInspector(_ expense: Expense?) -> some View {
-        if let expense {
-            Text(model.title(expense)).font(.headline)
-            Text(Money.format(expense.amount)).font(.system(.title, design: .monospaced, weight: .semibold))
-            LabeledContent("Date", value: expense.day)
-            LabeledContent("Category", value: model.category(expense.allocations.first?.categoryID)?.name ?? "Split")
-            LabeledContent("Card", value: model.books.first(where: { $0.id == expense.bookID })?.name ?? "")
-            Divider()
-            Button("Edit") { model.edit(expense); model.showEntry = false; state.regularEntryVisible = true }
-            Button("Repeat") { model.repeatExpense(expense); model.showEntry = false; state.regularEntryVisible = true }
-            Button("Delete", role: .destructive) { deleteCandidate = expense }
+/// Actions pinned under the inspector form; the destructive one sits apart on the trailing edge.
+private struct InspectorActions<Leading: View, Trailing: View>: View {
+    @ViewBuilder let leading: Leading
+    @ViewBuilder let trailing: Trailing
+    var body: some View {
+        HStack { leading; Spacer(); trailing }
+            .padding(12).frame(maxWidth: .infinity).background(.bar)
+            .overlay(alignment: .top) { Divider() }
+    }
+}
+
+private struct ExpenseInspector: View {
+    let state: MacAppState
+    let expense: Expense
+    @Environment(\.undoManager) private var undoManager
+    private var model: AppModel { state.model }
+
+    var body: some View {
+        let isSplit = expense.allocations.count > 1
+        let category = model.category(expense.allocations.first?.categoryID)
+        Form {
+            Section {
+                InspectorHeader(symbol: isSplit ? "square.split.2x1" : category?.symbol ?? "questionmark.circle",
+                                title: model.title(expense),
+                                subtitle: isSplit ? "Split across \(expense.allocations.count) categories" : category?.name ?? "No category",
+                                amount: expense.amount)
+            }
+            Section("Details") {
+                LabeledContent("Date", value: Day.title(expense.day))
+                LabeledContent("Card", value: model.books.first(where: { $0.id == expense.bookID })?.name ?? "—")
+                LabeledContent("Recorded", value: expense.createdAt.formatted(date: .abbreviated, time: .shortened))
+                if expense.source != "manual" { LabeledContent("Source", value: expense.source.capitalized) }
+            }
+            // The header shows two lines of the note; long notes get their full text here.
+            if expense.note.count > 60 || expense.note.contains("\n") {
+                Section("Note") { Text(expense.note).textSelection(.enabled) }
+            }
+            if isSplit {
+                Section("Split") {
+                    ForEach(Array(expense.allocations.enumerated()), id: \.offset) { _, allocation in
+                        let part = model.category(allocation.categoryID)
+                        LabeledContent {
+                            Text(Money.format(allocation.amount)).font(.system(.body, design: .monospaced))
+                        } label: {
+                            Label(part?.name ?? "No category", systemImage: part?.symbol ?? "questionmark.circle")
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            InspectorActions {
+                Button("Edit…") { state.edit(expense) }
+                Button("Repeat…") { state.repeatExpense(expense) }
+            } trailing: {
+                Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }
+                    .help("Delete (Edit ▸ Undo restores it)")
+            }
+        }
+    }
+}
+
+private struct BillInspector: View {
+    let model: AppModel
+    let bill: BillRule
+    let edit: () -> Void
+
+    var body: some View {
+        let category = model.category(bill.categoryID)
+        let pending = model.billOccurrences.filter { $0.billRuleID == bill.id && $0.status == .pending }.min { $0.dueDay < $1.dueDay }
+        Form {
+            Section {
+                InspectorHeader(symbol: category?.symbol ?? "calendar.badge.clock", title: bill.name,
+                                subtitle: bill.isActive ? category?.name ?? "Bill" : "Paused", amount: bill.amount)
+            }
+            if let pending {
+                Section("Needs Attention") {
+                    LabeledContent("Due", value: Day.title(pending.dueDay))
+                    HStack {
+                        Button("Skip") { act { try model.skipBillOccurrence(pending.id) } }
+                        Spacer()
+                        Button("Record") { act { _ = try model.confirmBillOccurrence(pending.id) } }.buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            Section("Schedule") {
+                LabeledContent("Repeats", value: bill.recurrence.title)
+                LabeledContent("Recording", value: bill.recordingMode.title)
+                LabeledContent("Reminder", value: !bill.hasReminder ? "Off" : bill.reminderLeadDays == 0 ? "On the day" : "\(bill.reminderLeadDays) days before")
+                LabeledContent("Card", value: model.books.first(where: { $0.id == bill.bookID })?.name ?? "—")
+            }
+        }
+        .formStyle(.grouped)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            InspectorActions { Button("Edit Bill…", action: edit) } trailing: { EmptyView() }
         }
     }
 
-    @ViewBuilder private func billInspector(_ bill: BillRule?) -> some View {
-        if let bill {
-            Text(bill.name).font(.headline)
-            Text(Money.format(bill.amount)).font(.system(.title2, design: .monospaced))
-            LabeledContent("Schedule", value: bill.recurrence.title)
-            LabeledContent("Recording", value: bill.recordingMode.title)
-        }
+    private func act(_ work: () throws -> Void) {
+        do { try work() } catch { model.error = error.localizedDescription }
     }
+}
 
-    @ViewBuilder private func cardInspector(_ book: BookProfile?) -> some View {
-        if let book {
-            Text(book.name).font(.headline)
-            LabeledContent("Transactions", value: "\(model.expenses(for: book.id).count)")
-            LabeledContent("Total", value: Money.format(model.expenses(for: book.id).reduce(0) { $0 + $1.amount }))
+private struct CardInspector: View {
+    let state: MacAppState
+    let book: BookProfile
+    private var model: AppModel { state.model }
+
+    var body: some View {
+        let expenses = model.expenses(for: book.id)
+        Form {
+            Section {
+                MacCardView(model: model, book: book).frame(maxWidth: .infinity)
+            }
+            Section("Spending") {
+                LabeledContent("Transactions", value: "\(expenses.count)")
+                LabeledContent("Total", value: Money.format(expenses.reduce(0) { $0 + $1.amount }))
+                if let last = expenses.map(\.day).max() { LabeledContent("Last expense", value: Day.title(last)) }
+            }
+        }
+        .formStyle(.grouped)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            InspectorActions {
+                Button("New Expense on This Card") { _ = model.selectBook(book.id); state.perform(.newExpense) }
+            } trailing: { EmptyView() }
         }
     }
 }

@@ -95,7 +95,7 @@ final class AppModel {
     var sessionSheetBudget: String = ""
     var pendingRepeat = false
     var undoExpense: Expense?
-    private var undoOccurrences: [BillOccurrence] = []
+    private(set) var undoOccurrences: [BillOccurrence] = []
     @ObservationIgnored private var durablePreferences = WorkspacePreferences()
     let expenseService: ExpenseService?
     private let state: (any LocalStateStore)?
@@ -1159,10 +1159,15 @@ final class AppModel {
     }
     func undoDelete() {
         guard let undoExpense else { return }
+        restore(undoExpense, occurrences: undoOccurrences)
+    }
+    /// Restores a deleted expense with the bill occurrences it was linked to (macOS keeps several of these on its undo stack).
+    func restore(_ expense: Expense, occurrences: [BillOccurrence]) {
         do {
             guard let expenseService else { throw EntryError.corruptStore }
-            try expenseService.restoreExpense(undoExpense, occurrences: undoOccurrences, in: undoExpense.bookID ?? activeBookID)
-            self.undoExpense = nil; undoOccurrences = []; invalidateExpenseCaches(); showToast("Expense restored")
+            try expenseService.restoreExpense(expense, occurrences: occurrences, in: expense.bookID ?? activeBookID)
+            if undoExpense?.id == expense.id { undoExpense = nil; undoOccurrences = [] }
+            invalidateExpenseCaches(); showToast("Expense restored")
         }
         catch { self.error = error.localizedDescription }
     }
