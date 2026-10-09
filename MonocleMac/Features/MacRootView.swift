@@ -304,27 +304,24 @@ struct MacOverviewView: View {
     @Bindable var state: MacAppState
     private var model: AppModel { state.model }
     var body: some View {
-        Page(title: "Overview") {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Overview").font(.largeTitle.bold())
             ScrollView(.horizontal) {
                 HStack(spacing: 14) {
                     ForEach(model.books) { book in
                         MacCardView(model: model, book: book)
                             .onTapGesture { state.selectCard(book.id) }
                     }
-                }
+                }.padding(.vertical, 8) // room for the card shadow
             }.scrollIndicators(.hidden)
             HStack {
                 SummaryTile(title: "Cycle spending", value: Money.format(model.spent), detail: model.cycle.label)
                 SummaryTile(title: "Remaining", value: Money.format(model.remaining), detail: "of \(Money.format(model.activeBudget.overallLimit))")
                 SummaryTile(title: "Upcoming bills", value: "\(model.billOccurrences.filter { $0.status == .pending }.count)", detail: "Awaiting action")
             }
-            GroupBox("Recent Activity") {
-                MacCompactExpenseList(state: state, expenses: filtered(model.allExpenses()).prefix(8).map { $0 })
-            }
-        }
-    }
-    private func filtered(_ expenses: [Expense]) -> [Expense] {
-        expenses.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+            Text("Recent Activity").font(.title2.bold())
+            MacExpenseTable(state: state, bookID: nil, limit: 50) // same table as Activity; fills the rest of the window
+        }.padding(24).navigationTitle("Overview")
     }
 }
 
@@ -372,60 +369,51 @@ private struct MacCardView: View {
     }
 }
 
-private struct MacCompactExpenseList: View {
-    @Bindable var state: MacAppState
-    let expenses: [Expense]
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(expenses) { expense in
-                Button {
-                    state.inspect(.expense(expense.id), reveal: true)
-                } label: {
-                    HStack {
-                        Text(Day.title(expense.day)).frame(width: 90, alignment: .leading)
-                        Text(state.model.title(expense)).lineLimit(1)
-                        Spacer()
-                        Text(Money.format(expense.amount)).font(.system(.body, design: .monospaced)).foregroundStyle(.primary)
-                    }.padding(.vertical, 8).contentShape(Rectangle())
-                }.buttonStyle(.plain)
-                .contextMenu { ExpenseMenuItems(state: state, expense: expense) }
-                if expense.id != expenses.last?.id { Divider() }
-            }
-        }.padding(.horizontal, 8)
-    }
-}
 
 struct MacActivityView: View {
     @Bindable var state: MacAppState
     let bookID: UUID?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(bookID.flatMap { id in state.model.books.first(where: { $0.id == id })?.name } ?? "Activity").font(.largeTitle.bold())
+            MacExpenseTable(state: state, bookID: bookID)
+        }.padding(24).navigationTitle("Activity")
+    }
+}
+
+/// The one transaction table (Overview, Activity, card pages). `limit` keeps only the newest rows.
+struct MacExpenseTable: View {
+    let state: MacAppState
+    let bookID: UUID?
+    var limit: Int?
     @State private var sortOrder: [KeyPathComparator<MacExpenseRow>] = []
     @State private var allRows: [MacExpenseRow] = []
     @State private var rows: [MacExpenseRow] = []
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(bookID.flatMap { id in state.model.books.first(where: { $0.id == id })?.name } ?? "Activity").font(.largeTitle.bold())
-            MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
-                .accessibilityIdentifier("activityTable")
-        }.padding(24).navigationTitle("Activity")
-        // Rows rebuild only when data or the card changes, not on every window refresh (selection, inspector, typing).
-        .onChange(of: RowsSource(revision: state.model.dataRevision, bookID: bookID, bookCount: state.model.books.count), initial: true) { buildRows() }
-        .onChange(of: state.searchText) { refresh() }
-        .onChange(of: sortOrder) { refresh() }
+        MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
+            .accessibilityIdentifier("activityTable")
+            // Rows rebuild only when data or the card changes, not on every window refresh (selection, inspector, typing).
+            .onChange(of: RowsSource(revision: state.model.dataRevision, bookID: bookID, bookCount: state.model.books.count), initial: true) { buildRows() }
+            .onChange(of: state.searchText) { refresh() }
+            .onChange(of: sortOrder) { refresh() }
     }
 
     private struct RowsSource: Equatable { let revision: UInt64; let bookID: UUID?; let bookCount: Int }
 
     private func buildRows() {
         let model = state.model
-        let source = bookID.map(model.expenses(for:)) ?? model.allExpenses()
+        var source = bookID.map(model.expenses(for:)) ?? model.allExpenses()
+        if let limit {
+            source = Array(source.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }.prefix(limit))
+        }
         let books = Dictionary(model.books.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         allRows = MacExpenseRow.make(source, bookNames: books, categoryName: { model.category($0)?.name })
         refresh()
     }
 
     private func refresh() { rows = MacExpenseRow.filter(allRows, query: state.searchText, sortOrder: sortOrder) }
-
 }
 
 struct MacExpenseRow: Identifiable {

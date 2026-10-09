@@ -76,21 +76,17 @@ import XCTest
             case "Activity": app.typeKey("2", modifierFlags: .command)
             default: app.staticTexts["Sample book"].firstMatch.click()
             }
-            if destination != "Overview" {
-                XCTAssertTrue(app.outlines["activityTable"].waitForExistence(timeout: 5))
-            }
+            XCTAssertTrue(app.outlines["activityTable"].waitForExistence(timeout: 5))
             var clickDurations: [TimeInterval] = []
             for note in notes + notes.reversed() {
-                let rowText = destination == "Overview"
-                    ? app.buttons.matching(NSPredicate(format: "label CONTAINS %@", note)).firstMatch
-                    : app.outlines["activityTable"].staticTexts[note]
+                let rowText = app.outlines["activityTable"].staticTexts[note]
                 XCTAssertTrue(clickDurations.isEmpty ? rowText.waitForExistence(timeout: 3) : rowText.exists,
                               "Missing \(note) in \(destination)")
                 let start = Date()
                 rowText.click()
                 clickDurations.append(Date().timeIntervalSince(start))
                 let inspectorMatches = app.staticTexts.matching(identifier: note).count
-                XCTAssertGreaterThanOrEqual(inspectorMatches, destination == "Overview" ? 1 : 2,
+                XCTAssertGreaterThanOrEqual(inspectorMatches, 2,
                                             "Inspector did not show \(note) in \(destination)")
             }
             let report = XCTAttachment(string: "\(destination): \(clickDurations.count) clicks; median \(clickDurations.sorted()[clickDurations.count / 2])s; max \(clickDurations.max() ?? 0)s")
