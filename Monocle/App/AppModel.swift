@@ -1118,15 +1118,7 @@ final class AppModel {
             showEntry = false
             undoExpense = nil
             saveFeedback += 1
-            if !editing, SpendingSessionManager.shared.isSessionActive {
-                let cat = activeCategories(for: targetID).first(where: { $0.id == expense.allocations.first?.categoryID })
-                SpendingSessionManager.shared.recordExpense(
-                    amount: expense.amount,
-                    note: expense.note,
-                    categorySymbol: cat?.symbol,
-                    bookID: targetID
-                )
-            }
+            if !editing { recordInSpendingSession(expense) }
             showToast(editing ? "Expense updated" : "Expense recorded")
             return true
         } catch {
@@ -1202,6 +1194,32 @@ final class AppModel {
         catch { self.error = error.localizedDescription }
         invalidateExpenseCaches()
     }
+    /// Chat Save: the same write and Live Activity update as the keypad, without the entry sheet.
+    func saveFromChat(_ expense: Expense) throws {
+        try save(expense)
+        recordInSpendingSession(expense)
+    }
+
+    private func recordInSpendingSession(_ expense: Expense) {
+        guard SpendingSessionManager.shared.isSessionActive, let bookID = expense.bookID else { return }
+        let cat = activeCategories(for: bookID).first(where: { $0.id == expense.allocations.first?.categoryID })
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol, bookID: bookID)
+    }
+
+    /// Opens an unsaved chat proposal in the entry sheet so the user can adjust it before saving.
+    func openInEntry(_ expense: Expense) {
+        showChat = false
+        Task {
+            // Let the chat cover finish dismissing before presenting the sheet.
+            try? await Task.sleep(for: .milliseconds(450))
+            // ponytail: an unfinished draft takes the repeat path (dated today) after its discard prompt.
+            if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
+            draft = ExpenseDraft(expense: expense); draft.editing = false
+            draft.bookID = expense.bookID ?? activeBookID
+            showEntry = true
+        }
+    }
+
     func repeatExpense(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense); draft.id = UUID(); draft.editing = false

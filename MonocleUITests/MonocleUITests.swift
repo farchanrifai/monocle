@@ -346,6 +346,12 @@ final class MonocleUITests: XCTestCase {
         app.buttons["chatClose"].tap()
         XCTAssertTrue(chat.waitForExistence(timeout: 5))
         XCTAssertTrue(chat.isHittable)
+
+        // The conversation and its scope survive closing the chat.
+        chat.tap()
+        XCTAssertTrue(app.staticTexts["Now answering about All cards"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["chatScopeMenu"].label, "Scope: All cards")
+        app.buttons["chatClose"].tap()
     }
 
     private func keepScreenshot(_ screenshot: XCUIScreenshot) {

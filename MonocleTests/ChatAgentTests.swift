@@ -100,6 +100,27 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertFalse(texts(sent[1]).contains { $0.hasPrefix("App note:") })
     }
 
+    func testChatSaveWritesAndEditOpensUnsavedDraftInEntrySheet() async throws {
+        let bookID = try XCTUnwrap(model.books.first?.id)
+        let category = try XCTUnwrap(try model.activeCategories(in: bookID).first)
+        let expense = Expense(amount: 2_800_000, day: "2026-09-14", note: "Kopi",
+                              allocations: [.init(categoryID: category.id, amount: 2_800_000)], source: "chat", bookID: bookID)
+
+        model.showChat = true
+        model.openInEntry(expense)
+        XCTAssertFalse(model.showChat, "Chat closes so the entry sheet can present")
+        try await Task.sleep(for: .milliseconds(700))
+        XCTAssertTrue(model.showEntry)
+        XCTAssertFalse(model.draft.editing, "A proposal is new, not an edit of a saved expense")
+        XCTAssertEqual(try model.draft.expense().amount, 2_800_000)
+        XCTAssertEqual(model.draft.civilDay, "2026-09-14")
+        XCTAssertEqual(model.draft.source, "chat")
+        XCTAssertFalse(model.expenses(for: bookID).contains { $0.id == expense.id }, "Opening the editor never saves")
+
+        try model.saveFromChat(expense)
+        XCTAssertTrue(model.expenses(for: bookID).contains { $0.id == expense.id && $0.source == "chat" })
+    }
+
     // MARK: - Helpers
 
     private func agent(replies: [[String: Any]]) -> ChatAgent {

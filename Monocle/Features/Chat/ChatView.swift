@@ -18,23 +18,36 @@ struct ChatRow: Identifiable, Equatable {
     }
 }
 
+/// The conversation outlives the full-screen cover: RootView owns it for as long as the app runs.
+// ponytail: in-memory only; persist to chat.json (CHAT_SPEC §7) when history across launches matters.
+@MainActor @Observable
+final class ChatSession {
+    var rows: [ChatRow] = []
+    var isTyping = false
+    /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
+    var scope: AnalyticsFilterScope?
+    @ObservationIgnored var agent: ChatAgent?
+
+    func clear() { rows = []; agent?.reset() }
+}
+
 /// Full-screen chat (CHAT_SPEC §1). Claude proposes and answers through ChatAgent; only the Save button writes.
 struct ChatView: View {
     @Bindable var model: AppModel
+    @Bindable var session: ChatSession
     @Environment(\.dismiss) private var dismiss
-    @State private var rows: [ChatRow] = []
     @State private var draft = ""
-    @State private var isTyping = false
     @State private var sentCount = 0
-    /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
-    @State private var scope: AnalyticsFilterScope = .allCards
     @FocusState private var inputFocused: Bool
     @AppStorage("chatEnabled") private var chatEnabled = false
     @State private var hasKey = APIKeyStore.read() != nil
     @State private var showingSetup = false
-    @State private var agent: ChatAgent?
 
     private static let suggestions = ["Kopi 28rb", "How much did I spend this month?", "Am I over budget?"]
+
+    private var rows: [ChatRow] { session.rows }
+    private var isTyping: Bool { session.isTyping }
+    private var scope: AnalyticsFilterScope { session.scope ?? homeScope }
 
     private var scopeLabel: String { scope.isAllCards ? "All cards" : "\(scope.subtitle): \(scope.title)" }
 
@@ -106,7 +119,7 @@ struct ChatView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Clear chat", systemImage: "trash", role: .destructive) { rows = []; agent?.reset() }
+                        Button("Clear chat", systemImage: "trash", role: .destructive) { session.clear(); session.scope = homeScope }
                     } label: {
                         Image(systemName: "ellipsis")
                     }
@@ -115,8 +128,8 @@ struct ChatView: View {
             }
         }
         .tint(MC.red)
-        .onAppear { scope = homeScope }
-        .sheet(isPresented: $showingSetup, onDismiss: { hasKey = APIKeyStore.read() != nil; agent = nil }) {
+        .onAppear { if session.scope == nil { session.scope = homeScope } }
+        .sheet(isPresented: $showingSetup, onDismiss: { hasKey = APIKeyStore.read() != nil; session.agent = nil }) {
             NavigationStack {
                 ChatSettingsView()
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }
@@ -144,8 +157,8 @@ struct ChatView: View {
     private func scopeButton(_ target: AnalyticsFilterScope, label: String, icon: String) -> some View {
         Button {
             guard target != scope else { return }
-            scope = target
-            rows.append(ChatRow(kind: .notice("Now answering about \(scopeLabel)")))
+            session.scope = target
+            session.rows.append(ChatRow(kind: .notice("Now answering about \(scopeLabel)")))
         } label: {
             if target == scope { Label(label, systemImage: "checkmark") } else { Label(label, systemImage: icon) }
         }
@@ -177,6 +190,8 @@ struct ChatView: View {
         switch row.kind {
         case .user(let text), .assistant(let text):
             ChatBubble(isUser: row.isUser, hasTail: hasTail) { Text(Self.markdown(text)) }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text(row.isUser ? "You: " : "Monocle: ") + Text(Self.markdown(text)))
                 .contextMenu {
                     Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = text }
                 }
@@ -187,7 +202,8 @@ struct ChatView: View {
                 cardName: model.books.first { $0.id == expense.bookID }?.name ?? "",
                 state: state,
                 onSave: { setProposal(row.id, expense, .saved) },
-                onDiscard: { setProposal(row.id, expense, .discarded) })
+                onDiscard: { setProposal(row.id, expense, .discarded) },
+                onEdit: { setProposal(row.id, expense, .opened) })
         case .summary(let points):
             ChatSummaryChart(points: points)
         case .notice(let message):
@@ -215,16 +231,22 @@ struct ChatView: View {
     private func setProposal(_ id: UUID, _ expense: Expense, _ state: ProposalState) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
         let summary = "\(Money.format(expense.amount)) \(expense.note.isEmpty ? "" : "\"\(expense.note)\" ")on \(expense.day)"
-        if state == .saved {
-            do { try model.save(expense) } catch {
-                rows.append(ChatRow(kind: .error(error.localizedDescription)))
+        switch state {
+        case .saved:
+            do { try model.saveFromChat(expense) } catch {
+                session.rows.append(ChatRow(kind: .error(error.localizedDescription)))
                 return
             }
-            agent?.note("The user saved the proposed expense \(summary).")
-        } else {
-            agent?.note("The user discarded the proposed expense \(summary).")
+            session.agent?.note("The user saved the proposed expense \(summary).")
+        case .opened:
+            session.agent?.note("The user opened the proposed expense \(summary) in the editor; it may have been changed or saved there.")
+            model.openInEntry(expense)
+        case .discarded:
+            session.agent?.note("The user discarded the proposed expense \(summary).")
+        case .pending:
+            break
         }
-        rows[index].kind = .proposal(expense, state)
+        session.rows[index].kind = .proposal(expense, state)
     }
 
     private func send(_ input: String) {
@@ -232,14 +254,21 @@ struct ChatView: View {
         guard !text.isEmpty, !isTyping, let key = APIKeyStore.read() else { return }
         draft = ""
         sentCount += 1
-        rows.append(ChatRow(kind: .user(text)))
-        isTyping = true
-        let agent = agent ?? ChatAgent(model: model) { body in try await ClaudeClient(apiKey: key).send(body) }
-        self.agent = agent
+        session.rows.append(ChatRow(kind: .user(text)))
+        session.isTyping = true
+        let agent = session.agent ?? ChatAgent(model: model) { body in try await ClaudeClient(apiKey: key).send(body) }
+        session.agent = agent
+        let session = session, scope = scope
         Task {
             let outputs = await agent.send(text, scope: scope)
-            isTyping = false
-            rows += outputs.map { output in
+            session.isTyping = false
+            // VoiceOver users hear the reply arrive without hunting for it.
+            if case .text(let reply)? = outputs.first(where: { if case .text = $0 { true } else { false } }) {
+                AccessibilityNotification.Announcement(reply).post()
+            } else if case .error(let message)? = outputs.last {
+                AccessibilityNotification.Announcement(message).post()
+            }
+            session.rows += outputs.map { output in
                 switch output {
                 case .text(let text): ChatRow(kind: .assistant(text))
                 case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
