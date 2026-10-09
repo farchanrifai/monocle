@@ -40,6 +40,8 @@ final class AppModel {
     var expenses: [Expense] { expenseService?.expenses ?? [] }
     var categories: [ExpenseCategory] { expenseService?.categories ?? [] }
     var bills: [BillRule] { expenseService?.bills ?? [] }
+    /// Bumps on every committed write; key memoized views on it.
+    var dataRevision: UInt64 { expenseService?.committedRevision ?? 0 }
     var billOccurrences: [BillOccurrence] { expenseService?.billOccurrences ?? [] }
     var activeCategories: [ExpenseCategory] {
         let currentInactive = workspacePreferences.cardInactiveCategoryIDs[activeBookID] ?? []

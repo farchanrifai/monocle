@@ -127,6 +127,12 @@ final class MacAppState {
     @ObservationIgnored private let hotKey = GlobalHotKeyController()
     @ObservationIgnored private lazy var quickPanel = QuickRecordPanelController(state: self)
 
+    /// Observation notifies on every set, even same value, which re-renders the whole window; only write on change.
+    func inspect(_ selection: MacInspectorSelection) {
+        if inspectorSelection != selection { inspectorSelection = selection }
+        if !inspectorVisible { inspectorVisible = true }
+    }
+
     init(model: AppModel) {
         self.model = model
         destination = Self.decode(UserDefaults.standard.string(forKey: "MacDestination"))

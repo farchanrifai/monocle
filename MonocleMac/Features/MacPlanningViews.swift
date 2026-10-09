@@ -11,7 +11,9 @@ struct MacBudgetsView: View {
         return Int((ratio * 100).rounded())
     }
     var body: some View {
-        Page(title: "Budgets") {
+        var spent: [UUID: Int64] = [:]
+        for allocation in model.cycleExpenses.lazy.flatMap(\.allocations) { spent[allocation.categoryID, default: 0] += allocation.amount }
+        return Page(title: "Budgets") {
             HStack {
                 SummaryTile(title: "Limit", value: Money.format(model.activeBudget.overallLimit), detail: model.cycle.label)
                 SummaryTile(title: "Spent", value: Money.format(model.spent), detail: "\(usedPercent)% used")
@@ -20,14 +22,13 @@ struct MacBudgetsView: View {
             HStack { Text("Category budgets").font(.title2.bold()); Spacer(); Button("Edit Budget") { editing = true } }
             Table(categories) {
                 TableColumn("Category") { category in Label(category.name, systemImage: category.symbol) }
-                TableColumn("Spent") { category in Text(Money.format(model.spent(in: category))).font(.system(.body, design: .monospaced)) }
+                TableColumn("Spent") { category in Text(Money.format(spent[category.id] ?? 0)).font(.system(.body, design: .monospaced)) }
                 TableColumn("Limit") { category in
                     Text(model.activeBudget.limit(for: category.id).map { Money.format($0) } ?? "—").font(.system(.body, design: .monospaced))
                 }
                 TableColumn("Progress") { category in
-                    let spent = model.spent(in: category)
                     let limit = model.activeBudget.limit(for: category.id) ?? model.activeBudget.overallLimit
-                    ProgressView(value: min(1, Double(spent) / Double(max(1, limit))))
+                    ProgressView(value: min(1, Double(spent[category.id] ?? 0) / Double(max(1, limit))))
                 }
             }.frame(minHeight: 280)
         }
@@ -97,7 +98,7 @@ struct MacBillsView: View {
             HStack { Text("Schedule").font(.title2.bold()); Spacer(); Button("New Bill") { adding = true }.buttonStyle(.borderedProminent) }
             Table(model.bills, selection: Binding<BillRule.ID?>(get: {
                 if case .bill(let id) = state.inspectorSelection { id } else { nil }
-            }, set: { newValue in if let newValue { state.inspectorSelection = .bill(newValue); state.inspectorVisible = true } })) {
+            }, set: { newValue in if let newValue { state.inspect(.bill(newValue)) } })) {
                 TableColumn("Name") { bill in Text(bill.name).onTapGesture(count: 2) { editing = bill } }
                 TableColumn("Amount") { Text(Money.format($0.amount)).font(.system(.body, design: .monospaced)) }
                 TableColumn("Schedule") { Text($0.recurrence.title) }
@@ -194,16 +195,19 @@ struct MacAnalyticsView: View {
     @Bindable var state: MacAppState
     @State private var horizon: AnalyticsTimeHorizon = .thisCycle
     private var model: AppModel { state.model }
-    private var range: (startDate: Date, endDate: Date, startDay: String, endDay: String) { AnalyticsEngine.dateRange(for: horizon, currentCycle: model.cycle) }
-    private var expenses: [Expense] { model.allExpenses().filter { $0.day >= range.startDay && $0.day <= range.endDay } }
-    private var daily: [(String, Int64)] { Dictionary(grouping: expenses, by: \.day).map { ($0.key, $0.value.reduce(0) { $0 + $1.amount }) }.sorted { $0.0 < $1.0 } }
-    private var categories: [(String, Int64)] {
+    private func daily(_ expenses: [Expense]) -> [(String, Int64)] { Dictionary(grouping: expenses, by: \.day).map { ($0.key, $0.value.reduce(0) { $0 + $1.amount }) }.sorted { $0.0 < $1.0 } }
+    private func categories(_ expenses: [Expense]) -> [(String, Int64)] {
+        var byID: [UUID: Int64] = [:]
+        for expense in expenses { for allocation in expense.allocations { byID[allocation.categoryID, default: 0] += allocation.amount } }
         var values: [String: Int64] = [:]
-        for expense in expenses { for allocation in expense.allocations { values[model.category(allocation.categoryID)?.name ?? "Other", default: 0] += allocation.amount } }
+        for (id, amount) in byID { values[model.category(id)?.name ?? "Other", default: 0] += amount }
         return values.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
     }
     var body: some View {
-        Page(title: "Analytics") {
+        let range = AnalyticsEngine.dateRange(for: horizon, currentCycle: model.cycle)
+        let expenses = model.allExpenses().filter { $0.day >= range.startDay && $0.day <= range.endDay }
+        let daily = daily(expenses), categories = categories(expenses)
+        return Page(title: "Analytics") {
             Picker("Period", selection: $horizon) { ForEach(AnalyticsTimeHorizon.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
             HStack {
                 SummaryTile(title: "Total", value: Money.format(expenses.reduce(0) { $0 + $1.amount }), detail: "\(expenses.count) transactions")

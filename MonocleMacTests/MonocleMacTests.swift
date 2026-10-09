@@ -59,4 +59,27 @@ final class MonocleMacTests: XCTestCase {
         model.delete(expense)
         XCTAssertNil(model.expense(id: expense.id))
     }
+
+    func testActivityRowsBuildFilterAndSortLargeLedgerQuickly() {
+        let book = BookProfile.sample
+        let food = ExpenseCategory.defaults[0]
+        let expenses = (0..<20_000).map { (i: Int) -> Expense in
+            let amount = Int64(i + 1) * 100
+            let day = String(format: "2026-%02d-%02d", i % 12 + 1, i % 28 + 1)
+            let note = i % 2 == 0 ? "Coffee \(i)" : ""
+            return Expense(amount: amount, day: day, note: note, allocations: [Allocation(categoryID: food.id, amount: amount)], bookID: book.id)
+        }
+        let start = Date()
+        let rows = MacExpenseRow.make(expenses, bookNames: [book.id: book.name], categoryName: { $0 == food.id ? food.name : nil })
+        let coffee = MacExpenseRow.filter(rows, query: " coffee ", sortOrder: [])
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1.5) // was rebuilt on every window refresh before memoizing
+
+        XCTAssertEqual(rows.count, 20_000)
+        XCTAssertEqual(rows[1].title, food.name) // empty note falls back to category
+        XCTAssertEqual(rows[0].book, book.name)
+        XCTAssertEqual(coffee.count, 10_000)
+        XCTAssertTrue(zip(coffee, coffee.dropFirst()).allSatisfy { $0.day >= $1.day })
+        let byAmount = MacExpenseRow.filter(rows, query: "", sortOrder: [KeyPathComparator(\.amountMinor)])
+        XCTAssertEqual(byAmount.first?.amountMinor, 100)
+    }
 }

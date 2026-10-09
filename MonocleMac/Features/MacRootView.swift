@@ -375,7 +375,7 @@ private struct MacCompactExpenseList: View {
         VStack(spacing: 0) {
             ForEach(expenses) { expense in
                 Button {
-                    state.inspectorSelection = .expense(expense.id); state.inspectorVisible = true
+                    state.inspect(.expense(expense.id))
                 } label: {
                     HStack {
                         Text(Day.title(expense.day)).frame(width: 90, alignment: .leading)
@@ -394,24 +394,8 @@ struct MacActivityView: View {
     @Bindable var state: MacAppState
     let bookID: UUID?
     @State private var sortOrder: [KeyPathComparator<MacExpenseRow>] = []
-
-    private var rows: [MacExpenseRow] {
-        let source = bookID.map(state.model.expenses(for:)) ?? state.model.allExpenses()
-        let books = Dictionary(state.model.books.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-        let rows = source.map { expense in
-            MacExpenseRow(expense: expense, title: state.model.title(expense),
-                          category: state.model.category(expense.allocations.first?.categoryID)?.name ?? "Split",
-                          book: expense.bookID.flatMap { books[$0] } ?? "",
-                          amount: Money.format(expense.amount))
-        }
-        let query = state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let filtered = query.isEmpty ? rows : rows.filter {
-            $0.title.localizedCaseInsensitiveContains(query) || $0.category.localizedCaseInsensitiveContains(query)
-        }
-        return sortOrder.isEmpty
-            ? filtered.sorted { $0.day == $1.day ? $0.expense.createdAt > $1.expense.createdAt : $0.day > $1.day }
-            : filtered.sorted(using: sortOrder)
-    }
+    @State private var allRows: [MacExpenseRow] = []
+    @State private var rows: [MacExpenseRow] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -419,21 +403,61 @@ struct MacActivityView: View {
             MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder, edit: edit)
                 .accessibilityIdentifier("activityTable")
         }.padding(24).navigationTitle("Activity")
+        // Rows rebuild only when data or the card changes, not on every window refresh (selection, inspector, typing).
+        .onChange(of: RowsSource(revision: state.model.dataRevision, bookID: bookID, bookCount: state.model.books.count), initial: true) { buildRows() }
+        .onChange(of: state.searchText) { refresh() }
+        .onChange(of: sortOrder) { refresh() }
     }
+
+    private struct RowsSource: Equatable { let revision: UInt64; let bookID: UUID?; let bookCount: Int }
+
+    private func buildRows() {
+        let model = state.model
+        let source = bookID.map(model.expenses(for:)) ?? model.allExpenses()
+        let books = Dictionary(model.books.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        allRows = MacExpenseRow.make(source, bookNames: books, categoryName: { model.category($0)?.name })
+        refresh()
+    }
+
+    private func refresh() { rows = MacExpenseRow.filter(allRows, query: state.searchText, sortOrder: sortOrder) }
+
     private func edit(_ expense: Expense) {
         state.model.edit(expense); state.model.showEntry = false; state.regularEntryVisible = true
     }
 }
 
-private struct MacExpenseRow: Identifiable {
+struct MacExpenseRow: Identifiable {
     let expense: Expense
     let title: String
     let category: String
     let book: String
-    let amount: String
     var id: Expense.ID { expense.id }
     var day: String { expense.day }
     var amountMinor: Int64 { expense.amount }
+
+    static func make(_ expenses: [Expense], bookNames: [UUID: String], categoryName: (UUID) -> String?) -> [MacExpenseRow] {
+        var names: [UUID: String] = [:]
+        func name(_ id: UUID?) -> String? {
+            guard let id else { return nil }
+            if let cached = names[id] { return cached }
+            let value = categoryName(id); names[id] = value; return value
+        }
+        return expenses.map { expense in
+            let category = name(expense.allocations.first?.categoryID)
+            return MacExpenseRow(expense: expense, title: expense.note.isEmpty ? category ?? "Expense" : expense.note,
+                                 category: category ?? "Split", book: expense.bookID.flatMap { bookNames[$0] } ?? "")
+        }
+    }
+
+    static func filter(_ rows: [MacExpenseRow], query: String, sortOrder: [KeyPathComparator<MacExpenseRow>]) -> [MacExpenseRow] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filtered = query.isEmpty ? rows : rows.filter {
+            $0.title.localizedCaseInsensitiveContains(query) || $0.category.localizedCaseInsensitiveContains(query)
+        }
+        return sortOrder.isEmpty
+            ? filtered.sorted { $0.day == $1.day ? $0.expense.createdAt > $1.expense.createdAt : $0.day > $1.day }
+            : filtered.sorted(using: sortOrder)
+    }
 }
 
 private struct MacActivityTable: View {
@@ -449,9 +473,9 @@ private struct MacActivityTable: View {
                 TableColumn("Note", value: \.title) { Text($0.title) }
                 TableColumn("Category", value: \.category) { Text($0.category) }
                 TableColumn("Card", value: \.book) { Text($0.book) }
-                TableColumn("Amount", value: \.amountMinor) { Text($0.amount).font(.system(.body, design: .monospaced)) }.width(min: 110, ideal: 130)
+                TableColumn("Amount", value: \.amountMinor) { Text(Money.format($0.amountMinor)).font(.system(.body, design: .monospaced)) }.width(min: 110, ideal: 130)
             }
-            .onChange(of: selection) { _, id in if let id { state.inspectorSelection = .expense(id); state.inspectorVisible = true } }
+            .onChange(of: selection) { _, id in if let id { state.inspect(.expense(id)) } }
             .onKeyPress(.return) { if let row = rows.first(where: { $0.id == selection }) { edit(row.expense) }; return .handled }
     }
 }
