@@ -2,7 +2,9 @@
 
 2026-10-09: CHAT_SPEC §11 step 1 committed on `feat/ai-chat` (chat UI preview approved by user after device test of build 87; scope dropdown moved from title to the "Stack: Daily ⌄" subtitle, a custom principal toolbar item with `chatScopeMenu`). Latest published build: 0.7.22 (87). Every future build: bump MARKETING_VERSION + build number, publish to SideStore.
 
-Next: §11 step 2 — `Application/Chat/ToolExecutor.swift` (Foundation only) + unit tests against a fake `ExpenseStore`: rupiah↔minor conversion, category name→ID mapping, scope resolution, target-card selection, `propose_expense`/`query_expenses`/`get_summary`/`compare_periods`/`get_budget_status`/`list_cards`. No network.
+Step 2 committed on `feat/ai-chat`: `Monocle/Application/Chat/ToolExecutor.swift` — `ToolExecutor(model:scope:now:).run(name, input: Data) -> Outcome{json,isError,proposal,chart}` for propose_expense, query_expenses, get_summary, compare_periods, get_budget_status, list_cards. AppModel: `expenseService` now internal, new `books(in:)` (used by `reportingData`, keeps stack order) and `activeCategories(in:)`. Ambiguous stack/card names need `stack:`/`card:` prefix. `MonocleTests/ChatToolTests.swift` 10 tests pass; full unit suite 190 passed / 1 skipped.
+
+Next: §11 step 3 — `ClaudeClient` (URLSession, non-streaming, Haiku 5.5 `claude-haiku-5-5`, effort low, strict tool schemas), `ChatAgent` loop (max 6 iterations, all tool_results in one user message), Keychain API key (dev setting), Settings toggle + disclosure; wire ChatView to the agent and drop the mock seed.
 
 ## 2. Last Completed Checkpoint
 

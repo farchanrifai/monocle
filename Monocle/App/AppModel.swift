@@ -93,7 +93,7 @@ final class AppModel {
     var undoExpense: Expense?
     private var undoOccurrences: [BillOccurrence] = []
     @ObservationIgnored private var durablePreferences = WorkspacePreferences()
-    private let expenseService: ExpenseService?
+    let expenseService: ExpenseService?
     private let state: (any LocalStateStore)?
 
     var books: [BookProfile] { expenseService?.books ?? [settings.book] }
@@ -904,15 +904,26 @@ final class AppModel {
         return total
     }
 
-    func reportingData(for scope: AnalyticsFilterScope) -> AnalyticsReportingData {
-        let selected: [BookProfile]
+    /// Cards a scope covers; stacks keep their own card order.
+    func books(in scope: AnalyticsFilterScope) -> [BookProfile] {
         switch scope {
-        case .card(let id, _): selected = books.filter { $0.id == id }
+        case .card(let id, _): return books.filter { $0.id == id }
         case .stack(let id, _):
-            let ids = Set(stacks.first(where: { $0.id == id })?.cardIDs ?? [])
-            selected = books.filter { ids.contains($0.id) && !alwaysHiddenBookIDs.contains($0.id) }
-        case .allCards: selected = unhiddenBooks
+            let ids = stacks.first(where: { $0.id == id })?.cardIDs ?? []
+            return ids.compactMap { id in books.first { $0.id == id } }.filter { !alwaysHiddenBookIDs.contains($0.id) }
+        case .allCards: return unhiddenBooks
         }
+    }
+
+    /// Categories a new expense on this card may use: not archived, not deactivated for the card.
+    func activeCategories(in bookID: UUID) throws -> [ExpenseCategory] {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let inactive = workspacePreferences.cardInactiveCategoryIDs[bookID] ?? []
+        return try expenseService.categories(for: bookID).filter { !settings.archivedCategoryIDs.contains($0.id) && !inactive.contains($0.id) }
+    }
+
+    func reportingData(for scope: AnalyticsFilterScope) -> AnalyticsReportingData {
+        let selected = books(in: scope)
         var data = AnalyticsReportingData()
         data.books = selected
         do {

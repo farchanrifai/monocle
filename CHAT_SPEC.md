@@ -47,7 +47,7 @@ No chat library. Pure SwiftUI (iOS 26, also compiles for a future macOS target).
 ## 2. Scope (default = active stack)
 
 - Default scope follows the Home filter: `filterScope == .activeStack` → `AnalyticsFilterScope.stack(currentStack)`; `.allCards` → `.allCards`. Same mapping as `AnalyticsView.syncScopeWithHomeContext`.
-- Every read tool takes optional `scope`: `"default" | "all_cards" | card name | stack name`. The executor resolves names; no match → error listing valid names.
+- Every read tool takes optional `scope`: `"default" | "all_cards" | name`, where a name may be prefixed `stack:` or `card:`. A name matching both a stack and a card (the default stack and a card can both be "Daily") is an error asking for the prefix; no match → error listing valid scopes.
 - Chat **never changes** the Home filter.
 - **Target card for new expenses:** named card if given; else `model.selectedBookID ?? model.activeBookID` if that card is in scope; else the first card of the active stack. The confirm card always shows which card it will save to.
 
