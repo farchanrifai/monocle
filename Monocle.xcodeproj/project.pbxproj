@@ -26,7 +26,6 @@
 		27FBC893C5758EE673836A2E /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE599406EF5472DD7EFA518D /* BudgetWidget.swift */; };
 		293AFAA58FB172153063BB2E /* MonocleMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3085159AA9E2AD61AD09383C /* MonocleMacUITests.swift */; };
 		2961C83B8ED1152795267768 /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */; };
-		2964F642D5DB9AAF0E35B542 /* ChatSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */; };
 		2DFA3999656550D46A2E766B /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD9FB88E2A572D015D39DA4 /* CardArtworkStore.swift */; };
 		2E30B021C9D46E6D22A37A33 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C985068FF1DDAD18749F35 /* ChatInputBar.swift */; };
 		2E4CCC3AD147A0DABCD1A545 /* BackendCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9324FD39B2CDB5C5C5602BC /* BackendCommandTests.swift */; };
@@ -920,7 +919,6 @@
 				42AD99E90A28D8A39E432A5B /* ChatAgent.swift in Sources */,
 				C3156F11D71FB7574B6F68D3 /* ChatBubble.swift in Sources */,
 				6F009E1531788C0681806107 /* ChatSession.swift in Sources */,
-				2964F642D5DB9AAF0E35B542 /* ChatSettingsView.swift in Sources */,
 				A440F07BCE399F8418654D19 /* ChatSummaryChart.swift in Sources */,
 				1E3E91F27C7CF9A6AC54C0F8 /* ChatTranscript.swift in Sources */,
 				B7A3816FB60EADB653F4AB40 /* ClaudeClient.swift in Sources */,

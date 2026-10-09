@@ -105,7 +105,6 @@ targets:
       - path: Monocle/Features/Chat/ChatTranscript.swift
       - path: Monocle/Features/Chat/ExpenseProposalCard.swift
       - path: Monocle/Features/Chat/ChatSummaryChart.swift
-      - path: Monocle/Features/Chat/ChatSettingsView.swift
       - path: MonocleMac
     info:
       path: MonocleMac/Resources/Info.plist

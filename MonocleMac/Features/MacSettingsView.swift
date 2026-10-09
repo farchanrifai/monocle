@@ -18,7 +18,8 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
     }
 }
 
-/// Sidebar settings, matching the main window's sidebar rather than a toolbar of tabs.
+/// Sidebar settings in the System Settings / Dia layout: translucent sidebar, and panes as centred column forms
+/// (right-aligned "Label:" column, controls on the left edge of the second column).
 struct MacSettingsView: View {
     @Bindable var state: MacAppState
     @Bindable private var model: AppModel
@@ -35,15 +36,19 @@ struct MacSettingsView: View {
                 Label(pane.title, systemImage: pane.symbol).tag(pane)
             }
             .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(190)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 200, max: 200)
             .toolbar(removing: .sidebarToggle)
         } detail: {
-            detail
-                .formStyle(.grouped)
-                .navigationTitle(pane.title)
-                .id(pane) // the detail column otherwise keeps showing the first pane
+            ScrollView {
+                detail
+                    .formStyle(.columns)
+                    .padding(.horizontal, 40).padding(.top, 28).padding(.bottom, 40)
+                    .frame(maxWidth: .infinity)
+            }
+            .navigationTitle(pane.title)
+            .id(pane) // the detail column otherwise keeps showing the first pane
         }
-        .frame(width: 760, height: 540)
+        .frame(width: 780, height: 560)
         .onAppear { if selection == nil { selection = savedPane } }
         .onChange(of: selection) { _, value in if let value { savedPane = value } }
     }
@@ -52,56 +57,103 @@ struct MacSettingsView: View {
         switch pane {
         case .general:
             Form {
-                Section {
-                    Picker("Preferred entry mode", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
-                        Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
-                    }
-                } footer: {
-                    Text("The global shortcut opens Quick Record while Monocle is running.")
+                Picker("Entry mode:", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
+                    Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
                 }
+                .pickerStyle(.radioGroup)
+                SettingsNote("Quick Record (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) opens from anywhere while Monocle is running.")
             }
         case .appearance:
             Form {
-                Picker("Appearance", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
+                Picker("Appearance:", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
                     if value == "automatic" { model.autoAppearance = true }
                     else { model.manualAppearance = value == "light" ? .light : .dark }
                 })) { Text("Automatic").tag("automatic"); Text("Light").tag("light"); Text("Dark").tag("dark") }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.radioGroup)
             }
         case .shortcuts:
             ShortcutSettings(state: state)
         case .security:
             Form {
-                Section {
-                    Picker("App lock", selection: Binding(get: { model.settings.appLockTimeout }, set: { value in
-                        Task { if case .failure(let error) = await model.setAppLockTimeout(value) { lockError = error.localizedDescription } }
-                    })) {
-                        Text("Off").tag(AppLockTimeout?.none)
-                        ForEach(AppLockTimeout.allCases) { Text($0.title).tag(Optional($0)) }
-                    }
-                } footer: {
-                    Text("Uses Touch ID or your Mac login password.")
-                    if let lockError { Text(lockError).foregroundStyle(.red) }
+                Picker("Lock Monocle:", selection: Binding(get: { model.settings.appLockTimeout }, set: { value in
+                    Task { if case .failure(let error) = await model.setAppLockTimeout(value) { lockError = error.localizedDescription } }
+                })) {
+                    Text("Never").tag(AppLockTimeout?.none)
+                    ForEach(AppLockTimeout.allCases) { Text($0.title).tag(Optional($0)) }
                 }
+                .fixedSize()
+                SettingsNote("Unlock with Touch ID or your Mac login password.")
+                if let lockError { SettingsNote(lockError).foregroundStyle(.red) }
             }
         case .chat:
-            ChatSettingsView()
+            ChatSettingsPane()
         case .data:
             Form {
-                Section {
-                    LabeledContent("CSV") {
-                        Button("Import…") { state.perform(.importCSV) }
-                        Button("Export…") { state.perform(.exportCSV) }
+                LabeledContent("CSV:") {
+                    HStack { Button("Import…") { state.perform(.importCSV) }; Button("Export…") { state.perform(.exportCSV) } }
+                }
+                LabeledContent("Backup:") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack { Button("Export…") { state.perform(.exportBackup) }; Button("Restore…") { state.perform(.restoreBackup) } }
+                        SettingsNote("Backups use the same format as Monocle for iPhone.")
                     }
-                    LabeledContent("Backup") {
-                        Button("Export…") { state.perform(.exportBackup) }
-                        Button("Restore…") { state.perform(.restoreBackup) }
-                    }
-                } footer: {
-                    Text("Backups use the same format as Monocle for iPhone.")
                 }
             }
         }
+    }
+}
+
+/// Secondary explanation under a control, wrapped to the control column.
+private struct SettingsNote: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text).font(.callout).foregroundStyle(.secondary)
+            .frame(maxWidth: 360, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Opt-in, disclosure and personal API key (CHAT_SPEC §0 rule 6, §9); the iPhone has its own sheet.
+private struct ChatSettingsPane: View {
+    @AppStorage("chatEnabled") private var chatEnabled = false
+    @State private var keyDraft = ""
+    @State private var hasKey = APIKeyStore.read() != nil
+
+    var body: some View {
+        Form {
+            LabeledContent("AI Chat:") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Enable AI chat", isOn: $chatEnabled).accessibilityIdentifier("chatEnabledToggle")
+                    SettingsNote("Your messages, plus the spending data needed to answer them (amounts, dates, notes, category and card names), are sent to Anthropic's Claude. Nothing is sent until you use chat, and expenses are only saved when you click Save.")
+                }
+            }
+            LabeledContent("API key:") {
+                VStack(alignment: .leading, spacing: 8) {
+                    if hasKey {
+                        HStack {
+                            Label("Saved in Keychain", systemImage: "checkmark.seal.fill").foregroundStyle(.secondary)
+                            Button("Remove") { APIKeyStore.delete(); hasKey = false }
+                        }
+                    } else {
+                        HStack {
+                            SecureField("API key", text: $keyDraft, prompt: Text("sk-ant-…")).labelsHidden().frame(width: 240)
+                                .accessibilityIdentifier("chatAPIKeyField")
+                                .onSubmit(save)
+                            Button("Save", action: save)
+                                .disabled(keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                    SettingsNote("Stored in the Keychain on this Mac only. Create one at platform.claude.com.")
+                }
+            }
+        }
+    }
+
+    private func save() {
+        let key = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+        hasKey = APIKeyStore.save(key)
+        keyDraft = ""
     }
 }
 
@@ -112,28 +164,39 @@ private struct ShortcutSettings: View {
 
     var body: some View {
         Form {
-            Section {
-                ForEach(MacCommandID.allCases) { id in
-                    LabeledContent(title(for: id)) {
-                        if recording == id {
-                            KeyChordRecorder { chord in assign(chord, to: id) }.frame(width: 130, height: 24)
-                        } else {
-                            Button(state.shortcut(for: id)?.displayName ?? "None") { recording = id; error = nil }
-                                .frame(minWidth: 110)
+            ForEach(Self.groups, id: \.self) { group in
+                Section {
+                    if group != Self.groups.first { Color.clear.frame(height: 14) } // column forms ignore Section spacing
+                    ForEach(group) { id in
+                        LabeledContent("\(title(for: id)):") {
+                            if recording == id {
+                                KeyChordRecorder { chord in assign(chord, to: id) }.frame(width: 110, height: 22)
+                            } else {
+                                Button { recording = id; error = nil } label: {
+                                    Text(state.shortcut(for: id)?.displayName ?? "None").frame(width: 90)
+                                }
+                            }
                         }
                     }
                 }
-            } header: {
-                Text("Click a shortcut, then press a key with modifiers.")
-            } footer: {
-                if let error { Text(error).foregroundStyle(.red) }
-                Text("Quit, Hide, Close, Undo, Cut, Copy, Paste, and Select All keep their standard macOS shortcuts.")
             }
-            Section {
-                Button("Restore Defaults") { state.resetShortcuts(); error = nil; recording = nil }
+            LabeledContent("") {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let error { SettingsNote(error).foregroundStyle(.red) }
+                    SettingsNote("Click a shortcut, then press a key with modifiers. Quit, Hide, Close, Undo, Cut, Copy, Paste, and Select All keep their standard macOS shortcuts.")
+                    Button("Restore Defaults") { state.resetShortcuts(); error = nil; recording = nil }
+                }
+                .padding(.top, 12)
             }
         }
     }
+
+    // Spacing between groups instead of one long wall of rows.
+    private static let groups: [[MacCommandID]] = [
+        [.commandBar, .newExpense, .quickRecord, .focusSearch, .toggleSidebar, .toggleInspector],
+        [.overview, .activity, .budgets, .bills, .analytics, .cards, .chat],
+        [.importCSV, .exportCSV, .exportBackup, .restoreBackup, .settings, .lock]
+    ]
 
     private func title(for id: MacCommandID) -> String {
         id == .commandBar ? "Command Bar" : state.commands.first(where: { $0.commandID == id })?.title ?? id.rawValue

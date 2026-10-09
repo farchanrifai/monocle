@@ -179,6 +179,8 @@ import XCTest
         app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-MacSettingsPane", "general"]
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launch()
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        let main = XCTAttachment(screenshot: app.windows.firstMatch.screenshot()); main.name = "Main"; main.lifetime = .keepAlways; add(main)
         app.typeKey(",", modifierFlags: .command)
         let settings = app.windows["com_apple_SwiftUI_Settings_window"]
         XCTAssertTrue(settings.waitForExistence(timeout: 3))

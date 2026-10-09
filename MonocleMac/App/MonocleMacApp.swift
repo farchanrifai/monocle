@@ -13,6 +13,6 @@ struct MonocleMacApp: App {
         .windowResizability(.contentMinSize)
         .commands { MonocleMacCommands(state: state) }
 
-        Settings { MacSettingsView(state: state) }
+        Settings { MacSettingsView(state: state).preferredColorScheme(state.model.preferredColorScheme) }
     }
 }
