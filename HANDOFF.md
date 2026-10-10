@@ -9,6 +9,9 @@ Fixed both known AI Chat bugs (Apple on-device backend); merged into `feat/apple
 
 Still open (AI Chat): live check of Quick Chat, charts, @ picker (Mac + iOS on device); keep/remove Apple backend decision; follow-up period carry-over; proxy before sharing; chat v2 streaming + localized strings. Mac Analytics live feedback (previous checkpoint) still pending.
 
+Mac toolbar (commit `a88a4e3`, pushed): window title hidden (`.windowToolbarStyle(.unified(showsTitle: false))` in MonocleMacApp; each page draws its own large title) and toolbar background hidden so every page matches. `.toolbar` sits on the detail column in MacRootView (on the split view, macOS 26 ignored `ToolbarSpacer`); layout (Search) (Commands | Inspector) (+), inspector icon `pointer.arrow.click`. Verified by window capture.
+- Screen checks without focus: `screencapture -x -o -l <windowID>` works (window id via CGWindowListCopyWindowInfo, owner "Monocle"); the window must be on screen, not in the Stage Manager strip. A post-launch capture showed an empty sidebar Cards section and 0 bills in the demo; likely still loading, unconfirmed.
+
 ## 2. Last Completed Checkpoint
 
 
