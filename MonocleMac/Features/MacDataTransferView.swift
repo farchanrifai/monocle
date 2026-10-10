@@ -123,7 +123,7 @@ struct MacDataTransferView: View {
         guard let targetBookID, let defaultCategoryID else { return }
         importRows = CSVImportParser.processRows(rawRows: rawRows, hasHeader: hasHeader, mapping: mapping, targetBookID: targetBookID,
                                                  categories: model.activeCategories(for: targetBookID), defaultCategoryID: defaultCategoryID,
-                                                 existingExpenses: model.expenses(for: targetBookID))
+                                                 existingExpenses: model.expenses(for: targetBookID), paymentMethods: model.paymentMethods)
     }
 
     private func importCSV() {

@@ -498,6 +498,58 @@ final class MultiBookTests: XCTestCase {
                                                   totalUntil: XCTUnwrap(Calendar.current.date(byAdding: .day, value: -60, to: .now))))
     }
 
+    func testPaidWithLabelsDefaultsFormFieldsAndBreakdown() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
+        let cardID = model.activeBookID
+
+        // Labels: names are unique ignoring case.
+        let bca = try model.savePaymentMethod(PaymentMethod(name: "  BCA debit ", kind: .bank))
+        XCTAssertEqual(bca.name, "BCA debit")
+        XCTAssertThrowsError(try model.savePaymentMethod(PaymentMethod(name: "bca DEBIT"))) { XCTAssertEqual($0 as? PaymentMethodError, .duplicateName) }
+        let cash = try model.savePaymentMethod(PaymentMethod(name: "Cash", kind: .cash))
+
+        // The card default pre-fills a new expense, which saves with it.
+        try model.setDefaultPaidWith(bca.id, for: cardID)
+        XCTAssertEqual(model.books.first { $0.id == cardID }?.defaultPaidWithID, bca.id)
+        model.draft = ExpenseDraft(); model.draft.bookID = cardID
+        model.prefillDraftDefaults()
+        XCTAssertEqual(model.draft.paidWithID, bca.id)
+        model.draft.amount = "28000"; model.draft.categoryID = model.activeCategories.first?.id
+        XCTAssertTrue(model.saveDraft())
+        let saved = try XCTUnwrap(model.expenses.first)
+        XCTAssertEqual(saved.paidWithID, bca.id)
+
+        // A label in use can't be deleted; an unused one can, and clears card defaults pointing at it.
+        XCTAssertThrowsError(try model.deletePaymentMethod(id: bca.id)) { XCTAssertEqual($0 as? PaymentMethodError, .inUse(1)) }
+        try model.setDefaultPaidWith(cash.id, for: cardID)
+        try model.deletePaymentMethod(id: cash.id)
+        XCTAssertNil(model.books.first { $0.id == cardID }?.defaultPaidWithID)
+        XCTAssertEqual(model.paymentMethods.map(\.name), ["BCA debit"])
+
+        // A label that vanished while a draft was open is dropped instead of saved dangling.
+        var stale = saved; stale.id = UUID(); stale.paidWithID = UUID()
+        try model.save(stale)
+        XCTAssertNil(try repo.expenses(in: cardID).first { $0.id == stale.id }?.paidWithID)
+
+        // Form fields: Paid with and Currency start hidden; toggles persist.
+        XCTAssertFalse(model.isEntryFieldShown(.paidWith))
+        XCTAssertTrue(model.isEntryFieldShown(.date))
+        model.setEntryField(.paidWith, shown: true); model.setEntryField(.note, shown: false)
+        XCTAssertTrue(model.isEntryFieldShown(.paidWith)); XCTAssertFalse(model.isEntryFieldShown(.note))
+        XCTAssertEqual(Set(try FileLocalStateStore(directory: tempDir).loadWorkspacePreferences().hiddenEntryFields), [.currency, .note])
+
+        // Breakdown: per label, with "Not set" for the rest; empty when nothing has a label.
+        let totals = AnalyticsEngine.paidWithTotals([saved, stale], methods: model.paymentMethods)
+        XCTAssertEqual(totals.map(\.name), ["BCA debit", "Not set"])
+        var plain = stale; plain.paidWithID = nil
+        XCTAssertTrue(AnalyticsEngine.paidWithTotals([plain], methods: model.paymentMethods).isEmpty)
+    }
+
     func testStackCardReorderingAndFrontCard() throws {
         let store = try ExpenseRepository(inMemory: true)
         let b1 = try store.createBook(named: "Card 1")

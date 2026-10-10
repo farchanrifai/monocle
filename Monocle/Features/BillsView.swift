@@ -727,6 +727,22 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("manageCategories")
 
+                    NavigationLink {
+                        PaymentMethodsView(model: model, bookID: activeBook.id)
+                    } label: {
+                        LabeledContent {
+                            Text(model.paymentMethod(activeBook.defaultPaidWithID)?.name ?? "\(model.paymentMethods.count)")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label {
+                                Text("Paid with")
+                            } icon: {
+                                SettingsIcon(symbol: "creditcard.and.123", color: .mint)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("paidWithSettings")
+
                     LabeledContent {
                         Text("IDR")
                             .foregroundStyle(.secondary)
@@ -790,6 +806,16 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("entryMode")
+                    NavigationLink {
+                        EntryFormSettingsView(model: model)
+                    } label: {
+                        Label {
+                            Text("Add Expense form")
+                        } icon: {
+                            SettingsIcon(symbol: "list.bullet.rectangle", color: .indigo)
+                        }
+                    }
+                    .accessibilityIdentifier("entryFormSettings")
                 } header: {
                     Text("Expense Input")
                 } footer: {

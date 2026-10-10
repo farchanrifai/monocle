@@ -558,11 +558,13 @@ struct CSVInterchangeView: View {
         let destination = targetBookID
         let existing = model.expenses(for: destination)
         let skip = skipDuplicates
+        let methods = model.paymentMethods
         isProcessing = true
         processingTask = Task { @MainActor in
             let worker = Task.detached(priority: .userInitiated) {
                 var parsed = CSVImportParser.processRows(rawRows: rows, hasHeader: true, mapping: mapping,
-                    targetBookID: destination, categories: categories, defaultCategoryID: defaultCat, existingExpenses: existing)
+                    targetBookID: destination, categories: categories, defaultCategoryID: defaultCat, existingExpenses: existing,
+                    paymentMethods: methods)
                 for index in parsed.indices where parsed[index].isDuplicate { parsed[index].isSelectedForImport = !skip }
                 try Task.checkCancellation()
                 return parsed

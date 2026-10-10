@@ -156,11 +156,27 @@ final class CSVTests: XCTestCase {
             bookID: bookID
         )
 
+        // Paid with round-trips by label name; an unknown name imports unset.
+        let bca = PaymentMethod(name: "BCA debit")
+        var paid = exp1; paid.paidWithID = bca.id
+        let paidCSV = CSVExportGenerator.generate(expenses: [paid, exp2], categories: categories, books: books, paymentMethods: [bca])
+        let paidRows = try CSVTokenizer.parse(content: paidCSV, delimiter: ",")
+        XCTAssertEqual(paidRows[1].last, "BCA debit")
+        let paidMapping = CSVImportParser.detectColumnMapping(headers: paidRows[0])
+        XCTAssertEqual(paidMapping.paidWithIndex, 8)
+        let imported = CSVImportParser.processRows(rawRows: paidRows, hasHeader: true, mapping: paidMapping, targetBookID: bookID,
+                                                   categories: categories, defaultCategoryID: foodCat.id, existingExpenses: [],
+                                                   paymentMethods: [bca])
+        XCTAssertEqual(imported.compactMap(\.parsedExpense).map(\.paidWithID), [bca.id, nil])
+        let unknown = CSVImportParser.processRows(rawRows: paidRows, hasHeader: true, mapping: paidMapping, targetBookID: bookID,
+                                                  categories: categories, defaultCategoryID: foodCat.id, existingExpenses: [])
+        XCTAssertEqual(unknown.compactMap(\.parsedExpense).compactMap(\.paidWithID), [])
+
         let csv = CSVExportGenerator.generate(expenses: [exp1, exp2], categories: categories, books: books)
         let rows = try CSVTokenizer.parse(content: csv, delimiter: ",")
 
         XCTAssertEqual(rows.count, 3)
-        XCTAssertEqual(rows[0], ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits"])
+        XCTAssertEqual(rows[0], ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits", "Paid with"])
 
         // Row 1
         XCTAssertEqual(rows[1][0], "2026-09-10")

@@ -14,6 +14,13 @@ struct EntryView: View {
     @State private var showDiscard = false
     @State private var selectionTick = 0
     private var amount: Int64 { (try? model.draft.resolvedAmount()) ?? 0 }
+    // A hidden field still shows when the expense already has a value for it.
+    private var showsDate: Bool { model.isEntryFieldShown(.date) || model.draft.civilDay != Day.string(.now) }
+    private var showsNote: Bool { model.isEntryFieldShown(.note) || !model.draft.note.isEmpty }
+    private var showsSplit: Bool { model.isEntryFieldShown(.split) || model.draft.isSplit }
+    private var showsPaidWith: Bool {
+        (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -30,21 +37,24 @@ struct EntryView: View {
                                     focusedField = nil
                                     showCategories = true
                                 }
-                                Button {
+                                if showsSplit { Button {
                                     focusedField = nil
                                     model.beginSplitting()
                                     showSplits = model.draft.isSplit
                                 } label: {
                                     Label("Split across categories", systemImage: "square.grid.2x2")
                                         .font(.subheadline.weight(.semibold))
-                                 }.tint(MC.red).accessibilityIdentifier("editSplits")
+                                 }.tint(MC.red).accessibilityIdentifier("editSplits") }
                             }
-                            HStack(spacing: 10) {
-                                Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
-                                TextField("Add a note (optional)", text: $model.draft.note)
-                                    .font(.subheadline).submitLabel(.done).focused($focusedField, equals: .note)
-                                    .onSubmit { focusedField = nil }.accessibilityIdentifier("expenseNote")
-                            }.frame(minHeight: 44)
+                            if showsPaidWith { paidWithMenu }
+                            if showsNote {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
+                                    TextField("Add a note (optional)", text: $model.draft.note)
+                                        .font(.subheadline).submitLabel(.done).focused($focusedField, equals: .note)
+                                        .onSubmit { focusedField = nil }.accessibilityIdentifier("expenseNote")
+                                }.frame(minHeight: 44)
+                            }
                         }.padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 12)
                     }
                     .scrollDismissesKeyboard(.interactively)
@@ -113,6 +123,7 @@ struct EntryView: View {
             .sensoryFeedback(.selection, trigger: selectionTick)
             .onChange(of: model.draft.mode) { _, mode in focusedField = mode == .text ? .text : nil }
             .onAppear {
+                model.prefillDraftDefaults()
                 if model.draft.mode == .text { focusedField = .text }
             }
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
@@ -135,9 +146,11 @@ struct EntryView: View {
             HStack {
                 Eyebrow(text: "Amount / IDR")
                 Spacer()
-                Button { focusedField = nil; showDate = true } label: {
-                    Label(Day.title(model.draft.civilDay), systemImage: "calendar").font(.caption)
-                }.tint(.secondary).frame(minHeight: 32)
+                if showsDate {
+                    Button { focusedField = nil; showDate = true } label: {
+                        Label(Day.title(model.draft.civilDay), systemImage: "calendar").font(.caption)
+                    }.tint(.secondary).frame(minHeight: 32)
+                }
             }
             Text(Money.format(amount, currency: false))
                 .font(.system(size: amountSize, weight: .regular, design: .monospaced)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
@@ -147,6 +160,22 @@ struct EntryView: View {
                 .accessibilityLabel("Amount \(Money.format(amount))").accessibilityIdentifier("amountDisplay")
             Rectangle().fill(MC.line).frame(height: 1)
         }
+    }
+    private var paidWithMenu: some View {
+        Menu {
+            Picker("Paid with", selection: $model.draft.paidWithID) {
+                Text("Not set").tag(UUID?.none)
+                ForEach(model.paymentMethods) { method in Label(method.name, systemImage: method.kind.symbol).tag(UUID?.some(method.id)) }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: model.paymentMethod(model.draft.paidWithID)?.kind.symbol ?? "creditcard").foregroundStyle(.secondary)
+                Text("Paid with").foregroundStyle(.secondary)
+                Spacer()
+                Text(model.paymentMethod(model.draft.paidWithID)?.name ?? "Not set").foregroundStyle(.primary)
+                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.secondary)
+            }.font(.subheadline).frame(minHeight: 44)
+        }.accessibilityIdentifier("paidWithMenu")
     }
     private var splitSummary: some View {
         Button {

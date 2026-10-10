@@ -255,6 +255,7 @@ struct MacAnalyticsView: View {
         let cumulative = daily.map { running += $0.1; return ($0.0, running) }
         let categories = grouped(expenses.flatMap(\.allocations).map { (model.category($0.categoryID)?.name ?? "Other", $0.amount) })
         let cards = grouped(rows.map { ($0.card, $0.expense.amount) })
+        let paidWith = AnalyticsEngine.paidWithTotals(expenses, methods: model.paymentMethods).map { ($0.name, $0.amount) }
         let weekdays = weekdayTotals(expenses)
         let dayCounts = Dictionary(grouping: expenses, by: \.day).mapValues(\.count)
         let dayAmounts = Dictionary(uniqueKeysWithValues: daily)
@@ -336,6 +337,11 @@ struct MacAnalyticsView: View {
                     }
                     .chartOverlay { proxy in HoverOverlay(proxy: proxy) { x in hoverWeekday = x.flatMap { proxy.value(atX: $0, as: String.self) } } }
                     .chartYAxis { AxisMarks(format: Self.idr) }
+                }
+            }
+            if !paidWith.isEmpty {
+                cardRow {
+                    ChartCard("By Paid with", info: "How you paid for the expenses in view. Expenses without a label show as Not set.") { BarList(items: paidWith, total: total) }
                 }
             }
             cardRow {

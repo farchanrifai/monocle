@@ -127,6 +127,7 @@
 		CFC2ED8F8DBC21291C70B446 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
 		D28862952E06ADCA4386CF2A /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
 		D6A62922768B3F0E803F2844 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */; };
+		DB38C125D8390B8EBE581AD0 /* PaidWithSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */; };
 		DDEBFCFF6342B39DCFB0D54D /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C6F2F7E78348046E865E34 /* BackupService.swift */; };
 		DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */; };
 		E4744CA94D57CE96A6BD7C60 /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD14F3361CFDC5E8013E693F /* ChatAgent.swift */; };
@@ -270,6 +271,7 @@
 		9824AED70CAEA0CCB49515DA /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleApp.swift; sourceTree = "<group>"; };
 		9FDCF200A8F160A2708223FC /* AppleChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatTests.swift; sourceTree = "<group>"; };
+		A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidWithSettingsView.swift; sourceTree = "<group>"; };
 		A7E776EC0867369F536BEBC4 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
@@ -547,6 +549,7 @@
 				10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
+				A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
 				516DB1D73497124210D8A80B /* ResetDataView.swift */,
 				06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */,
@@ -913,6 +916,7 @@
 				66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */,
 				3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */,
 				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
+				DB38C125D8390B8EBE581AD0 /* PaidWithSettingsView.swift in Sources */,
 				B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */,
 				B258A8D3BADE921642CE86D5 /* ResetDataView.swift in Sources */,
 				DF30D977399C42193C24DA30 /* SampleBookSeeder.swift in Sources */,

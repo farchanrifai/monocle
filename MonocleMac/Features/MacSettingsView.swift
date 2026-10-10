@@ -2,17 +2,17 @@ import AppKit
 import SwiftUI
 
 private enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, shortcuts, security, chat, data
+    case general, paidWith, appearance, shortcuts, security, chat, data
     var id: Self { self }
     var title: String {
         switch self {
-        case .general: "General"; case .appearance: "Appearance"; case .shortcuts: "Shortcuts"
+        case .general: "General"; case .paidWith: "Paid with"; case .appearance: "Appearance"; case .shortcuts: "Shortcuts"
         case .security: "Security"; case .chat: "AI Chat"; case .data: "Data"
         }
     }
     var symbol: String {
         switch self {
-        case .general: "gearshape"; case .appearance: "circle.lefthalf.filled"; case .shortcuts: "keyboard"
+        case .general: "gearshape"; case .paidWith: "creditcard.and.123"; case .appearance: "circle.lefthalf.filled"; case .shortcuts: "keyboard"
         case .security: "lock"; case .chat: "bubble.left.and.text.bubble.right"; case .data: "externaldrive"
         }
     }
@@ -62,7 +62,17 @@ struct MacSettingsView: View {
                 }
                 .pickerStyle(.radioGroup)
                 SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
+                LabeledContent("Add Expense form:") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(EntryFormField.allCases, id: \.self) { field in
+                            Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
+                        }
+                        SettingsNote("Amount, card and category are always shown. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                    }
+                }
             }
+        case .paidWith:
+            PaidWithSettingsPane(model: model)
         case .appearance:
             Form {
                 Picker("Appearance:", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
@@ -98,6 +108,56 @@ struct MacSettingsView: View {
                         SettingsNote("Backups use the same format as Monocle for iPhone.")
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Paid with labels and the active card's default. Labels never carry a balance.
+private struct PaidWithSettingsPane: View {
+    @Bindable var model: AppModel
+    @State private var newName = ""
+    @State private var error: String?
+    private var card: BookProfile? { model.books.first { $0.id == model.activeBookID } }
+
+    var body: some View {
+        Form {
+            LabeledContent("Labels:") {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(model.paymentMethods) { method in
+                        HStack {
+                            TextField("Name", text: Binding(get: { method.name }, set: { name in
+                                var value = method; value.name = name
+                                do { try model.savePaymentMethod(value); error = nil } catch { self.error = error.localizedDescription }
+                            })).frame(width: 180)
+                            Picker("Kind", selection: Binding(get: { method.kind }, set: { kind in
+                                var value = method; value.kind = kind
+                                do { try model.savePaymentMethod(value) } catch { self.error = error.localizedDescription }
+                            })) { ForEach(PaymentMethod.Kind.allCases, id: \.self) { Text($0.title).tag($0) } }
+                                .labelsHidden().fixedSize()
+                            Button("Delete", role: .destructive) {
+                                do { try model.deletePaymentMethod(id: method.id); error = nil } catch { self.error = error.localizedDescription }
+                            }
+                        }
+                    }
+                    HStack {
+                        TextField("New label, like BCA debit", text: $newName).frame(width: 180)
+                        Button("Add") {
+                            do { try model.savePaymentMethod(PaymentMethod(name: newName)); newName = ""; error = nil }
+                            catch { self.error = error.localizedDescription }
+                        }.disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    SettingsNote("Paid with records how you paid. Monocle never tracks balances.")
+                    if let error { SettingsNote(error).foregroundStyle(.red) }
+                }
+            }
+            if let card {
+                Picker("Default for \(card.name):", selection: Binding(get: { card.defaultPaidWithID }, set: { id in
+                    do { try model.setDefaultPaidWith(id, for: card.id) } catch { self.error = error.localizedDescription }
+                })) {
+                    Text("None").tag(UUID?.none)
+                    ForEach(model.paymentMethods) { method in Text(method.name).tag(UUID?.some(method.id)) }
+                }.fixedSize()
             }
         }
     }

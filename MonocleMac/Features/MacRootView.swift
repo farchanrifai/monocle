@@ -1128,6 +1128,7 @@ private struct ExpenseInspector: View {
             Section("Details") {
                 LabeledContent("Date", value: Day.title(expense.day))
                 LabeledContent("Card", value: model.books.first(where: { $0.id == expense.bookID })?.name ?? "—")
+                if let method = model.paymentMethod(expense.paidWithID) { LabeledContent("Paid with", value: method.name) }
                 LabeledContent("Added", value: expense.createdAt.formatted(date: .abbreviated, time: .shortened))
                 if expense.source != "manual" { LabeledContent("Source", value: expense.source.capitalized) }
             }

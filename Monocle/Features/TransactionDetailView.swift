@@ -160,7 +160,7 @@ struct TransactionDetailView: View {
 
             // Account / Card Row
             if let book {
-                detailRow(label: "Account / Card") {
+                detailRow(label: "Card") {
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
                             .fill(CardPalette.color(for: book.colorIndex))
@@ -172,6 +172,14 @@ struct TransactionDetailView: View {
                         Text(book.name)
                             .font(.system(size: 15, weight: .medium))
                     }
+                }
+                Divider().padding(.leading, 16)
+            }
+
+            if let method = model.paymentMethod(expense.paidWithID) {
+                detailRow(label: "Paid with") {
+                    Label(method.name, systemImage: method.kind.symbol)
+                        .font(.system(size: 15, weight: .medium))
                 }
                 Divider().padding(.leading, 16)
             }

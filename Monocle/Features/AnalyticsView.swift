@@ -83,6 +83,7 @@ private struct AnalyticsReportView: View {
                             monthOverMonthCard
                             categoryBreakdownCard
                             if !selectedScope.isCard && bookPoints.count > 1 { crossBookBreakdownCard }
+                            if !paidWithTotals.isEmpty { paidWithBreakdownCard }
                         }
                     }
                     .padding(.horizontal, 20)
@@ -914,6 +915,35 @@ private struct AnalyticsReportView: View {
     }
 
     // MARK: - Chart 5: Cross-Book Breakdown
+
+    private var paidWithTotals: [(name: String, amount: Int64)] {
+        AnalyticsEngine.paidWithTotals(AnalyticsEngine.filterExpenses(report.data.expenses, startDay: currentRange.startDay, endDay: currentRange.endDay),
+                                       methods: model.paymentMethods)
+    }
+
+    private var paidWithBreakdownCard: some View {
+        let rows = paidWithTotals
+        let total = max(1, Money.sum(rows.map(\.amount)))
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("By Paid with").font(.headline)
+                Text("How you paid for the expenses in view").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(rows, id: \.name) { row in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(row.name).font(.subheadline)
+                        Spacer()
+                        Text(Money.format(row.amount)).font(.subheadline.monospacedDigit())
+                    }
+                    ProgressView(value: Double(row.amount) / Double(total)).tint(MC.red)
+                }
+            }
+        }
+        .padding(18)
+        .background(MC.surface, in: RoundedRectangle(cornerRadius: 22))
+        .accessibilityIdentifier("paidWithBreakdown")
+    }
 
     private var crossBookBreakdownCard: some View {
         VStack(alignment: .leading, spacing: 16) {

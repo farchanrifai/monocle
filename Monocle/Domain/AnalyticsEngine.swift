@@ -556,6 +556,17 @@ enum AnalyticsEngine {
 }
 
 
+extension AnalyticsEngine {
+    /// Totals per Paid with label, biggest first, with expenses that have none under "Not set".
+    /// Empty when no expense in view has a label, so the breakdown can stay hidden.
+    static func paidWithTotals(_ expenses: [Expense], methods: [PaymentMethod]) -> [(name: String, amount: Int64)] {
+        guard expenses.contains(where: { $0.paidWithID != nil }) else { return [] }
+        let names = Dictionary(uniqueKeysWithValues: methods.map { ($0.id, $0.name) })
+        let totals = Dictionary(expenses.map { (($0.paidWithID.flatMap { names[$0] }) ?? "Not set", $0.amount) }, uniquingKeysWith: { Money.sum([$0, $1]) })
+        return totals.map { (name: $0.key, amount: $0.value) }.sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.name < $1.name }
+    }
+}
+
 /// Immutable scoped inputs. Budgets are supplied only for a single-card scope; aggregate
 /// scopes use Gregorian calendar-month boundaries and show no combined budget/pace.
 struct AnalyticsReportingData {

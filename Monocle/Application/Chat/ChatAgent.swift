@@ -127,7 +127,7 @@ final class ChatAgent: ChatBackend {
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
         Scope: \(scope) (cards: \(books.joined(separator: ", "))).
         New expenses go to card: \(card?.name ?? "none — ask the user").
-        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")</app_context>
+        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")</app_context>
         """
     }
 
@@ -162,7 +162,8 @@ final class ChatAgent: ChatBackend {
                    "properties": {"category": {"type": "string"}, "amount": {"type": "integer", "description": "Whole rupiah."}}}},
                "note": {"type": "string", "description": "Short name of what was bought, from the user's words, e.g. Kopi, Bensin, Lunch."},
                "day": {"type": "string", "description": "yyyy-MM-dd. Omit for today."},
-               "card": {"type": "string", "description": "Card name. Omit for the app_context card."}}}},
+               "card": {"type": "string", "description": "Card name. Omit for the app_context card."},
+               "paid_with": {"type": "string", "description": "How it was paid, only if the user says so, e.g. BCA debit or Cash. Must match a Paid with label; omit otherwise."}}}},
           {"name": "propose_edit",
            "description": "Propose changing ONE saved expense, found with query_expenses. Give only the fields that change. Does not save.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["id"],

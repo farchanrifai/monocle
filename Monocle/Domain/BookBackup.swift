@@ -271,6 +271,48 @@ struct PaymentMethod: Identifiable, Codable, Equatable, Hashable, Sendable {
     var kind: Kind = .bank
 }
 
+extension PaymentMethod.Kind {
+    var title: String {
+        switch self {
+        case .bank: "Bank account"
+        case .card: "Card"
+        case .cash: "Cash"
+        case .eWallet: "E-wallet"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .bank: "building.columns"
+        case .card: "creditcard"
+        case .cash: "banknote"
+        case .eWallet: "iphone"
+        }
+    }
+}
+
+extension EntryFormField {
+    var title: String {
+        switch self {
+        case .date: "Date"
+        case .note: "Note"
+        case .split: "Split across categories"
+        case .paidWith: "Paid with"
+        case .currency: "Currency"
+        }
+    }
+}
+
+enum PaymentMethodError: LocalizedError, Equatable {
+    case invalidName, duplicateName, inUse(Int)
+    var errorDescription: String? {
+        switch self {
+        case .invalidName: "Enter a name of up to 40 characters."
+        case .duplicateName: "A Paid with label with this name already exists."
+        case .inUse(let count): "\(count) \(count == 1 ? "expense uses" : "expenses use") this label, so it can't be deleted. Rename it instead."
+        }
+    }
+}
+
 /// Add Expense fields the user can hide. Amount, Card and Category are always shown.
 enum EntryFormField: String, Codable, CaseIterable, Hashable, Sendable {
     case date, note, split, paidWith, currency

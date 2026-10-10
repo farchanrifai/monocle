@@ -17,6 +17,7 @@ struct CSVColumnMapping: Equatable, Sendable {
     var noteIndex: Int?
     var categoryIndex: Int?
     var splitsIndex: Int?
+    var paidWithIndex: Int? = nil
 
     init(dateIndex: Int? = nil, amountIndex: Int? = nil, noteIndex: Int? = nil, categoryIndex: Int? = nil, splitsIndex: Int? = nil) {
         self.dateIndex = dateIndex
@@ -191,9 +192,11 @@ enum CSVExportGenerator {
     static func generate(
         expenses: [Expense],
         categories: [ExpenseCategory],
-        books: [BookProfile] = []
+        books: [BookProfile] = [],
+        paymentMethods: [PaymentMethod] = []
     ) -> String {
-        let headers = ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits"]
+        let headers = ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits", "Paid with"]
+        let paidWithMap = Dictionary(uniqueKeysWithValues: paymentMethods.map { ($0.id, $0.name) })
         var lines: [String] = []
         lines.append(headers.map { CSVTokenizer.escape($0) }.joined(separator: ","))
 
@@ -230,7 +233,8 @@ enum CSVExportGenerator {
             let exactSplits = expense.allocations.map { CSVExactSplit(category: categoryMap[$0.categoryID] ?? "General", amount: Money.exactDigits($0.amount)) }
             let splitData = (try? JSONEncoder().encode(exactSplits)) ?? Data()
             let splits = String(data: splitData, encoding: .utf8) ?? ""
-            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr, splits]
+            let paidWith = expense.paidWithID.flatMap { paidWithMap[$0] } ?? ""
+            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr, splits, paidWith]
             lines.append(row.map { CSVTokenizer.escape($0) }.joined(separator: ","))
         }
 
@@ -260,6 +264,7 @@ enum CSVImportParser {
             let h = rawHeader.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
             if h == "splits" { mapping.splitsIndex = idx }
+            if h == "paid with" || h == "dibayar dengan" { mapping.paidWithIndex = idx }
 
             // Date matches
             if mapping.dateIndex == nil {
@@ -436,7 +441,8 @@ enum CSVImportParser {
         targetBookID: UUID,
         categories: [ExpenseCategory],
         defaultCategoryID: UUID,
-        existingExpenses: [Expense]
+        existingExpenses: [Expense],
+        paymentMethods: [PaymentMethod] = []
     ) -> [CSVImportRow] {
         guard mapping.isValid else { return [] }
 
@@ -519,6 +525,12 @@ enum CSVImportParser {
                 }
             }
 
+            // Paid with matches an existing label by name; an unknown name is left unset.
+            let paidWithName = mapping.paidWithIndex.flatMap { rowValues.indices.contains($0) ? rowValues[$0] : nil }?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let paidWithID = paidWithName.flatMap { name in
+                paymentMethods.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id
+            }
             let expense = Expense(
                 id: UUID(),
                 amount: amountParsed,
@@ -527,7 +539,8 @@ enum CSVImportParser {
                 allocations: allocations,
                 source: "csv_import",
                 createdAt: dateParsed.date,
-                bookID: targetBookID
+                bookID: targetBookID,
+                paidWithID: paidWithID
             )
 
             do { try expense.validate(categories: categories) }

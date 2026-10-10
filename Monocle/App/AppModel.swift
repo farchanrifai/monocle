@@ -936,6 +936,71 @@ final class AppModel {
         return stack.budgetLimit(cardLimits: limits)
     }
 
+    // MARK: - Paid with and the Add Expense form
+
+    var paymentMethods: [PaymentMethod] { workspacePreferences.paymentMethods }
+    func paymentMethod(_ id: UUID?) -> PaymentMethod? { id.flatMap { id in paymentMethods.first { $0.id == id } } }
+
+    /// Amount, Card and Category are always shown; the rest follow the user's form settings.
+    func isEntryFieldShown(_ field: EntryFormField) -> Bool { !workspacePreferences.hiddenEntryFields.contains(field) }
+
+    func setEntryField(_ field: EntryFormField, shown: Bool) {
+        var proposed = workspacePreferences
+        proposed.hiddenEntryFields.removeAll { $0 == field }
+        if !shown { proposed.hiddenEntryFields.append(field) }
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+    }
+
+    @discardableResult
+    func savePaymentMethod(_ method: PaymentMethod) throws -> PaymentMethod {
+        var method = method
+        method.name = method.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !method.name.isEmpty, method.name.count <= 40 else { throw PaymentMethodError.invalidName }
+        guard !paymentMethods.contains(where: { $0.id != method.id && $0.name.caseInsensitiveCompare(method.name) == .orderedSame }) else {
+            throw PaymentMethodError.duplicateName
+        }
+        var proposed = workspacePreferences
+        if let index = proposed.paymentMethods.firstIndex(where: { $0.id == method.id }) { proposed.paymentMethods[index] = method }
+        else { proposed.paymentMethods.append(method) }
+        try commitPresentationPreferences(proposed)
+        return method
+    }
+
+    /// Like categories, a label in use can't be deleted. Card defaults that point at it are cleared.
+    func deletePaymentMethod(id: UUID) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let used = expenseService.expenseCount(paidWith: id)
+        guard used == 0 else { throw PaymentMethodError.inUse(used) }
+        for var book in books where book.defaultPaidWithID == id {
+            book.defaultPaidWithID = nil
+            try expenseService.updateCard(book)
+        }
+        var proposed = workspacePreferences
+        proposed.paymentMethods.removeAll { $0.id == id }
+        try commitPresentationPreferences(proposed)
+        if draft.paidWithID == id { draft.paidWithID = nil }
+    }
+
+    func setDefaultPaidWith(_ id: UUID?, for bookID: UUID) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        guard var book = books.first(where: { $0.id == bookID }) else { throw BackupError.invalid }
+        guard id == nil || paymentMethod(id) != nil else { throw BackupError.invalid }
+        book.defaultPaidWithID = id
+        try expenseService.updateCard(book)
+        if settings.book.id == bookID {
+            var proposed = settings; proposed.book = book
+            try requireState().saveSettings(proposed); settings = proposed
+        }
+        invalidateExpenseCaches()
+    }
+
+    /// A new expense starts with its card's default Paid with.
+    func prefillDraftDefaults() {
+        guard !draft.editing, draft.paidWithID == nil else { return }
+        let bookID = draft.bookID ?? selectedBookID ?? activeBookID
+        draft.paidWithID = books.first { $0.id == bookID }?.defaultPaidWithID
+    }
+
     /// Cards a scope covers; stacks keep their own card order.
     func books(in scope: AnalyticsFilterScope) -> [BookProfile] {
         switch scope {
@@ -1143,7 +1208,7 @@ final class AppModel {
         }
         var seenCategoryIDs = Set<UUID>()
         let allCats = rawCategories.filter { seenCategoryIDs.insert($0.id).inserted }
-        return CSVExportGenerator.generate(expenses: targetExpenses, categories: allCats, books: books)
+        return CSVExportGenerator.generate(expenses: targetExpenses, categories: allCats, books: books, paymentMethods: paymentMethods)
     }
 
     @discardableResult
@@ -1173,6 +1238,9 @@ final class AppModel {
     }
     func save(_ expense: Expense) throws {
         guard let expenseService else { throw EntryError.corruptStore }
+        var expense = expense
+        // A label deleted while this draft was open is dropped rather than saved as a dangling reference.
+        if let id = expense.paidWithID, paymentMethod(id) == nil { expense.paidWithID = nil }
         try expenseService.save(expense)
         invalidateExpenseCaches()
     }

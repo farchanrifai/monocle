@@ -41,6 +41,7 @@ struct MacExpenseForm: View {
                                 selection: Binding(get: { model.draft.bookID ?? model.activeBookID }, set: { id in
                                     guard let id else { return }
                                     _ = model.selectBook(id); model.draft.bookID = id
+                                    if !model.draft.editing { model.draft.paidWithID = nil; model.prefillDraftDefaults() }
                                 }))
                 }
                 if !model.draft.isSplit {
@@ -51,18 +52,31 @@ struct MacExpenseForm: View {
                                     selection: $model.draft.categoryID)
                     }
                 }
-                GridRow {
-                    label("Note")
-                    TextField("Optional", text: $model.draft.note)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($focus, equals: .note)
-                        .accessibilityIdentifier("expenseNote")
+                // A hidden field still shows when the expense already has a value for it.
+                if (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil {
+                    GridRow {
+                        label("Paid with")
+                        PopUpPicker(title: "Paid with", placeholder: "Not set",
+                                    options: model.paymentMethods.map { .init(id: $0.id, name: $0.name, symbol: $0.kind.symbol) },
+                                    selection: $model.draft.paidWithID)
+                    }
                 }
-                GridRow {
-                    label("Date")
-                    DatePicker("Date", selection: $model.draft.date, displayedComponents: .date)
-                        .datePickerStyle(.field).labelsHidden().fixedSize()
-                        .focused($focus, equals: .date)
+                if model.isEntryFieldShown(.note) || !model.draft.note.isEmpty {
+                    GridRow {
+                        label("Note")
+                        TextField("Optional", text: $model.draft.note)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($focus, equals: .note)
+                            .accessibilityIdentifier("expenseNote")
+                    }
+                }
+                if model.isEntryFieldShown(.date) || model.draft.civilDay != Day.string(.now) {
+                    GridRow {
+                        label("Date")
+                        DatePicker("Date", selection: $model.draft.date, displayedComponents: .date)
+                            .datePickerStyle(.field).labelsHidden().fixedSize()
+                            .focused($focus, equals: .date)
+                    }
                 }
             }
 
@@ -74,9 +88,11 @@ struct MacExpenseForm: View {
 
             Text("Tab next · Space or ↑↓ opens a list · ⌘↩ save · ⌘⇧S split · Esc close").font(.caption).foregroundStyle(.secondary)
             HStack {
-                Button(model.draft.isSplit ? "Stop Splitting" : "Split…") { toggleSplit() }
-                    .keyboardShortcut("s", modifiers: [.command, .shift])
-                    .help("⌘⇧S")
+                if model.isEntryFieldShown(.split) || model.draft.isSplit {
+                    Button(model.draft.isSplit ? "Stop Splitting" : "Split…") { toggleSplit() }
+                        .keyboardShortcut("s", modifiers: [.command, .shift])
+                        .help("⌘⇧S")
+                }
                 Spacer()
                 Button("Cancel", role: .cancel) { requestClose() }
                     .keyboardShortcut(.cancelAction)
@@ -90,7 +106,10 @@ struct MacExpenseForm: View {
         .padding(24).padding(.top, topPadding - 24)
         .frame(width: 540)
         .defaultFocus($focus, .text)
-        .onAppear { DispatchQueue.main.async { focus = .text } } // the top field, every time
+        .onAppear {
+            model.prefillDraftDefaults()
+            DispatchQueue.main.async { focus = .text } // the top field, every time
+        }
         .confirmationDialog("Keep this draft?", isPresented: $showDiscardConfirmation) {
             Button("Keep Draft and Close") { model.persistDraft(); close(false) }
             Button("Discard Draft", role: .destructive) { if model.discardDraft() { close(false) } }

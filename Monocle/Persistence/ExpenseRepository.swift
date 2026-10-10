@@ -148,6 +148,13 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
+    func updateCard(_ profile: BookProfile) throws {
+        do {
+            writeModelBFields(of: profile, to: try bookRow(for: profile.id))
+            try commitIfNeeded()
+        } catch { context.rollback(); throw error }
+    }
+
     func deleteBook(id: UUID) throws {
         let allBooks = try self.books()
         guard allBooks.count > 1 else { throw BackupError.invalid }

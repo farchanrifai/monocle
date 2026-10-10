@@ -68,7 +68,10 @@ struct ToolExecutor {
     enum GroupBy: String, Decodable { case category, day, card }
 
     struct SplitPart: Decodable { let category: String; let amount: Int64 }
-    struct ProposeInput: Decodable { let amount: Int64; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String? }
+    struct ProposeInput: Decodable {
+        let amount: Int64; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String?
+        var paid_with: String?
+    }
     struct EditInput: Decodable { let id: String; var amount: Int64?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
     struct DeleteInput: Decodable { let id: String }
     enum Frequency: String, Decodable { case monthly, weekly, yearly }
@@ -133,7 +136,15 @@ struct ToolExecutor {
             throw ToolError(message: "Give a category, or a split of two or more categories.")
         }
         let note = (input.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let expense = Expense(amount: minor, day: day, note: note, allocations: allocations, source: "chat", bookID: book.id)
+        // Paid with: a named label, otherwise the card's default.
+        let paidWithID: UUID?
+        if let name = input.paid_with?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            guard let method = model.paymentMethods.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) else {
+                throw ToolError(message: "Paid with must be one of: \(model.paymentMethods.map(\.name).joined(separator: ", ")). Omit it if unsure.")
+            }
+            paidWithID = method.id
+        } else { paidWithID = book.defaultPaidWithID }
+        let expense = Expense(amount: minor, day: day, note: note, allocations: allocations, source: "chat", bookID: book.id, paidWithID: paidWithID)
         try expense.validate(categories: categories)
         let result = ProposalResult(status: "shown_to_user", card: book.name, category: try summary(of: expense, in: book).category,
                                     amount: Amount(minor), day: day, note: note)

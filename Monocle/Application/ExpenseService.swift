@@ -9,6 +9,7 @@ protocol ExpenseStore {
     func createBook(named name: String) throws -> BookProfile
     func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile
     func renameBook(id: UUID, to name: String) throws
+    func updateCard(_ profile: BookProfile) throws
     func deleteBook(id: UUID) throws
 
     func categories(in bookID: UUID) throws -> [ExpenseCategory]
@@ -59,6 +60,7 @@ extension ExpenseStore {
         try createBook(named: name)
     }
     func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {}
+    func updateCard(_ profile: BookProfile) throws {}
     func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
     func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
     func expenses(in bookID: UUID, from startDay: String, to endDay: String, limit: Int, offset: Int) throws -> [Expense] {
@@ -260,6 +262,19 @@ final class ExpenseService {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         try store.renameBook(id: id, to: name)
         didCommit()
+    }
+
+    /// Saves a card's currency and Paid with defaults; its name and look have their own commands.
+    func updateCard(_ profile: BookProfile) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try profile.validate()
+        try store.updateCard(profile)
+        didCommit()
+    }
+
+    /// Expenses on any card that use this Paid with label.
+    func expenseCount(paidWith id: UUID) -> Int {
+        workspaceExpenses.values.reduce(0) { $0 + $1.filter { $0.paidWithID == id }.count }
     }
 
     func deleteBook(id: UUID) throws {
