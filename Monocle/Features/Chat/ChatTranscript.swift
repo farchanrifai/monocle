@@ -75,6 +75,14 @@ struct ChatTranscript: View {
                 onApply: { session.resolveChange(row.id, change, as: .saved, model: model) },
                 onKeep: { session.resolveChange(row.id, change, as: .discarded, model: model) },
                 onUndo: { session.resolveChange(row.id, change, as: .undone, model: model) })
+        case .bill(let bill, let state):
+            BillProposalCard(
+                bill: bill,
+                categoryName: (try? model.expenseService?.categories(for: bill.bookID))??.first { $0.id == bill.categoryID }?.name ?? "",
+                cardName: model.books.first { $0.id == bill.bookID }?.name ?? "",
+                state: state,
+                onSave: { session.resolveBill(row.id, bill, as: .saved, model: model) },
+                onDiscard: { session.resolveBill(row.id, bill, as: .discarded, model: model) })
         case .summary(let points):
             ChatSummaryChart(points: points)
         case .notice(let message):

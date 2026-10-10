@@ -56,6 +56,56 @@ struct ExpenseProposalCard: View {
     }
 }
 
+/// Confirm card for a recurring bill Claude proposed. Nothing is written until Save.
+struct BillProposalCard: View {
+    let bill: BillRule
+    let categoryName: String
+    let cardName: String
+    let state: ProposalState
+    var onSave: () -> Void
+    var onDiscard: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("New bill").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(bill.name).font(.headline)
+                Text(Money.format(bill.amount)).font(.system(.title, design: .rounded, weight: .semibold))
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Label(bill.recurrence.title, systemImage: "repeat")
+                Label(categoryName, systemImage: "tag")
+                Label(bill.recordingMode.title, systemImage: bill.recordingMode == .automatic ? "bolt" : "hand.tap")
+                if bill.hasReminder { Label("Reminder on the due day", systemImage: "bell") }
+                Label(cardName, systemImage: "creditcard")
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+
+            switch state {
+            case .pending:
+                HStack(spacing: 10) {
+                    Spacer()
+                    Button("Discard", role: .destructive, action: onDiscard)
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("billProposalDiscard")
+                    Button("Save", action: onSave)
+                        .buttonStyle(.borderedProminent)
+                        .tint(MC.red)
+                        .accessibilityIdentifier("billProposalSave")
+                }
+            case .saved:
+                Label("Saved to Bills", systemImage: "checkmark.circle.fill").foregroundStyle(MC.red).font(.subheadline.weight(.semibold))
+            case .discarded, .opened, .undone:
+                Label("Discarded", systemImage: "xmark.circle").foregroundStyle(.secondary).font(.subheadline.weight(.semibold))
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 20, style: .continuous))
+    }
+}
+
 /// Confirm card for Claude's proposed edit or delete of a saved expense. Applied only on tap, with Undo after.
 struct ExpenseChangeCard: View {
     let change: ExpenseChange

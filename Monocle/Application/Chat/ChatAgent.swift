@@ -8,6 +8,7 @@ final class ChatAgent {
         case text(String)
         case proposal(Expense)
         case change(ExpenseChange)
+        case bill(BillRule)
         case chart([CategorySpendPoint])
         case notice(String)
         case error(String)
@@ -68,6 +69,7 @@ final class ChatAgent {
                     let outcome = executor.run(block["name"] as? String ?? "", input: input)
                     if let proposal = outcome.proposal { outputs.append(.proposal(proposal)) }
                     if let change = outcome.change { outputs.append(.change(change)) }
+                    if let bill = outcome.bill { outputs.append(.bill(bill)) }
                     if let chart = outcome.chart { outputs.append(.chart(chart)) }
                     return ["type": "tool_result", "tool_use_id": block["id"] as? String ?? "",
                             "content": outcome.json, "is_error": outcome.isError]
@@ -124,6 +126,7 @@ final class ChatAgent {
     Understand English and Bahasa Indonesia (for example "28k", "28rb", "1,5jt", "kemarin", "bulan lalu") and reply in the user's language.
     Each user turn starts with <app_context> facts from the app: today's date, the active scope, the card new expenses go to, and its categories.
     To add an expense, call propose_expense with the amount in whole rupiah. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense.
+    For a recurring payment (subscription, rent, "tiap bulan"), call propose_bill instead of propose_expense; the user confirms it the same way.
     Pick the closest existing category. For one purchase across categories ("50rb, 30rb makan 20rb belanja") use split instead of category. If the amount is missing or unclear, ask one short question instead of guessing.
     Never calculate totals, averages, differences or percentages yourself; use query_expenses, get_summary, compare_periods or get_budget_status and quote their numbers, using each amount's display text.
     When get_summary returns category groups, the app draws a chart, so keep the text to one or two sentences.
@@ -163,6 +166,24 @@ final class ChatAgent {
            "description": "Propose deleting ONE saved expense, found with query_expenses. Does not delete.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["id"],
              "properties": {"id": {"type": "string", "description": "The expense id from query_expenses."}}}},
+          {"name": "propose_bill", "strict": true,
+           "description": "Propose ONE new recurring bill for the user to confirm in the app. Does not save.",
+           "input_schema": {"type": "object", "additionalProperties": false, "required": ["name", "amount", "category", "frequency"],
+             "properties": {
+               "name": {"type": "string", "description": "Short name, e.g. Netflix. Max 40 characters."},
+               "amount": {"type": "integer", "description": "Whole rupiah per payment."},
+               "category": {"type": "string", "description": "One of the category names from app_context."},
+               "frequency": {"type": "string", "enum": ["monthly", "weekly", "yearly"]},
+               "day": {"type": "integer", "description": "Day of month 1-31 (monthly, yearly). Omit for today's."},
+               "weekday": {"type": "integer", "description": "Weekly only: 1 = Sunday ... 7 = Saturday. Omit for today's."},
+               "month": {"type": "integer", "description": "Yearly only: 1-12. Omit for this month."},
+               "record": {"type": "string", "enum": ["automatic", "confirm"], "description": "automatic records each payment by itself; confirm (default) asks first."},
+               "reminder": {"type": "boolean", "description": "Notify on the due day. Default true."},
+               "card": {"type": "string", "description": "Card name. Omit for the app_context card."}}}},
+          {"name": "list_bills", "strict": true,
+           "description": "List the user's recurring bills with amount, schedule and whether paused.",
+           "input_schema": {"type": "object", "additionalProperties": false, "required": [],
+             "properties": {"scope": {"type": "string", "description": "Omit for the current scope, or all_cards, or a stack/card name."}}}},
           {"name": "query_expenses", "strict": true,
            "description": "List expenses, newest first, with the total of all matches. Use for recent transactions or finding specific spending.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": [],

@@ -11,6 +11,8 @@ struct ToolExecutor {
         var proposal: Expense? = nil
         /// An edit or delete of a saved expense, applied only when the user confirms.
         var change: ExpenseChange? = nil
+        /// A new recurring bill, saved only when the user confirms.
+        var bill: BillRule? = nil
         var chart: [CategorySpendPoint]? = nil
     }
 
@@ -27,6 +29,8 @@ struct ToolExecutor {
             case "propose_expense": return try proposeExpense(decode(input))
             case "propose_edit": return try proposeEdit(decode(input))
             case "propose_delete": return try proposeDelete(decode(input))
+            case "propose_bill": return try proposeBill(decode(input))
+            case "list_bills": return try listBills(decode(input))
             case "query_expenses": return try queryExpenses(decode(input))
             case "get_summary": return try summary(decode(input))
             case "compare_periods": return try compare(decode(input))
@@ -67,6 +71,13 @@ struct ToolExecutor {
     struct ProposeInput: Decodable { let amount: Int64; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String? }
     struct EditInput: Decodable { let id: String; var amount: Int64?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
     struct DeleteInput: Decodable { let id: String }
+    enum Frequency: String, Decodable { case monthly, weekly, yearly }
+    enum RecordMode: String, Decodable { case automatic, confirm }
+    struct BillInput: Decodable {
+        let name: String; let amount: Int64; let category: String; let frequency: Frequency
+        var day: Int?; var weekday: Int?; var month: Int?; var record: RecordMode?; var reminder: Bool?; var card: String?
+    }
+    struct ListBillsInput: Decodable { var scope: String? }
     struct QueryInput: Decodable {
         var period: Period?; var start: String?; var end: String?
         var category: String?; var text: String?; var scope: String?; var limit: Int?; var offset: Int?
@@ -90,6 +101,9 @@ struct ToolExecutor {
     struct ProposalResult: Encodable { let status: String; let card: String; let category: String; let amount: Amount; let day: String; let note: String }
     struct ExpenseSummary: Encodable { let amount: Amount; let category: String; let day: String; let note: String }
     struct ChangeResult: Encodable { let status: String; let card: String; let before: ExpenseSummary; var after: ExpenseSummary? }
+    struct BillResult: Encodable { let status: String; let card: String; let name: String; let amount: Amount; let schedule: String; let category: String; let record: String; let reminder: Bool }
+    struct BillRow: Encodable { let name: String; let amount: Amount; let schedule: String; let category: String; let card: String; let paused: Bool }
+    struct BillList: Encodable { let scope: String; let bills: [BillRow] }
     struct Row: Encodable { let id: String; let day: String; let amount: Amount; let category: String; let note: String; let card: String }
     struct QueryResult: Encodable { let start: String; let end: String; let scope: String; let count: Int; let total: Amount; let rows: [Row]; let hasMore: Bool }
     struct Group: Encodable { let name: String; let amount: Amount; let share: Int?; let count: Int }
@@ -181,6 +195,45 @@ struct ToolExecutor {
             return parts
         }
         return try name.map { [Allocation(categoryID: try category(named: $0, in: categories).id, amount: total)] }
+    }
+
+    private func proposeBill(_ input: BillInput) throws -> Outcome {
+        guard input.amount > 0, input.amount <= Money.maximum / 100 else {
+            throw ToolError(message: "Amount must be whole rupiah above 0, for example 186000.")
+        }
+        let book = try input.card.map { try card(named: $0) } ?? targetCard()
+        let categories = try model.activeCategories(in: book.id)
+        let category = try category(named: input.category, in: categories)
+        let today = Day.calendar.dateComponents([.day, .weekday, .month], from: now)
+        // Missing day/weekday/month default to today's, so "netflix 186rb monthly" starts from today's date.
+        let recurrence: BillRecurrence = switch input.frequency {
+        case .monthly: .monthly(day: input.day ?? today.day ?? 1)
+        case .weekly: .weekly(weekday: input.weekday ?? today.weekday ?? 1)
+        case .yearly: .yearly(month: input.month ?? today.month ?? 1, day: input.day ?? today.day ?? 1)
+        }
+        let rule = BillRule(bookID: book.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: input.amount * 100,
+                            categoryID: category.id, recurrence: recurrence,
+                            recordingMode: input.record == .automatic ? .automatic : .pending, hasReminder: input.reminder ?? true)
+        do { try rule.validate(categories: categories) } catch {
+            throw ToolError(message: "Bill rejected: name 1-40 characters, day 1-31, weekday 1-7 (1 = Sunday), month 1-12.")
+        }
+        let result = BillResult(status: "shown_to_user", card: book.name, name: rule.name, amount: Amount(rule.amount),
+                                schedule: recurrence.title, category: category.name, record: rule.recordingMode.title, reminder: rule.hasReminder)
+        return Outcome(json: try Self.encode(result), bill: rule)
+    }
+
+    private func listBills(_ input: ListBillsInput) throws -> Outcome {
+        let target = try resolveScope(input.scope)
+        guard let service = model.expenseService else { throw EntryError.corruptStore }
+        var rows: [BillRow] = []
+        for book in model.books(in: target) {
+            let names = Dictionary(try service.categories(for: book.id).map { ($0.id, $0.name) }) { first, _ in first }
+            rows += try service.bills(for: book.id).map {
+                BillRow(name: $0.name, amount: Amount($0.amount), schedule: $0.recurrence.title,
+                        category: names[$0.categoryID] ?? "Unknown", card: book.name, paused: !$0.isActive)
+            }
+        }
+        return Outcome(json: try Self.encode(BillList(scope: Self.label(target), bills: rows)))
     }
 
     private func savedExpense(_ id: String) throws -> (Expense, BookProfile) {

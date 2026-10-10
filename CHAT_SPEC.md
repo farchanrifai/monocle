@@ -72,6 +72,8 @@ No chat library. Pure SwiftUI (iOS 26, also compiles for a future macOS target).
 | `list_cards` | – | cards and stacks with names | `model.books`, `model.stacks` |
 | `propose_edit` | id (from `query_expenses` rows), amount?, category? or split?, note?, day? | `{status:"shown_to_user", card, before, after}` or error | edits a copy |
 | `propose_delete` | id | `{status:"shown_to_user", card, before}` or error | – |
+| `propose_bill` | name, amount, category, frequency (monthly/weekly/yearly), day?, weekday? (1 = Sunday), month?, record? (automatic/confirm), reminder?, card? | `{status:"shown_to_user", …}` or error; missing day/weekday/month default to today's | `BillRule.validate`; Save → `AppModel.saveBill` |
+| `list_bills` | scope? | bills with amount, schedule, category, card, paused | `ExpenseService.bills(for:)` |
 
 `period` is an enum mirroring `AnalyticsTimeHorizon`: `this_cycle | this_month | last_month | last_30_days | last_90_days | year_to_date`. Use explicit `start`/`end` only when the user names dates ("since 1 Sept").
 
@@ -81,7 +83,7 @@ Tool definitions use `strict: true` + `additionalProperties: false`. Executor er
 
 **Edit/delete flow:** Claude finds the expense with `query_expenses` (rows carry `id`), then proposes. The card shows before → after (edit) or the expense (delete) with Save/Discard or Delete/Keep. Applying re-checks the expense is unchanged since the card was made, else errors. After applying, the card offers Undo (edit: save the original; delete: `AppModel.restore` with its bill links). App notes tell Claude what the user chose.
 
-v2 remaining: bills.
+Bills: `propose_bill` shows a "New bill" card (schedule, category, record mode, reminder, card) with Save/Discard; Save goes through `AppModel.saveBill`, so reconciliation and reminders behave as in the Bills screen. Editing/pausing bills from chat is not supported; users do that in Bills.
 
 ## 5. Model and API
 
@@ -151,7 +153,7 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 - **ToolExecutor** with a fake `ExpenseStore`: each tool; rupiah↔minor conversion; overflow; unknown/inactive category; invalid day; scope resolution (default stack, all cards, named card/stack, unknown name); target-card selection.
 - **ChatAgent** with a scripted fake client: text-only reply, single tool, parallel tools, error tool result, `max_tokens`/`refusal`, 6-iteration cap.
 - **UI tests:** chat opens full screen from `chatButton` and closes back to Home; locking the app dismisses chat; filter button now in the Home header (`activityFilterButton`); confirm card Save writes one expense, Discard writes none. Don't build on the 3 known flaky card-animation tests.
-- **Golden prompts** (manual, real API, not per commit): "coffee 28k", "bensin 100rb kemarin", "lunch 45k and parking 5k", "berapa pengeluaran makan bulan ini?", "compare this month vs last", "am I over budget?", "show all cards this month", "delete my last expense" (delete card for the newest, nothing deleted), "ubah kopi kemarin jadi 30rb" (edit card Rp28.000 → Rp30.000), "add 0", "add 10 juta" (confirm card shows Rp10.000.000), "pasar 50rb: 30rb makan 20rb belanja" (one split card).
+- **Golden prompts** (manual, real API, not per commit): "coffee 28k", "bensin 100rb kemarin", "lunch 45k and parking 5k", "berapa pengeluaran makan bulan ini?", "compare this month vs last", "am I over budget?", "show all cards this month", "delete my last expense" (delete card for the newest, nothing deleted), "ubah kopi kemarin jadi 30rb" (edit card Rp28.000 → Rp30.000), "add 0", "add 10 juta" (confirm card shows Rp10.000.000), "pasar 50rb: 30rb makan 20rb belanja" (one split card), "netflix 186rb tiap bulan tanggal 5" (bill card, monthly day 5).
 
 ## 11. Build order
 

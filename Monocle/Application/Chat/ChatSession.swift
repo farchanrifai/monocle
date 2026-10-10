@@ -15,6 +15,7 @@ struct ChatRow: Identifiable, Equatable, Codable {
         case assistant(String)
         case proposal(Expense, ProposalState)
         case change(ExpenseChange, ProposalState)
+        case bill(BillRule, ProposalState)
         case summary([CategorySpendPoint])
         case notice(String)
         case error(String)
@@ -102,6 +103,7 @@ extension ChatSession {
             case .text(let text): ChatRow(kind: .assistant(text))
             case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
             case .change(let change): ChatRow(kind: .change(change, .pending))
+            case .bill(let bill): ChatRow(kind: .bill(bill, .pending))
             case .chart(let points): ChatRow(kind: .summary(points))
             case .notice(let text): ChatRow(kind: .notice(text))
             case .error(let text): ChatRow(kind: .error(text))
@@ -163,6 +165,25 @@ extension ChatSession {
             return
         }
         rows[index].kind = .change(change, state)
+    }
+
+    /// Save or discard a proposed bill; only Save writes.
+    func resolveBill(_ id: UUID, _ bill: BillRule, as state: ProposalState, model: AppModel) {
+        guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
+        let label = "\"\(bill.name)\" \(Money.format(bill.amount)) \(bill.recurrence.title.lowercased())"
+        switch state {
+        case .saved:
+            do { try model.saveBill(bill, in: bill.bookID) } catch {
+                rows.append(ChatRow(kind: .error(error.localizedDescription)))
+                return
+            }
+            agent?.note("The user saved the proposed bill \(label).")
+        case .discarded:
+            agent?.note("The user discarded the proposed bill \(label).")
+        case .pending, .opened, .undone:
+            break
+        }
+        rows[index].kind = .bill(bill, state)
     }
 
     /// AppModel.delete reports failure through `model.error`; surface it here instead.

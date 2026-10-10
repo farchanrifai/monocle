@@ -193,6 +193,45 @@ final class ChatToolTests: XCTestCase {
         XCTAssertTrue(run("propose_edit", ["id": kopi, "split": split]).isError, "Split must match the unchanged Rp28.000")
     }
 
+    // MARK: - propose_bill / list_bills
+
+    func testProposeBillDefaultsToTodayAndConfirmModeWithoutSaving() throws {
+        let outcome = run("propose_bill", ["name": " Netflix ", "amount": 186000, "category": "Leisure", "frequency": "monthly", "card": "Daily"])
+        XCTAssertFalse(outcome.isError, outcome.json)
+        let bill = try XCTUnwrap(outcome.bill)
+        XCTAssertEqual(bill.name, "Netflix")
+        XCTAssertEqual(bill.amount, 18_600_000)
+        XCTAssertEqual(bill.recurrence, .monthly(day: 15), "now is 2026-09-15")
+        XCTAssertEqual(bill.recordingMode, .pending)
+        XCTAssertTrue(bill.hasReminder)
+        XCTAssertEqual(bill.bookID, daily.id)
+        XCTAssertTrue(try repo.bills(in: daily.id).isEmpty, "Proposals never write")
+
+        let weekly = run("propose_bill", ["name": "Laundry", "amount": 50000, "category": "Home", "frequency": "weekly",
+                                          "weekday": 2, "record": "automatic", "reminder": false])
+        XCTAssertEqual(weekly.bill?.recurrence, .weekly(weekday: 2))
+        XCTAssertEqual(weekly.bill?.recordingMode, .automatic)
+        XCTAssertEqual(weekly.bill?.hasReminder, false)
+
+        XCTAssertTrue(run("propose_bill", ["name": "X", "amount": 1000, "category": "Home", "frequency": "monthly", "day": 32]).isError)
+        XCTAssertTrue(run("propose_bill", ["name": "", "amount": 1000, "category": "Home", "frequency": "monthly"]).isError)
+        XCTAssertTrue(run("propose_bill", ["name": "X", "amount": 0, "category": "Home", "frequency": "monthly"]).isError)
+    }
+
+    func testSavedBillIsListed() throws {
+        let session = ChatSession()
+        let bill = try XCTUnwrap(run("propose_bill", ["name": "Rent", "amount": 3000000, "category": "Home", "frequency": "monthly", "day": 1, "card": "Daily"]).bill)
+        session.rows = [ChatRow(kind: .bill(bill, .pending))]
+        session.resolveBill(session.rows[0].id, bill, as: .saved, model: model)
+        XCTAssertEqual(session.rows[0].kind, .bill(bill, .saved))
+        XCTAssertEqual(try repo.bills(in: daily.id).map(\.name), ["Rent"])
+
+        let rows = try XCTUnwrap(json(run("list_bills", [:]))["bills"] as? [[String: Any]])
+        XCTAssertEqual(rows.map { $0["name"] as? String }, ["Rent"])
+        XCTAssertEqual(rupiah(rows.first?["amount"]), 3_000_000)
+        XCTAssertEqual(rows.first?["schedule"] as? String, "Monthly on day 1")
+    }
+
     // MARK: - propose_edit / propose_delete
 
     func testEditProposesOnlyGivenFieldsAndNeverWrites() throws {

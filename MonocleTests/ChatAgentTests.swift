@@ -27,7 +27,7 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertEqual(outputs, [.text("Hi!")])
         let body = try XCTUnwrap(sent.first)
         XCTAssertEqual(body["model"] as? String, "claude-haiku-5-5")
-        XCTAssertEqual((body["tools"] as? [[String: Any]])?.count, 8)
+        XCTAssertEqual((body["tools"] as? [[String: Any]])?.count, 10)
         XCTAssertNotNil(body["cache_control"], "Automatic caching follows the growing conversation")
         let system = try XCTUnwrap(body["system"] as? [[String: Any]])
         XCTAssertNotNil(system.last?["cache_control"], "Static tools + system prefix has its own cache point")
