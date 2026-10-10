@@ -13,6 +13,11 @@ struct MacRootView: View {
     @Bindable private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var searchExpanded = false
+    @AppStorage("MacSidebarStacksExpanded") private var stacksExpanded = true
+    @AppStorage("MacSidebarCardsExpanded") private var cardsExpanded = true
+    @AppStorage("MacSidebarPlanningExpanded") private var planningExpanded = true
+    @AppStorage("MacSidebarShowAllStacks") private var showAllStacks = false
+    @AppStorage("MacSidebarShowAllCards") private var showAllCards = false
 
     init(state: MacAppState) {
         self.state = state
@@ -64,6 +69,12 @@ struct MacRootView: View {
             MacExpenseForm(model: model, quickRecord: false) { _ in state.regularEntryVisible = false }
         }
         .sheet(item: $state.transferSheet) { MacDataTransferView(state: state, mode: $0) }
+        .sheet(isPresented: $state.addingCard) { MacCardEditor(model: model, book: nil) { state.addingCard = false } }
+        .sheet(item: $state.editingCard) { book in MacCardEditor(model: model, book: book) { state.editingCard = nil } }
+        .sheet(item: $state.editingStack) { stack in MacStackEditor(state: state, stack: stack) { state.editingStack = nil } }
+        .confirmationDialog("Delete “\(state.deletingCard?.name ?? "")”?", isPresented: Binding(get: { state.deletingCard != nil }, set: { if !$0 { state.deletingCard = nil } }), titleVisibility: .visible) {
+            Button("Delete Card", role: .destructive) { if let book = state.deletingCard { state.deleteCard(book) } }
+        } message: { Text("All expenses, budgets and bills on this card are deleted too. This can't be undone.") }
         .alert("Monocle", isPresented: Binding(get: { model.error != nil || state.shortcutError != nil }, set: { if !$0 { model.error = nil; state.shortcutError = nil } })) {
             Button("OK") { model.error = nil; state.shortcutError = nil }
         } message: { Text(model.error ?? state.shortcutError ?? "") }
@@ -78,18 +89,42 @@ struct MacRootView: View {
     }
 
     private var sidebar: some View {
-        List(selection: $state.destination) {
+        let hidden = model.alwaysHiddenBookIDs
+        let cards = model.orderedBooks.filter { !hidden.contains($0.id) }
+        return List(selection: $state.destination) {
             Section {
                 Label("Overview", systemImage: "rectangle.grid.2x2").tag(MacDestination.overview)
                 Label("Activity", systemImage: "list.bullet.rectangle").tag(MacDestination.activity)
             }
-            Section("Cards") {
-                Label("All Cards", systemImage: "creditcard").tag(MacDestination.cards)
-                ForEach(model.books) { book in
-                    Label(book.name, systemImage: "creditcard.fill").tag(MacDestination.card(book.id))
+            Section(isExpanded: $stacksExpanded) {
+                ForEach(Self.limited(model.stacks, showAll: showAllStacks) { state.destination == .stack($0.id) }) { stack in
+                    Label(stack.name, systemImage: stack.icon).tag(MacDestination.stack(stack.id))
+                        .contextMenu {
+                            Button("Edit Stack…") { state.editingStack = stack }
+                            Button("Delete Stack", role: .destructive) { state.deleteStack(stack) }.disabled(model.stacks.count < 2)
+                        }
+                }
+                moreToggle(count: model.stacks.count, showAll: $showAllStacks)
+                if state.showHiddenCards, !hidden.isEmpty {
+                    Label("Hidden Cards", systemImage: "eye.slash").tag(MacDestination.hiddenCards)
+                }
+            } header: {
+                Text("Stacks").contextMenu {
+                    Button("New Stack…") { state.editingStack = CardStack(name: "") }
+                    Toggle("Show Hidden Cards", isOn: $state.showHiddenCards)
                 }
             }
-            Section("Planning") {
+            Section(isExpanded: $cardsExpanded) {
+                Label("All Cards", systemImage: "creditcard").tag(MacDestination.cards)
+                ForEach(Self.limited(cards, showAll: showAllCards) { state.destination == .card($0.id) }) { book in
+                    Label(book.name, systemImage: "creditcard.fill").tag(MacDestination.card(book.id))
+                        .contextMenu { MacCardMenu(state: state, book: book) }
+                }
+                moreToggle(count: cards.count, showAll: $showAllCards)
+            } header: {
+                Text("Cards").contextMenu { Button("New Card…") { state.addingCard = true } }
+            }
+            Section("Planning", isExpanded: $planningExpanded) {
                 Label("Budgets", systemImage: "gauge.with.dots.needle.67percent").tag(MacDestination.budgets)
                 Label("Bills", systemImage: "calendar.badge.clock").tag(MacDestination.bills)
             }
@@ -102,12 +137,31 @@ struct MacRootView: View {
         .navigationTitle("monocle")
     }
 
+    static let sidebarLimit = 5
+
+    /// The first `sidebarLimit` items, plus any selected item past them so the selection never vanishes.
+    static func limited<T: Identifiable>(_ items: [T], showAll: Bool, isSelected: (T) -> Bool) -> [T] {
+        guard !showAll, items.count > sidebarLimit else { return items }
+        return items.enumerated().filter { $0.offset < sidebarLimit || isSelected($0.element) }.map(\.element)
+    }
+
+    @ViewBuilder private func moreToggle(count: Int, showAll: Binding<Bool>) -> some View {
+        if count > Self.sidebarLimit {
+            Button(showAll.wrappedValue ? "Show Less" : "Show \(count - Self.sidebarLimit) More") { showAll.wrappedValue.toggle() }
+                .buttonStyle(.plain).foregroundStyle(.secondary).font(.callout)
+        }
+    }
+
     @ViewBuilder private var content: some View {
         switch state.destination {
         case .overview: MacOverviewView(state: state)
         case .activity: MacActivityView(state: state, bookID: nil)
         case .cards: MacCardsView(state: state)
         case .card(let id): MacCardDetailView(state: state, bookID: id)
+        case .stack(let id):
+            if let stack = model.stacks.first(where: { $0.id == id }) { MacStackView(state: state, stack: stack) }
+            else { ContentUnavailableView("Stack not found", systemImage: "rectangle.stack") }
+        case .hiddenCards: MacStackView(state: state, stack: nil)
         case .budgets: MacBudgetsView(state: state)
         case .bills: MacBillsView(state: state)
         case .analytics: MacAnalyticsView(state: state)
@@ -403,7 +457,7 @@ struct MacOverviewView: View {
                 SummaryTile(title: "Upcoming bills", value: "\(model.billOccurrences.filter { $0.status == .pending }.count)", detail: "Awaiting action")
             }
             Text("Recent Activity").font(.title2.bold())
-            MacExpenseTable(state: state, bookID: nil, limit: 50) // same table as Activity; fills the rest of the window
+            MacExpenseTable(state: state, bookIDs: nil, limit: 50) // same table as Activity; fills the rest of the window
         }.padding(24).navigationTitle("Overview")
     }
 }
@@ -411,11 +465,12 @@ struct MacOverviewView: View {
 private struct MacCardView: View {
     let model: AppModel
     let book: BookProfile
+    var preview: BookCardCustomization? // the editor's unsaved style
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tilt: CGSize = .zero // pointer position, -1...1 from the centre
     @State private var hovering = false
     private static let size = CGSize(width: 250, height: 150)
-    private var customization: BookCardCustomization { model.customization(for: book.id) }
+    private var customization: BookCardCustomization { preview ?? model.customization(for: book.id) }
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -460,25 +515,11 @@ private struct MacCardView: View {
         switch customization.style {
         case .palette(let index): Rectangle().fill(CardPalette.color(for: index).gradient)
         case .customColor(let hex): Rectangle().fill(CardPalette.color(fromHex: hex).gradient)
-        case .stock(let design):
-            LinearGradient(colors: stockColors(design), startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .stock(let design): StockDesignBackgroundView(design: design)
         case .customPhoto(let filename):
             if let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
                 Image(nsImage: image).resizable().scaledToFill().overlay(Color.black.opacity(0.16))
             } else { Rectangle().fill(CardPalette.color(for: book.colorIndex).gradient) }
-        }
-    }
-    private func stockColors(_ design: StockCardDesign) -> [Color] {
-        switch design {
-        case .sunsetHeat: [.red, .orange, .purple]
-        case .auroraBorealis: [.indigo, .mint, .blue]
-        case .midnightCosmo: [.black, .indigo, .purple]
-        case .acidCyber: [.green, .yellow, .cyan]
-        case .titaniumMetal: [.gray, .white, .gray]
-        case .appleAura: [.pink, .cyan, .yellow]
-        case .topographic: [.black, .green]
-        case .neoGrid: [.black, .blue, .pink]
-        case .warmParchment: [.brown.opacity(0.7), .orange.opacity(0.4), .white]
         }
     }
 }
@@ -491,15 +532,16 @@ struct MacActivityView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(bookID.flatMap { id in state.model.books.first(where: { $0.id == id })?.name } ?? "Activity").font(.largeTitle.bold())
-            MacExpenseTable(state: state, bookID: bookID)
+            MacExpenseTable(state: state, bookIDs: bookID.map { [$0] })
         }.padding(24).navigationTitle("Activity")
     }
 }
 
-/// The one transaction table (Overview, Activity, card pages). `limit` keeps only the newest rows.
+/// The one transaction table (Overview, Activity, card and stack pages). `limit` keeps only the newest rows.
 struct MacExpenseTable: View {
     let state: MacAppState
-    let bookID: UUID?
+    /// nil = every card.
+    let bookIDs: [UUID]?
     var limit: Int?
     @State private var sortOrder: [KeyPathComparator<MacExpenseRow>] = []
     @State private var allRows: [MacExpenseRow] = []
@@ -509,16 +551,16 @@ struct MacExpenseTable: View {
         MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
             .accessibilityIdentifier("activityTable")
             // Rows rebuild only when data or the card changes, not on every window refresh (selection, inspector, typing).
-            .onChange(of: RowsSource(revision: state.model.dataRevision, bookID: bookID, bookCount: state.model.books.count), initial: true) { buildRows() }
+            .onChange(of: RowsSource(revision: state.model.dataRevision, bookIDs: bookIDs, bookCount: state.model.books.count), initial: true) { buildRows() }
             .onChange(of: state.searchText) { refresh() }
             .onChange(of: sortOrder) { refresh() }
     }
 
-    private struct RowsSource: Equatable { let revision: UInt64; let bookID: UUID?; let bookCount: Int }
+    private struct RowsSource: Equatable { let revision: UInt64; let bookIDs: [UUID]?; let bookCount: Int }
 
     private func buildRows() {
         let model = state.model
-        var source = bookID.map(model.expenses(for:)) ?? model.allExpenses()
+        var source = bookIDs.map { $0.flatMap(model.expenses(for:)) } ?? model.allExpenses()
         if let limit {
             source = Array(source.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }.prefix(limit))
         }
@@ -644,12 +686,310 @@ struct CategoryMenu: View {
 
 struct MacCardsView: View {
     @Bindable var state: MacAppState
+    private var model: AppModel { state.model }
+
     var body: some View {
+        let hidden = model.alwaysHiddenBookIDs
+        let stacked = Set(model.stacks.flatMap(\.cardIDs))
+        let unstacked = model.orderedBooks.filter { !stacked.contains($0.id) && !hidden.contains($0.id) }
         Page(title: "Cards") {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 18)], spacing: 18) {
-                ForEach(state.model.books) { book in MacCardView(model: state.model, book: book).onTapGesture { state.selectCard(book.id) } }
+            HStack {
+                Spacer()
+                GlassEffectContainer {
+                    HStack {
+                        Button("New Stack") { state.editingStack = CardStack(name: "") }.buttonStyle(.glass)
+                        Button("New Card") { state.addingCard = true }.buttonStyle(.glassProminent)
+                    }
+                }
+            }
+            ForEach(model.stacks) { stack in
+                HStack {
+                    Label(stack.name, systemImage: stack.icon).font(.title2.bold())
+                    Spacer()
+                    Button("Edit Stack…") { state.editingStack = stack }.buttonStyle(.glass)
+                }.frame(height: 32)
+                MacCardGrid(state: state, books: model.books(in: stack))
+            }
+            if !unstacked.isEmpty {
+                if !model.stacks.isEmpty { Text("Not in a Stack").font(.title2.bold()) }
+                MacCardGrid(state: state, books: unstacked)
+            }
+            if state.showHiddenCards, !hidden.isEmpty {
+                Label("Hidden Cards", systemImage: "eye.slash").font(.title2.bold()).frame(height: 32)
+                MacCardGrid(state: state, books: model.hiddenCards)
             }
         }
+    }
+}
+
+private struct MacCardGrid: View {
+    let state: MacAppState
+    let books: [BookProfile]
+    var body: some View {
+        // Fixed-width columns: flexible ones re-spaced every card on each frame of the inspector animation.
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250, maximum: 250), spacing: 18, alignment: .leading)], alignment: .leading, spacing: 18) {
+            ForEach(books) { book in
+                MacCardView(model: state.model, book: book)
+                    .onTapGesture { state.selectCard(book.id) }
+                    .contextMenu { MacCardMenu(state: state, book: book) }
+            }
+        }
+    }
+}
+
+/// Right-click actions for a card, shared by the sidebar, the Cards page and stack pages.
+struct MacCardMenu: View {
+    let state: MacAppState
+    let book: BookProfile
+    private var model: AppModel { state.model }
+    var body: some View {
+        let hidden = model.alwaysHiddenBookIDs.contains(book.id)
+        Button("Edit Card…") { state.editingCard = book }
+        if !hidden, !model.stacks.isEmpty {
+            Menu("Stacks") {
+                ForEach(model.stacks) { stack in
+                    Toggle(stack.name, isOn: Binding(get: { stack.cardIDs.contains(book.id) }, set: { on in
+                        var stack = stack
+                        if on { stack.cardIDs.append(book.id) } else { stack.cardIDs.removeAll { $0 == book.id } }
+                        model.performUIAction { try model.updateStack(stack) }
+                    }))
+                }
+            }
+        }
+        Button(hidden ? "Unhide Card" : "Hide Card") { state.setCardHidden(book, !hidden) }
+        Divider()
+        Button("Delete Card…", role: .destructive) { state.deletingCard = book }.disabled(model.books.count < 2)
+    }
+}
+
+/// One stack's cards and their combined transactions. `stack == nil` is the built-in Hidden Cards group.
+struct MacStackView: View {
+    @Bindable var state: MacAppState
+    let stack: CardStack?
+    private var model: AppModel { state.model }
+
+    var body: some View {
+        let books = stack.map(model.books(in:)) ?? model.hiddenCards
+        let expenses = books.flatMap { model.expenses(for: $0.id) }
+        let cycleTotal = expenses.filter { model.cycle.contains($0) }.reduce(0) { $0 + $1.amount }
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Label(stack?.name ?? "Hidden Cards", systemImage: stack?.icon ?? "eye.slash").font(.largeTitle.bold())
+                    Spacer()
+                    if let stack { Button("Edit Stack…") { state.editingStack = stack }.buttonStyle(.glass) }
+                }.frame(height: 44) // SF Symbols differ in height; a fixed row keeps every stack page aligned
+                if books.isEmpty {
+                    Text(stack == nil ? "No hidden cards." : "No cards in this stack yet. Use Edit Stack… to add some.").foregroundStyle(.secondary)
+                } else {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 14) {
+                            ForEach(books) { book in
+                                MacCardView(model: model, book: book)
+                                    .onTapGesture { state.selectCard(book.id) }
+                                    .contextMenu { MacCardMenu(state: state, book: book) }
+                            }
+                        }.padding(.vertical, 12)
+                    }.scrollIndicators(.hidden).scrollClipDisabled()
+                }
+                HStack {
+                    SummaryTile(title: "Cycle spending", value: Money.format(cycleTotal), detail: model.cycle.label)
+                    SummaryTile(title: "Transactions", value: "\(expenses.count)", detail: "\(books.count) card\(books.count == 1 ? "" : "s")")
+                }
+            }.padding(24)
+            Divider()
+            MacExpenseTable(state: state, bookIDs: books.map(\.id)).padding(24)
+        }.navigationTitle(stack?.name ?? "Hidden Cards")
+    }
+}
+
+extension AppModel {
+    func books(in stack: CardStack) -> [BookProfile] { books(in: .stack(id: stack.id, name: stack.name)) }
+    var hiddenCards: [BookProfile] { orderedBooks.filter { alwaysHiddenBookIDs.contains($0.id) } }
+}
+
+private struct MacCardEditor: View {
+    private enum Kind: String, CaseIterable { case color = "Color", custom = "Custom", template = "Template", photo = "Photo" }
+    let model: AppModel
+    let original: BookProfile?
+    let close: () -> Void
+    private let draftID: UUID // names photo files before a new card has its real id
+    @State private var name: String
+    @State private var custom: BookCardCustomization
+    @State private var kind: Kind
+    @State private var customColor: Color
+    @State private var importingPhoto = false
+    @State private var preparedPhotos: Set<String> = [] // saved while picking; unused ones are removed on close
+    @State private var error: String?
+
+    init(model: AppModel, book: BookProfile?, close: @escaping () -> Void) {
+        self.model = model; original = book; self.close = close
+        draftID = book?.id ?? UUID()
+        let custom = book.map { model.customization(for: $0.id) } ?? .defaultFor(colorIndex: model.books.count % CardPalette.standard.count)
+        _name = State(initialValue: book?.name ?? "")
+        _custom = State(initialValue: custom)
+        switch custom.style {
+        case .palette: _kind = State(initialValue: .color); _customColor = State(initialValue: CardPalette.color(for: 0))
+        case .customColor(let hex): _kind = State(initialValue: .custom); _customColor = State(initialValue: CardPalette.color(fromHex: hex))
+        case .stock: _kind = State(initialValue: .template); _customColor = State(initialValue: CardPalette.color(for: 0))
+        case .customPhoto: _kind = State(initialValue: .photo); _customColor = State(initialValue: CardPalette.color(for: 0))
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(original == nil ? "New Card" : "Edit Card").font(.title2.bold())
+            MacCardView(model: model, book: BookProfile(id: draftID, name: name.isEmpty ? "Card name" : name), preview: custom)
+                .frame(maxWidth: .infinity)
+            Form {
+                TextField("Name", text: $name)
+                Picker("Style", selection: $kind) { ForEach(Kind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                    .pickerStyle(.segmented)
+                    .onChange(of: kind) { _, kind in applyKind(kind) }
+                styleControls
+                Picker("Text", selection: $custom.textTone) { ForEach(CardTextTone.allCases, id: \.self) { Text($0.title).tag($0) } }
+            }.formStyle(.grouped)
+            if let error { Text(error).foregroundStyle(.red) }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { finish(keeping: nil) }
+                Button("Save") { save() }.buttonStyle(.borderedProminent).keyboardShortcut(.return, modifiers: .command)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24).frame(width: 560)
+        .fileImporter(isPresented: $importingPhoto, allowedContentTypes: [.image]) { result in
+            do { try loadPhoto(result.get()) } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    @ViewBuilder private var styleControls: some View {
+        switch kind {
+        case .color:
+            LabeledContent("Color") {
+                HStack(spacing: 6) {
+                    ForEach(CardPalette.standard) { swatch in
+                        Circle().fill(swatch.color).frame(width: 20, height: 20)
+                            .overlay { if custom.style == .palette(index: swatch.id) { Circle().strokeBorder(.primary, lineWidth: 2) } }
+                            .onTapGesture { custom.style = .palette(index: swatch.id) }
+                            .accessibilityLabel(swatch.name).accessibilityAddTraits(.isButton)
+                    }
+                }
+            }
+        case .custom:
+            ColorPicker("Color", selection: $customColor, supportsOpacity: false)
+                .onChange(of: customColor) { _, color in custom.style = .customColor(hex: CardPalette.hexString(from: color)) }
+        case .template:
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+                ForEach(StockCardDesign.allCases) { design in
+                    VStack(spacing: 4) {
+                        StockDesignBackgroundView(design: design)
+                            .frame(height: 60).clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay { if custom.style == .stock(design) { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3) } }
+                        Text(design.displayName).font(.caption)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { custom.style = .stock(design) }
+                    .accessibilityElement(children: .combine).accessibilityAddTraits(.isButton)
+                }
+            }
+        case .photo:
+            LabeledContent("Photo") { Button("Choose Image…") { importingPhoto = true } }
+        }
+    }
+
+    private func applyKind(_ kind: Kind) {
+        switch kind {
+        case .color: if case .palette = custom.style {} else { custom.style = .palette(index: original?.colorIndex ?? 0) }
+        case .custom: custom.style = .customColor(hex: CardPalette.hexString(from: customColor))
+        case .template: if case .stock = custom.style {} else { custom.style = .stock(.sunsetHeat) }
+        case .photo: if case .customPhoto = custom.style {} else { importingPhoto = true }
+        }
+    }
+
+    private func loadPhoto(_ url: URL) throws {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let filename = try CardArtworkStore.shared.saveArtwork(Data(contentsOf: url), for: draftID)
+        preparedPhotos.insert(filename)
+        custom.style = .customPhoto(filename: filename)
+        error = nil
+    }
+
+    private func save() {
+        do {
+            let id: UUID
+            if let original {
+                id = original.id
+                if name != original.name { try model.renameBook(id: id, to: name) }
+            } else {
+                id = try model.createBook(named: name).id
+            }
+            if custom != model.customization(for: id) { model.updateCustomization(custom, for: id) }
+            finish(keeping: custom.style)
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func finish(keeping style: CardBackgroundStyle?) {
+        for filename in preparedPhotos where style != .customPhoto(filename: filename) { CardArtworkStore.shared.deleteArtwork(filename: filename) }
+        close()
+    }
+}
+
+private struct MacStackEditor: View {
+    let state: MacAppState
+    let original: CardStack
+    let close: () -> Void
+    @State private var stack: CardStack
+    @State private var error: String?
+    private static let icons = ["rectangle.stack", "airplane", "house", "cart", "briefcase", "creditcard", "fork.knife", "sparkles", "car", "cross.case", "sportscourt", "bag"]
+    private var isNew: Bool { !model.stacks.contains { $0.id == original.id } }
+
+    private var model: AppModel { state.model }
+
+    init(state: MacAppState, stack: CardStack, close: @escaping () -> Void) {
+        self.state = state; original = stack; self.close = close
+        _stack = State(initialValue: stack)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(isNew ? "New Stack" : "Edit Stack").font(.title2.bold())
+            Form {
+                TextField("Name", text: $stack.name)
+                Picker("Icon", selection: $stack.icon) { ForEach(Self.icons, id: \.self) { Image(systemName: $0).tag($0) } }
+                Section("Cards") {
+                    ForEach(model.orderedBooks.filter { !model.alwaysHiddenBookIDs.contains($0.id) }) { book in
+                        Toggle(book.name, isOn: Binding(get: { stack.cardIDs.contains(book.id) }, set: { on in
+                            if on { stack.cardIDs.append(book.id) } else { stack.cardIDs.removeAll { $0 == book.id } }
+                        }))
+                    }
+                }
+            }.formStyle(.grouped)
+            if let error { Text(error).foregroundStyle(.red) }
+            HStack {
+                if !isNew {
+                    Button("Delete Stack", role: .destructive) { state.deleteStack(original); close() }
+                        .disabled(model.stacks.count < 2) // the model keeps at least one stack
+                }
+                Spacer()
+                Button("Cancel", role: .cancel, action: close)
+                Button("Save") { save() }.buttonStyle(.borderedProminent).keyboardShortcut(.return, modifiers: .command)
+            }
+        }.padding(24).frame(width: 440, height: 520)
+    }
+
+    private func save() {
+        do {
+            if isNew { try model.createStack(name: stack.name, icon: stack.icon, cardIDs: stack.cardIDs) }
+            else {
+                var value = stack
+                let trimmed = value.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                value.name = trimmed.isEmpty ? original.name : String(trimmed.prefix(40))
+                try model.updateStack(value)
+            }
+            close()
+        } catch { self.error = error.localizedDescription }
     }
 }
 
@@ -842,9 +1182,9 @@ private struct BillInspector: View {
                 Section("Needs Attention") {
                     LabeledContent("Due", value: Day.title(pending.dueDay))
                     HStack {
-                        Button("Skip") { act { try model.skipBillOccurrence(pending.id) } }
+                        Button("Skip") { act { try model.skipBillOccurrence(pending.id) } }.buttonStyle(.glass)
                         Spacer()
-                        Button("Record") { act { _ = try model.confirmBillOccurrence(pending.id) } }.buttonStyle(.borderedProminent)
+                        Button("Record") { act { _ = try model.confirmBillOccurrence(pending.id) } }.buttonStyle(.glassProminent)
                     }
                 }
             }

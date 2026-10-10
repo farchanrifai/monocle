@@ -19,7 +19,7 @@ struct MacBudgetsView: View {
                 SummaryTile(title: "Spent", value: Money.format(model.spent), detail: "\(usedPercent)% used")
                 SummaryTile(title: "Remaining", value: Money.format(model.remaining), detail: "Cycle day \(model.activeBudget.startDay)")
             }
-            HStack { Text("Category budgets").font(.title2.bold()); Spacer(); Button("Edit Budget") { editing = true } }
+            HStack { Text("Category budgets").font(.title2.bold()); Spacer(); Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
             Table(categories) {
                 TableColumn("Category") { category in Label(category.name, systemImage: category.symbol) }
                 TableColumn("Spent") { category in Text(Money.format(spent[category.id] ?? 0)).font(.system(.body, design: .monospaced)) }
@@ -94,7 +94,7 @@ struct MacBillsView: View {
                 SummaryTile(title: "Pending", value: "\(pending.count)", detail: "Need confirmation")
                 SummaryTile(title: "Monthly total", value: Money.format(model.bills.filter(\.isActive).reduce(0) { $0 + $1.amount }), detail: "Scheduled amount")
             }
-            HStack { Text("Schedule").font(.title2.bold()); Spacer(); Button("New Bill") { adding = true }.buttonStyle(.borderedProminent) }
+            HStack { Text("Schedule").font(.title2.bold()); Spacer(); Button("New Bill") { adding = true }.buttonStyle(.glassProminent) }
             Table(model.bills, selection: Binding<BillRule.ID?>(get: {
                 if case .bill(let id) = state.inspectorSelection { id } else { nil }
             }, set: { state.inspect($0.map { .bill($0) }) })) {
@@ -117,8 +117,8 @@ struct MacBillsView: View {
                         HStack {
                             VStack(alignment: .leading) { Text(rule.name).font(.headline); Text("Due \(occurrence.dueDay)").foregroundStyle(.secondary) }
                             Spacer(); Text(Money.format(rule.amount)).font(.system(.body, design: .monospaced))
-                            Button("Skip") { do { try model.skipBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }
-                            Button("Record") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.borderedProminent)
+                            Button("Skip") { do { try model.skipBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glass)
+                            Button("Record") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glassProminent)
                         }.padding(12).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
                     }
                 }

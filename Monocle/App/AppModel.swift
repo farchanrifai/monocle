@@ -714,7 +714,7 @@ final class AppModel {
         do {
             try commitPresentationPreferences(proposed)
             if isHidden, selectedBookID == id { selectedBookID = nil }
-            showToast(isHidden ? "Card archived" : "Card unarchived")
+            showToast(isHidden ? "Card hidden" : "Card unhidden")
         } catch { self.error = error.localizedDescription }
     }
 

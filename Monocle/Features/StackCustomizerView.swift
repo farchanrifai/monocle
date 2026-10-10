@@ -566,11 +566,11 @@ struct StackCustomizerView: View {
     private var archiveSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Card Visibility & Archive")
+                Text("Hidden Cards")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
-                Text("Always Hidden cards never appear on the home deck or in 'All Activities'. They remain safely stored and accessible via the top Options Menu.")
+                Text("Hidden cards never appear on the home deck or in 'All Activities'. They remain safely stored and accessible via the top Options Menu.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -596,7 +596,7 @@ struct StackCustomizerView: View {
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(isAlwaysHidden ? .secondary : .primary)
                                 if isAlwaysHidden {
-                                    Text("Archived")
+                                    Text("Hidden")
                                         .font(.caption2.weight(.bold))
                                         .foregroundStyle(MC.red)
                                         .padding(.horizontal, 6)

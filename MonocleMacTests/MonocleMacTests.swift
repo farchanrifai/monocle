@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import MonocleMac
 
@@ -126,5 +127,89 @@ final class MonocleMacTests: XCTestCase {
         XCTAssertTrue(expenses.allSatisfy { model.expense(id: $0.id) != nil }, "One undo restores every deleted expense")
         undo.redo()
         XCTAssertTrue(expenses.allSatisfy { model.expense(id: $0.id) == nil })
+    }
+
+    @MainActor func testCardAndStackManagementFlow() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try ExpenseRepository(inMemory: true)
+        try repository.prepareSampleBook()
+        let model = AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory))
+        try model.ensureDefaultStack()
+
+        let card = try model.createBook(named: "Travel")
+        var custom = model.customization(for: card.id); custom.style = .palette(index: 5)
+        model.updateCustomization(custom, for: card.id)
+        XCTAssertEqual(model.customization(for: card.id).style, .palette(index: 5))
+        let trip = try model.createStack(name: "Trip", icon: "airplane", cardIDs: [card.id])
+        XCTAssertEqual(model.stacks.first { $0.id == trip.id }?.cardIDs, [card.id])
+
+        if ProcessInfo.processInfo.environment["MONOCLE_RENDER"] != nil { // sandboxed host: lands in the app container's tmp
+            let host = NSHostingView(rootView: MacCardsView(state: MacAppState(model: model)))
+            host.frame = CGRect(x: 0, y: 0, width: 900, height: 700); host.appearance = NSAppearance(named: .aqua); host.layoutSubtreeIfNeeded()
+            let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("cards.png")
+            try rep.representation(using: .png, properties: [:])?.write(to: url); print("RENDERED", url.path)
+        }
+
+        try model.deleteBook(id: card.id)
+        XCTAssertFalse(model.books.contains { $0.id == card.id })
+        XCTAssertTrue(model.stacks.allSatisfy { !$0.cardIDs.contains(card.id) }, "Deleting a card drops it from every stack")
+    }
+
+    @MainActor func testStackDestinationsRoundTripAndSidebarLimitKeepsSelection() {
+        let id = UUID()
+        for destination in [MacDestination.stack(id), .hiddenCards, .card(id), .cards] {
+            XCTAssertEqual(MacAppState.decode(MacAppState.encode(destination)), destination)
+        }
+        struct Item: Identifiable { let id: Int }
+        let items = (0..<8).map(Item.init)
+        XCTAssertEqual(MacRootView.limited(items, showAll: false) { _ in false }.map(\.id), [0, 1, 2, 3, 4])
+        XCTAssertEqual(MacRootView.limited(items, showAll: false) { $0.id == 6 }.map(\.id), [0, 1, 2, 3, 4, 6], "Selected item past the limit stays visible")
+        XCTAssertEqual(MacRootView.limited(items, showAll: true) { _ in false }.count, 8)
+    }
+
+    @MainActor func testHiddenCardsLeaveStacksAndRenderStackPage() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try ExpenseRepository(inMemory: true)
+        try repository.prepareSampleBook()
+        let model = AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory))
+        try model.ensureDefaultStack()
+        let state = MacAppState(model: model)
+        let travel = try model.createBook(named: "Travel")
+        var custom = model.customization(for: travel.id); custom.style = .stock(.auroraBorealis)
+        model.updateCustomization(custom, for: travel.id)
+        let stack = try XCTUnwrap(model.stacks.first)
+        XCTAssertTrue(model.books(in: stack).contains { $0.id == travel.id })
+
+        state.setCardHidden(travel, true)
+        XCTAssertEqual(model.hiddenCards.map(\.id), [travel.id])
+        XCTAssertFalse(model.books(in: try XCTUnwrap(model.stacks.first)).contains { $0.id == travel.id }, "Hidden cards leave every stack")
+        state.setCardHidden(travel, false)
+        XCTAssertTrue(model.hiddenCards.isEmpty)
+
+        let category = try XCTUnwrap(model.categories.first)
+        try model.save(Expense(amount: 25_000_00, day: Day.string(.now), note: "Stack lunch",
+                               allocations: [.init(categoryID: category.id, amount: 25_000_00)], bookID: model.activeBookID))
+        state.destination = .stack(stack.id)
+        render(MacRootView(state: state), size: CGSize(width: 1200, height: 760), name: "stack-page")
+        state.setCardHidden(travel, true)
+        render(MacStackView(state: state, stack: nil), size: CGSize(width: 900, height: 600), name: "hidden-cards")
+    }
+
+    /// Writes a PNG to the app container's tmp when MONOCLE_RENDER is set (the test host is sandboxed).
+    @MainActor private func render(_ view: some View, size: CGSize, name: String) {
+        guard ProcessInfo.processInfo.environment["MONOCLE_RENDER"] != nil else { return }
+        let host = NSHostingView(rootView: view)
+        host.frame = CGRect(origin: .zero, size: size); host.appearance = NSAppearance(named: .aqua); host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: .now + 0.5) // let the split view and table settle
+        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+        host.cacheDisplay(in: host.bounds, to: rep)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).png")
+        try? rep.representation(using: .png, properties: [:])?.write(to: url); print("RENDERED", url.path)
     }
 }

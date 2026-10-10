@@ -4,7 +4,7 @@ import Observation
 import SwiftUI
 
 enum MacDestination: Hashable {
-    case overview, activity, cards, card(UUID), budgets, bills, analytics, chat
+    case overview, activity, cards, card(UUID), stack(UUID), hiddenCards, budgets, bills, analytics, chat
 
     var title: String {
         switch self {
@@ -12,6 +12,8 @@ enum MacDestination: Hashable {
         case .activity: "Activity"
         case .cards: "Cards"
         case .card: "Card"
+        case .stack: "Stack"
+        case .hiddenCards: "Hidden Cards"
         case .budgets: "Budgets"
         case .bills: "Bills"
         case .analytics: "Analytics"
@@ -142,6 +144,13 @@ final class MacAppState {
     var inspectorSelection: MacInspectorSelection?
     var inspectorVisible = true { didSet { UserDefaults.standard.set(inspectorVisible, forKey: "MacInspectorVisible") } }
     var editingBill: BillRule?
+    var addingCard = false
+    var editingCard: BookProfile?
+    var deletingCard: BookProfile?
+    var editingStack: CardStack?
+    var showHiddenCards = UserDefaults.standard.object(forKey: "MacShowHiddenCards") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showHiddenCards, forKey: "MacShowHiddenCards") }
+    }
     var commandBarVisible = false
     var regularEntryVisible = false
     var searchText = ""
@@ -248,6 +257,9 @@ final class MacAppState {
             .init(id: MacCommandID.analytics.rawValue, title: "Go to Analytics", symbol: "chart.bar.xaxis", commandID: .analytics, destination: nil),
             .init(id: MacCommandID.chat.rawValue, title: "Go to Chat", symbol: "bubble.left.and.text.bubble.right", commandID: .chat, destination: nil)
         ]
+        result += model.stacks.map { stack in
+            .init(id: "stack.\(stack.id)", title: "Open \(stack.name)", symbol: stack.icon, commandID: nil, destination: .stack(stack.id))
+        }
         result += model.books.map { book in
             .init(id: "card.\(book.id)", title: "Open \(book.name)", symbol: "creditcard.fill", commandID: nil, destination: .card(book.id))
         }
@@ -348,6 +360,23 @@ final class MacAppState {
         }
     }
 
+    /// Deleting cascades the card's expenses, budgets and bills; callers confirm first.
+    func deleteCard(_ book: BookProfile) {
+        model.performUIAction { try model.deleteBook(id: book.id) }
+        guard !model.books.contains(where: { $0.id == book.id }) else { return }
+        if destination == .card(book.id) { destination = .cards }
+        if inspectorSelection == .card(book.id) { inspect(nil) }
+    }
+
+    func deleteStack(_ stack: CardStack) {
+        model.deleteStack(id: stack.id)
+        if destination == .stack(stack.id), !model.stacks.contains(where: { $0.id == stack.id }) { destination = .cards }
+    }
+
+    func setCardHidden(_ book: BookProfile, _ hidden: Bool) {
+        model.setCardAlwaysHidden(id: book.id, isHidden: hidden)
+    }
+
     func selectCard(_ id: UUID) {
         _ = model.selectBook(id)
         destination = .card(id)
@@ -365,17 +394,18 @@ final class MacAppState {
         catch { shortcutError = error.localizedDescription }
     }
 
-    private static func encode(_ value: MacDestination) -> String {
+    static func encode(_ value: MacDestination) -> String {
         switch value {
         case .overview: "overview"; case .activity: "activity"; case .cards: "cards"
-        case .card(let id): "card:\(id.uuidString)"; case .budgets: "budgets"; case .bills: "bills"; case .analytics: "analytics"; case .chat: "chat"
+        case .card(let id): "card:\(id.uuidString)"; case .stack(let id): "stack:\(id.uuidString)"; case .hiddenCards: "hiddenCards"; case .budgets: "budgets"; case .bills: "bills"; case .analytics: "analytics"; case .chat: "chat"
         }
     }
 
-    private static func decode(_ value: String?) -> MacDestination {
+    static func decode(_ value: String?) -> MacDestination {
         guard let value else { return .overview }
         if value.hasPrefix("card:"), let id = UUID(uuidString: String(value.dropFirst(5))) { return .card(id) }
-        return switch value { case "activity": .activity; case "cards": .cards; case "budgets": .budgets; case "bills": .bills; case "analytics": .analytics; case "chat": .chat; default: .overview }
+        if value.hasPrefix("stack:"), let id = UUID(uuidString: String(value.dropFirst(6))) { return .stack(id) }
+        return switch value { case "hiddenCards": .hiddenCards; case "activity": .activity; case "cards": .cards; case "budgets": .budgets; case "bills": .bills; case "analytics": .analytics; case "chat": .chat; default: .overview }
     }
 }
 
@@ -415,7 +445,10 @@ struct MonocleMacCommands: Commands {
             commandButton("Settings…", .settings)
             commandButton("Lock Monocle", .lock)
         }
-        CommandGroup(after: .toolbar) { commandButton("Command Bar", .commandBar) }
+        CommandGroup(after: .toolbar) {
+            commandButton("Command Bar", .commandBar)
+            Toggle("Show Hidden Cards", isOn: Binding(get: { state.showHiddenCards }, set: { state.showHiddenCards = $0 }))
+        }
     }
 
     @ViewBuilder private func commandButton(_ title: String, _ id: MacCommandID) -> some View {

@@ -118,6 +118,7 @@
 		CD0326437A18DBDFEA2F5DD6 /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71073E7844EEEC92CAB6515F /* WidgetSnapshotTests.swift */; };
 		CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */; };
 		CFB8E20EE4A6884CF4AB5146 /* ShortcutOrderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */; };
+		CFC2ED8F8DBC21291C70B446 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
 		D28862952E06ADCA4386CF2A /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
 		D6A62922768B3F0E803F2844 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */; };
 		DDEBFCFF6342B39DCFB0D54D /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C6F2F7E78348046E865E34 /* BackupService.swift */; };
@@ -944,6 +945,7 @@
 				310E5DB31CAF2D7D5E3A3043 /* MonocleMacApp.swift in Sources */,
 				CC054967E59236C3095B3D99 /* PlatformIntegrationShims.swift in Sources */,
 				5EFF303B139E8F81ABB4B62D /* SampleBookSeeder.swift in Sources */,
+				CFC2ED8F8DBC21291C70B446 /* StockDesignViews.swift in Sources */,
 				CB1668A7A9BA30AEA926EC75 /* ToolExecutor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
