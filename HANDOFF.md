@@ -1,6 +1,6 @@
 ## 1. Immediate Next Step
 
-Fixed both known AI Chat bugs (Apple on-device backend) on branch `fix/chat-known-bugs` (off `feat/apple-intelligence-chat`, pushed). User to review and merge it into `feat/apple-intelligence-chat`; do NOT merge to main until the user says so.
+Fixed both known AI Chat bugs (Apple on-device backend); merged into `feat/apple-intelligence-chat` (commit `3657720`, pushed). Do NOT merge to main until the user says so.
 
 - "updated"/"saved" before confirm: `AppleChatAgent.claimsDone` drops the reply text when the turn shows a proposal/change/bill card and the text uses a done verb (EN + ID word list).
 - "what categories?" echoing the list: Apple's app_context no longer lists categories (`ChatAgent.context(listCategories: false)`); instead `category` in the propose_* tool schemas is an enum of the target card's categories (session rebuilt when they change). Claude backend unchanged.
