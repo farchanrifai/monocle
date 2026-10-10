@@ -63,8 +63,9 @@ struct ToolExecutor {
 
     enum GroupBy: String, Decodable { case category, day, card }
 
-    struct ProposeInput: Decodable { let amount: Int64; let category: String; var note: String?; var day: String?; var card: String? }
-    struct EditInput: Decodable { let id: String; var amount: Int64?; var category: String?; var note: String?; var day: String? }
+    struct SplitPart: Decodable { let category: String; let amount: Int64 }
+    struct ProposeInput: Decodable { let amount: Int64; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String? }
+    struct EditInput: Decodable { let id: String; var amount: Int64?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
     struct DeleteInput: Decodable { let id: String }
     struct QueryInput: Decodable {
         var period: Period?; var start: String?; var end: String?
@@ -113,14 +114,14 @@ struct ToolExecutor {
         let day = input.day ?? Day.string(now)
         guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
         let categories = try model.activeCategories(in: book.id)
-        let category = try category(named: input.category, in: categories)
         let minor = input.amount * 100
+        guard let allocations = try allocations(total: minor, category: input.category, split: input.split, in: categories) else {
+            throw ToolError(message: "Give a category, or a split of two or more categories.")
+        }
         let note = (input.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let expense = Expense(amount: minor, day: day, note: note,
-                              allocations: [Allocation(categoryID: category.id, amount: minor)],
-                              source: "chat", bookID: book.id)
+        let expense = Expense(amount: minor, day: day, note: note, allocations: allocations, source: "chat", bookID: book.id)
         try expense.validate(categories: categories)
-        let result = ProposalResult(status: "shown_to_user", card: book.name, category: category.name,
+        let result = ProposalResult(status: "shown_to_user", card: book.name, category: try summary(of: expense, in: book).category,
                                     amount: Amount(minor), day: day, note: note)
         return Outcome(json: try Self.encode(result), proposal: expense)
     }
@@ -135,13 +136,13 @@ struct ToolExecutor {
             updated.amount = amount * 100
         }
         let categories = try model.activeCategories(in: book.id)
-        let categoryID = try input.category.map { try category(named: $0, in: categories).id }
-        if input.amount != nil || categoryID != nil {
-            // ponytail: chat edits single-category expenses only; splits are edited in the app.
+        if let allocations = try allocations(total: updated.amount, category: input.category, split: input.split, in: categories) {
+            updated.allocations = allocations
+        } else if input.amount != nil {
             guard original.allocations.count == 1 else {
-                throw ToolError(message: "This expense is split across categories. Its amount and category can only be changed in the app.")
+                throw ToolError(message: "This expense is split. Give the new split with the new amount.")
             }
-            updated.allocations = [Allocation(categoryID: categoryID ?? original.allocations[0].categoryID, amount: updated.amount)]
+            updated.allocations[0].amount = updated.amount
         }
         if let note = input.note { updated.note = note.trimmingCharacters(in: .whitespacesAndNewlines) }
         if let day = input.day {
@@ -161,6 +162,25 @@ struct ToolExecutor {
         let (expense, book) = try savedExpense(input.id)
         let result = ChangeResult(status: "shown_to_user", card: book.name, before: try summary(of: expense, in: book))
         return Outcome(json: try Self.encode(result), change: ExpenseChange(original: expense, updated: nil))
+    }
+
+    /// One category, or a split whose parts add up to `total` (minor units). nil when neither was given.
+    private func allocations(total: Int64, category name: String?, split: [SplitPart]?, in categories: [ExpenseCategory]) throws -> [Allocation]? {
+        if let split, !split.isEmpty {
+            guard name == nil else { throw ToolError(message: "Give either category or split, not both.") }
+            guard split.count >= 2 else { throw ToolError(message: "A split needs two or more categories; use category for one.") }
+            let parts = try split.map { part -> Allocation in
+                guard part.amount > 0, part.amount <= Money.maximum / 100 else { throw ToolError(message: "Each split amount must be whole rupiah above 0.") }
+                return Allocation(categoryID: try category(named: part.category, in: categories).id, amount: part.amount * 100)
+            }
+            guard Set(parts.map(\.categoryID)).count == parts.count else { throw ToolError(message: "Each category can appear once in a split.") }
+            let sum = try Money.checkedSum(parts.map(\.amount))
+            guard sum == total else {
+                throw ToolError(message: "Split parts add up to \(Money.format(sum)) but the amount is \(Money.format(total)). Make them match.")
+            }
+            return parts
+        }
+        return try name.map { [Allocation(categoryID: try category(named: $0, in: categories).id, amount: total)] }
     }
 
     private func savedExpense(_ id: String) throws -> (Expense, BookProfile) {

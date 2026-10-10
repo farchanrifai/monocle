@@ -169,6 +169,30 @@ final class ChatToolTests: XCTestCase {
         XCTAssertTrue(run("no_such_tool", [:]).isError)
     }
 
+    func testProposeSplitMustAddUpToTheAmount() throws {
+        let split: [[String: Any]] = [["category": "Food & Drink", "amount": 30000], ["category": "shopping", "amount": 20000]]
+        let outcome = run("propose_expense", ["amount": 50000, "split": split, "note": "Pasar"])
+        XCTAssertFalse(outcome.isError, outcome.json)
+        let expense = try XCTUnwrap(outcome.proposal)
+        XCTAssertEqual(expense.allocations.map(\.amount), [3_000_000, 2_000_000])
+        XCTAssertEqual(Set(expense.allocations.map(\.categoryID)).count, 2)
+
+        let mismatch = run("propose_expense", ["amount": 60000, "split": split])
+        XCTAssertTrue((json(mismatch)["error"] as? String ?? "").contains("add up"), mismatch.json)
+        XCTAssertTrue(run("propose_expense", ["amount": 30000, "split": [split[0]]]).isError, "One part is not a split")
+        XCTAssertTrue(run("propose_expense", ["amount": 50000, "split": split, "category": "Transport"]).isError, "Not both")
+        XCTAssertTrue(run("propose_expense", ["amount": 60000, "split": [split[0], split[0]]]).isError, "Duplicate category")
+        XCTAssertTrue(run("propose_expense", ["amount": 50000]).isError, "Category or split required")
+    }
+
+    func testEditCanSplitAndResplit() throws {
+        let kopi = try kopiID()
+        let split: [[String: Any]] = [["category": "Food & Drink", "amount": 20000], ["category": "Shopping", "amount": 10000]]
+        let edit = run("propose_edit", ["id": kopi, "amount": 30000, "split": split])
+        XCTAssertEqual(edit.change?.updated?.allocations.map(\.amount), [2_000_000, 1_000_000], edit.json)
+        XCTAssertTrue(run("propose_edit", ["id": kopi, "split": split]).isError, "Split must match the unchanged Rp28.000")
+    }
+
     // MARK: - propose_edit / propose_delete
 
     func testEditProposesOnlyGivenFieldsAndNeverWrites() throws {

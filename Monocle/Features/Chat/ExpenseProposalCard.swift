@@ -4,6 +4,8 @@ import SwiftUI
 struct ExpenseProposalCard: View {
     let expense: Expense
     let category: ExpenseCategory?
+    /// Set for a split: every part with its amount.
+    var splitLabel: String? = nil
     let cardName: String
     let state: ProposalState
     var onSave: () -> Void
@@ -15,7 +17,8 @@ struct ExpenseProposalCard: View {
             Text("New expense").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             Text(Money.format(expense.amount)).font(.system(.title, design: .rounded, weight: .semibold))
             VStack(alignment: .leading, spacing: 6) {
-                Label(category?.name ?? "No category", systemImage: category?.symbol ?? "questionmark.circle")
+                if let splitLabel { Label(splitLabel, systemImage: "square.split.2x1") }
+                else { Label(category?.name ?? "No category", systemImage: category?.symbol ?? "questionmark.circle") }
                 if !expense.note.isEmpty { Label(expense.note, systemImage: "text.alignleft") }
                 Label(Day.title(expense.day), systemImage: "calendar")
                 Label(cardName, systemImage: "creditcard")

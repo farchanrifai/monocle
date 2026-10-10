@@ -63,6 +63,9 @@ final class ChatGoldenPromptTests: XCTestCase {
         let zero = await ask("add 0")
         XCTAssertTrue(proposals(zero).isEmpty, "A zero expense must never reach a confirm card")
 
+        let market = await ask("pasar 50rb: 30rb makan 20rb belanja")
+        XCTAssertEqual(proposals(market).map { $0.allocations.map(\.amount) }, [[3_000_000, 2_000_000]], "One split expense")
+
         let big = await ask("add 10 juta")
         // Claude may ask for a category instead; if it proposes, the card must read Rp10.000.000.
         XCTAssertTrue(proposals(big).allSatisfy { $0.amount == 1_000_000_000 }, "\(big)")

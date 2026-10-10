@@ -60,6 +60,7 @@ struct ChatTranscript: View {
             ExpenseProposalCard(
                 expense: expense,
                 category: expense.bookID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.allocations.first?.categoryID },
+                splitLabel: expense.allocations.count > 1 ? categoryName(expense) : nil,
                 cardName: model.books.first { $0.id == expense.bookID }?.name ?? "",
                 state: state,
                 onSave: { session.resolveProposal(row.id, expense, as: .saved, model: model) },
@@ -85,7 +86,9 @@ struct ChatTranscript: View {
 
     private func categoryName(_ expense: Expense) -> String {
         let categories = expense.bookID.flatMap { id in try? model.expenseService?.categories(for: id) } ?? []
-        return expense.allocations.compactMap { a in categories.first { $0.id == a.categoryID }?.name }.joined(separator: ", ")
+        let name = { (a: Allocation) in categories.first { $0.id == a.categoryID }?.name ?? "Unknown" }
+        if expense.allocations.count == 1 { return name(expense.allocations[0]) }
+        return expense.allocations.map { "\(name($0)) \(Money.format($0.amount))" }.joined(separator: " · ")
     }
 
     // Tails sit on the last bubble of a same-sender run, as in Messages.

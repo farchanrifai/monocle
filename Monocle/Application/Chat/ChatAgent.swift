@@ -124,7 +124,7 @@ final class ChatAgent {
     Understand English and Bahasa Indonesia (for example "28k", "28rb", "1,5jt", "kemarin", "bulan lalu") and reply in the user's language.
     Each user turn starts with <app_context> facts from the app: today's date, the active scope, the card new expenses go to, and its categories.
     To add an expense, call propose_expense with the amount in whole rupiah. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense.
-    Pick the closest existing category. If the amount is missing or unclear, ask one short question instead of guessing.
+    Pick the closest existing category. For one purchase across categories ("50rb, 30rb makan 20rb belanja") use split instead of category. If the amount is missing or unclear, ask one short question instead of guessing.
     Never calculate totals, averages, differences or percentages yourself; use query_expenses, get_summary, compare_periods or get_budget_status and quote their numbers, using each amount's display text.
     When get_summary returns category groups, the app draws a chart, so keep the text to one or two sentences.
     To change or delete a saved expense, find it with query_expenses, then call propose_edit or propose_delete with its id. The user confirms in the app; never say it was changed or deleted unless an app note says so. If several expenses match, ask which one.
@@ -137,10 +137,13 @@ final class ChatAgent {
         [
           {"name": "propose_expense", "strict": true,
            "description": "Propose ONE expense for the user to confirm in the app. Does not save. Call once per expense.",
-           "input_schema": {"type": "object", "additionalProperties": false, "required": ["amount", "category"],
+           "input_schema": {"type": "object", "additionalProperties": false, "required": ["amount"],
              "properties": {
                "amount": {"type": "integer", "description": "Whole rupiah, e.g. 28rb -> 28000, 1,5jt -> 1500000."},
-               "category": {"type": "string", "description": "One of the category names from app_context."},
+               "category": {"type": "string", "description": "One of the category names from app_context. Omit when giving split."},
+               "split": {"type": "array", "description": "Two or more parts of ONE purchase; amounts must add up to amount.",
+                 "items": {"type": "object", "additionalProperties": false, "required": ["category", "amount"],
+                   "properties": {"category": {"type": "string"}, "amount": {"type": "integer", "description": "Whole rupiah."}}}},
                "note": {"type": "string", "description": "Short description, e.g. Kopi."},
                "day": {"type": "string", "description": "yyyy-MM-dd. Omit for today."},
                "card": {"type": "string", "description": "Card name. Omit for the app_context card."}}}},
@@ -150,7 +153,10 @@ final class ChatAgent {
              "properties": {
                "id": {"type": "string", "description": "The expense id from query_expenses."},
                "amount": {"type": "integer", "description": "New amount in whole rupiah."},
-               "category": {"type": "string", "description": "New category name."},
+               "category": {"type": "string", "description": "New single category name."},
+               "split": {"type": "array", "description": "New split replacing the categories; parts must add up to the (new) amount.",
+                 "items": {"type": "object", "additionalProperties": false, "required": ["category", "amount"],
+                   "properties": {"category": {"type": "string"}, "amount": {"type": "integer", "description": "Whole rupiah."}}}},
                "note": {"type": "string"},
                "day": {"type": "string", "description": "New date, yyyy-MM-dd."}}}},
           {"name": "propose_delete", "strict": true,
