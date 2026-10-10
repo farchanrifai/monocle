@@ -19,7 +19,7 @@ final class AnalyticsTests: XCTestCase {
             amount: 50_000_00,
             day: "2026-09-01",
             note: "Groceries",
-            allocations: [.init(categoryID: catID, amount: 50_000_00)],
+            splits: [.init(categoryID: catID, amount: 50_000_00)],
             source: "manual",
             createdAt: day1
         )
@@ -28,7 +28,7 @@ final class AnalyticsTests: XCTestCase {
             amount: 70_000_00,
             day: "2026-09-05",
             note: "Dinner",
-            allocations: [.init(categoryID: catID, amount: 70_000_00)],
+            splits: [.init(categoryID: catID, amount: 70_000_00)],
             source: "manual",
             createdAt: day5
         )
@@ -146,11 +146,11 @@ final class AnalyticsTests: XCTestCase {
 
         let catID = UUID()
         // Last month: August 5 spent 100k, August 15 spent 200k
-        let expAug1 = Expense(id: UUID(), amount: 100_000_00, day: "2026-08-05", note: "Aug 5", allocations: [.init(categoryID: catID, amount: 100_000_00)], source: "manual", createdAt: fixedNow)
-        let expAug2 = Expense(id: UUID(), amount: 200_000_00, day: "2026-08-15", note: "Aug 15", allocations: [.init(categoryID: catID, amount: 200_000_00)], source: "manual", createdAt: fixedNow)
+        let expAug1 = Expense(id: UUID(), amount: 100_000_00, day: "2026-08-05", note: "Aug 5", splits: [.init(categoryID: catID, amount: 100_000_00)], source: "manual", createdAt: fixedNow)
+        let expAug2 = Expense(id: UUID(), amount: 200_000_00, day: "2026-08-15", note: "Aug 15", splits: [.init(categoryID: catID, amount: 200_000_00)], source: "manual", createdAt: fixedNow)
 
         // This month: September 5 spent 150k
-        let expSep1 = Expense(id: UUID(), amount: 150_000_00, day: "2026-09-05", note: "Sep 5", allocations: [.init(categoryID: catID, amount: 150_000_00)], source: "manual", createdAt: fixedNow)
+        let expSep1 = Expense(id: UUID(), amount: 150_000_00, day: "2026-09-05", note: "Sep 5", splits: [.init(categoryID: catID, amount: 150_000_00)], source: "manual", createdAt: fixedNow)
 
         let points = AnalyticsEngine.calculateMonthOverMonthComparison(
             expenses: [expAug1, expAug2, expSep1],
@@ -186,8 +186,8 @@ final class AnalyticsTests: XCTestCase {
         let cat2 = ExpenseCategory(id: UUID(), name: "Transport", symbol: "car")
         let categories = [cat1, cat2]
 
-        let exp1 = Expense(id: UUID(), amount: 75_000_00, day: "2026-09-01", note: "Lunch", allocations: [.init(categoryID: cat1.id, amount: 75_000_00)], source: "manual")
-        let exp2 = Expense(id: UUID(), amount: 25_000_00, day: "2026-09-02", note: "Taxi", allocations: [.init(categoryID: cat2.id, amount: 25_000_00)], source: "manual")
+        let exp1 = Expense(id: UUID(), amount: 75_000_00, day: "2026-09-01", note: "Lunch", splits: [.init(categoryID: cat1.id, amount: 75_000_00)], source: "manual")
+        let exp2 = Expense(id: UUID(), amount: 25_000_00, day: "2026-09-02", note: "Taxi", splits: [.init(categoryID: cat2.id, amount: 25_000_00)], source: "manual")
 
         let points = AnalyticsEngine.calculateCategoryDistribution(
             expenses: [exp1, exp2],
@@ -217,8 +217,8 @@ final class AnalyticsTests: XCTestCase {
         let b1 = Card(id: UUID(), name: "Personal", colorIndex: 0)
         let b2 = Card(id: UUID(), name: "Work", colorIndex: 1)
 
-        let exp1 = Expense(id: UUID(), amount: 100_000_00, day: "2026-09-01", note: "P1", allocations: [], source: "manual", cardID: b1.id)
-        let exp2 = Expense(id: UUID(), amount: 300_000_00, day: "2026-09-02", note: "W1", allocations: [], source: "manual", cardID: b2.id)
+        let exp1 = Expense(id: UUID(), amount: 100_000_00, day: "2026-09-01", note: "P1", splits: [], source: "manual", cardID: b1.id)
+        let exp2 = Expense(id: UUID(), amount: 300_000_00, day: "2026-09-02", note: "W1", splits: [], source: "manual", cardID: b2.id)
 
         let distribution = AnalyticsEngine.calculateCardDistribution(
             expensesByCard: [b1.id: [exp1], b2.id: [exp2]],
@@ -308,7 +308,7 @@ extension AnalyticsTests {
     func testCycleAnalyticsExcludesNextCycleBoundary() throws {
         let start = try XCTUnwrap(Day.date("2026-09-01"))
         let end = try XCTUnwrap(Day.date("2026-10-01"))
-        let range = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: BudgetCycle(start: start, end: end))
+        let range = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: Cycle(start: start, end: end))
         XCTAssertEqual(range.startDay, "2026-09-01")
         XCTAssertEqual(range.endDay, "2026-09-30")
     }
@@ -325,7 +325,7 @@ extension AnalyticsTests {
             amount: 100_000_00,
             day: "2026-09-02",
             note: "Groceries",
-            allocations: [.init(categoryID: catID, amount: 100_000_00)],
+            splits: [.init(categoryID: catID, amount: 100_000_00)],
             source: "manual",
             createdAt: day1
         )
@@ -366,9 +366,9 @@ extension AnalyticsTests {
         let activeCat = ExpenseCategory(id: UUID(), name: "Food", symbol: "fork.knife")
         let archivedCatID = UUID()
 
-        let expAllocated = Expense(id: UUID(), amount: 50_000_00, day: "2026-09-01", note: "Lunch", allocations: [.init(categoryID: activeCat.id, amount: 50_000_00)], source: "manual")
-        let expUnallocated = Expense(id: UUID(), amount: 30_000_00, day: "2026-09-02", note: "Cash", allocations: [], source: "manual")
-        let expArchived = Expense(id: UUID(), amount: 20_000_00, day: "2026-09-03", note: "Old", allocations: [.init(categoryID: archivedCatID, amount: 20_000_00)], source: "manual")
+        let expAllocated = Expense(id: UUID(), amount: 50_000_00, day: "2026-09-01", note: "Lunch", splits: [.init(categoryID: activeCat.id, amount: 50_000_00)], source: "manual")
+        let expUnallocated = Expense(id: UUID(), amount: 30_000_00, day: "2026-09-02", note: "Cash", splits: [], source: "manual")
+        let expArchived = Expense(id: UUID(), amount: 20_000_00, day: "2026-09-03", note: "Old", splits: [.init(categoryID: archivedCatID, amount: 20_000_00)], source: "manual")
 
         let total: Int64 = 50_000_00 + 30_000_00 + 20_000_00
         let points = AnalyticsEngine.calculateCategoryDistribution(

@@ -11,7 +11,7 @@ struct StackCustomizerView: View {
     var initialMode: StackCustomizerMode = .manage
     var onDismiss: () -> Void
 
-    @State private var workingStacks: [CardStack]
+    @State private var workingStacks: [Stack]
     @State private var currentStackID: UUID
     @State private var editingName: String = ""
     @State private var selectedIcon: String = "rectangle.stack"
@@ -33,7 +33,7 @@ struct StackCustomizerView: View {
         var initialStacks = model.stacks
         if initialStacks.isEmpty {
             let initialIDs = model.orderedCards.map(\.id).filter { !model.alwaysHiddenCardIDs.contains($0) }
-            let def = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: initialIDs)
+            let def = Stack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: initialIDs)
             initialStacks = [def]
         }
 
@@ -42,7 +42,7 @@ struct StackCustomizerView: View {
         if initialMode == .create {
             let newID = UUID()
             let nextIndex = initialStacks.count + 1
-            let newStack = CardStack(id: newID, name: "Stack \(nextIndex)", icon: "airplane", cardIDs: [])
+            let newStack = Stack(id: newID, name: "Stack \(nextIndex)", icon: "airplane", cardIDs: [])
             initialStacks.append(newStack)
             activeID = newID
         }
@@ -61,7 +61,7 @@ struct StackCustomizerView: View {
         workingStacks.firstIndex(where: { $0.id == currentStackID })
     }
 
-    private var activeStack: CardStack {
+    private var activeStack: Stack {
         workingStacks.first(where: { $0.id == currentStackID }) ?? workingStacks.first!
     }
 
@@ -201,7 +201,7 @@ struct StackCustomizerView: View {
         }
     }
 
-    private func assignedCards(for stack: CardStack) -> [Card] {
+    private func assignedCards(for stack: Stack) -> [Card] {
         var result: [Card] = []
         let cards = model.cards
         for id in stack.cardIDs {
@@ -212,7 +212,7 @@ struct StackCustomizerView: View {
         return result
     }
 
-    private func stackCardPreview(for stack: CardStack) -> some View {
+    private func stackCardPreview(for stack: Stack) -> some View {
         let isSelected = stack.id == currentStackID
         let assigned = assignedCards(for: stack)
         let layers = miniCardLayers(for: assigned)
@@ -648,7 +648,7 @@ struct StackCustomizerView: View {
     private func addNewStack() {
         let newID = UUID()
         let nextIndex = workingStacks.count + 1
-        let newStack = CardStack(id: newID, name: "Stack \(nextIndex)", icon: "airplane", cardIDs: [])
+        let newStack = Stack(id: newID, name: "Stack \(nextIndex)", icon: "airplane", cardIDs: [])
         workingStacks.append(newStack)
         selectStack(newID)
         isNameFocused = true

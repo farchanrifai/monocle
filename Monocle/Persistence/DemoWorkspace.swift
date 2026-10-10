@@ -72,7 +72,7 @@ enum DemoWorkspace {
                         let note = notes[random.int(in: 0...(notes.count - 1))]
                         let id = UUID(uuidString: String(format: "70000000-0000-0000-0000-%012d", counter))!
                         result.append(Expense(id: id, amount: minor, day: day(offset), note: note,
-                                              allocations: [.init(categoryID: category.id, amount: minor)], source: "demo",
+                                              splits: [.init(categoryID: category.id, amount: minor)], source: "demo",
                                               createdAt: date.addingTimeInterval(Double(8 * 3600 + counter % 36_000)), cardID: card.id))
                     }
                 }
@@ -87,7 +87,7 @@ enum DemoWorkspace {
             let foodPart = Int64(random.int(in: 60...240)) * 1000_00, homePart = Int64(random.int(in: 40...180)) * 1000_00
             dailyExpenses.append(Expense(id: UUID(uuidString: String(format: "70000000-0000-0000-0000-%012d", counter))!,
                                          amount: foodPart + homePart, day: day(offset), note: "Pasar",
-                                         allocations: [.init(categoryID: food.id, amount: foodPart), .init(categoryID: home.id, amount: homePart)],
+                                         splits: [.init(categoryID: food.id, amount: foodPart), .init(categoryID: home.id, amount: homePart)],
                                          source: "demo", cardID: daily.id))
         }
         let householdExpenses = expenses(householdPatterns, days: Array(0..<365), card: household)
@@ -102,8 +102,8 @@ enum DemoWorkspace {
             version.categoryLimits = limits.map { CategoryBudget(categoryID: $0.0.id, limit: $0.1 * 100) }
             return [version]
         }
-        func bill(_ n: Int, _ card: Card, _ name: String, _ rupiah: Int64, _ category: ExpenseCategory, _ recurrence: BillRecurrence) -> BillRule {
-            BillRule(id: UUID(uuidString: String(format: "80000000-0000-0000-0000-%012d", n))!, cardID: card.id, name: name,
+        func bill(_ n: Int, _ card: Card, _ name: String, _ rupiah: Int64, _ category: ExpenseCategory, _ recurrence: BillRecurrence) -> Bill {
+            Bill(id: UUID(uuidString: String(format: "80000000-0000-0000-0000-%012d", n))!, cardID: card.id, name: name,
                      amount: rupiah * 100, categoryID: category.id, recurrence: recurrence, recordingMode: .pending, hasReminder: true)
         }
 
@@ -127,10 +127,10 @@ enum DemoWorkspace {
         ]
 
         var preferences = WorkspacePreferences()
-        let everyday = CardStack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000001")!, name: "Everyday", icon: "house", cardIDs: [daily.id, household.id])
+        let everyday = Stack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000001")!, name: "Everyday", icon: "house", cardIDs: [daily.id, household.id])
         preferences.stacks = [everyday,
-                              CardStack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000002")!, name: "Travel", icon: "airplane", cardIDs: [tokyo.id, bali.id]),
-                              CardStack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000003")!, name: "Work", icon: "briefcase", cardIDs: [work.id])]
+                              Stack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000002")!, name: "Travel", icon: "airplane", cardIDs: [tokyo.id, bali.id]),
+                              Stack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000003")!, name: "Work", icon: "briefcase", cardIDs: [work.id])]
         preferences.activeStackID = everyday.id
         preferences.cardOrder = cards.map(\.card.id)
         var settings = PrototypeSettings()

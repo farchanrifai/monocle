@@ -12,7 +12,7 @@ struct ToolExecutor {
         /// An edit or delete of a saved expense, applied only when the user confirms.
         var change: ExpenseChange? = nil
         /// A new recurring bill, saved only when the user confirms.
-        var bill: BillRule? = nil
+        var bill: Bill? = nil
         var chart: ChatChart? = nil
     }
 
@@ -132,7 +132,7 @@ struct ToolExecutor {
         guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
         let categories = try model.activeCategories(in: card.id)
         let minor = input.amount * 100
-        guard let allocations = try allocations(total: minor, category: input.category, split: input.split, in: categories) else {
+        guard let splits = try splits(total: minor, category: input.category, split: input.split, in: categories) else {
             throw ToolError(message: "Give a category, or a split of two or more categories.")
         }
         let note = (input.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -144,7 +144,7 @@ struct ToolExecutor {
             }
             paidWithID = method.id
         } else { paidWithID = card.defaultPaidWithID }
-        let expense = Expense(amount: minor, day: day, note: note, allocations: allocations, source: "chat", cardID: card.id, paidWithID: paidWithID)
+        let expense = Expense(amount: minor, day: day, note: note, splits: splits, source: "chat", cardID: card.id, paidWithID: paidWithID)
         try expense.validate(categories: categories)
         let result = ProposalResult(status: "shown_to_user", card: card.name, category: try summary(of: expense, in: card).category,
                                     amount: Amount(minor), day: day, note: note)
@@ -161,13 +161,13 @@ struct ToolExecutor {
             updated.amount = amount * 100
         }
         let categories = try model.activeCategories(in: card.id)
-        if let allocations = try allocations(total: updated.amount, category: input.category, split: input.split, in: categories) {
-            updated.allocations = allocations
+        if let splits = try splits(total: updated.amount, category: input.category, split: input.split, in: categories) {
+            updated.splits = splits
         } else if input.amount != nil {
-            guard original.allocations.count == 1 else {
+            guard original.splits.count == 1 else {
                 throw ToolError(message: "This expense is split. Give the new split with the new amount.")
             }
-            updated.allocations[0].amount = updated.amount
+            updated.splits[0].amount = updated.amount
         }
         if let note = input.note { updated.note = note.trimmingCharacters(in: .whitespacesAndNewlines) }
         if let day = input.day {
@@ -190,13 +190,13 @@ struct ToolExecutor {
     }
 
     /// One category, or a split whose parts add up to `total` (minor units). nil when neither was given.
-    private func allocations(total: Int64, category name: String?, split: [SplitPart]?, in categories: [ExpenseCategory]) throws -> [Allocation]? {
+    private func splits(total: Int64, category name: String?, split: [SplitPart]?, in categories: [ExpenseCategory]) throws -> [Split]? {
         if let split, !split.isEmpty {
             guard name == nil else { throw ToolError(message: "Give either category or split, not both.") }
             guard split.count >= 2 else { throw ToolError(message: "A split needs two or more categories; use category for one.") }
-            let parts = try split.map { part -> Allocation in
+            let parts = try split.map { part -> Split in
                 guard part.amount > 0, part.amount <= Money.maximum / 100 else { throw ToolError(message: "Each split amount must be whole rupiah above 0.") }
-                return Allocation(categoryID: try category(named: part.category, in: categories).id, amount: part.amount * 100)
+                return Split(categoryID: try category(named: part.category, in: categories).id, amount: part.amount * 100)
             }
             guard Set(parts.map(\.categoryID)).count == parts.count else { throw ToolError(message: "Each category can appear once in a split.") }
             let sum = try Money.checkedSum(parts.map(\.amount))
@@ -205,7 +205,7 @@ struct ToolExecutor {
             }
             return parts
         }
-        return try name.map { [Allocation(categoryID: try category(named: $0, in: categories).id, amount: total)] }
+        return try name.map { [Split(categoryID: try category(named: $0, in: categories).id, amount: total)] }
     }
 
     private func proposeBill(_ input: BillInput) throws -> Outcome {
@@ -222,7 +222,7 @@ struct ToolExecutor {
         case .weekly: .weekly(weekday: input.weekday ?? today.weekday ?? 1)
         case .yearly: .yearly(month: input.month ?? today.month ?? 1, day: input.day ?? today.day ?? 1)
         }
-        let rule = BillRule(cardID: card.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: input.amount * 100,
+        let rule = Bill(cardID: card.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: input.amount * 100,
                             categoryID: category.id, recurrence: recurrence,
                             recordingMode: input.record == .automatic ? .automatic : .pending, hasReminder: input.reminder ?? true)
         do { try rule.validate(categories: categories) } catch {
@@ -259,7 +259,7 @@ struct ToolExecutor {
     private func summary(of expense: Expense, in card: Card) throws -> ExpenseSummary {
         guard let service = model.expenseService else { throw EntryError.corruptStore }
         let names = Dictionary(try service.categories(for: card.id).map { ($0.id, $0.name) }) { first, _ in first }
-        return ExpenseSummary(amount: Amount(expense.amount), category: expense.allocations.compactMap { names[$0.categoryID] }.joined(separator: ", "),
+        return ExpenseSummary(amount: Amount(expense.amount), category: expense.splits.compactMap { names[$0.categoryID] }.joined(separator: ", "),
                               day: expense.day, note: expense.note)
     }
 
@@ -284,14 +284,14 @@ struct ToolExecutor {
             let rows = try service.expenses(for: card.id, from: start, to: Day.string(after), limit: fetchCap)
             guard rows.count < fetchCap else { throw ToolError(message: "Too many expenses in this range. Use a shorter period.") }
             for expense in rows {
-                var allocations = expense.allocations
+                var splits = expense.splits
                 if let wanted {
-                    allocations = allocations.filter { names[$0.categoryID].map(Self.key) == wanted }
-                    if !allocations.isEmpty { categoryFound = true } else { continue }
+                    splits = splits.filter { names[$0.categoryID].map(Self.key) == wanted }
+                    if !splits.isEmpty { categoryFound = true } else { continue }
                 }
                 if let text, !Self.key(expense.note).contains(text) { continue }
-                let amount = try Money.checkedSum(allocations.map(\.amount))
-                let label = allocations.compactMap { names[$0.categoryID] }.joined(separator: ", ")
+                let amount = try Money.checkedSum(splits.map(\.amount))
+                let label = splits.compactMap { names[$0.categoryID] }.joined(separator: ", ")
                 matches.append((expense, amount, label, card.name))
             }
         }
@@ -460,7 +460,7 @@ struct ToolExecutor {
     }
 
     /// A budget cycle exists per card only; multi-card scopes fall back to the calendar month, as Analytics does.
-    private func cycle(for target: AnalyticsFilterScope) -> BudgetCycle? {
+    private func cycle(for target: AnalyticsFilterScope) -> Cycle? {
         guard case .card(let id, _) = target, let budgets = try? model.expenseService?.budgets(for: id) else { return nil }
         return BudgetHistory.period(containing: now, budgets: budgets)?.cycle
     }

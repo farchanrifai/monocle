@@ -33,7 +33,7 @@ final class WidgetSnapshotTests: XCTestCase {
     func testWidgetSnapshotUpdaterCalculations() throws {
         let card = Card(id: UUID(), name: "Personal", kind: .real)
         let cat = ExpenseCategory(id: UUID(), name: "Coffee", symbol: "cup.and.saucer.fill")
-        let stack = CardStack(id: UUID(), name: "Daily Living", icon: "bag.fill", cardIDs: [card.id])
+        let stack = Stack(id: UUID(), name: "Daily Living", icon: "bag.fill", cardIDs: [card.id])
         let todayStr = Day.string(.now)
 
         let expense1 = Expense(
@@ -41,7 +41,7 @@ final class WidgetSnapshotTests: XCTestCase {
             amount: 35_000_00,
             day: todayStr,
             note: "Espresso",
-            allocations: [Allocation(categoryID: cat.id, amount: 35_000_00)],
+            splits: [Split(categoryID: cat.id, amount: 35_000_00)],
             source: "manual",
             createdAt: .now,
             cardID: card.id
@@ -55,7 +55,7 @@ final class WidgetSnapshotTests: XCTestCase {
             cardID: card.id
         )
 
-        let cycle = BudgetCycle.containing(.now, startDay: 1)
+        let cycle = Cycle.containing(.now, startDay: 1)
 
         let snapshot = WidgetSnapshotUpdater.update(
             activeCard: card,

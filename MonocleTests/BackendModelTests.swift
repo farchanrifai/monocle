@@ -73,7 +73,7 @@ final class BackendModelTests: XCTestCase {
         XCTAssertEqual(model.expenses(for: real.id).count, 0)
         _ = model.activities(selectedCardID: nil, allCards: true)
         let amount: Int64 = 15_000
-        let expense = Expense(amount: amount, day: Day.string(.now), note: "", allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: amount)], cardID: real.id)
+        let expense = Expense(amount: amount, day: Day.string(.now), note: "", splits: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: amount)], cardID: real.id)
         try service.save(expense)
         XCTAssertEqual(model.expenses(for: real.id).map(\.id), [expense.id])
         XCTAssertTrue(model.activities(selectedCardID: nil, allCards: true).contains(where: { $0.id == expense.id }))

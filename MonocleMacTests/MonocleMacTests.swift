@@ -10,8 +10,8 @@ final class MonocleMacTests: XCTestCase {
     func testWorkspaceBackupRoundTripPreservesMacShortcutsAndSharedData() throws {
         let card = Card.demo
         let category = ExpenseCategory.defaults[0]
-        let expense = Expense(amount: 28_000_00, day: "2026-09-22", note: "Coffee", allocations: [.init(categoryID: category.id, amount: 28_000_00)], cardID: card.id)
-        let bill = BillRule(cardID: card.id, name: "Internet", amount: 500_000_00, categoryID: category.id, recurrence: .monthly(day: 5))
+        let expense = Expense(amount: 28_000_00, day: "2026-09-22", note: "Coffee", splits: [.init(categoryID: category.id, amount: 28_000_00)], cardID: card.id)
+        let bill = Bill(cardID: card.id, name: "Internet", amount: 500_000_00, categoryID: category.id, recurrence: .monthly(day: 5))
         let preferences = WorkspacePreferences(visibleCardIDs: [card.id], cardOrder: [card.id], macShortcutBindings: [MacCommandID.commandBar.rawValue: .init("p", modifiers: [.command, .shift])])
         let backup = WorkspaceBackup(cards: [
             CardBackupItem(card: card, categories: [category], expenses: [expense], budgets: [.initial(overallLimit: 1_000_000_00, startDay: 1, cardID: card.id)], draft: ExpenseDraft(), bills: [bill], billOccurrences: [])
@@ -50,7 +50,7 @@ final class MonocleMacTests: XCTestCase {
         let model = AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory))
         let category = try XCTUnwrap(model.categories.first)
         var expense = Expense(amount: 1_000_00, day: "2026-09-23", note: "Before",
-                              allocations: [.init(categoryID: category.id, amount: 1_000_00)], cardID: model.activeCardID)
+                              splits: [.init(categoryID: category.id, amount: 1_000_00)], cardID: model.activeCardID)
 
         try model.save(expense)
         XCTAssertEqual(model.expense(id: expense.id)?.note, "Before")
@@ -68,7 +68,7 @@ final class MonocleMacTests: XCTestCase {
             let amount = Int64(i + 1) * 100
             let day = String(format: "2026-%02d-%02d", i % 12 + 1, i % 28 + 1)
             let note = i % 2 == 0 ? "Coffee \(i)" : ""
-            return Expense(amount: amount, day: day, note: note, allocations: [Allocation(categoryID: food.id, amount: amount)], cardID: card.id)
+            return Expense(amount: amount, day: day, note: note, splits: [Split(categoryID: food.id, amount: amount)], cardID: card.id)
         }
         let start = Date()
         let rows = MacExpenseRow.make(expenses, cardNames: [card.id: card.name], categoryName: { $0 == food.id ? food.name : nil })
@@ -104,7 +104,7 @@ final class MonocleMacTests: XCTestCase {
         let (first, second) = (model.categories[0], model.categories[1])
         let expenses = (1...3).map { index in
             Expense(amount: Int64(index) * 1_000_00, day: "2026-10-0\(index)", note: "Bulk \(index)",
-                    allocations: [.init(categoryID: first.id, amount: Int64(index) * 1_000_00)], cardID: model.activeCardID)
+                    splits: [.init(categoryID: first.id, amount: Int64(index) * 1_000_00)], cardID: model.activeCardID)
         }
         for expense in expenses { try model.save(expense) }
         let undo = UndoManager(); undo.groupsByEvent = false
@@ -112,11 +112,11 @@ final class MonocleMacTests: XCTestCase {
 
         XCTAssertTrue(state.sharedCategories(for: expenses).contains { $0.id == second.id })
         step { state.recategorize(expenses, to: second.id, undoManager: undo) }
-        XCTAssertEqual(expenses.map { model.expense(id: $0.id)?.allocations.first?.categoryID }, Array(repeating: second.id, count: 3))
+        XCTAssertEqual(expenses.map { model.expense(id: $0.id)?.splits.first?.categoryID }, Array(repeating: second.id, count: 3))
         undo.undo()
-        XCTAssertEqual(expenses.map { model.expense(id: $0.id)?.allocations.first?.categoryID }, Array(repeating: first.id, count: 3))
+        XCTAssertEqual(expenses.map { model.expense(id: $0.id)?.splits.first?.categoryID }, Array(repeating: first.id, count: 3))
         undo.redo()
-        XCTAssertEqual(model.expense(id: expenses[0].id)?.allocations.first?.categoryID, second.id)
+        XCTAssertEqual(model.expense(id: expenses[0].id)?.splits.first?.categoryID, second.id)
 
         state.inspect(MacInspectorSelection(expenseIDs: Set(expenses.map(\.id))))
         XCTAssertEqual(state.inspectorSelection, .expenses(Set(expenses.map(\.id))))
@@ -195,7 +195,7 @@ final class MonocleMacTests: XCTestCase {
 
         let category = try XCTUnwrap(model.categories.first)
         try model.save(Expense(amount: 25_000_00, day: Day.string(.now), note: "Stack lunch",
-                               allocations: [.init(categoryID: category.id, amount: 25_000_00)], cardID: model.activeCardID))
+                               splits: [.init(categoryID: category.id, amount: 25_000_00)], cardID: model.activeCardID))
         state.destination = .stack(stack.id)
         render(MacRootView(state: state), size: CGSize(width: 1200, height: 760), name: "stack-page")
         state.setCardHidden(travel, true)
@@ -229,7 +229,7 @@ final class MonocleMacTests: XCTestCase {
         model.openEntry()
         model.draft.amount = "28000"; model.draft.note = "Kopi susu"; model.draft.categoryID = model.activeCategories.first?.id
         render(MacExpenseForm(model: model, title: "New Expense") { _ in }, size: CGSize(width: 540, height: 400), name: "expense-form")
-        model.addSplitAllocation()
+        model.addSplitPart()
         render(MacExpenseForm(model: model, title: "New Expense") { _ in }, size: CGSize(width: 540, height: 520), name: "expense-split")
     }
 
@@ -254,7 +254,7 @@ final class MonocleMacTests: XCTestCase {
             try? rep.representation(using: .png, properties: [:])?.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("entry-panel.png"))
         }
         let before = panel.frame.height
-        model.addSplitAllocation(); model.addSplitAllocation()
+        model.addSplitPart(); model.addSplitPart()
         RunLoop.main.run(until: .now + 0.5)
         XCTAssertGreaterThan(before, 300)
         XCTAssertGreaterThan(panel.frame.height, before, "The panel grows to fit the split editor")

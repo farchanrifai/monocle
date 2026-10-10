@@ -49,14 +49,14 @@ final class SpendingSessionManager {
 enum WidgetSnapshotUpdater {
     static func update(
         activeCard: Card,
-        activeStack: CardStack? = nil,
+        activeStack: Stack? = nil,
         allCards: [Card] = [],
         expenses: [Expense],
         stackExpenses: [Expense] = [],
         categories: [ExpenseCategory],
         captureCategories: [ExpenseCategory]? = nil,
         budget: BudgetVersion?,
-        cycle: BudgetCycle?,
+        cycle: Cycle?,
         revision: UInt64? = nil
     ) {}
 }

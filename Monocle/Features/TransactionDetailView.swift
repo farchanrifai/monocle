@@ -17,7 +17,7 @@ struct TransactionDetailView: View {
     }
 
     private var category: ExpenseCategory? {
-        model.category(expense.allocations.first?.categoryID)
+        model.category(expense.splits.first?.categoryID)
     }
 
     private var card: Card? {
@@ -221,8 +221,8 @@ struct TransactionDetailView: View {
                 }
             }
 
-            // Split Breakdown (if multiple allocations)
-            if expense.allocations.count > 1 {
+            // Split Breakdown (if multiple splits)
+            if expense.splits.count > 1 {
                 Divider().padding(.leading, 16)
                 VStack(alignment: .leading, spacing: 10) {
                     Text("SPLIT ALLOCATIONS")
@@ -231,7 +231,7 @@ struct TransactionDetailView: View {
                         .padding(.top, 14)
                         .padding(.horizontal, 16)
 
-                    ForEach(expense.allocations, id: \.categoryID) { alloc in
+                    ForEach(expense.splits, id: \.categoryID) { alloc in
                         let cat = model.category(alloc.categoryID)
                         HStack(spacing: 8) {
                             Image(systemName: cat?.symbol ?? "tag")

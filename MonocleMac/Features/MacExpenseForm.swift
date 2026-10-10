@@ -171,8 +171,8 @@ struct MacExpenseForm: View {
     private func toggleSplit() {
         if model.draft.isSplit { model.stopSplitting(); return }
         model.beginSplitting()
-        model.addSplitAllocation()
-        if let last = model.draft.splitAllocations.last { focus = .splitAmount(last.id) }
+        model.addSplitPart()
+        if let last = model.draft.splitParts.last { focus = .splitAmount(last.id) }
     }
 
     private func save() {
@@ -205,14 +205,14 @@ private struct MacSplitEditor: View {
     var body: some View {
         GroupBox("Split") {
             VStack(spacing: 8) {
-                ForEach($model.draft.splitAllocations) { $allocation in
+                ForEach($model.draft.splitParts) { $split in
                     HStack {
                         PopUpPicker(title: "Category", options: model.activeCategories.map { .init(id: $0.id, name: $0.name, symbol: $0.symbol) },
-                                    selection: Binding(get: { allocation.categoryID }, set: { if let id = $0 { allocation.categoryID = id } }))
-                        TextField("Amount", text: $allocation.amount)
+                                    selection: Binding(get: { split.categoryID }, set: { if let id = $0 { split.categoryID = id } }))
+                        TextField("Amount", text: $split.amount)
                             .textFieldStyle(.roundedBorder).frame(width: 140)
-                            .focused(focus, equals: .splitAmount(allocation.id))
-                        Button { remove(allocation.id) } label: { Image(systemName: "minus.circle") }
+                            .focused(focus, equals: .splitAmount(split.id))
+                        Button { remove(split.id) } label: { Image(systemName: "minus.circle") }
                             .buttonStyle(.plain).accessibilityLabel("Remove split")
                     }
                 }
@@ -233,15 +233,15 @@ private struct MacSplitEditor: View {
     }
 
     private func add() {
-        model.addSplitAllocation()
-        if let last = model.draft.splitAllocations.last { focus.wrappedValue = .splitAmount(last.id) }
+        model.addSplitPart()
+        if let last = model.draft.splitParts.last { focus.wrappedValue = .splitAmount(last.id) }
     }
 
     private func remove(_ id: UUID) {
-        guard let index = model.draft.splitAllocations.firstIndex(where: { $0.id == id }) else { return }
-        model.draft.splitAllocations.remove(at: index)
-        if model.draft.splitAllocations.count < 2 { model.stopSplitting(); focus.wrappedValue = .amount; return }
-        focus.wrappedValue = .splitAmount(model.draft.splitAllocations[max(0, index - 1)].id)
+        guard let index = model.draft.splitParts.firstIndex(where: { $0.id == id }) else { return }
+        model.draft.splitParts.remove(at: index)
+        if model.draft.splitParts.count < 2 { model.stopSplitting(); focus.wrappedValue = .amount; return }
+        focus.wrappedValue = .splitAmount(model.draft.splitParts[max(0, index - 1)].id)
     }
 }
 

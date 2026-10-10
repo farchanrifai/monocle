@@ -4,7 +4,7 @@ import XCTest
 final class BackendFinancialTests: XCTestCase {
     func testIncompleteSplitShowsKnownSubtotalButCannotBeRecorded() throws {
         var draft = ExpenseDraft(); draft.amount = "28000"
-        draft.splitAllocations = [
+        draft.splitParts = [
             .init(categoryID: ExpenseCategory.defaults[0].id, amount: "28000"),
             .init(categoryID: ExpenseCategory.defaults[1].id, amount: "")
         ]
@@ -19,7 +19,7 @@ final class BackendFinancialTests: XCTestCase {
     }
 
     private func expense(amount: Int64 = 150, day: String = "2026-10-01", category: UUID = ExpenseCategory.defaults[0].id, cardID: UUID? = nil) -> Expense {
-        Expense(amount: amount, day: day, note: "Original", allocations: [.init(categoryID: category, amount: amount)], cardID: cardID)
+        Expense(amount: amount, day: day, note: "Original", splits: [.init(categoryID: category, amount: amount)], cardID: cardID)
     }
 
     func testExactAggregateAdmissionBoundary() throws {
@@ -62,7 +62,7 @@ final class BackendFinancialTests: XCTestCase {
         draft = try JSONDecoder().decode(ExpenseDraft.self, from: JSONEncoder().encode(draft))
         let edited = try draft.expense()
         XCTAssertEqual(edited.amount, 150)
-        XCTAssertEqual(edited.allocations, original.allocations)
+        XCTAssertEqual(edited.splits, original.splits)
         XCTAssertEqual(edited.note, "Only note changed")
         draft.amount = "2"
         XCTAssertEqual(try draft.expense().amount, 200)
@@ -72,27 +72,27 @@ final class BackendFinancialTests: XCTestCase {
 
     func testSplitCategoryEditPreservesUnchangedFractionalAmounts() throws {
         var original = expense(amount: 250)
-        original.allocations = [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 125),
+        original.splits = [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 125),
                                 .init(categoryID: ExpenseCategory.defaults[1].id, amount: 125)]
         var draft = ExpenseDraft(expense: original)
-        draft.splitAllocations[1].categoryID = ExpenseCategory.defaults[2].id
+        draft.splitParts[1].categoryID = ExpenseCategory.defaults[2].id
         let edited = try draft.expense()
         XCTAssertEqual(edited.amount, 250)
-        XCTAssertEqual(edited.allocations.map(\.amount), [125, 125])
+        XCTAssertEqual(edited.splits.map(\.amount), [125, 125])
         try edited.validate(categories: ExpenseCategory.defaults)
     }
 
     func testEditableSplitTotalsUseCheckedArithmetic() throws {
         var draft = ExpenseDraft(expense: expense(amount: Money.maximum))
-        draft.splitAllocations = (0..<1_025).map { _ in
-            DraftAllocation(categoryID: ExpenseCategory.defaults[0].id, amount: Money.digits(Money.maximum))
+        draft.splitParts = (0..<1_025).map { _ in
+            DraftSplit(categoryID: ExpenseCategory.defaults[0].id, amount: Money.digits(Money.maximum))
         }
         XCTAssertThrowsError(try draft.resolvedAllocatedAmount())
     }
 
     func testCSVPreservesExactFractionsAndSplitsRoundTrip() throws {
         var original = expense(amount: 275)
-        original.allocations = [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 125),
+        original.splits = [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 125),
                                 .init(categoryID: ExpenseCategory.defaults[1].id, amount: 150)]
         let content = CSVExportGenerator.generate(expenses: [original], categories: ExpenseCategory.defaults)
         let table = try CSVTokenizer.parse(content: content)
@@ -103,7 +103,7 @@ final class BackendFinancialTests: XCTestCase {
                                                categories: ExpenseCategory.defaults, defaultCategoryID: ExpenseCategory.defaults[2].id, existingExpenses: [])
         let imported = try XCTUnwrap(rows.first?.parsedExpense)
         XCTAssertEqual(imported.amount, original.amount)
-        XCTAssertEqual(imported.allocations, original.allocations)
+        XCTAssertEqual(imported.splits, original.splits)
     }
 
     func testMalformedCSVQuotesFailAtTheirRecord() {

@@ -136,7 +136,7 @@ final class FoundationTests: XCTestCase {
         let service = try ExpenseService(store: TestExpenseStore())
         let rule = CategoryRule(id: UUID(), keyword: "coffee", categoryID: ExpenseCategory.defaults[1].id)
         service.configure(categoryRules: [rule], archivedCategoryIDs: [])
-        XCTAssertEqual(try service.record(text: "Coffee 28k").allocations.first?.categoryID, rule.categoryID)
+        XCTAssertEqual(try service.record(text: "Coffee 28k").splits.first?.categoryID, rule.categoryID)
         service.configure(categoryRules: [rule], archivedCategoryIDs: [rule.categoryID])
         XCTAssertThrowsError(try service.record(text: "Coffee 28k"))
         XCTAssertThrowsError(try service.record(amountInRupiah: 28_000, categoryID: rule.categoryID))
@@ -182,7 +182,7 @@ final class FoundationTests: XCTestCase {
             amount: 50_000_00,
             day: "2026-08-15",
             note: "Historical expense",
-            allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 50_000_00)],
+            splits: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 50_000_00)],
             cardID: Card.demo.id
         )
         try service.save(oldExpense)
@@ -217,7 +217,7 @@ final class FoundationTests: XCTestCase {
             amount: 75_000_00,
             day: "2026-07-20",
             note: "Card 2 coffee",
-            allocations: [.init(categoryID: cats2[0].id, amount: 75_000_00)],
+            splits: [.init(categoryID: cats2[0].id, amount: 75_000_00)],
             cardID: card2.id
         )
         try service.save(card2Expense, in: card2.id)
@@ -244,7 +244,7 @@ private final class TestExpenseStore: ExpenseStore {
     }
     var values: [Expense] = []
     var budgetValues: [BudgetVersion] = []
-    var billValues: [BillRule] = []
+    var billValues: [Bill] = []
     var occurrenceValues: [BillOccurrence] = []
     var failWrites = false
     var failReads = false
@@ -256,11 +256,11 @@ private final class TestExpenseStore: ExpenseStore {
     func categories(in cardID: UUID) throws -> [ExpenseCategory] { try categories() }
     func expenses(in cardID: UUID) throws -> [Expense] { try expenses() }
     func budgets(in cardID: UUID) throws -> [BudgetVersion] { try budgets() }
-    func bills(in cardID: UUID) throws -> [BillRule] { try bills() }
+    func bills(in cardID: UUID) throws -> [Bill] { try bills() }
     func billOccurrences(in cardID: UUID) throws -> [BillOccurrence] { try billOccurrences() }
     func save(_ expense: Expense, in cardID: UUID) throws { try save(expense) }
     func save(_ budget: BudgetVersion, in cardID: UUID) throws { try save(budget) }
-    func saveBill(_ bill: BillRule, in cardID: UUID) throws { try saveBill(bill) }
+    func saveBill(_ bill: Bill, in cardID: UUID) throws { try saveBill(bill) }
     func deleteBill(_ id: UUID, in cardID: UUID) throws { try deleteBill(id) }
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws { try saveOccurrence(occurrence) }
     func deleteOccurrence(_ id: UUID, in cardID: UUID) throws { try deleteOccurrence(id) }
@@ -285,7 +285,7 @@ private final class TestExpenseStore: ExpenseStore {
         if failReads { throw EntryError.corruptStore }
         return budgetValues
     }
-    func bills() throws -> [BillRule] {
+    func bills() throws -> [Bill] {
         if failReads { throw EntryError.corruptStore }
         return billValues
     }
@@ -303,7 +303,7 @@ private final class TestExpenseStore: ExpenseStore {
         budgetValues.removeAll { $0.id == budget.id || $0.effectiveDay == budget.effectiveDay }
         budgetValues.append(budget)
     }
-    func saveBill(_ bill: BillRule) throws {
+    func saveBill(_ bill: Bill) throws {
         if failWrites { throw EntryError.corruptStore }
         billValues.removeAll { $0.id == bill.id }
         billValues.append(bill)

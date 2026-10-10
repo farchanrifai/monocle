@@ -24,7 +24,7 @@ final class CategoryAndLocaleTests: XCTestCase {
         let service = try ExpenseService(store: store)
         var category = ExpenseCategory(id: UUID(), name: "Pets", symbol: "pawprint")
         try service.saveCategory(category)
-        let expense = Expense(amount: 10000, day: "2026-09-08", note: "Vet", allocations: [.init(categoryID: category.id, amount: 10000)])
+        let expense = Expense(amount: 10000, day: "2026-09-08", note: "Vet", splits: [.init(categoryID: category.id, amount: 10000)])
         try service.save(expense)
         category.name = "Pet care"
         try service.saveCategory(category)

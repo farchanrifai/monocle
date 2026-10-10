@@ -136,7 +136,7 @@ final class CSVTests: XCTestCase {
             amount: 35_000_00,
             day: "2026-09-10",
             note: "Coffee, Iced Latte",
-            allocations: [.init(categoryID: foodCat.id, amount: 35_000_00)],
+            splits: [.init(categoryID: foodCat.id, amount: 35_000_00)],
             source: "manual",
             createdAt: Date.now,
             cardID: cardID
@@ -147,7 +147,7 @@ final class CSVTests: XCTestCase {
             amount: 80_000_00,
             day: "2026-09-11",
             note: "Commute & Snack",
-            allocations: [
+            splits: [
                 .init(categoryID: foodCat.id, amount: 30_000_00),
                 .init(categoryID: transCat.id, amount: 50_000_00)
             ],
@@ -206,7 +206,7 @@ final class CSVTests: XCTestCase {
         let second = try store.createCard(named: "Travel", initialCategories: [travel])
         try store.save(
             Expense(amount: 80_000_00, day: "2026-09-11", note: "Airport train",
-                    allocations: [.init(categoryID: travel.id, amount: 80_000_00)], cardID: second.id),
+                    splits: [.init(categoryID: travel.id, amount: 80_000_00)], cardID: second.id),
             in: second.id
         )
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -232,7 +232,7 @@ final class CSVTests: XCTestCase {
             amount: 50_000_00,
             day: "2026-09-11",
             note: "Sushi Lunch",
-            allocations: [.init(categoryID: foodCat.id, amount: 50_000_00)],
+            splits: [.init(categoryID: foodCat.id, amount: 50_000_00)],
             cardID: cardID
         )
 
@@ -291,9 +291,9 @@ final class CSVTests: XCTestCase {
 
         let expenseService = try ExpenseService(store: store)
 
-        let exp1 = Expense(amount: 15_000_00, day: "2026-09-11", note: "Snack 1", allocations: [.init(categoryID: defaultCat.id, amount: 15_000_00)], cardID: card.id)
-        let exp2 = Expense(amount: 25_000_00, day: "2026-09-11", note: "Snack 2", allocations: [.init(categoryID: defaultCat.id, amount: 25_000_00)], cardID: card.id)
-        let exp3 = Expense(amount: 35_000_00, day: "2026-09-11", note: "Snack 3", allocations: [.init(categoryID: defaultCat.id, amount: 35_000_00)], cardID: card.id)
+        let exp1 = Expense(amount: 15_000_00, day: "2026-09-11", note: "Snack 1", splits: [.init(categoryID: defaultCat.id, amount: 15_000_00)], cardID: card.id)
+        let exp2 = Expense(amount: 25_000_00, day: "2026-09-11", note: "Snack 2", splits: [.init(categoryID: defaultCat.id, amount: 25_000_00)], cardID: card.id)
+        let exp3 = Expense(amount: 35_000_00, day: "2026-09-11", note: "Snack 3", splits: [.init(categoryID: defaultCat.id, amount: 35_000_00)], cardID: card.id)
 
         try expenseService.saveExpenses([exp1, exp2, exp3], in: card.id)
 
@@ -328,7 +328,7 @@ extension CSVTests {
             targetCardID: UUID(), categories: categories, defaultCategoryID: categories[1].id, existingExpenses: [])
         XCTAssertFalse(parsed[0].isDuplicate)
         XCTAssertTrue(parsed[1].isDuplicate)
-        XCTAssertEqual(parsed[0].parsedExpense?.allocations.first?.categoryID, categories[1].id)
+        XCTAssertEqual(parsed[0].parsedExpense?.splits.first?.categoryID, categories[1].id)
         let invalid = CSVImportParser.processRows(rawRows: rows, hasHeader: false,
             mapping: CSVColumnMapping(dateIndex: -1, amountIndex: 1), targetCardID: UUID(),
             categories: categories, defaultCategoryID: categories[0].id, existingExpenses: [])

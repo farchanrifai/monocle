@@ -152,12 +152,12 @@ final class MacAppState {
     var analyticsScope: AnalyticsFilterScope = .allCards
     var inspectorSelection: MacInspectorSelection?
     var inspectorVisible = true { didSet { UserDefaults.standard.set(inspectorVisible, forKey: "MacInspectorVisible") } }
-    var editingBill: BillRule?
+    var editingBill: Bill?
     var regularEntryVisible = false
     var addingCard = false
     var editingCard: Card?
     var deletingCard: Card?
-    var editingStack: CardStack?
+    var editingStack: Stack?
     var showHiddenCards = UserDefaults.standard.object(forKey: "MacShowHiddenCards") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showHiddenCards, forKey: "MacShowHiddenCards") }
     }
@@ -218,10 +218,10 @@ final class MacAppState {
 
     /// Moves single-category expenses to `categoryID`; splits keep their categories. Undoable.
     func recategorize(_ expenses: [Expense], to categoryID: UUID, undoManager: UndoManager?) {
-        let originals = expenses.filter { $0.allocations.count == 1 && $0.allocations.first?.categoryID != categoryID }
+        let originals = expenses.filter { $0.splits.count == 1 && $0.splits.first?.categoryID != categoryID }
         guard !originals.isEmpty else { return }
         let changed = originals.map { expense in
-            var copy = expense; copy.allocations = [Allocation(categoryID: categoryID, amount: expense.amount)]; return copy
+            var copy = expense; copy.splits = [Split(categoryID: categoryID, amount: expense.amount)]; return copy
         }
         guard apply(changed) else { return }
         registerSwap(from: changed, to: originals, undoManager: undoManager)
@@ -384,7 +384,7 @@ final class MacAppState {
         if inspectorSelection == .card(card.id) { inspect(nil) }
     }
 
-    func deleteStack(_ stack: CardStack) {
+    func deleteStack(_ stack: Stack) {
         model.deleteStack(id: stack.id)
         if destination == .stack(stack.id), !model.stacks.contains(where: { $0.id == stack.id }) { destination = .cards }
     }

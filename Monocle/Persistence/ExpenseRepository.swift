@@ -216,17 +216,17 @@ final class ExpenseRepository: ExpenseStore {
         guard let id = row.value(forKey: "id") as? UUID, let day = row.value(forKey: "day") as? String,
               let createdAt = row.value(forKey: "createdAt") as? Date,
               let amount = row.value(forKey: "amount") as? Int64,
-              let allocations = row.value(forKey: "allocations") as? Set<NSManagedObject> else { throw EntryError.corruptStore }
-        let values = try allocations.map { allocation -> Allocation in
-            guard let category = allocation.value(forKey: "category") as? NSManagedObject,
+              let splits = row.value(forKey: "allocations") as? Set<NSManagedObject> else { throw EntryError.corruptStore }
+        let values = try splits.map { split -> Split in
+            guard let category = split.value(forKey: "category") as? NSManagedObject,
                   let categoryID = category.value(forKey: "id") as? UUID,
                   let categoryCard = category.value(forKey: "book") as? NSManagedObject,
                   categoryCard.value(forKey: "id") as? UUID == cardID,
-                  let value = allocation.value(forKey: "amount") as? Int64 else { throw EntryError.corruptStore }
-            return Allocation(categoryID: categoryID, amount: value)
+                  let value = split.value(forKey: "amount") as? Int64 else { throw EntryError.corruptStore }
+            return Split(categoryID: categoryID, amount: value)
         }.sorted { $0.categoryID.uuidString < $1.categoryID.uuidString }
         let expense = Expense(id: id, amount: amount, day: day, note: row.value(forKey: "note") as? String ?? "",
-            allocations: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, cardID: cardID,
+            splits: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, cardID: cardID,
             paidWithID: row.value(forKey: "paidWithID") as? UUID,
             originalAmount: (row.value(forKey: "originalAmount") as? NSNumber)?.int64Value,
             originalCurrency: row.value(forKey: "originalCurrency") as? String,
@@ -270,11 +270,11 @@ final class ExpenseRepository: ExpenseStore {
         try budgets(in: defaultCardID())
     }
 
-    func bills(in cardID: UUID) throws -> [BillRule] {
+    func bills(in cardID: UUID) throws -> [Bill] {
         let card = try cardRow(for: cardID)
         let categories = try categories(in: cardID)
         let set = (card.value(forKey: "bills") as? Set<NSManagedObject>) ?? []
-        let values = try set.map { row -> BillRule in
+        let values = try set.map { row -> Bill in
             guard let id = row.value(forKey: "id") as? UUID,
                   let name = row.value(forKey: "name") as? String,
                   let amount = row.value(forKey: "amount") as? Int64,
@@ -297,7 +297,7 @@ final class ExpenseRepository: ExpenseStore {
             case "yearly": recurrence = .yearly(month: recurrenceMonth, day: recurrenceDay)
             default: throw EntryError.corruptStore
             }
-            let value = BillRule(id: id, cardID: cardID, name: name, amount: amount,
+            let value = Bill(id: id, cardID: cardID, name: name, amount: amount,
                 categoryID: categoryID, recurrence: recurrence,
                 recordingMode: isAutomatic ? .automatic : .pending,
                 hasReminder: hasReminder, reminderLeadDays: reminderLeadDays,
@@ -312,7 +312,7 @@ final class ExpenseRepository: ExpenseStore {
         return values
     }
 
-    func bills() throws -> [BillRule] {
+    func bills() throws -> [Bill] {
         try bills(in: defaultCardID())
     }
 
@@ -343,12 +343,12 @@ final class ExpenseRepository: ExpenseStore {
         try billOccurrences(in: defaultCardID())
     }
 
-    func saveBill(_ bill: BillRule, in cardID: UUID) throws {
+    func saveBill(_ bill: Bill, in cardID: UUID) throws {
         let card = try cardRow(for: cardID)
         guard bill.cardID == cardID else { throw EntryError.corruptStore }
         try bill.validate(categories: categories(in: cardID))
         do {
-            let existing = try findBillRule("BillRuleRecord", id: bill.id, in: card)
+            let existing = try findBill("BillRuleRecord", id: bill.id, in: card)
             if existing == nil, let globalExisting = try find("BillRuleRecord", id: bill.id),
                let existingCard = globalExisting.value(forKey: "book") as? NSManagedObject,
                let existingID = existingCard.value(forKey: "id") as? UUID, existingID != cardID {
@@ -386,14 +386,14 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
-    func saveBill(_ bill: BillRule) throws {
+    func saveBill(_ bill: Bill) throws {
         try saveBill(bill, in: bill.cardID)
     }
 
     func deleteBill(_ id: UUID, in cardID: UUID) throws {
         do {
             let card = try cardRow(for: cardID)
-            if let row = try findBillRule("BillRuleRecord", id: id, in: card) {
+            if let row = try findBill("BillRuleRecord", id: id, in: card) {
                 context.delete(row)
                 try commitIfNeeded()
             }
@@ -406,7 +406,7 @@ final class ExpenseRepository: ExpenseStore {
 
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws {
         let card = try cardRow(for: cardID)
-        guard let ruleRow = try findBillRule("BillRuleRecord", id: occurrence.billRuleID, in: card) else {
+        guard let ruleRow = try findBill("BillRuleRecord", id: occurrence.billRuleID, in: card) else {
             throw BillError.ruleNotFound
         }
         guard occurrence.cardID == cardID, Day.date(occurrence.dueDay) != nil,
@@ -537,12 +537,12 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
             writeModelBFields(of: expense, to: row)
             row.setValue(card, forKey: "book")
-            for allocation in row.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] { context.delete(allocation) }
-            for value in expense.allocations {
+            for split in row.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] { context.delete(split) }
+            for value in expense.splits {
                 guard let category = categoryRows[value.categoryID] else { throw EntryError.missingCategory }
-                let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
-                allocation.setValue(value.amount, forKey: "amount"); allocation.setValue(category, forKey: "category")
-                allocation.setValue(row, forKey: "expense")
+                let split = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
+                split.setValue(value.amount, forKey: "amount"); split.setValue(category, forKey: "category")
+                split.setValue(row, forKey: "expense")
             }
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
@@ -613,7 +613,7 @@ final class ExpenseRepository: ExpenseStore {
     func deleteCategory(_ id: UUID, in cardID: UUID) throws {
         categoryCache.removeValue(forKey: cardID)
         guard try !bills(in: cardID).contains(where: { $0.categoryID == id }) else { throw CategoryError.inUse }
-        guard try !expenses(in: cardID).contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
+        guard try !expenses(in: cardID).contains(where: { $0.splits.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
         guard try !budgets(in: cardID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
         do {
             let card = try cardRow(for: cardID)
@@ -669,11 +669,11 @@ final class ExpenseRepository: ExpenseStore {
     func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws {
         categoryCache.removeValue(forKey: cardID)
         let card = try cardRow(for: cardID)
-        let hasAllocations = try expenses(in: cardID).contains(where: { $0.allocations.contains(where: { $0.categoryID == categoryID }) })
+        let hasSplits = try expenses(in: cardID).contains(where: { $0.splits.contains(where: { $0.categoryID == categoryID }) })
         let hasBills = try bills(in: cardID).contains(where: { $0.categoryID == categoryID })
         let hasBudgets = try budgets(in: cardID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == categoryID }) })
         do {
-            if !hasAllocations && !hasBills && !hasBudgets {
+            if !hasSplits && !hasBills && !hasBudgets {
                 if let row = try findCategory("CategoryRecord", id: categoryID, in: card) {
                     context.delete(row)
                     try commitIfNeeded()
@@ -719,8 +719,8 @@ final class ExpenseRepository: ExpenseStore {
                         throw EntryError.corruptStore
                     }
                     if let canonical = canonicalRows[newID] {
-                        for allocation in row.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
-                            allocation.setValue(canonical, forKey: "category")
+                        for split in row.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
+                            split.setValue(canonical, forKey: "category")
                         }
                         context.delete(row)
                     } else {
@@ -779,7 +779,7 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
-    /// Deletes all expenses and their allocations in the specified card, or across all cards if nil.
+    /// Deletes all expenses and their splits in the specified card, or across all cards if nil.
     func clearExpenses(in cardID: UUID? = nil) throws {
         do {
             let targetCard: NSManagedObject? = try cardID.map { try cardRow(for: $0) }
@@ -787,14 +787,14 @@ final class ExpenseRepository: ExpenseStore {
             for expense in allExpenses {
                 if let targetCard {
                     if (expense.value(forKey: "book") as? NSManagedObject) == targetCard {
-                        for allocation in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
-                            context.delete(allocation)
+                        for split in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
+                            context.delete(split)
                         }
                         context.delete(expense)
                     }
                 } else {
-                    for allocation in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
-                        context.delete(allocation)
+                    for split in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
+                        context.delete(split)
                     }
                     context.delete(expense)
                 }
@@ -878,11 +878,11 @@ final class ExpenseRepository: ExpenseStore {
                     row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
                     writeModelBFields(of: expense, to: row)
                     row.setValue(card, forKey: "book")
-                    for value in expense.allocations {
-                        let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
-                        allocation.setValue(value.amount, forKey: "amount")
-                        allocation.setValue(categoryRows[value.categoryID], forKey: "category")
-                        allocation.setValue(row, forKey: "expense")
+                    for value in expense.splits {
+                        let split = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
+                        split.setValue(value.amount, forKey: "amount")
+                        split.setValue(categoryRows[value.categoryID], forKey: "category")
+                        split.setValue(row, forKey: "expense")
                     }
                 }
                 let budgets = item.budgets.isEmpty
@@ -1050,7 +1050,7 @@ final class ExpenseRepository: ExpenseStore {
         return try context.fetch(request).first
     }
 
-    private func findBillRule(_ entity: String, id: UUID, in card: NSManagedObject) throws -> NSManagedObject? {
+    private func findBill(_ entity: String, id: UUID, in card: NSManagedObject) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
         request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, card)
         request.fetchLimit = 1

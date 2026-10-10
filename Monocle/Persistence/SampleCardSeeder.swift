@@ -18,7 +18,7 @@ enum SampleCardSeeder {
             guard !existing.contains(id) else { continue }
             let date = Calendar.current.date(byAdding: .day, value: value.0, to: .now) ?? .now
             let expense = Expense(id: id, amount: value.2 * 100, day: Day.string(date), note: value.1,
-                                  allocations: [.init(categoryID: categories[value.3].id, amount: value.2 * 100)],
+                                  splits: [.init(categoryID: categories[value.3].id, amount: value.2 * 100)],
                                   source: "sample", createdAt: date.addingTimeInterval(Double(-index) * 60))
             try repository.save(expense, in: Card.demo.id)
         }

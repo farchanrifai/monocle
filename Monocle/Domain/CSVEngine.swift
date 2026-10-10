@@ -216,10 +216,10 @@ enum CSVExportGenerator {
             let cardName = expense.cardID.flatMap { cardMap[$0] } ?? "Default"
 
             let categoryStr: String
-            if expense.allocations.count == 1, let first = expense.allocations.first {
+            if expense.splits.count == 1, let first = expense.splits.first {
                 categoryStr = categoryMap[first.categoryID] ?? "General"
-            } else if expense.allocations.count > 1 {
-                categoryStr = expense.allocations.map { alloc in
+            } else if expense.splits.count > 1 {
+                categoryStr = expense.splits.map { alloc in
                     let name = categoryMap[alloc.categoryID] ?? "General"
                     let amountInt = Money.exactDigits(alloc.amount)
                     return "\(name) (\(amountInt))"
@@ -233,7 +233,7 @@ enum CSVExportGenerator {
             let noteStr = expense.note
             let sourceStr = expense.source
 
-            let exactSplits = expense.allocations.map { CSVExactSplit(category: categoryMap[$0.categoryID] ?? "General", amount: Money.exactDigits($0.amount)) }
+            let exactSplits = expense.splits.map { CSVExactSplit(category: categoryMap[$0.categoryID] ?? "General", amount: Money.exactDigits($0.amount)) }
             let splitData = (try? JSONEncoder().encode(exactSplits)) ?? Data()
             let splits = String(data: splitData, encoding: .utf8) ?? ""
             let paidWith = expense.paidWithID.flatMap { paidWithMap[$0] } ?? ""
@@ -517,16 +517,16 @@ enum CSVImportParser {
                 }
             }
 
-            var allocations: [Allocation] = [.init(categoryID: categoryID, amount: amountParsed)]
+            var splits: [Split] = [.init(categoryID: categoryID, amount: amountParsed)]
             if let splitIndex = mapping.splitsIndex, rowValues.indices.contains(splitIndex), !rowValues[splitIndex].isEmpty {
                 do {
-                    let splits = try JSONDecoder().decode([CSVExactSplit].self, from: Data(rowValues[splitIndex].utf8))
-                    allocations = try splits.map { split in
+                    let exact = try JSONDecoder().decode([CSVExactSplit].self, from: Data(rowValues[splitIndex].utf8))
+                    splits = try exact.map { split in
                         guard let id = categoryByName[split.category.trimmingCharacters(in: .whitespaces).lowercased()] else { throw EntryError.missingCategory }
-                        return Allocation(categoryID: id, amount: try Money.parseExact(split.amount))
+                        return Split(categoryID: id, amount: try Money.parseExact(split.amount))
                     }
-                    guard try Money.checkedSum(allocations.map(\.amount)) == amountParsed,
-                          !allocations.isEmpty, Set(allocations.map(\.categoryID)).count == allocations.count else { throw EntryError.splitMismatch }
+                    guard try Money.checkedSum(splits.map(\.amount)) == amountParsed,
+                          !splits.isEmpty, Set(splits.map(\.categoryID)).count == splits.count else { throw EntryError.splitMismatch }
                 } catch {
                     result.append(CSVImportRow(rowNumber: rowNumber, rawValues: rowValues, errorMessage: "Invalid exact splits: \(error.localizedDescription)", isSelectedForImport: false))
                     continue
@@ -544,7 +544,7 @@ enum CSVImportParser {
                 amount: amountParsed,
                 day: dateParsed.day,
                 note: note,
-                allocations: allocations,
+                splits: splits,
                 source: "csv_import",
                 createdAt: dateParsed.date,
                 cardID: targetCardID,

@@ -4,14 +4,14 @@ enum WidgetSnapshotUpdater {
     @discardableResult
     static func update(
         activeCard: Card,
-        activeStack: CardStack? = nil,
+        activeStack: Stack? = nil,
         allCards: [Card] = [],
         expenses: [Expense],
         stackExpenses: [Expense] = [],
         categories: [ExpenseCategory],
         captureCategories: [ExpenseCategory]? = nil,
         budget: BudgetVersion?,
-        cycle: BudgetCycle?,
+        cycle: Cycle?,
         revision: UInt64? = nil
     ) -> WidgetSnapshot {
         let budgetSummary: WidgetBudgetSummary? = {
@@ -57,7 +57,7 @@ enum WidgetSnapshotUpdater {
         let todaySpent = Money.sum(todayExpenses.map(\.amount))
 
         let recentItems: [WidgetTransactionItem] = expenses.prefix(3).map { exp in
-            let cat = categories.first(where: { $0.id == exp.allocations.first?.categoryID })
+            let cat = categories.first(where: { $0.id == exp.splits.first?.categoryID })
             let note = exp.note.trimmingCharacters(in: .whitespacesAndNewlines)
             let title = (!note.isEmpty) ? note : (cat?.name ?? "Expense")
             return WidgetTransactionItem(

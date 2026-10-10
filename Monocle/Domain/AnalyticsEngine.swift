@@ -173,7 +173,7 @@ enum AnalyticsEngine {
     /// Computes the exact date boundaries (start inclusive, end exclusive/inclusive) and string days for a given horizon.
     static func dateRange(
         for horizon: AnalyticsTimeHorizon,
-        currentCycle: BudgetCycle? = nil,
+        currentCycle: Cycle? = nil,
         calendar: Calendar = Day.calendar,
         now: Date = .now
     ) -> (startDate: Date, endDate: Date, startDay: String, endDay: String) {
@@ -399,16 +399,16 @@ enum AnalyticsEngine {
     ) -> [CategorySpendPoint] {
         guard let totalSpend = try? Money.checkedSum(expenses.map(\.amount)), totalSpend > 0,
               expenses.allSatisfy({ expense in
-                  guard let allocated = try? Money.checkedSum(expense.allocations.map(\.amount)) else { return false }
-                  return allocated <= expense.amount && expense.allocations.allSatisfy { $0.amount >= 0 }
+                  guard let allocated = try? Money.checkedSum(expense.splits.map(\.amount)) else { return false }
+                  return allocated <= expense.amount && expense.splits.allSatisfy { $0.amount >= 0 }
               }) else { return [] }
 
         let catMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
         var spendByCat: [UUID: (amount: Int64, count: Int)] = [:]
 
         for exp in expenses {
-            let allocatedSum = exp.allocations.reduce(0) { $0 + $1.amount }
-            for alloc in exp.allocations {
+            let allocatedSum = exp.splits.reduce(0) { $0 + $1.amount }
+            for alloc in exp.splits {
                 let targetID = catMap[alloc.categoryID] != nil ? alloc.categoryID : otherCategoryID
                 let current = spendByCat[targetID, default: (amount: 0, count: 0)]
                 spendByCat[targetID] = (amount: current.0 + alloc.amount, count: current.1 + 1)
@@ -575,7 +575,7 @@ struct AnalyticsReportingData {
     var budgets: [BudgetVersion] = []
     var cards: [Card] = []
     var expensesByCard: [UUID: [Expense]] = [:]
-    var bills: [BillRule] = []
+    var bills: [Bill] = []
     var billOccurrences: [BillOccurrence] = []
     var errorMessage: String? = nil
 }

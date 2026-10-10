@@ -343,7 +343,7 @@ struct AddExpenseFromTextIntent: AppIntent {
         let targetCardID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
         let expense = try service.record(text: text, in: targetCardID)
         let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? "Card"
-        let cat = AppEnvironment.shared.model.activeCategories(for: targetCardID).first(where: { $0.id == expense.allocations.first?.categoryID })
+        let cat = AppEnvironment.shared.model.activeCategories(for: targetCardID).first(where: { $0.id == expense.splits.first?.categoryID })
         let catName = cat?.name ?? "Expense"
         let catSymbol = cat?.symbol ?? "creditcard"
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: catSymbol, cardID: targetCardID)

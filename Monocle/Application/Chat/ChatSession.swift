@@ -41,7 +41,7 @@ struct ChatRow: Identifiable, Equatable, Codable {
         case assistant(String)
         case proposal(Expense, ProposalState)
         case change(ExpenseChange, ProposalState)
-        case bill(BillRule, ProposalState)
+        case bill(Bill, ProposalState)
         /// Pre-ChatChart saved chats only; new charts use `.chart`.
         case summary([CategorySpendPoint])
         case chart(ChatChart)
@@ -204,7 +204,7 @@ extension ChatSession {
     }
 
     /// Save or discard a proposed bill; only Save writes.
-    func resolveBill(_ id: UUID, _ bill: BillRule, as state: ProposalState, model: AppModel) {
+    func resolveBill(_ id: UUID, _ bill: Bill, as state: ProposalState, model: AppModel) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
         let label = "\"\(bill.name)\" \(Money.format(bill.amount)) \(bill.recurrence.title.lowercased())"
         switch state {

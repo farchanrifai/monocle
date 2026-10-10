@@ -15,7 +15,7 @@ final class BackendBackupTests: XCTestCase {
             draft.cardID = profile.id; draft.date = date; draft.createdAt = date
             let expenses = index == 0 ? (0..<expenseCount).map { value in
                 Expense(amount: 100, day: "2026-10-01", note: "Record \(value)",
-                        allocations: [.init(categoryID: categories[0].id, amount: 100)], createdAt: date, cardID: profile.id)
+                        splits: [.init(categoryID: categories[0].id, amount: 100)], createdAt: date, cardID: profile.id)
             } : []
             let budget = BudgetVersion.initial(overallLimit: 450_000_000, startDay: 1, date: date, cardID: profile.id)
             items.append(CardBackupItem(card: profile, categories: categories, expenses: expenses, budgets: [budget], draft: draft, bills: [], billOccurrences: []))
@@ -156,9 +156,9 @@ final class BackendBackupTests: XCTestCase {
             value = original; value.preferences.cardCustomizations[Card.demo.id] = .init(style: .palette(index: Int.min)); invalid.append(value)
             value = original; value.preferences.shortcutInputOrder = [.card, .card, .note, .amount]; invalid.append(value)
             value = original; value.preferences.globalCategories.append(value.preferences.globalCategories[0]); invalid.append(value)
-            value = original; value.cards[0].draft?.splitAllocations = [.init(categoryID: UUID(), amount: "1")]; invalid.append(value)
+            value = original; value.cards[0].draft?.splitParts = [.init(categoryID: UUID(), amount: "1")]; invalid.append(value)
             value = original; value.cards[0].expenses[0].createdAt = Date(timeIntervalSince1970: .infinity); invalid.append(value)
-            let rule = BillRule(cardID: Card.demo.id, name: "Bill", amount: 100, categoryID: ExpenseCategory.defaults[0].id, recurrence: .monthly(day: 1), createdAt: date)
+            let rule = Bill(cardID: Card.demo.id, name: "Bill", amount: 100, categoryID: ExpenseCategory.defaults[0].id, recurrence: .monthly(day: 1), createdAt: date)
             value = original; value.cards[0].bills = [rule]
             value.cards[0].billOccurrences = [BillOccurrence(billRuleID: rule.id, cardID: rule.cardID, dueDay: "2026-10-01", status: .recorded)]
             invalid.append(value)
@@ -285,7 +285,7 @@ final class BackendBackupTests: XCTestCase {
         let tripID = original.cards[1].card.id
         original.preferences.paymentMethods = [method]
         original.preferences.hiddenEntryFields = [.note]
-        original.preferences.stacks = [CardStack(name: "Travel", cardIDs: [tripID], capLimit: 2_500_000_000, capStartDay: 5)]
+        original.preferences.stacks = [Stack(name: "Travel", cardIDs: [tripID], capLimit: 2_500_000_000, capStartDay: 5)]
         original.cards[1].card.currency = "IDR"
         original.cards[1].card.spendingCurrency = "JPY"
         original.cards[1].card.defaultPaidWithID = method.id
@@ -325,7 +325,7 @@ final class BackendBackupTests: XCTestCase {
     func testEditingKeepsPaidWithAndCurrencyAndReconvertsANewAmount() throws {
         let method = UUID(), food = ExpenseCategory.defaults[0].id, transport = ExpenseCategory.defaults[1].id
         // ¥100 at Rp107.5 = Rp10,750.
-        let expense = Expense(amount: 1_075_000, day: "2026-10-01", note: "Ramen", allocations: [.init(categoryID: food, amount: 1_075_000)],
+        let expense = Expense(amount: 1_075_000, day: "2026-10-01", note: "Ramen", splits: [.init(categoryID: food, amount: 1_075_000)],
                               createdAt: date, cardID: Card.demo.id, paidWithID: method,
                               originalAmount: 10_000, originalCurrency: "JPY", rate: "107.5", rateSource: .manual)
         var draft = ExpenseDraft(expense: expense)
@@ -341,11 +341,11 @@ final class BackendBackupTests: XCTestCase {
         // A foreign split converts each part and still adds up exactly; editing brings the parts back in yen.
         var split = ExpenseDraft()
         split.currency = "JPY"; split.rate = "113.59"; split.rateSource = .fetched; split.amount = "1000"
-        split.splitAllocations = [.init(categoryID: food, amount: "333"), .init(categoryID: transport, amount: "667")]
+        split.splitParts = [.init(categoryID: food, amount: "333"), .init(categoryID: transport, amount: "667")]
         let saved = try split.expense(reporting: "IDR")
         XCTAssertEqual(saved.amount, 11_359_000)
-        XCTAssertEqual(Money.sum(saved.allocations.map(\.amount)), saved.amount)
-        XCTAssertEqual(ExpenseDraft(expense: saved).splitAllocations.map(\.amount), ["333", "667"])
+        XCTAssertEqual(Money.sum(saved.splits.map(\.amount)), saved.amount)
+        XCTAssertEqual(ExpenseDraft(expense: saved).splitParts.map(\.amount), ["333", "667"])
 
         // Without a rate a foreign draft refuses to save.
         split.rate = ""

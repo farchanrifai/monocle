@@ -61,7 +61,7 @@ enum BillOccurrenceStatus: String, Codable, CaseIterable, Sendable {
     case skipped = "skipped"
 }
 
-struct BillRule: Identifiable, Codable, Equatable, Sendable {
+struct Bill: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
     var cardID: UUID
     var name: String
@@ -181,7 +181,7 @@ struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
         self.updatedAt = updatedAt
     }
 
-    func validate(rules: [BillRule], expenses: [Expense], cardID: UUID? = nil) throws {
+    func validate(rules: [Bill], expenses: [Expense], cardID: UUID? = nil) throws {
         let owner = cardID ?? self.cardID
         guard self.cardID == owner, Day.date(dueDay) != nil,
               createdAt.timeIntervalSince1970.isFinite, updatedAt.timeIntervalSince1970.isFinite,
@@ -199,7 +199,7 @@ struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
         }
     }
 
-    static func validate(_ occurrences: [BillOccurrence], rules: [BillRule], expenses: [Expense], cardID: UUID) throws {
+    static func validate(_ occurrences: [BillOccurrence], rules: [Bill], expenses: [Expense], cardID: UUID) throws {
         guard Set(occurrences.map(\.id)).count == occurrences.count else { throw EntryError.corruptStore }
         var dueKeys = Set<String>()
         var linkedExpenses = Set<UUID>()

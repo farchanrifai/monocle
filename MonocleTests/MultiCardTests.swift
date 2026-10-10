@@ -15,10 +15,10 @@ final class MultiCardTests: XCTestCase {
         let catB = catsB[1]
 
         let expA = Expense(id: UUID(), amount: 50_000_00, day: "2026-09-08", note: "Lunch",
-                           allocations: [.init(categoryID: catA.id, amount: 50_000_00)],
+                           splits: [.init(categoryID: catA.id, amount: 50_000_00)],
                            cardID: cardA.id)
         let expB = Expense(id: UUID(), amount: 120_000_00, day: "2026-09-08", note: "Train pass",
-                           allocations: [.init(categoryID: catB.id, amount: 120_000_00)],
+                           splits: [.init(categoryID: catB.id, amount: 120_000_00)],
                            cardID: cardB.id)
         try store.save(expA, in: cardA.id)
         try store.save(expB, in: cardB.id)
@@ -63,7 +63,7 @@ final class MultiCardTests: XCTestCase {
         let catA = ExpenseCategory(id: UUID(), name: "Groceries", symbol: "cart")
         try store.saveCategory(catA, in: cardA.id)
         let expA = Expense(id: UUID(), amount: 75_000_00, day: "2026-09-08", note: "Supermarket",
-                           allocations: [.init(categoryID: catA.id, amount: 75_000_00)], cardID: cardA.id)
+                           splits: [.init(categoryID: catA.id, amount: 75_000_00)], cardID: cardA.id)
         try store.save(expA, in: cardA.id)
 
         let items = [
@@ -97,7 +97,7 @@ final class MultiCardTests: XCTestCase {
     func testLegacyFormatThreeSingleCardDecodesAsWorkspace() throws {
         let cat = ExpenseCategory.defaults[0]
         let exp = Expense(amount: 25_000_00, day: "2026-09-08", note: "Coffee",
-                          allocations: [.init(categoryID: cat.id, amount: 25_000_00)])
+                          splits: [.init(categoryID: cat.id, amount: 25_000_00)])
         let budget = BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 1)
         let singleCardBackup = CardBackup(categories: [cat], expenses: [exp], draft: ExpenseDraft(), settings: PrototypeSettings(), budgets: [budget])
         let data = try singleCardBackup.encoded()
@@ -295,7 +295,7 @@ final class MultiCardTests: XCTestCase {
         let catA = ExpenseCategory(id: UUID(), name: "Museums", symbol: "airplane")
         try store.saveCategory(catA, in: cardA.id)
         let expA = Expense(id: UUID(), amount: 350_000_00, day: "2026-09-08", note: "Louvre Ticket",
-                           allocations: [.init(categoryID: catA.id, amount: 350_000_00)], cardID: cardA.id)
+                           splits: [.init(categoryID: catA.id, amount: 350_000_00)], cardID: cardA.id)
         try store.save(expA, in: cardA.id)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 50, height: 50))
@@ -343,7 +343,7 @@ final class MultiCardTests: XCTestCase {
         CardArtworkStore.shared.deleteArtwork(filename: photoFilename)
     }
 
-    func testCardStacksAndAlwaysHiddenFiltering() throws {
+    func testStacksAndAlwaysHiddenFiltering() throws {
         let repo = try ExpenseRepository(inMemory: true)
         try repo.prepareSampleCard()
         let daily = try repo.createCard(named: "Daily")
@@ -363,10 +363,10 @@ final class MultiCardTests: XCTestCase {
         let catTravel = try repo.categories(in: travel.id)[0]
         let catShopping = try repo.categories(in: shopping.id)[0]
         let catOldTrip = try repo.categories(in: oldTrip.id)[0]
-        try repo.save(Expense(id: UUID(), amount: 10_000_00, day: "2026-09-10", note: "Daily Coffee", allocations: [.init(categoryID: catDaily.id, amount: 10_000_00)], cardID: daily.id), in: daily.id)
-        try repo.save(Expense(id: UUID(), amount: 50_000_00, day: "2026-09-10", note: "Sushi", allocations: [.init(categoryID: catTravel.id, amount: 50_000_00)], cardID: travel.id), in: travel.id)
-        try repo.save(Expense(id: UUID(), amount: 30_000_00, day: "2026-09-10", note: "Souvenir", allocations: [.init(categoryID: catShopping.id, amount: 30_000_00)], cardID: shopping.id), in: shopping.id)
-        try repo.save(Expense(id: UUID(), amount: 99_000_00, day: "2026-09-10", note: "Old Resort", allocations: [.init(categoryID: catOldTrip.id, amount: 99_000_00)], cardID: oldTrip.id), in: oldTrip.id)
+        try repo.save(Expense(id: UUID(), amount: 10_000_00, day: "2026-09-10", note: "Daily Coffee", splits: [.init(categoryID: catDaily.id, amount: 10_000_00)], cardID: daily.id), in: daily.id)
+        try repo.save(Expense(id: UUID(), amount: 50_000_00, day: "2026-09-10", note: "Sushi", splits: [.init(categoryID: catTravel.id, amount: 50_000_00)], cardID: travel.id), in: travel.id)
+        try repo.save(Expense(id: UUID(), amount: 30_000_00, day: "2026-09-10", note: "Souvenir", splits: [.init(categoryID: catShopping.id, amount: 30_000_00)], cardID: shopping.id), in: shopping.id)
+        try repo.save(Expense(id: UUID(), amount: 99_000_00, day: "2026-09-10", note: "Old Resort", splits: [.init(categoryID: catOldTrip.id, amount: 99_000_00)], cardID: oldTrip.id), in: oldTrip.id)
 
         // Fixture writes bypass the command service; reload publishes their committed state.
         try model.reload()
@@ -440,8 +440,8 @@ final class MultiCardTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let state = FileLocalStateStore(directory: tempDir)
-        let travel = CardStack(name: "Travel", cardIDs: [tokyo.id, bali.id, Card.demo.id])
-        let beach = CardStack(name: "Beach", cardIDs: [bali.id])
+        let travel = Stack(name: "Travel", cardIDs: [tokyo.id, bali.id, Card.demo.id])
+        let beach = Stack(name: "Beach", cardIDs: [bali.id])
         try state.saveWorkspacePreferences(WorkspacePreferences(stacks: [travel, beach], activeStackID: travel.id))
         let model = AppModel(expenses: try ExpenseService(store: repo), state: state)
         XCTAssertNil(model.startupError)
@@ -453,7 +453,7 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(model.stackBudgetLimit(saved), 25_000_000_00)
         let report = AnalyticsReport.build(data: model.reportingData(for: .stack(id: saved.id, name: saved.name)), horizon: .thisCycle)
         XCTAssertEqual(report.period?.budget.overallLimit, 25_000_000_00)
-        XCTAssertEqual(report.period?.cycle.start, BudgetCycle.containing(.now, startDay: 1).start)
+        XCTAssertEqual(report.period?.cycle.start, Cycle.containing(.now, startDay: 1).start)
 
         // A cap replaces the sum, and moving a card through updateStack takes it out of Travel.
         var beachEdit = try XCTUnwrap(model.stacks.last)
@@ -461,7 +461,7 @@ final class MultiCardTests: XCTestCase {
         try model.updateStack(beachEdit)
         XCTAssertEqual(model.stacks.first?.cardIDs, [tokyo.id, Card.demo.id])
         XCTAssertEqual(model.stackBudgetLimit(try XCTUnwrap(model.stacks.last)), 3_000_000_00)
-        XCTAssertNil(CardStack(name: "Empty").budgetLimit(cardLimits: []))
+        XCTAssertNil(Stack(name: "Empty").budgetLimit(cardLimits: []))
     }
 
     func testTotalUntilBudgetIsOnePeriodAndSwitchingBackReplacesIt() throws {
@@ -470,8 +470,8 @@ final class MultiCardTests: XCTestCase {
         let during = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date("2026-12-15")), budgets: [goal]))
         XCTAssertEqual(Day.string(during.cycle.start), "2026-10-01")
         XCTAssertEqual(Day.string(during.cycle.end), "2027-04-01")
-        XCTAssertTrue(during.cycle.contains(Expense(amount: 1, day: "2027-03-31", note: "", allocations: [])))
-        XCTAssertFalse(during.cycle.contains(Expense(amount: 1, day: "2027-04-01", note: "", allocations: [])))
+        XCTAssertTrue(during.cycle.contains(Expense(amount: 1, day: "2027-03-31", note: "", splits: [])))
+        XCTAssertFalse(during.cycle.contains(Expense(amount: 1, day: "2027-04-01", note: "", splits: [])))
         let after = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date("2027-05-01")), budgets: [goal]))
         XCTAssertEqual(after.cycle, during.cycle)
         var backwards = goal; backwards.totalUntilDay = "2026-09-30"
@@ -786,7 +786,7 @@ final class MultiCardTests: XCTestCase {
 
         let categories = model.categories
         let exp = Expense(id: UUID(), amount: 45_000_00, day: Day.string(.now), note: "Taxi",
-                          allocations: [.init(categoryID: categories[0].id, amount: 45_000_00)],
+                          splits: [.init(categoryID: categories[0].id, amount: 45_000_00)],
                           cardID: card.id)
         try model.save(exp)
         XCTAssertEqual(model.expenses.count, 1)
@@ -838,10 +838,10 @@ final class MultiCardTests: XCTestCase {
         let card2 = try model.createCard(named: "Card B")
 
         let exp1 = Expense(id: UUID(), amount: 30_000_00, day: Day.string(.now), note: "Card1 Exp",
-                           allocations: [.init(categoryID: model.categories[0].id, amount: 30_000_00)],
+                           splits: [.init(categoryID: model.categories[0].id, amount: 30_000_00)],
                            cardID: card1.id)
         let exp2 = Expense(id: UUID(), amount: 50_000_00, day: Day.string(.now), note: "Card2 Exp",
-                           allocations: [.init(categoryID: model.categories[0].id, amount: 50_000_00)],
+                           splits: [.init(categoryID: model.categories[0].id, amount: 50_000_00)],
                            cardID: card2.id)
         try store.save(exp1, in: card1.id)
         try store.save(exp2, in: card2.id)
@@ -899,7 +899,7 @@ final class MultiCardTests: XCTestCase {
                 let amount = Int64((cardIndex + 1) * 10_000 + entryIndex)
                 try store.save(
                     Expense(id: id, amount: amount, day: "2026-09-19", note: "Entry \(entryIndex)",
-                            allocations: [.init(categoryID: category.id, amount: amount)], cardID: card.id),
+                            splits: [.init(categoryID: category.id, amount: amount)], cardID: card.id),
                     in: card.id
                 )
                 ids.append(id)
@@ -910,7 +910,7 @@ final class MultiCardTests: XCTestCase {
                 let amount = Int64((cardIndex + 1) * 10_000 + entryIndex + 500)
                 try store.save(
                     Expense(id: ids[entryIndex], amount: amount, day: "2026-09-19", note: "Updated \(entryIndex)",
-                            allocations: [.init(categoryID: category.id, amount: amount)], cardID: card.id),
+                            splits: [.init(categoryID: category.id, amount: amount)], cardID: card.id),
                     in: card.id
                 )
                 total += 500

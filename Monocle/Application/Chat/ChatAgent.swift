@@ -16,7 +16,7 @@ final class ChatAgent: ChatBackend {
         case text(String)
         case proposal(Expense)
         case change(ExpenseChange)
-        case bill(BillRule)
+        case bill(Bill)
         case chart(ChatChart)
         case notice(String)
         case error(String)

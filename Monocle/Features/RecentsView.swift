@@ -94,13 +94,13 @@ struct RecentsView: View {
 struct ExpenseRow: View {
     let expense: Expense
     let model: AppModel
-    private var category: ExpenseCategory? { model.category(expense.allocations.first?.categoryID) }
+    private var category: ExpenseCategory? { model.category(expense.splits.first?.categoryID) }
     var body: some View {
         HStack(spacing: 13) {
             CategoryMark(symbol: category?.symbol ?? "square.grid.2x2")
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.title(expense)).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
-                Text(expense.allocations.count > 1 ? "Split across \(expense.allocations.count) categories" : category?.name ?? "Expense").font(.caption).foregroundStyle(.secondary)
+                Text(expense.splits.count > 1 ? "Split across \(expense.splits.count) categories" : category?.name ?? "Expense").font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 5)
             VStack(alignment: .trailing, spacing: 1) {

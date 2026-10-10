@@ -58,7 +58,7 @@ struct ExpenseProposalCard: View {
 
 /// Confirm card for a recurring bill Claude proposed. Nothing is written until Save.
 struct BillProposalCard: View {
-    let bill: BillRule
+    let bill: Bill
     let categoryName: String
     let cardName: String
     let state: ProposalState

@@ -29,7 +29,7 @@ final class AppleChatTests: XCTestCase {
     }
 
     func testDoneClaimsBesideAPendingCardAreDropped() {
-        let card: [ChatAgent.Output] = [.proposal(Expense(amount: 28_000_00, day: "2026-10-10", note: "Kopi", allocations: [], cardID: UUID()))]
+        let card: [ChatAgent.Output] = [.proposal(Expense(amount: 28_000_00, day: "2026-10-10", note: "Kopi", splits: [], cardID: UUID()))]
         XCTAssertTrue(AppleChatAgent.claimsDone("Your coffee has been updated to Rp30.000.", beside: card))
         XCTAssertTrue(AppleChatAgent.claimsDone("Kopi sudah ditambahkan.", beside: card))
         XCTAssertFalse(AppleChatAgent.claimsDone("Check the card to add it.", beside: card))
@@ -51,7 +51,7 @@ final class AppleChatTests: XCTestCase {
                                                   (60_000, 35, "Makan malam", food), (50_000, 40, "Parkir", transport)] {
             let minor = Int64(rupiah) * 100
             let day = Day.string(Day.calendar.date(byAdding: .day, value: -daysAgo, to: now)!)
-            try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)],
+            try repo.save(Expense(amount: minor, day: day, note: note, splits: [.init(categoryID: category.id, amount: minor)],
                                   cardID: daily.id), in: daily.id)
         }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: directory))
@@ -72,7 +72,7 @@ final class AppleChatTests: XCTestCase {
             ("coffee 28k", { expenses($0).map(\.amount) == [28_000_00] && expenses($0).allSatisfy { !$0.note.isEmpty } }),
             ("bensin 100rb kemarin", { expenses($0).map(\.amount) == [100_000_00] && expenses($0).first?.day == yesterday }),
             ("lunch 45k and parking 5k", { Set(expenses($0).map(\.amount)) == [45_000_00, 5_000_00] }),
-            ("pasar 50rb: 30rb makan 20rb belanja", { expenses($0).map { $0.allocations.map(\.amount) } == [[30_000_00, 20_000_00]] }),
+            ("pasar 50rb: 30rb makan 20rb belanja", { expenses($0).map { $0.splits.map(\.amount) } == [[30_000_00, 20_000_00]] }),
             ("netflix 186rb tiap bulan tanggal 5", { o in o.contains { if case .bill(let b) = $0 { b.recurrence == .monthly(day: 5) && b.amount == 186_000_00 } else { false } } }),
             ("berapa pengeluaran makan bulan ini?", { text($0).contains("73") }),
             ("compare this month vs last", { text($0).contains("113") || (text($0).contains("173") && text($0).lowercased().contains("up")) }),
@@ -93,7 +93,7 @@ final class AppleChatTests: XCTestCase {
             for output in outputs {
                 switch output {
                 case .text(let text): report += "  text: \(text)\n"
-                case .proposal(let e): proposals += 1; report += "  proposal: \(e.amount / 100) \(e.note) \(e.day) parts=\(e.allocations.map { $0.amount / 100 })\n"
+                case .proposal(let e): proposals += 1; report += "  proposal: \(e.amount / 100) \(e.note) \(e.day) parts=\(e.splits.map { $0.amount / 100 })\n"
                 case .change(let c): report += "  change: \(c.original.note) -> \(c.updated.map { "\($0.amount / 100)" } ?? "DELETE")\n"
                 case .bill(let b): report += "  bill: \(b.name) \(b.amount / 100) \(b.recurrence)\n"
                 case .chart(let chart): report += "  chart: \(chart.style.rawValue) \(chart.items.count) items\n"

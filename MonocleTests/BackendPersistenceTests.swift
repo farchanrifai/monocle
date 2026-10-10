@@ -21,7 +21,7 @@ final class BackendPersistenceTests: XCTestCase {
     }
 
     private func expense(card: UUID, category: UUID, amount: Int64 = 10_000, day: String = "2026-01-15") -> Expense {
-        Expense(amount: amount, day: day, note: "Fixture", allocations: [.init(categoryID: category, amount: amount)], cardID: card)
+        Expense(amount: amount, day: day, note: "Fixture", splits: [.init(categoryID: category, amount: amount)], cardID: card)
     }
 
     func testBudgetOnlyCategoryRetainsEveryHistoricalReferenceAfterReopenAndExport() throws {
@@ -53,7 +53,7 @@ final class BackendPersistenceTests: XCTestCase {
         let category = try XCTUnwrap(repository.categories(in: card.id).first)
         let service = try ExpenseService(store: repository)
         let january = try XCTUnwrap(Day.date("2026-01-15"))
-        let rule = BillRule(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
+        let rule = Bill(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
                             recurrence: .monthly(day: 15), recordingMode: .automatic,
                             hasReminder: false, createdAt: try XCTUnwrap(Day.date("2026-01-01")))
         try service.saveBill(rule, asOf: january)
@@ -79,7 +79,7 @@ final class BackendPersistenceTests: XCTestCase {
         try repository.prepareSampleCard()
         let owner = Card.demo.id
         let category = try XCTUnwrap(repository.categories(in: owner).first)
-        let rule = BillRule(cardID: owner, name: "Sample rent", amount: 10_000, categoryID: category.id,
+        let rule = Bill(cardID: owner, name: "Sample rent", amount: 10_000, categoryID: category.id,
                             recurrence: .monthly(day: 15), recordingMode: .automatic, hasReminder: false)
         let value = expense(card: owner, category: category.id)
         let occurrence = BillOccurrence(billRuleID: rule.id, cardID: owner, dueDay: value.day,
@@ -112,7 +112,7 @@ final class BackendPersistenceTests: XCTestCase {
             try repository.save(expense(card: card.id, category: legacyID), in: card.id)
             try repository.save(BudgetVersion(effectiveDay: "2026-01-01", overallLimit: 100_000, startDay: 1,
                 categoryLimits: [.init(categoryID: legacyID, limit: 50_000)], cardID: card.id), in: card.id)
-            try repository.saveBill(BillRule(cardID: card.id, name: "Bill", amount: 1_000, categoryID: legacyID,
+            try repository.saveBill(Bill(cardID: card.id, name: "Bill", amount: 1_000, categoryID: legacyID,
                                             recurrence: .monthly(day: 15), hasReminder: false), in: card.id)
         }
         let mapping = try repository.categoryMigrationMapping(to: [food, travel])
@@ -121,7 +121,7 @@ final class BackendPersistenceTests: XCTestCase {
         try repository.unifyCategoriesToGlobalCatalog([food, travel])
         let reopened = try reopen(repository, directory: directory)
         for (card, canonical) in zip(cards, [food, travel]) {
-            XCTAssertEqual(try reopened.expenses(in: card.id).first?.allocations.first?.categoryID, canonical.id)
+            XCTAssertEqual(try reopened.expenses(in: card.id).first?.splits.first?.categoryID, canonical.id)
             XCTAssertEqual(try reopened.budgets(in: card.id).first?.categoryLimits.first?.categoryID, canonical.id)
             XCTAssertEqual(try reopened.bills(in: card.id).first?.categoryID, canonical.id)
         }
@@ -133,7 +133,7 @@ final class BackendPersistenceTests: XCTestCase {
             let card = try repository.createCard(named: "Schedule")
             let category = try XCTUnwrap(repository.categories(in: card.id).first)
             let service = try ExpenseService(store: repository)
-            var rule = BillRule(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
+            var rule = Bill(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
                 recurrence: .monthly(day: 15), recordingMode: .automatic, hasReminder: false,
                 createdAt: try XCTUnwrap(Day.date("2026-01-01")))
             try service.saveBill(rule, asOf: try XCTUnwrap(Day.date("2026-04-10")))
@@ -161,7 +161,7 @@ final class BackendPersistenceTests: XCTestCase {
         let cards = try [repository.createCard(named: "A"), repository.createCard(named: "B")]
         for card in cards {
             let category = try XCTUnwrap(repository.categories(in: card.id).first)
-            try repository.saveBill(BillRule(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
+            try repository.saveBill(Bill(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
                 recurrence: .monthly(day: 15), recordingMode: .automatic, hasReminder: false,
                 createdAt: try XCTUnwrap(Day.date("2026-01-01"))), in: card.id)
         }
@@ -181,7 +181,7 @@ final class BackendPersistenceTests: XCTestCase {
         let (directory, repository) = try fixture()
         let card = try repository.createCard(named: "Evidence")
         let category = try XCTUnwrap(repository.categories(in: card.id).first)
-        try repository.saveBill(BillRule(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
+        try repository.saveBill(Bill(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
                                          recurrence: .monthly(day: 15), hasReminder: false), in: card.id)
         let rows = try repository.container.viewContext.fetch(NSFetchRequest<NSManagedObject>(entityName: "BillRuleRecord"))
         try XCTUnwrap(rows.first).setValue("unknown", forKey: "recurrenceType")
@@ -198,7 +198,7 @@ final class BackendPersistenceTests: XCTestCase {
         let (directory, repository) = try fixture()
         let card = try repository.createCard(named: "Evidence")
         let category = try XCTUnwrap(repository.categories(in: card.id).first)
-        let rule = BillRule(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
+        let rule = Bill(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
                             recurrence: .monthly(day: 15), recordingMode: .automatic, hasReminder: false,
                             createdAt: try XCTUnwrap(Day.date("2026-01-01")))
         let value = expense(card: card.id, category: category.id)
@@ -222,7 +222,7 @@ final class BackendPersistenceTests: XCTestCase {
         let (_, repository) = try fixture()
         let card = try repository.createCard(named: "Graph")
         let category = try XCTUnwrap(repository.categories(in: card.id).first)
-        let rule = BillRule(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
+        let rule = Bill(cardID: card.id, name: "Rent", amount: 10_000, categoryID: category.id,
                             recurrence: .monthly(day: 15), hasReminder: false)
         try repository.saveBill(rule, in: card.id)
         let pending = BillOccurrence(billRuleID: rule.id, cardID: card.id, dueDay: "2026-01-15")
@@ -419,8 +419,8 @@ final class BackendPersistenceTests: XCTestCase {
         expense.setValue(expenseID, forKey: "id"); expense.setValue(Int64(2_800_000), forKey: "amount")
         expense.setValue("2026-10-09", forKey: "day"); expense.setValue("Kopi", forKey: "note")
         expense.setValue("manual", forKey: "source"); expense.setValue(Date.now, forKey: "createdAt"); expense.setValue(card, forKey: "book")
-        let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
-        allocation.setValue(Int64(2_800_000), forKey: "amount"); allocation.setValue(category, forKey: "category"); allocation.setValue(expense, forKey: "expense")
+        let split = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
+        split.setValue(Int64(2_800_000), forKey: "amount"); split.setValue(category, forKey: "category"); split.setValue(expense, forKey: "expense")
         let budget = NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
         budget.setValue(UUID(), forKey: "id"); budget.setValue("2026-10-01", forKey: "effectiveDay")
         budget.setValue(Int64(500_000_000), forKey: "overallLimit"); budget.setValue(1, forKey: "startDay"); budget.setValue(card, forKey: "book")

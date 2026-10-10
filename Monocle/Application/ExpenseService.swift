@@ -16,12 +16,12 @@ protocol ExpenseStore {
     func expenses(in cardID: UUID) throws -> [Expense]
     func expenses(in cardID: UUID, from startDay: String, to endDay: String, limit: Int, offset: Int) throws -> [Expense]
     func budgets(in cardID: UUID) throws -> [BudgetVersion]
-    func bills(in cardID: UUID) throws -> [BillRule]
+    func bills(in cardID: UUID) throws -> [Bill]
     func billOccurrences(in cardID: UUID) throws -> [BillOccurrence]
     func saveExpenses(_ batch: [Expense], in cardID: UUID) throws
     func save(_ expense: Expense, in cardID: UUID) throws
     func save(_ budget: BudgetVersion, in cardID: UUID) throws
-    func saveBill(_ bill: BillRule, in cardID: UUID) throws
+    func saveBill(_ bill: Bill, in cardID: UUID) throws
     func deleteBill(_ id: UUID, in cardID: UUID) throws
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws
     func deleteOccurrence(_ id: UUID, in cardID: UUID) throws
@@ -36,11 +36,11 @@ protocol ExpenseStore {
     func categories() throws -> [ExpenseCategory]
     func expenses() throws -> [Expense]
     func budgets() throws -> [BudgetVersion]
-    func bills() throws -> [BillRule]
+    func bills() throws -> [Bill]
     func billOccurrences() throws -> [BillOccurrence]
     func save(_ expense: Expense) throws
     func save(_ budget: BudgetVersion) throws
-    func saveBill(_ bill: BillRule) throws
+    func saveBill(_ bill: Bill) throws
     func deleteBill(_ id: UUID) throws
     func saveOccurrence(_ occurrence: BillOccurrence) throws
     func deleteOccurrence(_ id: UUID) throws
@@ -92,7 +92,7 @@ final class ExpenseService {
     private(set) var expenses: [Expense] = []
     private(set) var categories: [ExpenseCategory] = []
     private(set) var budgets: [BudgetVersion] = []
-    private(set) var bills: [BillRule] = []
+    private(set) var bills: [Bill] = []
     private(set) var billOccurrences: [BillOccurrence] = []
     private(set) var committedRevision: UInt64 = 0
     private(set) var projectionRefreshError: String?
@@ -102,7 +102,7 @@ final class ExpenseService {
     private var transactionDepth = 0
     private var pendingAuthorization = false
     private var workspaceExpenses: [UUID: [Expense]] = [:]
-    private var workspaceBills: [UUID: [BillRule]] = [:]
+    private var workspaceBills: [UUID: [Bill]] = [:]
     private var workspaceOccurrences: [UUID: [BillOccurrence]] = [:]
     private var stagedSnapshot: Snapshot?
 
@@ -110,7 +110,7 @@ final class ExpenseService {
         let categories: [ExpenseCategory]
         let expenses: [Expense]
         let budgets: [BudgetVersion]
-        let bills: [BillRule]
+        let bills: [Bill]
         let occurrences: [BillOccurrence]
     }
     private struct Snapshot {
@@ -289,10 +289,10 @@ final class ExpenseService {
     }
     func categories(for cardID: UUID) throws -> [ExpenseCategory] { try store.categories(in: cardID) }
     func budgets(for cardID: UUID) throws -> [BudgetVersion] { try store.budgets(in: cardID) }
-    func bills(for cardID: UUID) throws -> [BillRule] { try store.bills(in: cardID) }
+    func bills(for cardID: UUID) throws -> [Bill] { try store.bills(in: cardID) }
     func billOccurrences(for cardID: UUID) throws -> [BillOccurrence] { try store.billOccurrences(in: cardID) }
 
-    func saveBill(_ bill: BillRule, in cardID: UUID? = nil, asOf date: Date = .now) throws {
+    func saveBill(_ bill: Bill, in cardID: UUID? = nil, asOf date: Date = .now) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? bill.cardID
         var bill = bill
@@ -385,7 +385,7 @@ final class ExpenseService {
         let expenseDate = customDate ?? Day.date(occurrence.dueDay) ?? .now
         let amount = customAmount ?? rule.amount
         let expense = Expense(id: UUID(), amount: amount, day: Day.string(expenseDate), note: customNote ?? rule.name,
-            allocations: [.init(categoryID: rule.categoryID, amount: amount)], source: "bill-confirmed",
+            splits: [.init(categoryID: rule.categoryID, amount: amount)], source: "bill-confirmed",
             createdAt: expenseDate, cardID: targetID)
         occurrence.status = .recorded
         occurrence.expenseID = expense.id
@@ -491,7 +491,7 @@ final class ExpenseService {
     func deleteCategory(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? activeCardID
-        guard try !store.expenses(in: targetID).contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }),
+        guard try !store.expenses(in: targetID).contains(where: { $0.splits.contains(where: { $0.categoryID == id }) }),
               try !store.bills(in: targetID).contains(where: { $0.categoryID == id }),
               try !store.budgets(in: targetID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == id }) }) else {
             throw CategoryError.inUse
@@ -507,7 +507,7 @@ final class ExpenseService {
         let parsed = try ExpenseParser.parse(text, categories: cats.filter { !archivedCategoryIDs.contains($0.id) }, rules: categoryRules)
         guard let categoryID = parsed.categoryID else { throw EntryError.missingCategory }
         let expense = Expense(id: id, amount: parsed.amount, day: Day.string(date), note: parsed.note,
-            allocations: [.init(categoryID: categoryID, amount: parsed.amount)], source: "shortcut-text", createdAt: date, cardID: targetID)
+            splits: [.init(categoryID: categoryID, amount: parsed.amount)], source: "shortcut-text", createdAt: date, cardID: targetID)
         try save(expense, in: targetID)
         return expense
     }
@@ -523,7 +523,7 @@ final class ExpenseService {
         guard cats.contains(where: { $0.id == categoryID }), !archivedCategoryIDs.contains(categoryID) else { throw EntryError.missingCategory }
         let expense = Expense(id: id, amount: multiplication.partialValue, day: Day.string(date),
             note: note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
-            allocations: [.init(categoryID: categoryID, amount: multiplication.partialValue)],
+            splits: [.init(categoryID: categoryID, amount: multiplication.partialValue)],
             source: source, createdAt: date, cardID: targetID)
         try save(expense, in: targetID)
         return expense

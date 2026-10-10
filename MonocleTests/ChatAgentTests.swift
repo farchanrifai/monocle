@@ -107,7 +107,7 @@ final class ChatAgentTests: XCTestCase {
         let cardID = try XCTUnwrap(model.cards.first?.id)
         let category = try XCTUnwrap(try model.activeCategories(in: cardID).first)
         let expense = Expense(amount: 2_800_000, day: "2026-09-14", note: "Kopi",
-                              allocations: [.init(categoryID: category.id, amount: 2_800_000)], source: "chat", cardID: cardID)
+                              splits: [.init(categoryID: category.id, amount: 2_800_000)], source: "chat", cardID: cardID)
 
         model.showChat = true
         model.openInEntry(expense)

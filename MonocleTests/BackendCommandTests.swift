@@ -21,11 +21,11 @@ final class BackendCommandTests: XCTestCase {
         XCTAssertNotNil(service.projectionRefreshError)
         XCTAssertEqual(publications, 1)
         let value = Expense(amount: 10_000, day: "2026-01-15", note: "Batch",
-            allocations: [.init(categoryID: category.id, amount: 10_000)], cardID: initial.id)
+            splits: [.init(categoryID: category.id, amount: 10_000)], cardID: initial.id)
         XCTAssertNoThrow(try service.saveExpenses([value], in: initial.id))
         XCTAssertNoThrow(try service.saveExpenses([value], in: initial.id))
         XCTAssertEqual(try repository.expenses(in: initial.id).map(\.id), [value.id])
-        let rule = BillRule(cardID: initial.id, name: "Bill", amount: 1_000, categoryID: category.id,
+        let rule = Bill(cardID: initial.id, name: "Bill", amount: 1_000, categoryID: category.id,
                             recurrence: .monthly(day: 15), hasReminder: false,
                             createdAt: try XCTUnwrap(Day.date("2026-01-01")))
         XCTAssertNoThrow(try service.saveBill(rule, asOf: try XCTUnwrap(Day.date("2026-01-15"))))
@@ -43,7 +43,7 @@ final class BackendCommandTests: XCTestCase {
         let notifications = BillNotificationService(client: client)
         let cardID = UUID(), categoryID = UUID()
         let day = try XCTUnwrap(Day.date("2026-10-05"))
-        let rule = BillRule(cardID: cardID, name: "Rent", amount: 10_000, categoryID: categoryID,
+        let rule = Bill(cardID: cardID, name: "Rent", amount: 10_000, categoryID: categoryID,
                             recurrence: .monthly(day: 15), hasReminder: true)
         let restored = BillOccurrence(billRuleID: rule.id, cardID: cardID, dueDay: "2026-10-15")
         client.pending["bill-reminder-obsolete"] = nil
@@ -65,7 +65,7 @@ final class BackendCommandTests: XCTestCase {
         let notifications = BillNotificationService(client: client)
         let cardID = UUID(), categoryID = UUID()
         let day = try XCTUnwrap(Day.date("2026-10-05"))
-        let rule = BillRule(cardID: cardID, name: "Rent", amount: 10_000, categoryID: categoryID,
+        let rule = Bill(cardID: cardID, name: "Rent", amount: 10_000, categoryID: categoryID,
                             recurrence: .monthly(day: 15))
         let occurrence = BillOccurrence(billRuleID: rule.id, cardID: cardID, dueDay: "2026-10-15")
         client.grantsPermission = false
@@ -147,11 +147,11 @@ private final class PostCommitReadFailingStore: ExpenseStore {
     func categories(in cardID: UUID) throws -> [ExpenseCategory] { try repository.categories(in: cardID) }
     func expenses(in cardID: UUID) throws -> [Expense] { try repository.expenses(in: cardID) }
     func budgets(in cardID: UUID) throws -> [BudgetVersion] { try repository.budgets(in: cardID) }
-    func bills(in cardID: UUID) throws -> [BillRule] { try repository.bills(in: cardID) }
+    func bills(in cardID: UUID) throws -> [Bill] { try repository.bills(in: cardID) }
     func billOccurrences(in cardID: UUID) throws -> [BillOccurrence] { try repository.billOccurrences(in: cardID) }
     func save(_ expense: Expense, in cardID: UUID) throws { try repository.save(expense, in: cardID); wrote = true }
     func save(_ budget: BudgetVersion, in cardID: UUID) throws { try repository.save(budget, in: cardID); wrote = true }
-    func saveBill(_ bill: BillRule, in cardID: UUID) throws { try repository.saveBill(bill, in: cardID); wrote = true }
+    func saveBill(_ bill: Bill, in cardID: UUID) throws { try repository.saveBill(bill, in: cardID); wrote = true }
     func deleteBill(_ id: UUID, in cardID: UUID) throws { try repository.deleteBill(id, in: cardID); wrote = true }
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws { try repository.saveOccurrence(occurrence, in: cardID); wrote = true }
     func deleteOccurrence(_ id: UUID, in cardID: UUID) throws { try repository.deleteOccurrence(id, in: cardID); wrote = true }
@@ -165,11 +165,11 @@ private final class PostCommitReadFailingStore: ExpenseStore {
     func categories() throws -> [ExpenseCategory] { try repository.categories() }
     func expenses() throws -> [Expense] { try repository.expenses() }
     func budgets() throws -> [BudgetVersion] { try repository.budgets() }
-    func bills() throws -> [BillRule] { try repository.bills() }
+    func bills() throws -> [Bill] { try repository.bills() }
     func billOccurrences() throws -> [BillOccurrence] { try repository.billOccurrences() }
     func save(_ expense: Expense) throws { try repository.save(expense); wrote = true }
     func save(_ budget: BudgetVersion) throws { try repository.save(budget); wrote = true }
-    func saveBill(_ bill: BillRule) throws { try repository.saveBill(bill); wrote = true }
+    func saveBill(_ bill: Bill) throws { try repository.saveBill(bill); wrote = true }
     func deleteBill(_ id: UUID) throws { try repository.deleteBill(id); wrote = true }
     func saveOccurrence(_ occurrence: BillOccurrence) throws { try repository.saveOccurrence(occurrence); wrote = true }
     func deleteOccurrence(_ id: UUID) throws { try repository.deleteOccurrence(id); wrote = true }

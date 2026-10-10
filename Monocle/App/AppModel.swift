@@ -39,7 +39,7 @@ final class AppModel {
     static var shared: AppModel { AppEnvironment.shared.model }
     var expenses: [Expense] { expenseService?.expenses ?? [] }
     var categories: [ExpenseCategory] { expenseService?.categories ?? [] }
-    var bills: [BillRule] { expenseService?.bills ?? [] }
+    var bills: [Bill] { expenseService?.bills ?? [] }
     /// Bumps on every committed write; key memoized views on it.
     var dataRevision: UInt64 { expenseService?.committedRevision ?? 0 }
     var billOccurrences: [BillOccurrence] { expenseService?.billOccurrences ?? [] }
@@ -180,7 +180,7 @@ final class AppModel {
         }
     }
 
-    var stacks: [CardStack] {
+    var stacks: [Stack] {
         get { workspacePreferences.stacks }
         set {
             workspacePreferences.stacks = newValue
@@ -196,7 +196,7 @@ final class AppModel {
         }
     }
 
-    var currentStack: CardStack? {
+    var currentStack: Stack? {
         if let id = activeStackID, let stack = stacks.first(where: { $0.id == id }) {
             return stack
         }
@@ -252,9 +252,9 @@ final class AppModel {
     }
     var currentBudgetPeriod: BudgetPeriod {
         BudgetHistory.period(containing: .now, budgets: budgetHistory)
-            ?? BudgetPeriod(budget: activeBudget, cycle: BudgetCycle.containing(.now, startDay: activeBudget.startDay))
+            ?? BudgetPeriod(budget: activeBudget, cycle: Cycle.containing(.now, startDay: activeBudget.startDay))
     }
-    var cycle: BudgetCycle { currentBudgetPeriod.cycle }
+    var cycle: Cycle { currentBudgetPeriod.cycle }
     var cycleExpenses: [Expense] {
         let currentCycle = cycle
         return expenses.filter { currentCycle.contains($0) }
@@ -308,7 +308,7 @@ final class AppModel {
         var proposed = workspacePreferences
         if proposed.cardOrder.isEmpty { proposed.cardOrder = cards.map(\.id) }
         if proposed.stacks.isEmpty {
-            let initial = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: orderedCards.map(\.id).filter { !alwaysHiddenCardIDs.contains($0) })
+            let initial = Stack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: orderedCards.map(\.id).filter { !alwaysHiddenCardIDs.contains($0) })
             proposed.stacks = [initial]; proposed.activeStackID = initial.id
         } else if !proposed.stacks.contains(where: { $0.id == proposed.activeStackID }) { proposed.activeStackID = proposed.stacks.first?.id }
         if proposed != workspacePreferences { try commitPresentationPreferences(proposed) }
@@ -365,8 +365,8 @@ final class AppModel {
             var value = card.id == (draft.cardID ?? settings.card.id) ? draft : try requireState().loadDraft(for: card.id)
             value.cardID = card.id
             if let categoryID = value.categoryID { value.categoryID = mapping[card.id]?[categoryID] ?? categoryID }
-            value.splitAllocations = value.splitAllocations.map { allocation in
-                var result = allocation; result.categoryID = mapping[card.id]?[allocation.categoryID] ?? allocation.categoryID; return result
+            value.splitParts = value.splitParts.map { split in
+                var result = split; result.categoryID = mapping[card.id]?[split.categoryID] ?? split.categoryID; return result
             }
             drafts[card.id] = value
         }
@@ -445,11 +445,11 @@ final class AppModel {
         }
         return nil
     }
-    func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.allocations.first?.categoryID)?.name ?? "Expense" : expense.note }
+    func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.splits.first?.categoryID)?.name ?? "Expense" : expense.note }
     func spent(in category: ExpenseCategory) -> Int64 {
         let card = cards.first { $0.id == activeCardID }
         return Money.sum(cycleExpenses.compactMap { expense -> Int64? in
-            guard let part = expense.allocations.first(where: { $0.categoryID == category.id }) else { return nil }
+            guard let part = expense.splits.first(where: { $0.categoryID == category.id }) else { return nil }
             guard let card, currency(of: card) != reportingCurrency else { return part.amount }
             return (try? Money.checkedScale(cardAmount(expense, in: card), numerator: Int(truncatingIfNeeded: part.amount),
                                             denominator: Int(truncatingIfNeeded: max(1, expense.amount)))) ?? 0
@@ -742,7 +742,7 @@ final class AppModel {
         } catch { self.error = error.localizedDescription }
     }
 
-    func saveStackConfiguration(_ stacks: [CardStack], activeStackID: UUID?, alwaysHiddenIDs: Set<UUID>) throws {
+    func saveStackConfiguration(_ stacks: [Stack], activeStackID: UUID?, alwaysHiddenIDs: Set<UUID>) throws {
         var proposed = workspacePreferences
         proposed.stacks = stacks; proposed.activeStackID = activeStackID
         proposed.alwaysHiddenCardIDs = Array(alwaysHiddenIDs)
@@ -784,10 +784,10 @@ final class AppModel {
     }
 
     @discardableResult
-    func createStack(name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) throws -> CardStack {
+    func createStack(name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) throws -> Stack {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalName = trimmed.isEmpty ? "New Stack" : String(trimmed.prefix(40))
-        let stack = CardStack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
+        let stack = Stack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
         var proposed = workspacePreferences
         proposed.stacks.append(stack); proposed.activeStackID = stack.id; proposed.filterScope = .activeStack
         proposed.keepEachCardInOneStack(preferring: stack.id) // adding a card moves it here
@@ -796,7 +796,7 @@ final class AppModel {
         return stack
     }
 
-    func updateStack(_ stack: CardStack) throws {
+    func updateStack(_ stack: Stack) throws {
         guard let index = stacks.firstIndex(where: { $0.id == stack.id }) else { throw BackupError.invalid }
         var proposed = workspacePreferences; proposed.stacks[index] = stack
         proposed.keepEachCardInOneStack(preferring: stack.id)
@@ -950,7 +950,7 @@ final class AppModel {
     }
 
     /// Sum of the stack's cards' current monthly budgets, or the stack's cap. "Total until" budgets don't count.
-    func stackBudgetLimit(_ stack: CardStack) -> Int64? {
+    func stackBudgetLimit(_ stack: Stack) -> Int64? {
         let cards = stack.cardIDs.compactMap { id in cards.first { $0.id == id } }.filter { !alwaysHiddenCardIDs.contains($0.id) }
         let limits = cards.compactMap { card -> Int64? in
             guard let budgets = try? expenseService?.budgets(for: card.id),
@@ -1122,13 +1122,13 @@ final class AppModel {
                     value.originalAmount = paid; value.originalCurrency = source
                     value.rate = "\(newRate)"; value.rateSource = manual == nil ? .fetched : .manual
                 }
-                value.allocations = try Self.rescale(expense.allocations, from: expense.amount, to: value.amount)
+                value.splits = try Self.rescale(expense.splits, from: expense.amount, to: value.amount)
                 return value
             }
         }
         let todayRate = try rate(old, on: today)
         var budgets: [UUID: [BudgetVersion]] = [:]
-        var bills: [UUID: [BillRule]] = [:]
+        var bills: [UUID: [Bill]] = [:]
         for card in cards where card.currency == nil || card.currency == old {
             budgets[card.id] = try expenseService.budgets(for: card.id).map { version in
                 var value = version
@@ -1171,10 +1171,10 @@ final class AppModel {
     }
 
     /// Keeps each part's share when a total changes; rounding goes to the largest part.
-    static func rescale(_ allocations: [Allocation], from oldTotal: Int64, to newTotal: Int64) throws -> [Allocation] {
-        guard allocations.count > 1 else { return allocations.map { .init(categoryID: $0.categoryID, amount: newTotal) } }
-        var parts = try allocations.map {
-            Allocation(categoryID: $0.categoryID, amount: try Money.checkedScale(newTotal, numerator: Int(truncatingIfNeeded: $0.amount), denominator: Int(truncatingIfNeeded: max(1, oldTotal))))
+    static func rescale(_ splits: [Split], from oldTotal: Int64, to newTotal: Int64) throws -> [Split] {
+        guard splits.count > 1 else { return splits.map { .init(categoryID: $0.categoryID, amount: newTotal) } }
+        var parts = try splits.map {
+            Split(categoryID: $0.categoryID, amount: try Money.checkedScale(newTotal, numerator: Int(truncatingIfNeeded: $0.amount), denominator: Int(truncatingIfNeeded: max(1, oldTotal))))
         }
         let difference = newTotal - Money.sum(parts.map(\.amount))
         if let largest = parts.indices.max(by: { parts[$0].amount < parts[$1].amount }) { parts[largest].amount += difference }
@@ -1521,7 +1521,7 @@ final class AppModel {
         }
         catch { self.error = error.localizedDescription }
     }
-    func saveBill(_ bill: BillRule, in cardID: UUID? = nil) throws {
+    func saveBill(_ bill: Bill, in cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.saveBill(bill, in: cardID)
         invalidateExpenseCaches()
@@ -1572,7 +1572,7 @@ final class AppModel {
 
     private func recordInSpendingSession(_ expense: Expense) {
         guard SpendingSessionManager.shared.isSessionActive, let cardID = expense.cardID else { return }
-        let cat = activeCategories(for: cardID).first(where: { $0.id == expense.allocations.first?.categoryID })
+        let cat = activeCategories(for: cardID).first(where: { $0.id == expense.splits.first?.categoryID })
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol, cardID: cardID)
     }
 
@@ -1667,12 +1667,12 @@ final class AppModel {
 
     func deleteGlobalCategory(_ category: GlobalCategory) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        guard undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
+        guard undoExpense?.splits.contains(where: { $0.categoryID == category.id }) != true,
               !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
         for card in cards {
             let savedDraft = card.id == draft.cardID ? draft : try requireState().loadDraft(for: card.id)
-            guard savedDraft.categoryID != category.id, !savedDraft.splitAllocations.contains(where: { $0.categoryID == category.id }),
-                  !(try expenseService.expenses(for: card.id)).contains(where: { $0.allocations.contains(where: { $0.categoryID == category.id }) }),
+            guard savedDraft.categoryID != category.id, !savedDraft.splitParts.contains(where: { $0.categoryID == category.id }),
+                  !(try expenseService.expenses(for: card.id)).contains(where: { $0.splits.contains(where: { $0.categoryID == category.id }) }),
                   !(try expenseService.bills(for: card.id)).contains(where: { $0.categoryID == category.id }),
                   !(try expenseService.budgets(for: card.id)).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == category.id }) }) else { throw CategoryError.inUse }
         }
@@ -1688,7 +1688,7 @@ final class AppModel {
 
     func isArchived(_ category: ExpenseCategory) -> Bool { settings.archivedCategoryIDs.contains(category.id) }
     func archiveCategory(_ category: ExpenseCategory) throws {
-        guard draft.categoryID != category.id, !draft.splitAllocations.contains(where: { $0.categoryID == category.id }),
+        guard draft.categoryID != category.id, !draft.splitParts.contains(where: { $0.categoryID == category.id }),
               !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
         var proposed = settings; proposed.archivedCategoryIDs.insert(category.id)
         try saveSettings(proposed)
@@ -1710,27 +1710,27 @@ final class AppModel {
         try saveSettings(proposed)
     }
     func beginSplitting() {
-        guard draft.splitAllocations.isEmpty else { return }
+        guard draft.splitParts.isEmpty else { return }
         guard let categoryID = draft.categoryID ?? activeCategories.first?.id else { error = EntryError.missingCategory.localizedDescription; return }
         draft.categoryID = categoryID
         let value = try? draft.resolvedAmount()
-        draft.splitAllocations = [.init(categoryID: categoryID, amount: value.map(Money.exactDigits) ?? draft.amount, preservedAmount: value)]
+        draft.splitParts = [.init(categoryID: categoryID, amount: value.map(Money.exactDigits) ?? draft.amount, preservedAmount: value)]
     }
-    func addSplitAllocation() {
+    func addSplitPart() {
         beginSplitting()
-        let used = Set(draft.splitAllocations.map(\.categoryID))
+        let used = Set(draft.splitParts.map(\.categoryID))
         guard let category = activeCategories.first(where: { !used.contains($0.id) }) else {
             error = "Create another category before adding a further split."
             return
         }
-        draft.splitAllocations.append(.init(categoryID: category.id, amount: ""))
+        draft.splitParts.append(.init(categoryID: category.id, amount: ""))
     }
     func stopSplitting() {
         categoryIDFromSplit()
-        draft.splitAllocations = []
+        draft.splitParts = []
     }
     private func categoryIDFromSplit() {
-        if let categoryID = draft.splitAllocations.first?.categoryID { draft.categoryID = categoryID }
+        if let categoryID = draft.splitParts.first?.categoryID { draft.categoryID = categoryID }
     }
     func deleteCategory(_ category: ExpenseCategory) throws {
         guard let global = globalCategories.first(where: { $0.id == category.id }) else { throw EntryError.missingCategory }
@@ -1775,7 +1775,7 @@ final class AppModel {
         guard let expenseService else { throw EntryError.corruptStore }
         let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: date, calendar: calendar)
         let current = BudgetHistory.period(containing: date, budgets: budgetHistory, calendar: calendar)
-            ?? BudgetPeriod(budget: fallback, cycle: BudgetCycle.containing(date, startDay: fallback.startDay, calendar: calendar))
+            ?? BudgetPeriod(budget: fallback, cycle: Cycle.containing(date, startDay: fallback.startDay, calendar: calendar))
         let effectiveStart: Date
         let transitionEndDay: String?
         let isTransition = current.budget.transitionEndDay == Day.string(current.cycle.end, calendar: calendar)

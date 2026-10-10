@@ -2,7 +2,7 @@ import SwiftUI
 
 struct BillsView: View {
     @Bindable var model: AppModel
-    @State private var editingRule: BillRule?
+    @State private var editingRule: Bill?
     @State private var isCreating = false
     @State private var showHistory = false
 
@@ -10,11 +10,11 @@ struct BillsView: View {
         Day.string(.now)
     }
 
-    private var activeRules: [BillRule] {
+    private var activeRules: [Bill] {
         model.bills.filter(\.isActive) + model.bills.filter { !$0.isActive }
     }
 
-    private var rulesByID: [UUID: BillRule] {
+    private var rulesByID: [UUID: Bill] {
         Dictionary(uniqueKeysWithValues: model.bills.map { ($0.id, $0) })
     }
 
@@ -205,7 +205,7 @@ struct BillsView: View {
             }
     }
 
-    private func dueCard(occurrence: BillOccurrence, rule: BillRule) -> some View {
+    private func dueCard(occurrence: BillOccurrence, rule: Bill) -> some View {
         let cat = model.category(rule.categoryID)
         let isOverdue = occurrence.dueDay < todayString
         return VStack(alignment: .leading, spacing: 16) {
@@ -286,7 +286,7 @@ struct BillsView: View {
         )
     }
 
-    private func scheduledBillRow(rule: BillRule) -> some View {
+    private func scheduledBillRow(rule: Bill) -> some View {
         let cat = model.category(rule.categoryID)
         return Button {
             editingRule = rule
@@ -343,7 +343,7 @@ struct BillsView: View {
         .accessibilityIdentifier("scheduledBill_\(rule.name)")
     }
 
-    private func upcomingRow(occurrence: BillOccurrence, rule: BillRule) -> some View {
+    private func upcomingRow(occurrence: BillOccurrence, rule: Bill) -> some View {
         let cat = model.category(rule.categoryID)
         return HStack(spacing: 12) {
             CategoryMark(symbol: cat?.symbol ?? "creditcard")
@@ -399,7 +399,7 @@ struct BillsView: View {
 
 struct BillEditor: View {
     let model: AppModel
-    let existingRule: BillRule?
+    let existingRule: Bill?
     @Environment(\.dismiss) private var dismiss
 
     private enum FocusedField: Hashable {
@@ -633,7 +633,7 @@ struct BillEditor: View {
             default: recurrence = .monthly(day: monthlyDay)
             }
 
-            let rule = BillRule(
+            let rule = Bill(
                 id: existingRule?.id ?? UUID(),
                 cardID: existingRule?.cardID ?? model.activeCardID,
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),

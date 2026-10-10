@@ -25,11 +25,11 @@ final class MonocleTests: XCTestCase {
     func testSplitValidationAndDateValidation() throws {
         let a = ExpenseCategory.defaults[0].id
         let b = ExpenseCategory.defaults[1].id
-        var expense = Expense(amount: 10000, day: "2026-09-07", note: "", allocations: [.init(categoryID: a, amount: 4000), .init(categoryID: b, amount: 6000)])
+        var expense = Expense(amount: 10000, day: "2026-09-07", note: "", splits: [.init(categoryID: a, amount: 4000), .init(categoryID: b, amount: 6000)])
         try expense.validate(categories: ExpenseCategory.defaults)
-        expense.allocations[1].amount = 6001
+        expense.splits[1].amount = 6001
         XCTAssertThrowsError(try expense.validate(categories: ExpenseCategory.defaults))
-        expense.allocations[1].amount = 6000
+        expense.splits[1].amount = 6000
         expense.day = "2026-02-30"
         XCTAssertThrowsError(try expense.validate(categories: ExpenseCategory.defaults))
     }
@@ -37,10 +37,10 @@ final class MonocleTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let february = try XCTUnwrap(Day.date("2024-02-29", calendar: calendar))
-        let leap = BudgetCycle.containing(february, startDay: 31, calendar: calendar)
+        let leap = Cycle.containing(february, startDay: 31, calendar: calendar)
         XCTAssertEqual(Day.string(leap.start, calendar: calendar), "2024-02-29")
         XCTAssertEqual(Day.string(leap.end, calendar: calendar), "2024-03-31")
-        let ordinary = BudgetCycle.containing(try XCTUnwrap(Day.date("2026-02-27", calendar: calendar)), startDay: 31, calendar: calendar)
+        let ordinary = Cycle.containing(try XCTUnwrap(Day.date("2026-02-27", calendar: calendar)), startDay: 31, calendar: calendar)
         XCTAssertEqual(Day.string(ordinary.start, calendar: calendar), "2026-01-31")
         XCTAssertEqual(Day.string(ordinary.end, calendar: calendar), "2026-02-28")
     }
@@ -68,7 +68,7 @@ final class MonocleTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("Test.sqlite")
-        var expense = Expense(amount: 2_800_000, day: "2026-09-07", note: "Coffee", allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
+        var expense = Expense(amount: 2_800_000, day: "2026-09-07", note: "Coffee", splits: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
         do {
             let store = try ExpenseRepository(url: url)
             try store.prepareSampleCard()
@@ -137,8 +137,8 @@ final class MonocleTests: XCTestCase {
         expense.setValue(UUID(), forKey: "id"); expense.setValue(Int64(2_800_000), forKey: "amount")
         expense.setValue("2026-09-08", forKey: "day"); expense.setValue("Coffee", forKey: "note")
         expense.setValue("manual", forKey: "source"); expense.setValue(Date.now, forKey: "createdAt"); expense.setValue(card, forKey: "book")
-        let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
-        allocation.setValue(Int64(2_800_000), forKey: "amount"); allocation.setValue(category, forKey: "category"); allocation.setValue(expense, forKey: "expense")
+        let split = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
+        split.setValue(Int64(2_800_000), forKey: "amount"); split.setValue(category, forKey: "category"); split.setValue(expense, forKey: "expense")
         try context.save()
         for persistentStore in oldContainer.persistentStoreCoordinator.persistentStores {
             try oldContainer.persistentStoreCoordinator.remove(persistentStore)
@@ -155,13 +155,13 @@ final class MonocleTests: XCTestCase {
         var draft = ExpenseDraft()
         draft.amount = "28000"; draft.text = "Coffee 28k"; draft.mode = .text
         draft.categoryID = ExpenseCategory.defaults[0].id
-        draft.splitAllocations = [
+        draft.splitParts = [
             .init(categoryID: ExpenseCategory.defaults[0].id, amount: "12000"),
             .init(categoryID: ExpenseCategory.defaults[1].id, amount: "16000")
         ]
         let restored = try JSONDecoder().decode(ExpenseDraft.self, from: JSONEncoder().encode(draft))
         XCTAssertEqual(restored, draft)
-        XCTAssertEqual(try restored.expense().allocations, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 1_200_000), .init(categoryID: ExpenseCategory.defaults[1].id, amount: 1_600_000)])
+        XCTAssertEqual(try restored.expense().splits, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 1_200_000), .init(categoryID: ExpenseCategory.defaults[1].id, amount: 1_600_000)])
     }
     func testOlderDraftWithoutSplitFieldsStillOpens() throws {
         struct OlderDraft: Codable {
@@ -171,6 +171,6 @@ final class MonocleTests: XCTestCase {
         }
         let restored = try JSONDecoder().decode(ExpenseDraft.self, from: JSONEncoder().encode(OlderDraft()))
         XCTAssertFalse(restored.isSplit)
-        XCTAssertEqual(try restored.expense().allocations, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
+        XCTAssertEqual(try restored.expense().splits, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
     }
 }

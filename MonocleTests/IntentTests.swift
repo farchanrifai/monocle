@@ -132,7 +132,7 @@ final class IntentTests: XCTestCase {
         let saved = expenses[0]
         XCTAssertEqual(saved.amount, 55_000_00)
         XCTAssertEqual(saved.note, "Iced Latte")
-        XCTAssertEqual(saved.allocations.first?.categoryID.uuidString, categoryEntity.id)
+        XCTAssertEqual(saved.splits.first?.categoryID.uuidString, categoryEntity.id)
         XCTAssertEqual(saved.cardID, card.id)
     }
 
@@ -160,6 +160,6 @@ final class IntentTests: XCTestCase {
         _ = try await intent.perform()
 
         let saved = try XCTUnwrap(try store.expenses(in: second.id).first)
-        XCTAssertEqual(saved.allocations.first?.categoryID, allowed.id)
+        XCTAssertEqual(saved.splits.first?.categoryID, allowed.id)
     }
 }

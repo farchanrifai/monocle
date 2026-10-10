@@ -8,7 +8,7 @@ final class BackupTests: XCTestCase {
         var draft = ExpenseDraft(); draft.note = "unfinished"
         var settings = PrototypeSettings(); settings.appLockTimeout = .fiveMinutes
         let budget = BudgetVersion(id: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!, effectiveDay: "2026-09-01", overallLimit: 450_000_000, startDay: 1, categoryLimits: [.init(categoryID: categories[0].id, limit: 100_000_000)])
-        return CardBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings, budgets: [budget])
+        return CardBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", splits: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings, budgets: [budget])
     }
     func testRoundTripPreservesIDsSplitsDraftAndSettings() throws {
         let original = fixture()
@@ -35,7 +35,7 @@ final class BackupTests: XCTestCase {
         XCTAssertThrowsError(try bad.validate())
         bad = fixture(); bad.expenses.append(bad.expenses[0])
         XCTAssertThrowsError(try bad.validate())
-        bad = fixture(); bad.expenses[0].allocations[0].categoryID = UUID()
+        bad = fixture(); bad.expenses[0].splits[0].categoryID = UUID()
         XCTAssertThrowsError(try bad.validate())
         bad = fixture(); bad.expenses[0].amount += 1
         XCTAssertThrowsError(try bad.validate())
@@ -119,7 +119,7 @@ final class BackupTests: XCTestCase {
             var preferences = WorkspacePreferences()
             preferences.allActivitiesScope = true
             try state.saveWorkspacePreferences(preferences)
-            let bill = BillRule(cardID: Card.demo.id, name: "Internet", amount: 10000,
+            let bill = Bill(cardID: Card.demo.id, name: "Internet", amount: 10000,
                                 categoryID: original.categories[0].id, recurrence: .monthly(day: 1))
             try repository.saveBill(bill)
             try service.reload()
@@ -154,7 +154,7 @@ final class BackupTests: XCTestCase {
             var settings = original.settings
             settings.card = try Card.real(named: "Before")
             try repository.startEmptyRealCard(settings.card)
-            let expense = Expense(amount: 10000, day: "2026-09-08", note: "Coffee", allocations: [.init(categoryID: original.categories[0].id, amount: 10000)])
+            let expense = Expense(amount: 10000, day: "2026-09-08", note: "Coffee", splits: [.init(categoryID: original.categories[0].id, amount: 10000)])
             try repository.save(expense); try state.saveSettings(settings); try service.reload()
 
             let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)

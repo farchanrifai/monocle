@@ -23,7 +23,7 @@ final class ChatGoldenPromptTests: XCTestCase {
                                                   (60_000, 35, "Makan malam", food), (50_000, 40, "Parkir", transport)] {
             let minor = Int64(rupiah) * 100
             let day = Day.string(Day.calendar.date(byAdding: .day, value: -daysAgo, to: now)!)
-            try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)],
+            try repo.save(Expense(amount: minor, day: day, note: note, splits: [.init(categoryID: category.id, amount: minor)],
                                   cardID: daily.id), in: daily.id)
         }
         var budget = BudgetVersion.initial(overallLimit: 3_000_000_00, startDay: 1, date: now, cardID: daily.id)
@@ -64,7 +64,7 @@ final class ChatGoldenPromptTests: XCTestCase {
         XCTAssertTrue(proposals(zero).isEmpty, "A zero expense must never reach a confirm card")
 
         let market = await ask("pasar 50rb: 30rb makan 20rb belanja")
-        XCTAssertEqual(proposals(market).map { $0.allocations.map(\.amount) }, [[3_000_000, 2_000_000]], "One split expense")
+        XCTAssertEqual(proposals(market).map { $0.splits.map(\.amount) }, [[3_000_000, 2_000_000]], "One split expense")
 
         let netflix = await ask("netflix 186rb tiap bulan tanggal 5")
         XCTAssertEqual(netflix.compactMap { output -> BillRecurrence? in if case .bill(let b) = output { b.recurrence } else { nil } }, [.monthly(day: 5)])

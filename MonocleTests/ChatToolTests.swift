@@ -7,7 +7,7 @@ final class ChatToolTests: XCTestCase {
     private var repo: ExpenseRepository!
     private var daily: Card!
     private var travel: Card!
-    private var trip: CardStack!
+    private var trip: Stack!
     private var tempDir: URL!
     private let now = Day.date("2026-09-15")!
 
@@ -44,7 +44,7 @@ final class ChatToolTests: XCTestCase {
         XCTAssertFalse(outcome.isError, outcome.json)
         let expense = try XCTUnwrap(outcome.proposal)
         XCTAssertEqual(expense.amount, 2_800_000)
-        XCTAssertEqual(expense.allocations.map(\.amount), [2_800_000])
+        XCTAssertEqual(expense.splits.map(\.amount), [2_800_000])
         XCTAssertEqual(expense.cardID, travel.id, "Active card is outside the Trip stack, so the stack's first card is the target")
         XCTAssertEqual(expense.source, "chat")
         XCTAssertEqual(expense.note, "Kopi")
@@ -191,8 +191,8 @@ final class ChatToolTests: XCTestCase {
         let outcome = run("propose_expense", ["amount": 50000, "split": split, "note": "Pasar"])
         XCTAssertFalse(outcome.isError, outcome.json)
         let expense = try XCTUnwrap(outcome.proposal)
-        XCTAssertEqual(expense.allocations.map(\.amount), [3_000_000, 2_000_000])
-        XCTAssertEqual(Set(expense.allocations.map(\.categoryID)).count, 2)
+        XCTAssertEqual(expense.splits.map(\.amount), [3_000_000, 2_000_000])
+        XCTAssertEqual(Set(expense.splits.map(\.categoryID)).count, 2)
 
         let mismatch = run("propose_expense", ["amount": 60000, "split": split])
         XCTAssertTrue((json(mismatch)["error"] as? String ?? "").contains("add up"), mismatch.json)
@@ -206,7 +206,7 @@ final class ChatToolTests: XCTestCase {
         let kopi = try kopiID()
         let split: [[String: Any]] = [["category": "Food & Drink", "amount": 20000], ["category": "Shopping", "amount": 10000]]
         let edit = run("propose_edit", ["id": kopi, "amount": 30000, "split": split])
-        XCTAssertEqual(edit.change?.updated?.allocations.map(\.amount), [2_000_000, 1_000_000], edit.json)
+        XCTAssertEqual(edit.change?.updated?.splits.map(\.amount), [2_000_000, 1_000_000], edit.json)
         XCTAssertTrue(run("propose_edit", ["id": kopi, "split": split]).isError, "Split must match the unchanged Rp28.000")
     }
 
@@ -262,7 +262,7 @@ final class ChatToolTests: XCTestCase {
         let updated = try XCTUnwrap(change.updated)
         XCTAssertEqual(updated.id, change.original.id)
         XCTAssertEqual(updated.amount, 3_000_000)
-        XCTAssertEqual(updated.allocations.map(\.amount), [3_000_000], "Single allocation follows the amount")
+        XCTAssertEqual(updated.splits.map(\.amount), [3_000_000], "Single allocation follows the amount")
         XCTAssertEqual(updated.note, "Kopi susu")
         XCTAssertEqual(updated.day, change.original.day)
         XCTAssertEqual(rupiah((json(edit)["before"] as? [String: Any])?["amount"]), 28_000)
@@ -278,10 +278,10 @@ final class ChatToolTests: XCTestCase {
     func testEditRefusesAmountOrCategoryChangeOnSplitButAllowsNote() throws {
         let food = try category("Food & Drink", in: daily), shopping = try category("Shopping", in: daily)
         let split = Expense(amount: 10_000_00, day: "2026-09-12", note: "Market",
-                            allocations: [.init(categoryID: food.id, amount: 6_000_00), .init(categoryID: shopping.id, amount: 4_000_00)], cardID: daily.id)
+                            splits: [.init(categoryID: food.id, amount: 6_000_00), .init(categoryID: shopping.id, amount: 4_000_00)], cardID: daily.id)
         try model.save(split)
         XCTAssertTrue(run("propose_edit", ["id": split.id.uuidString, "amount": 12000]).isError)
-        XCTAssertEqual(run("propose_edit", ["id": split.id.uuidString, "note": "Pasar"]).change?.updated?.allocations, split.allocations)
+        XCTAssertEqual(run("propose_edit", ["id": split.id.uuidString, "note": "Pasar"]).change?.updated?.splits, split.splits)
     }
 
     func testDeleteProposesWithoutDeleting() throws {
@@ -347,6 +347,6 @@ final class ChatToolTests: XCTestCase {
 
     private func save(_ rupiah: Int64, _ day: String, _ note: String, _ category: ExpenseCategory, _ card: Card) throws {
         let minor = rupiah * 100
-        try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)], cardID: card.id), in: card.id)
+        try repo.save(Expense(amount: minor, day: day, note: note, splits: [.init(categoryID: category.id, amount: minor)], cardID: card.id), in: card.id)
     }
 }

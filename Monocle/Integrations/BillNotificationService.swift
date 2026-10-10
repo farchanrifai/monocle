@@ -94,7 +94,7 @@ final class BillNotificationService {
         }
     }
 
-    func reconcile(rules: [BillRule], occurrences: [BillOccurrence], asOf date: Date = .now,
+    func reconcile(rules: [Bill], occurrences: [BillOccurrence], asOf date: Date = .now,
                    requestAuthorization: Bool = false) {
         let desired = Self.desiredReminders(rules: rules, occurrences: occurrences, asOf: date)
         let previous = task
@@ -132,7 +132,7 @@ final class BillNotificationService {
 
     func waitForReconciliation() async { await task?.value }
 
-    static func desiredReminders(rules: [BillRule], occurrences: [BillOccurrence], asOf date: Date) -> [BillReminder] {
+    static func desiredReminders(rules: [Bill], occurrences: [BillOccurrence], asOf date: Date) -> [BillReminder] {
         let byID = Dictionary(rules.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return occurrences.compactMap { occurrence in
             guard occurrence.status == .pending, let rule = byID[occurrence.billRuleID],

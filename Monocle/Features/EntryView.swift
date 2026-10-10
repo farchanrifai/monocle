@@ -237,7 +237,7 @@ struct EntryView: View {
             HStack(spacing: 12) {
                 Image(systemName: "square.grid.2x2").foregroundStyle(MC.red)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Split across \(model.draft.splitAllocations.count) categories").font(.subheadline.weight(.semibold))
+                    Text("Split across \(model.draft.splitParts.count) categories").font(.subheadline.weight(.semibold))
                     Text("Edit allocations").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -307,7 +307,7 @@ private struct SplitEditor: View {
 
     private var total: Int64 { (try? model.draft.resolvedAmount()) ?? 0 }
     private var allocated: Int64? { try? model.draft.resolvedAllocatedAmount() }
-    private var allocationError: String? {
+    private var splitError: String? {
         do { _ = try model.draft.resolvedAllocatedAmount(); return nil }
         catch { return error.localizedDescription }
     }
@@ -316,8 +316,8 @@ private struct SplitEditor: View {
         NavigationStack {
             Form {
                 Section("Allocations") {
-                    ForEach(model.draft.splitAllocations.indices, id: \.self) { index in
-                        let split = model.draft.splitAllocations[index]
+                    ForEach(model.draft.splitParts.indices, id: \.self) { index in
+                        let split = model.draft.splitParts[index]
                         VStack(alignment: .leading, spacing: 10) {
                             Button {
                                 choosingIndex = index
@@ -329,15 +329,15 @@ private struct SplitEditor: View {
                                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
                                 }
                             }.buttonStyle(.plain).accessibilityIdentifier("split-category-\(index)")
-                            TextField("Amount", text: $model.draft.splitAllocations[index].amount)
+                            TextField("Amount", text: $model.draft.splitParts[index].amount)
                                 .keyboardType(.numberPad).accessibilityIdentifier("split-amount-\(index)")
-                            if model.draft.splitAllocations.count > 1 {
-                                Button("Remove allocation", role: .destructive) { model.draft.splitAllocations.remove(at: index) }
+                            if model.draft.splitParts.count > 1 {
+                                Button("Remove allocation", role: .destructive) { model.draft.splitParts.remove(at: index) }
                                     .font(.footnote)
                             }
                         }.padding(.vertical, 4)
                     }
-                    Button("Add category", systemImage: "plus") { model.addSplitAllocation() }.accessibilityIdentifier("addSplit")
+                    Button("Add category", systemImage: "plus") { model.addSplitPart() }.accessibilityIdentifier("addSplit")
                 }
                 Section("Check") {
                     LabeledContent("Expense total") { Text(Money.format(total)) }
@@ -345,16 +345,16 @@ private struct SplitEditor: View {
                         let remaining = total - allocated
                         LabeledContent("Allocated") { Text(Money.format(allocated)) }
                         LabeledContent("Remaining") { Text(Money.format(abs(remaining))).foregroundStyle(remaining == 0 ? .green : MC.red) }
-                        if remaining == 0 && model.draft.splitAllocations.count > 1 &&
-                            Set(model.draft.splitAllocations.map(\.categoryID)).count == model.draft.splitAllocations.count &&
-                            model.draft.splitAllocations.allSatisfy({ (try? $0.resolvedAmount()) != nil }) {
+                        if remaining == 0 && model.draft.splitParts.count > 1 &&
+                            Set(model.draft.splitParts.map(\.categoryID)).count == model.draft.splitParts.count &&
+                            model.draft.splitParts.allSatisfy({ (try? $0.resolvedAmount()) != nil }) {
                             Label("Ready to add", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                         } else {
                             Text("Use at least two categories and make allocations match the expense total.").font(.footnote).foregroundStyle(.secondary)
                         }
                     } else {
                         LabeledContent("Allocated", value: "Unavailable")
-                        Text(allocationError ?? "Check the split amounts.").font(.footnote).foregroundStyle(MC.red)
+                        Text(splitError ?? "Check the split amounts.").font(.footnote).foregroundStyle(MC.red)
                     }
                 }
                 Section {
@@ -370,9 +370,9 @@ private struct SplitEditor: View {
                 if useOneCategoryAfterDismissal { model.stopSplitting() }
             }
             .sheet(isPresented: Binding(get: { choosingIndex != nil }, set: { if !$0 { choosingIndex = nil } })) {
-                CategoryPicker(categories: model.activeCategories, selectedID: choosingIndex.flatMap { index in model.draft.splitAllocations.indices.contains(index) ? model.draft.splitAllocations[index].categoryID : nil }) { categoryID in
-                    if let index = choosingIndex, model.draft.splitAllocations.indices.contains(index) {
-                        model.draft.splitAllocations[index].categoryID = categoryID
+                CategoryPicker(categories: model.activeCategories, selectedID: choosingIndex.flatMap { index in model.draft.splitParts.indices.contains(index) ? model.draft.splitParts[index].categoryID : nil }) { categoryID in
+                    if let index = choosingIndex, model.draft.splitParts.indices.contains(index) {
+                        model.draft.splitParts[index].categoryID = categoryID
                     }
                     choosingIndex = nil
                 }

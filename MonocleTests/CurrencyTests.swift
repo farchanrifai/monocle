@@ -99,8 +99,8 @@ final class CurrencyTests: XCTestCase {
         let stack = try model.createStack(name: "Everyday", cardIDs: [cardID])
         var capped = stack; capped.capLimit = 3_000_000_00; try model.updateStack(capped)
         // Rp50,000 paid in rupiah, and ¥1,000 typed at a manual Rp120.
-        let rupiah = Expense(amount: 5_000_000, day: "2026-10-01", note: "Lunch", allocations: [.init(categoryID: category, amount: 5_000_000)], cardID: cardID)
-        let yen = Expense(amount: 12_000_000, day: "2026-10-02", note: "Ramen", allocations: [.init(categoryID: category, amount: 12_000_000)], cardID: cardID,
+        let rupiah = Expense(amount: 5_000_000, day: "2026-10-01", note: "Lunch", splits: [.init(categoryID: category, amount: 5_000_000)], cardID: cardID)
+        let yen = Expense(amount: 12_000_000, day: "2026-10-02", note: "Ramen", splits: [.init(categoryID: category, amount: 12_000_000)], cardID: cardID,
                           originalAmount: 100_000, originalCurrency: "JPY", rate: "120", rateSource: .manual)
         try model.save(rupiah); try model.save(yen)
 

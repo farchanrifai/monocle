@@ -110,7 +110,7 @@ struct MacBillsView: View {
                 SummaryTile(title: "Monthly total", value: Money.format(model.bills.filter(\.isActive).reduce(0) { $0 + $1.amount }), detail: "Scheduled amount")
             }
             HStack { Text("Schedule").font(.title2.bold()); Spacer(); Button("New Bill") { adding = true }.buttonStyle(.glassProminent) }
-            Table(model.bills, selection: Binding<BillRule.ID?>(get: {
+            Table(model.bills, selection: Binding<Bill.ID?>(get: {
                 if case .bill(let id) = state.inspectorSelection { id } else { nil }
             }, set: { state.inspect($0.map { .bill($0) }) })) {
                 TableColumn("Name") { Text($0.name) }
@@ -119,7 +119,7 @@ struct MacBillsView: View {
                 TableColumn("Mode") { Text($0.recordingMode == .automatic ? "Automatic" : "Confirm") }
                 TableColumn("Active") { Image(systemName: $0.isActive ? "checkmark.circle.fill" : "pause.circle") }
             }
-            .contextMenu(forSelectionType: BillRule.ID.self) { ids in
+            .contextMenu(forSelectionType: Bill.ID.self) { ids in
                 if let bill = model.bills.first(where: { ids.contains($0.id) }) { Button("Edit Bill…") { state.editingBill = bill } }
             } primaryAction: { ids in
                 state.editingBill = model.bills.first { ids.contains($0.id) }
@@ -147,7 +147,7 @@ struct MacBillsView: View {
 
 private struct BillEditor: View {
     @Bindable var model: AppModel
-    let original: BillRule?
+    let original: Bill?
     let close: () -> Void
     @State private var name: String
     @State private var amount: String
@@ -159,7 +159,7 @@ private struct BillEditor: View {
     @State private var active: Bool
     @State private var error: String?
 
-    init(model: AppModel, bill: BillRule?, close: @escaping () -> Void) {
+    init(model: AppModel, bill: Bill?, close: @escaping () -> Void) {
         self.model = model; original = bill; self.close = close
         _name = State(initialValue: bill?.name ?? "")
         _amount = State(initialValue: bill.map { Money.digits($0.amount) } ?? "")
@@ -203,7 +203,7 @@ private struct BillEditor: View {
     private func save() {
         do {
             guard let categoryID else { throw BillError.missingCategory }
-            let value = BillRule(id: original?.id ?? UUID(), cardID: original?.cardID ?? model.activeCardID, name: name, amount: try Money.parse(amount), categoryID: categoryID, recurrence: recurrence, recordingMode: mode, hasReminder: reminder, reminderLeadDays: leadDays, createdAt: original?.createdAt ?? .now, isActive: active)
+            let value = Bill(id: original?.id ?? UUID(), cardID: original?.cardID ?? model.activeCardID, name: name, amount: try Money.parse(amount), categoryID: categoryID, recurrence: recurrence, recordingMode: mode, hasReminder: reminder, reminderLeadDays: leadDays, createdAt: original?.createdAt ?? .now, isActive: active)
             try value.validate(categories: model.activeCategories)
             try model.saveBill(value, in: value.cardID)
             close()
@@ -217,7 +217,7 @@ struct MacAnalyticsView: View {
     @State private var customStart = Calendar.current.date(byAdding: .day, value: -29, to: .now) ?? .now
     @State private var customEnd = Date.now
     @State private var editingDate: Bool? // true = start, false = end
-    @State private var scopeCycle: BudgetCycle? // nil = calendar month, as on iOS for multi-card scopes
+    @State private var scopeCycle: Cycle? // nil = calendar month, as on iOS for multi-card scopes
     @State private var hoverDay: String?
     @State private var hoverCumulative: String?
     @State private var hoverWeekday: String?
@@ -251,7 +251,7 @@ struct MacAnalyticsView: View {
         let daily = grouped(expenses.map { ($0.day, $0.amount) }).sorted { $0.0 < $1.0 }
         var running: Int64 = 0
         let cumulative = daily.map { running += $0.1; return ($0.0, running) }
-        let categories = grouped(expenses.flatMap(\.allocations).map { (model.category($0.categoryID)?.name ?? "Other", $0.amount) })
+        let categories = grouped(expenses.flatMap(\.splits).map { (model.category($0.categoryID)?.name ?? "Other", $0.amount) })
         let cards = grouped(rows.map { ($0.card, $0.expense.amount) })
         let paidWith = AnalyticsEngine.paidWithTotals(expenses, methods: model.paymentMethods).map { ($0.name, $0.amount) }
         let weekdays = weekdayTotals(expenses)
@@ -351,7 +351,7 @@ struct MacAnalyticsView: View {
                         ForEach(expenses.sorted { $0.amount > $1.amount }.prefix(6)) { expense in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(expense.note.isEmpty ? (model.category(expense.allocations.first?.categoryID)?.name ?? "Expense") : expense.note).lineLimit(1)
+                                    Text(expense.note.isEmpty ? (model.category(expense.splits.first?.categoryID)?.name ?? "Expense") : expense.note).lineLimit(1)
                                     Text(Day.title(expense.day)).font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()

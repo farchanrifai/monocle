@@ -117,7 +117,7 @@ struct MacRootView: View {
                 }
             } header: {
                 Text("Stacks").contextMenu {
-                    Button("New Stack…") { state.editingStack = CardStack(name: "") }
+                    Button("New Stack…") { state.editingStack = Stack(name: "") }
                     Toggle("Show Hidden Cards", isOn: $state.showHiddenCards)
                 }
             }
@@ -600,7 +600,7 @@ struct MacExpenseRow: Identifiable {
             let value = categoryName(id); names[id] = value; return value
         }
         return expenses.map { expense in
-            let category = name(expense.allocations.first?.categoryID)
+            let category = name(expense.splits.first?.categoryID)
             return MacExpenseRow(expense: expense, title: expense.note.isEmpty ? category ?? "Expense" : expense.note,
                                  category: category ?? "Split", card: expense.cardID.flatMap { cardNames[$0] } ?? "")
         }
@@ -660,7 +660,7 @@ struct ExpenseMenuItems: View {
     var body: some View {
         Button("Edit…") { state.edit(expense) }
         Button("Repeat…") { state.repeatExpense(expense) }
-        if expense.allocations.count == 1 { CategoryMenu(state: state, expenses: [expense]) }
+        if expense.splits.count == 1 { CategoryMenu(state: state, expenses: [expense]) }
         Divider()
         Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }
     }
@@ -691,7 +691,7 @@ struct CategoryMenu: View {
                 }
             }
         }
-        .disabled(categories.isEmpty || expenses.allSatisfy { $0.allocations.count > 1 })
+        .disabled(categories.isEmpty || expenses.allSatisfy { $0.splits.count > 1 })
     }
 }
 
@@ -708,7 +708,7 @@ struct MacCardsView: View {
                 Spacer()
                 GlassEffectContainer {
                     HStack {
-                        Button("New Stack") { state.editingStack = CardStack(name: "") }.buttonStyle(.glass)
+                        Button("New Stack") { state.editingStack = Stack(name: "") }.buttonStyle(.glass)
                         Button("New Card") { state.addingCard = true }.buttonStyle(.glassProminent)
                     }
                 }
@@ -776,14 +776,14 @@ struct MacCardMenu: View {
 /// One stack's cards and their combined transactions. `stack == nil` is the built-in Hidden Cards group.
 struct MacStackView: View {
     @Bindable var state: MacAppState
-    let stack: CardStack?
+    let stack: Stack?
     private var model: AppModel { state.model }
 
     var body: some View {
         let cards = stack.map(model.cards(in:)) ?? model.hiddenCards
         let expenses = cards.flatMap { model.expenses(for: $0.id) }
         // Stacks use the calendar month, like iOS; a single card's own cycle doesn't apply here.
-        let month = BudgetCycle.containing(.now, startDay: 1)
+        let month = Cycle.containing(.now, startDay: 1)
         let cycleTotal = expenses.filter { month.contains($0) }.reduce(0) { $0 + $1.amount }
         let budget = stack.flatMap(model.stackBudgetLimit)
         VStack(spacing: 0) {
@@ -822,7 +822,7 @@ struct MacStackView: View {
 }
 
 extension AppModel {
-    func cards(in stack: CardStack) -> [Card] { cards(in: .stack(id: stack.id, name: stack.name)) }
+    func cards(in stack: Stack) -> [Card] { cards(in: .stack(id: stack.id, name: stack.name)) }
     var hiddenCards: [Card] { orderedCards.filter { alwaysHiddenCardIDs.contains($0.id) } }
 }
 
@@ -956,16 +956,16 @@ private struct MacCardEditor: View {
 
 private struct MacStackEditor: View {
     let state: MacAppState
-    let original: CardStack
+    let original: Stack
     let close: () -> Void
-    @State private var stack: CardStack
+    @State private var stack: Stack
     @State private var error: String?
     private static let icons = ["rectangle.stack", "airplane", "house", "cart", "briefcase", "creditcard", "fork.knife", "sparkles", "car", "cross.case", "sportscourt", "bag"]
     private var isNew: Bool { !model.stacks.contains { $0.id == original.id } }
 
     private var model: AppModel { state.model }
 
-    init(state: MacAppState, stack: CardStack, close: @escaping () -> Void) {
+    init(state: MacAppState, stack: Stack, close: @escaping () -> Void) {
         self.state = state; original = stack; self.close = close
         _stack = State(initialValue: stack)
     }
@@ -1120,13 +1120,13 @@ private struct ExpenseInspector: View {
     private var model: AppModel { state.model }
 
     var body: some View {
-        let isSplit = expense.allocations.count > 1
-        let category = model.category(expense.allocations.first?.categoryID)
+        let isSplit = expense.splits.count > 1
+        let category = model.category(expense.splits.first?.categoryID)
         Form {
             Section {
                 InspectorHeader(symbol: isSplit ? "square.split.2x1" : category?.symbol ?? "questionmark.circle",
                                 title: model.title(expense),
-                                subtitle: isSplit ? "Split across \(expense.allocations.count) categories" : category?.name ?? "No category",
+                                subtitle: isSplit ? "Split across \(expense.splits.count) categories" : category?.name ?? "No category",
                                 amount: expense.amount)
             }
             Section("Details") {
@@ -1146,10 +1146,10 @@ private struct ExpenseInspector: View {
             }
             if isSplit {
                 Section("Split") {
-                    ForEach(Array(expense.allocations.enumerated()), id: \.offset) { _, allocation in
-                        let part = model.category(allocation.categoryID)
+                    ForEach(Array(expense.splits.enumerated()), id: \.offset) { _, split in
+                        let part = model.category(split.categoryID)
                         LabeledContent {
-                            Text(Money.format(allocation.amount)).font(.system(.body, design: .monospaced))
+                            Text(Money.format(split.amount)).font(.system(.body, design: .monospaced))
                         } label: {
                             Label(part?.name ?? "No category", systemImage: part?.symbol ?? "questionmark.circle")
                         }
@@ -1178,8 +1178,8 @@ private struct MultiExpenseInspector: View {
 
     var body: some View {
         let days = expenses.map(\.day).sorted()
-        let splits = expenses.filter { $0.allocations.count > 1 }.count
-        let byCategory = Dictionary(grouping: expenses.filter { $0.allocations.count == 1 }) { $0.allocations[0].categoryID }
+        let splits = expenses.filter { $0.splits.count > 1 }.count
+        let byCategory = Dictionary(grouping: expenses.filter { $0.splits.count == 1 }) { $0.splits[0].categoryID }
             .map { (id: $0.key, category: model.category($0.key), total: $0.value.reduce(0) { $0 + $1.amount }) }
             .sorted { $0.total > $1.total }
         Form {
@@ -1213,7 +1213,7 @@ private struct MultiExpenseInspector: View {
 
 private struct BillInspector: View {
     let model: AppModel
-    let bill: BillRule
+    let bill: Bill
     let edit: () -> Void
 
     var body: some View {

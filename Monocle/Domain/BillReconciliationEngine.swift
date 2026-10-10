@@ -15,7 +15,7 @@ struct ReconciliationResult: Equatable {
 enum BillReconciliationEngine {
     /// Generates due day strings for a bill rule within a given date window.
     static func dueDays(
-        for rule: BillRule,
+        for rule: Bill,
         from startDate: Date,
         to endDate: Date,
         calendar: Calendar = Day.calendar
@@ -94,7 +94,7 @@ enum BillReconciliationEngine {
     /// Reconciles missed and upcoming bill occurrences against existing records.
     /// Idempotent: existing occurrences (recorded, skipped, or pending) are never duplicated.
     static func reconcile(
-        rule: BillRule,
+        rule: Bill,
         existingOccurrences: [BillOccurrence],
         asOf date: Date = .now,
         lookaheadDays: Int = 30,
@@ -121,7 +121,7 @@ enum BillReconciliationEngine {
             let expenseID = UUID()
             let occurrenceDate = Day.date(occurrence.dueDay, calendar: calendar) ?? date
             autoExpenses.append(Expense(id: expenseID, amount: rule.amount, day: occurrence.dueDay,
-                note: rule.name, allocations: [.init(categoryID: rule.categoryID, amount: rule.amount)],
+                note: rule.name, splits: [.init(categoryID: rule.categoryID, amount: rule.amount)],
                 source: "bill-automatic", createdAt: occurrenceDate, cardID: rule.cardID))
             occurrence.status = .recorded
             occurrence.expenseID = expenseID
@@ -144,7 +144,7 @@ enum BillReconciliationEngine {
                     amount: rule.amount,
                     day: dueDay,
                     note: rule.name,
-                    allocations: [.init(categoryID: rule.categoryID, amount: rule.amount)],
+                    splits: [.init(categoryID: rule.categoryID, amount: rule.amount)],
                     source: "bill-automatic",
                     createdAt: occurrenceDate,
                     cardID: rule.cardID

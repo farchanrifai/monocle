@@ -119,7 +119,7 @@ struct BudgetEditor: View {
         return try Money.parse(input)
     }
     private var changingStartDay: Bool { startDay != model.activeBudget.startDay }
-    private var transitionCycle: BudgetCycle {
+    private var transitionCycle: Cycle {
         .init(start: model.cycle.end, end: BudgetHistory.transitionEnd(after: model.cycle.end, startDay: startDay))
     }
 

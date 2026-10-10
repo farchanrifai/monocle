@@ -176,8 +176,8 @@ struct CardBackup: Codable {
         if let id = draft.categoryID { guard categories.contains(where: { $0.id == id }) else { throw BackupError.invalid } }
         guard draft.cardID == nil || draft.cardID == cardID,
               draft.date.timeIntervalSince1970.isFinite, draft.createdAt.timeIntervalSince1970.isFinite,
-              draft.splitAllocations.allSatisfy({ allocation in categories.contains(where: { $0.id == allocation.categoryID }) }),
-              Set(draft.splitAllocations.map(\.id)).count == draft.splitAllocations.count,
+              draft.splitParts.allSatisfy({ split in categories.contains(where: { $0.id == split.categoryID }) }),
+              Set(draft.splitParts.map(\.id)).count == draft.splitParts.count,
               !draft.editing || expenses.contains(where: { $0.id == draft.id }) else { throw BackupError.invalid }
         // Drafts are intentionally allowed to be incomplete or contain invalid input.
     }
@@ -211,7 +211,7 @@ enum StackFilterScope: String, Codable, Equatable, Sendable {
     case allCards
 }
 
-struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
+struct Stack: Identifiable, Codable, Equatable, Hashable, Sendable {
     var id: UUID = UUID()
     var name: String
     var icon: String = "rectangle.stack"
@@ -230,7 +230,7 @@ struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
     }
 }
 
-extension CardStack {
+extension Stack {
     /// The stack budget for a calendar-month cycle: its cap when set, otherwise the sum of its cards' monthly budgets.
     func budgetLimit(cardLimits: [Int64]) -> Int64? {
         if let capLimit { return capLimit }
@@ -259,7 +259,7 @@ extension WorkspacePreferences {
         return removed
     }
 
-    func stack(containing cardID: UUID) -> CardStack? { stacks.first { $0.cardIDs.contains(cardID) } }
+    func stack(containing cardID: UUID) -> Stack? { stacks.first { $0.cardIDs.contains(cardID) } }
 }
 
 /// "Paid with": an optional label such as BCA debit or Cash. Never a balance.
@@ -372,7 +372,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var autoAppearance: Bool = false
     var cardCustomizations: [UUID: CardCustomization] = [:]
     var alwaysHiddenCardIDs: [UUID] = []
-    var stacks: [CardStack] = []
+    var stacks: [Stack] = []
     var activeStackID: UUID? = nil
     var filterScopeRaw: String = "activeStack"
     var entryModeRaw: String = "Keypad"
@@ -413,7 +413,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         autoAppearance: Bool = false,
         cardCustomizations: [UUID: CardCustomization] = [:],
         alwaysHiddenCardIDs: [UUID] = [],
-        stacks: [CardStack] = [],
+        stacks: [Stack] = [],
         activeStackID: UUID? = nil,
         filterScope: StackFilterScope = .activeStack,
         entryMode: EntryMode = .keypad,
@@ -454,7 +454,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         autoAppearance = try container.decodeIfPresent(Bool.self, forKey: .autoAppearance) ?? false
         cardCustomizations = try container.decodeIfPresent([UUID: CardCustomization].self, forKey: .cardCustomizations) ?? [:]
         alwaysHiddenCardIDs = try container.decodeIfPresent([UUID].self, forKey: .alwaysHiddenCardIDs) ?? []
-        stacks = try container.decodeIfPresent([CardStack].self, forKey: .stacks) ?? []
+        stacks = try container.decodeIfPresent([Stack].self, forKey: .stacks) ?? []
         activeStackID = try container.decodeIfPresent(UUID.self, forKey: .activeStackID)
         filterScopeRaw = try container.decodeIfPresent(String.self, forKey: .filterScopeRaw) ?? "activeStack"
         entryModeRaw = try container.decodeIfPresent(String.self, forKey: .entryModeRaw) ?? "Keypad"
@@ -497,7 +497,7 @@ struct CardBackupItem: Codable, Equatable, Sendable {
     var expenses: [Expense]
     var budgets: [BudgetVersion]
     var draft: ExpenseDraft?
-    var bills: [BillRule]?
+    var bills: [Bill]?
     var billOccurrences: [BillOccurrence]?
     // Stored keys keep their pre-rename names so existing backups, drafts and settings still load.
     private enum CodingKeys: String, CodingKey { case card = "book", categories, expenses, budgets, draft, bills, billOccurrences }
@@ -625,7 +625,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             item.categories.sort { $0.id.uuidString < $1.id.uuidString }
             item.expenses = item.expenses.map { value in
                 var value = value
-                value.allocations.sort { $0.categoryID.uuidString < $1.categoryID.uuidString }
+                value.splits.sort { $0.categoryID.uuidString < $1.categoryID.uuidString }
                 return value
             }.sorted { $0.id.uuidString < $1.id.uuidString }
             item.budgets = item.budgets.map { value in
@@ -701,8 +701,8 @@ extension CardBackupItem {
             guard draft.cardID == nil || draft.cardID == card.id,
                   draft.date.timeIntervalSince1970.isFinite, draft.createdAt.timeIntervalSince1970.isFinite,
                   draft.categoryID.map(categoryIDs.contains) ?? true,
-                  draft.splitAllocations.allSatisfy({ categoryIDs.contains($0.categoryID) }),
-                  Set(draft.splitAllocations.map(\.id)).count == draft.splitAllocations.count,
+                  draft.splitParts.allSatisfy({ categoryIDs.contains($0.categoryID) }),
+                  Set(draft.splitParts.map(\.id)).count == draft.splitParts.count,
                   !draft.editing || expenses.contains(where: { $0.id == draft.id }) else { throw BackupError.invalid }
         }
         let rules = bills ?? []
@@ -787,7 +787,7 @@ extension WorkspacePreferences {
 /// Version 8 adds optional card, expense, budget and preference fields; an older app rejects it instead of dropping them.
 /// Encoding a large ledger never creates a second base64-expanded asset graph;
 /// each record/asset is decoded separately and all frame lengths are checked
-/// against the remaining input before allocation. There is no overall live-data ceiling.
+/// against the remaining input before split. There is no overall live-data ceiling.
 private enum WorkspaceBackupStream {
     static func magic(_ version: Int) -> Data { Data("MONOCLE-BACKUP-\(version)\n".utf8) }
     static func version(of data: Data) -> Int? { [8, 7].first { data.starts(with: magic($0)) } }
@@ -868,7 +868,7 @@ private enum WorkspaceBackupStream {
             let categories = try records(card.categories, ExpenseCategory.self)
             let expenses = try records(card.expenses, Expense.self)
             let budgets = try records(card.budgets, BudgetVersion.self)
-            let bills = try card.bills.map { try records($0, BillRule.self) }
+            let bills = try card.bills.map { try records($0, Bill.self) }
             let occurrences = try card.occurrences.map { try records($0, BillOccurrence.self) }
             cards.append(CardBackupItem(card: card.card, categories: categories, expenses: expenses, budgets: budgets, draft: card.draft, bills: bills, billOccurrences: occurrences))
         }
