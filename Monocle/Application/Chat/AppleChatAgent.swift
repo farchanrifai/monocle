@@ -8,6 +8,8 @@ import FoundationModels
 final class AppleChatAgent: ChatBackend {
     private let model: AppModel
     private var session: LanguageModelSession?
+    /// The target card's categories baked into the session's proposal tools as an enum.
+    private var sessionCategories: [String] = []
     private var notes: [String] = []
     /// The current turn's executor and the cards its tool calls produced.
     private var executor: ToolExecutor?
@@ -37,8 +39,11 @@ final class AppleChatAgent: ChatBackend {
         if let reason = Self.unavailableReason { return [.error(reason)] }
         let executor = ToolExecutor(model: model, scope: scope, now: now)
         self.executor = executor
-        let prompt = ([ChatAgent.context(executor, now: now)] + notes.map { "App note: \($0)" } + [text]).joined(separator: "\n\n")
+        let prompt = ([ChatAgent.context(executor, now: now, listCategories: false)] + notes.map { "App note: \($0)" } + [text]).joined(separator: "\n\n")
         var notice: [ChatAgent.Output] = []
+        let categories = ((try? executor.targetCard()).flatMap { try? model.activeCategories(in: $0.id) } ?? []).map(\.name)
+        // ponytail: tools are fixed per session, so a different card's categories start a fresh one (history lost).
+        if categories != sessionCategories { session = nil; sessionCategories = categories }
         // The context window is small (~4k tokens): if a long conversation fails, retry once in a fresh session.
         for attempt in 0..<2 {
             outputs = []
@@ -49,7 +54,7 @@ final class AppleChatAgent: ChatBackend {
                 // Greedy: tool choice and arguments stay the same for the same prompt, which makes tuning comparable.
                 let reply = try await session.respond(to: prompt, options: GenerationOptions(sampling: .greedy)).content
                 notes = []
-                return notice + outputs + (reply.isEmpty ? [] : [.text(reply)])
+                return notice + outputs + (reply.isEmpty || Self.claimsDone(reply, beside: outputs) ? [] : [.text(reply)])
             } catch {
                 self.session = nil
                 if fresh || attempt == 1 {
@@ -67,7 +72,7 @@ final class AppleChatAgent: ChatBackend {
         }
         let tools: [any Tool] = ChatAgent.tools.compactMap { json in
             guard let name = json["name"] as? String, let schema = json["input_schema"] as? [String: Any],
-                  let parameters = try? GenerationSchema(root: Self.schema(schema, name: name), dependencies: []) else { return nil }
+                  let parameters = try? GenerationSchema(root: Self.schema(schema, name: name, categories: sessionCategories), dependencies: []) else { return nil }
             return ExecutorTool(name: name, description: json["description"] as? String ?? "", parameters: parameters, run: run)
         }
         return LanguageModelSession(tools: tools, instructions: ChatAgent.systemPrompt + "\n" + Self.extraInstructions)
@@ -88,9 +93,17 @@ final class AppleChatAgent: ChatBackend {
     If a period has no spending, say so in a few words, then call get_summary for last_month and describe that instead.
     A follow-up ("how about last month?", "what categories?", "and transport?") keeps the period and scope of the previous question.
     Omit scope and card unless the user names one.
-    The category list in app_context is only for choosing a category, never an answer by itself.
     Never repeat <app_context>. Never show ids.
     """
+
+    /// The small model ignores "never say saved" and writes "has been updated" next to a card the user hasn't
+    /// confirmed yet. The card says what will happen, so that sentence is dropped rather than shown wrong.
+    static func claimsDone(_ reply: String, beside outputs: [ChatAgent.Output]) -> Bool {
+        let hasCard = outputs.contains { switch $0 { case .proposal, .change, .bill: true; default: false } }
+        // ponytail: word list, not a classifier; extend it when a new phrasing slips through.
+        let done = #"\b(added|saved|updated|changed|deleted|removed|recorded|logged|created|ditambahkan|disimpan|diubah|diperbarui|dihapus|dicatat|dibuat)\b"#
+        return hasCard && reply.range(of: done, options: [.regularExpression, .caseInsensitive]) != nil
+    }
 
     private func runTool(_ name: String, _ input: String) -> String {
         guard let executor else { return #"{"error": "No active turn."}"# }
@@ -141,8 +154,9 @@ final class AppleChatAgent: ChatBackend {
     }
 
     /// The subset of JSON Schema ChatAgent.tools uses (object, array, enum, string, integer, boolean).
-    /// Apple's twist: `amount` is a string the app parses.
-    static func schema(_ json: [String: Any], name: String) -> DynamicGenerationSchema {
+    /// Apple's twist: `amount` is a string the app parses, and a proposal's `category` is one of `categories`
+    /// (guided generation can't invent "Subscription", so app_context needn't list them for the model to echo).
+    static func schema(_ json: [String: Any], name: String, categories: [String] = []) -> DynamicGenerationSchema {
         let description = json["description"] as? String
         if let choices = json["enum"] as? [String] { return DynamicGenerationSchema(name: name, description: description, anyOf: choices) }
         switch json["type"] as? String {
@@ -152,14 +166,18 @@ final class AppleChatAgent: ChatBackend {
             let properties = (json["properties"] as? [String: [String: Any]] ?? [:])
                 .sorted { (required.contains($0.key) ? 0 : 1, $0.key) < (required.contains($1.key) ? 0 : 1, $1.key) }
                 .map { key, value in
-                    key == "amount"
+                    key == "category" && name.hasPrefix("propose") && !categories.isEmpty
+                        ? DynamicGenerationSchema.Property(name: key, description: value["description"] as? String,
+                                                           schema: DynamicGenerationSchema(name: "\(name)_\(key)", anyOf: categories),
+                                                           isOptional: !required.contains(key))
+                        : key == "amount"
                         ? DynamicGenerationSchema.Property(name: key, description: "As the user wrote it, e.g. 28rb, 100k, 1,5jt.",
                                                            schema: DynamicGenerationSchema(type: String.self), isOptional: !required.contains(key))
                         : DynamicGenerationSchema.Property(name: key, description: value["description"] as? String,
-                                                           schema: schema(value, name: "\(name)_\(key)"), isOptional: !required.contains(key))
+                                                           schema: schema(value, name: "\(name)_\(key)", categories: categories), isOptional: !required.contains(key))
                 }
             return DynamicGenerationSchema(name: name, description: description, properties: properties)
-        case "array": return DynamicGenerationSchema(arrayOf: schema(json["items"] as? [String: Any] ?? [:], name: "\(name)_item"))
+        case "array": return DynamicGenerationSchema(arrayOf: schema(json["items"] as? [String: Any] ?? [:], name: "\(name)_item", categories: categories))
         case "integer": return DynamicGenerationSchema(type: Int.self)
         case "boolean": return DynamicGenerationSchema(type: Bool.self)
         default: return DynamicGenerationSchema(type: String.self)

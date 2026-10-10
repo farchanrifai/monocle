@@ -1,5 +1,17 @@
 ## 1. Immediate Next Step
 
+Fixed both known AI Chat bugs (Apple on-device backend) on branch `fix/chat-known-bugs` (off `feat/apple-intelligence-chat`, pushed). User to review and merge it into `feat/apple-intelligence-chat`; do NOT merge to main until the user says so.
+
+- "updated"/"saved" before confirm: `AppleChatAgent.claimsDone` drops the reply text when the turn shows a proposal/change/bill card and the text uses a done verb (EN + ID word list).
+- "what categories?" echoing the list: Apple's app_context no longer lists categories (`ChatAgent.context(listCategories: false)`); instead `category` in the propose_* tool schemas is an enum of the target card's categories (session rebuilt when they change). Claude backend unchanged.
+- On-device probe (`AppleChatTests.testGoldenPromptsOnDevice`): 9/11 → 10/11. Remaining ✗: the 3-turn follow-up "what categories?" answers this month instead of keeping last month (period carry-over, separate issue). Netflix bill picked category Wellbeing and record automatic (valid but odd).
+- Verified: Mac unit tests 20 pass (1 skipped), iOS sim build OK. Mac UI tests not run; Claude golden prompts not rerun (Claude path only lost nothing; context default unchanged); no IPA built.
+
+Still open (AI Chat): live check of Quick Chat, charts, @ picker (Mac + iOS on device); keep/remove Apple backend decision; follow-up period carry-over; proxy before sharing; chat v2 streaming + localized strings. Mac Analytics live feedback (previous checkpoint) still pending.
+
+## 2. Last Completed Checkpoint
+
+
 User is live-checking the Mac Analytics page in the demo workspace (branch `feat/apple-intelligence-chat`, pushed, last commit `974fae4`). Ask for feedback; do NOT merge to main until the user says so. Launch: `open --env MONOCLE_DEMO=1 ~/Library/Developer/Xcode/DerivedData/Monocle-euhlpsgynpyfmfajgbppbaiqkptd/Build/Products/Debug/Monocle.app` (kill the running app first).
 
 Mac Analytics (`MonocleMac/Features/MacPlanningViews.swift`, `MacAnalyticsView`):
@@ -12,22 +24,3 @@ Mac Analytics (`MonocleMac/Features/MacPlanningViews.swift`, `MacAnalyticsView`)
 
 Earlier open items (from previous checkpoint) still apply: Quick Chat live check, chat backend decision (Apple on-device keep or remove), iOS side of charts/@ picker unchecked on device, older Mac backlog.
 
-## 2. Last Completed Checkpoint
-
-User is testing the demo app (Quick Chat, charts, @ picker, demo data). Start the next session by asking for their feedback and fixing what they found. Branch `feat/apple-intelligence-chat` (ahead of main; last feature commit `f5a0172`); do NOT merge to main until the user says it's ready.
-
-Working mode (user, 2026-10-10): build and test in the demo workspace, not the user's real data.
-- Launch: `open --env MONOCLE_DEMO=1 ~/Library/Developer/Xcode/DerivedData/Monocle-euhlpsgynpyfmfajgbppbaiqkptd/Build/Products/Debug/Monocle.app` (kill the running Debug app first; `open` alone just fronts an old instance).
-- Folder `…/Containers/com.farchan.monocle.mac/Data/Library/Application Support/monocle-demo`, seeded once (marker `demo-seeded`) by `Monocle/Persistence/DemoWorkspace.swift` (DEBUG only) through `model.restoreWorkspaceBackup`: Daily, Household, Work, Tokyo Trip, Bali Trip in stacks Everyday/Travel/Work, ~1,555 expenses over a year, splits, budgets with category limits, bills. Delete the folder to reseed. Real data (`monocle-mac`) untouched.
-
-Built this session, needs the user's live check:
-- **Quick Chat** (Mac): global ⌃⌥⌘C (`MacCommandID.quickChat`, rebindable) opens `QuickChatPanelController` (MacChatView.swift): non-activating floating panel reusing `QuickRecordPanelController.makePanel`, `MacChatView(compact: true)`, same `model.chat` session as the Chat page. "Open in Monocle" → `state.openChatInApp()` (destination .chat, `bringMainWindowForward`, reopens via `openWindow(id: "main")`). Shortcut again or Esc hides; frame autosaved. `GlobalHotKeyController(id:)` now filters by hotkey id so two hotkeys coexist. Not opened by me (would need a synthetic keypress); crash risk = window sizing loop like Quick Record had, mitigated with `sizingOptions = []`.
-- **Charts**: `ChatChart` (ChatSession.swift; styles donut, bars, trend, comparison, budget) built in ToolExecutor for get_summary (category/card/day), compare_periods, get_budget_status; drawn by `ChatChartView.swift` (donut via Charts, the rest plain SwiftUI rows). Old `.summary` rows still render. Prompt tells the model not to repeat charted numbers. `MonocleMacTests/ChatChartRenderTests` writes PNGs at 640 and 345 widths to `…/Data/tmp/chat-charts/`.
-- **@ picker**: `ChatMentionList` (ChatTranscript.swift) overlays above the input on iOS and Mac; ↑/↓ + Return on Mac; picking sets scope via `ChatScopeMenuItems.select`.
-- **Mac Open Settings** fixed via SwiftUI `openSettings` captured in `MacAppState`.
-
-Chat backends (both behind `ChatBackend`; Settings ▸ AI Chat ▸ Model, `UserDefaults "chatBackend"`):
-- Claude Haiku 5.5 is the user's preferred backend ("much better"). All golden prompts pass. Run: boot sim `D00AEC79-1687-4DA1-B1B6-D6EAB3E8CA47`, then `TEST_RUNNER_ANTHROPIC_API_KEY=$(cat ~/.monocle-anthropic-key) xcodebuild test -project Monocle.xcodeproj -scheme Monocle -destination 'id=D00AEC79-…' -only-testing:MonocleTests/ChatGoldenPromptTests` (key file is the user's; never print it). The key is also saved in the Mac app's Keychain.
-- Apple Intelligence on-device (`AppleChatAgent.swift`) kept as an option; 9/11 on `AppleChatTests.testGoldenPromptsOnDevice` (wording-sensitive). PCC not available to the user. Open decision: keep or remove it.
-
-Open items: user feedback on the above; model sometimes says "updated" before the user confirms; "what categories?" answered with the category list; iOS side of charts/@ not checked on a device (no IPA built this session); proxy only before chat is shared beyond the user. Older backlog: live-check Mac Tab order (incl. Date), sidebar collapse/Show More, card/stack menus, photo pick, Quick Record over full-screen apps; Quick Record UI tweaks; prominent glass buttons blue vs red (ask); Mac category management; chat v2 streaming + localized strings; F26 background persistence; M4 accessibility audit; stale docs/planning/roadmap.md.

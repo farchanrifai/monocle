@@ -114,7 +114,9 @@ final class ChatAgent: ChatBackend {
     }
 
     /// Per-request facts go in the user turn so the system prompt and tools stay byte-stable.
-    static func context(_ executor: ToolExecutor, now: Date) -> String {
+    /// `listCategories: false` for Apple's small model, which answers "what categories?" by echoing the list;
+    /// a wrong category name gets the valid list back in the tool error instead.
+    static func context(_ executor: ToolExecutor, now: Date, listCategories: Bool = true) -> String {
         let model = executor.model
         let card = try? executor.targetCard()
         let categories = card.flatMap { try? model.activeCategories(in: $0.id) }?.map(\.name) ?? []
@@ -125,8 +127,7 @@ final class ChatAgent: ChatBackend {
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
         Scope: \(scope) (cards: \(books.joined(separator: ", "))).
         New expenses go to card: \(card?.name ?? "none — ask the user").
-        Categories on that card: \(categories.joined(separator: ", ")).
-        </app_context>
+        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")</app_context>
         """
     }
 

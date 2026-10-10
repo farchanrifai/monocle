@@ -13,6 +13,7 @@ final class AppleChatTests: XCTestCase {
             let name = try XCTUnwrap(tool["name"] as? String)
             let schema = try XCTUnwrap(tool["input_schema"] as? [String: Any])
             XCTAssertNoThrow(try GenerationSchema(root: AppleChatAgent.schema(schema, name: name), dependencies: []), name)
+            XCTAssertNoThrow(try GenerationSchema(root: AppleChatAgent.schema(schema, name: name, categories: ["Food & Drink", "Leisure"]), dependencies: []), name)
         }
     }
 
@@ -25,6 +26,14 @@ final class AppleChatTests: XCTestCase {
         XCTAssertEqual(AppleChatAgent.rupiah("50000"), 50_000)
         XCTAssertNil(AppleChatAgent.rupiah("kopi"))
         XCTAssertNil(AppleChatAgent.rupiah("0k"))
+    }
+
+    func testDoneClaimsBesideAPendingCardAreDropped() {
+        let card: [ChatAgent.Output] = [.proposal(Expense(amount: 28_000_00, day: "2026-10-10", note: "Kopi", allocations: [], bookID: UUID()))]
+        XCTAssertTrue(AppleChatAgent.claimsDone("Your coffee has been updated to Rp30.000.", beside: card))
+        XCTAssertTrue(AppleChatAgent.claimsDone("Kopi sudah ditambahkan.", beside: card))
+        XCTAssertFalse(AppleChatAgent.claimsDone("Check the card to add it.", beside: card))
+        XCTAssertFalse(AppleChatAgent.claimsDone("You added 3 expenses yesterday.", beside: []), "No card, nothing to contradict")
     }
 
     func testGoldenPromptsOnDevice() async throws {
