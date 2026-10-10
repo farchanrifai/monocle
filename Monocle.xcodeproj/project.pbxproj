@@ -79,6 +79,7 @@
 		82656E5ED834FC2CE64BE243 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
 		85CEEF28F521F31304E69058 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CD7790B75B1AA86918043C /* CardCustomizerView.swift */; };
 		8934E3DC238F21D7D643E592 /* ChatAgentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7CC8CAA14DB700C397EDA62 /* ChatAgentTests.swift */; };
+		8ACA09A7ADBA775AB124E8FA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF8F4C883E255C3D2A39FE4E /* Assets.xcassets */; };
 		8B4D549408E90FE0BCBE063D /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */; };
 		8F2B2BAF7BEBD04DE9D4060B /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */; };
 		8F577C6F9697132F42A06283 /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
@@ -295,6 +296,7 @@
 		DB0A6327C10E9A9C31261974 /* WidgetSnapshotUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotUpdater.swift; sourceTree = "<group>"; };
 		DC903D25750DE722F4AF1648 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
 		DD370A7824F97976D821CBC6 /* MonocleMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MonocleMac.entitlements; sourceTree = "<group>"; };
+		DF8F4C883E255C3D2A39FE4E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E0867C42321975FF8870E11C /* MonocleMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleMacTests.swift; sourceTree = "<group>"; };
 		E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillNotificationService.swift; sourceTree = "<group>"; };
 		E7C985068FF1DDAD18749F35 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
@@ -430,6 +432,7 @@
 		599033CE377D6A2121AF330E /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				DF8F4C883E255C3D2A39FE4E /* Assets.xcassets */,
 				7E643254671C1B32EF87E456 /* Info.plist */,
 				DD370A7824F97976D821CBC6 /* MonocleMac.entitlements */,
 			);
@@ -714,6 +717,7 @@
 			buildConfigurationList = 1273ED38DB47E24A3E8787A0 /* Build configuration list for PBXNativeTarget "MonocleMac" */;
 			buildPhases = (
 				486FD4F8EA50641AECCF49C1 /* Sources */,
+				D38E32B2BA2CD5F8E01DC6AF /* Resources */,
 			);
 			buildRules = (
 			);
@@ -808,6 +812,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				916F656B6332220A662DDD1E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D38E32B2BA2CD5F8E01DC6AF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8ACA09A7ADBA775AB124E8FA /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
