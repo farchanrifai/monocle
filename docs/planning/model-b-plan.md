@@ -27,7 +27,7 @@ Core Data `MonocleV5` adds only optional attributes, so lightweight migration wo
 |---|---|
 | `Book` | `currency` String?, `spendingCurrency` String?, `defaultPaidWithID` UUID? |
 | `ExpenseRecord` | `paidWithID` UUID?, `originalAmount` Int64 (0 = same as amount), `originalCurrency` String?, `rate` String?, `rateSource` String? |
-| `BudgetRecord` | `kind` String (default "monthly"), `endDay` String? |
+| `BudgetRecord` | `totalUntilDay` String? (set = "Total until" budget; nil = monthly) |
 
 Referencing by UUID matches how `BillRuleRecord.categoryID` and `BillOccurrenceRecord.expenseID` already work. No new relationships.
 

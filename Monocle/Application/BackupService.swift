@@ -110,7 +110,7 @@ final class BackupService {
                 artworks[filename] = data
             }
         }
-        let workspace = WorkspaceBackup(formatVersion: 7, exportedAt: exportedAt, currency: "IDR", minorUnitScale: 2,
+        let workspace = WorkspaceBackup(formatVersion: WorkspaceBackup.currentFormat, exportedAt: exportedAt, currency: prefs.reportingCurrency, minorUnitScale: 2,
                                         books: items, preferences: prefs, settings: settings,
                                         cardArtworks: artworks.isEmpty ? nil : artworks)
         try workspace.validate()

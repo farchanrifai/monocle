@@ -397,4 +397,50 @@ final class BackendPersistenceTests: XCTestCase {
         XCTAssertNil(value.scheduleEffectiveDay)
         XCTAssertEqual(try migrated.books().first?.colorIndex, 0)
     }
+
+    func testV4DiskMigrationKeepsDataAndLeavesModelBFieldsEmpty() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("migration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let modelDirectory = try XCTUnwrap(Bundle.main.url(forResource: "Monocle", withExtension: "momd"))
+        let model = try XCTUnwrap(NSManagedObjectModel(contentsOf: modelDirectory.appendingPathComponent("MonocleV4.mom")))
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
+        let store = try coordinator.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil,
+                                                       at: directory.appendingPathComponent("ledger.sqlite"))
+        let context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        context.persistentStoreCoordinator = coordinator
+        let bookID = UUID(), categoryID = UUID(), expenseID = UUID()
+        let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+        book.setValue(bookID, forKey: "id"); book.setValue("Daily", forKey: "name"); book.setValue(2, forKey: "colorIndex")
+        let category = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
+        category.setValue(categoryID, forKey: "id"); category.setValue("Food", forKey: "name")
+        category.setValue("fork.knife", forKey: "symbol"); category.setValue(book, forKey: "book")
+        let expense = NSEntityDescription.insertNewObject(forEntityName: "ExpenseRecord", into: context)
+        expense.setValue(expenseID, forKey: "id"); expense.setValue(Int64(2_800_000), forKey: "amount")
+        expense.setValue("2026-10-09", forKey: "day"); expense.setValue("Kopi", forKey: "note")
+        expense.setValue("manual", forKey: "source"); expense.setValue(Date.now, forKey: "createdAt"); expense.setValue(book, forKey: "book")
+        let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
+        allocation.setValue(Int64(2_800_000), forKey: "amount"); allocation.setValue(category, forKey: "category"); allocation.setValue(expense, forKey: "expense")
+        let budget = NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
+        budget.setValue(UUID(), forKey: "id"); budget.setValue("2026-10-01", forKey: "effectiveDay")
+        budget.setValue(Int64(500_000_000), forKey: "overallLimit"); budget.setValue(1, forKey: "startDay"); budget.setValue(book, forKey: "book")
+        try context.save()
+        context.reset()
+        try coordinator.remove(store)
+
+        let migrated = try ExpenseRepository(url: directory.appendingPathComponent("ledger.sqlite"))
+        let card = try XCTUnwrap(migrated.books().first)
+        XCTAssertEqual(card.colorIndex, 2)
+        XCTAssertNil(card.currency); XCTAssertNil(card.spendingCurrency); XCTAssertNil(card.defaultPaidWithID)
+        let value = try XCTUnwrap(migrated.expenses(in: bookID).first)
+        XCTAssertEqual(value.id, expenseID)
+        XCTAssertEqual(value.amount, 2_800_000)
+        XCTAssertNil(value.paidWithID); XCTAssertNil(value.originalCurrency); XCTAssertNil(value.rateSource)
+        XCTAssertNil(try migrated.budgets(in: bookID).first?.totalUntilDay)
+
+        var updated = value
+        updated.paidWithID = UUID()
+        try migrated.save(updated, in: bookID)
+        XCTAssertEqual(try migrated.expenses(in: bookID).first?.paidWithID, updated.paidWithID)
+    }
 }

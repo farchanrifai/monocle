@@ -278,6 +278,64 @@ final class BackendBackupTests: XCTestCase {
         XCTAssertThrowsError(try WorkspaceBackup.decode(length))
     }
 
+    func testFormatEightCarriesModelBFieldsThroughFileAndStore() throws {
+        var original = workspace(bookCount: 2)
+        original.formatVersion = WorkspaceBackup.currentFormat
+        let method = PaymentMethod(name: "BCA debit")
+        let tripID = original.books[1].book.id
+        original.preferences.paymentMethods = [method]
+        original.preferences.hiddenEntryFields = [.note]
+        original.preferences.stacks = [CardStack(name: "Travel", cardIDs: [tripID], capLimit: 2_500_000_000, capStartDay: 5)]
+        original.books[1].book.currency = "IDR"
+        original.books[1].book.spendingCurrency = "JPY"
+        original.books[1].book.defaultPaidWithID = method.id
+        original.books[0].expenses[0].paidWithID = method.id
+        original.books[0].expenses[0].originalAmount = 120_000
+        original.books[0].expenses[0].originalCurrency = "JPY"
+        original.books[0].expenses[0].rate = "0.0009"
+        original.books[0].expenses[0].rateSource = .manual
+        original.books[0].budgets[0].totalUntilDay = "2026-12-31"
+
+        let data = try original.encoded()
+        XCTAssertTrue(data.starts(with: Data("MONOCLE-BACKUP-8\n".utf8)))
+        let decoded = try WorkspaceBackup.decode(data)
+        XCTAssertEqual(decoded.formatVersion, 8)
+        XCTAssertEqual(try decoded.canonical(), try original.canonical())
+
+        try withStore { repository, state, _, backups, artwork, _ in
+            try seed(original, repository: repository, state: state, artwork: artwork)
+            XCTAssertEqual(try repository.books().first { $0.id == tripID }, original.books[1].book)
+            XCTAssertEqual(try repository.expenses(in: BookProfile.sample.id), original.books[0].expenses)
+            XCTAssertEqual(try repository.budgets(in: BookProfile.sample.id).first?.totalUntilDay, "2026-12-31")
+            let snapshot = try backups.workspaceSnapshot(currentDraft: original.books[0].draft!, settings: original.settings)
+            XCTAssertEqual(snapshot.formatVersion, 8)
+            XCTAssertEqual(snapshot.preferences, original.preferences)
+        }
+
+        // Older files still read, and broken references are refused.
+        XCTAssertEqual(try WorkspaceBackup.decode(workspace().encoded()).formatVersion, 7)
+        var dangling = original; dangling.preferences.paymentMethods = []
+        XCTAssertThrowsError(try dangling.encoded())
+        var mismatch = original; mismatch.currency = "USD"
+        XCTAssertThrowsError(try mismatch.encoded())
+        var halfForeign = original; halfForeign.books[0].expenses[0].rate = nil
+        XCTAssertThrowsError(try halfForeign.encoded())
+    }
+
+    func testEditingKeepsPaidWithAndDropsForeignAmountWhenAmountChanges() throws {
+        let method = UUID(), category = ExpenseCategory.defaults[0].id
+        let expense = Expense(amount: 10_000, day: "2026-10-01", note: "Ramen", allocations: [.init(categoryID: category, amount: 10_000)],
+                              createdAt: date, bookID: BookProfile.sample.id, paidWithID: method,
+                              originalAmount: 9_300, originalCurrency: "JPY", rate: "107.5", rateSource: .manual)
+        var draft = ExpenseDraft(expense: expense)
+        XCTAssertEqual(try draft.expense(), expense)
+        draft.amount = "200"
+        let changed = try draft.expense()
+        XCTAssertEqual(changed.paidWithID, method)
+        XCTAssertNil(changed.originalCurrency)
+        XCTAssertNil(changed.rate)
+    }
+
     private func image(width: Int, height: Int) -> Data {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         return UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { context in

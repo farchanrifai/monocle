@@ -58,8 +58,18 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
     var source: String = "manual"
     var createdAt: Date = .now
     var bookID: UUID? = nil
+    var paidWithID: UUID? = nil
+    /// Set only when paid in another currency than the reporting one; `amount` is the converted value.
+    var originalAmount: Int64? = nil
+    var originalCurrency: String? = nil
+    /// Reporting-currency units per one original unit, as a decimal string.
+    var rate: String? = nil
+    var rateSource: RateSource? = nil
 
-    init(id: UUID = UUID(), amount: Int64, day: String, note: String, allocations: [Allocation], source: String = "manual", createdAt: Date = .now, bookID: UUID? = nil) {
+    enum RateSource: String, Codable, Sendable { case fetched, manual }
+
+    init(id: UUID = UUID(), amount: Int64, day: String, note: String, allocations: [Allocation], source: String = "manual", createdAt: Date = .now, bookID: UUID? = nil,
+         paidWithID: UUID? = nil, originalAmount: Int64? = nil, originalCurrency: String? = nil, rate: String? = nil, rateSource: RateSource? = nil) {
         self.id = id
         self.amount = amount
         self.day = day
@@ -68,6 +78,11 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
         self.source = source
         self.createdAt = createdAt
         self.bookID = bookID
+        self.paidWithID = paidWithID
+        self.originalAmount = originalAmount
+        self.originalCurrency = originalCurrency
+        self.rate = rate
+        self.rateSource = rateSource
     }
 
     static func == (lhs: Expense, rhs: Expense) -> Bool {
@@ -78,11 +93,23 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
         lhs.allocations == rhs.allocations &&
         lhs.source == rhs.source &&
         lhs.createdAt == rhs.createdAt &&
+        lhs.paidWithID == rhs.paidWithID &&
+        lhs.originalAmount == rhs.originalAmount &&
+        lhs.originalCurrency == rhs.originalCurrency &&
+        lhs.rate == rhs.rate &&
+        lhs.rateSource == rhs.rateSource &&
         (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
     }
 
     func validate(categories: [ExpenseCategory]) throws {
         guard amount > 0, amount <= Money.maximum else { throw EntryError.invalidAmount }
+        // The foreign-currency fields travel together or not at all.
+        if originalCurrency != nil || originalAmount != nil || rate != nil || rateSource != nil {
+            guard let originalCurrency, Money.isCurrencyCode(originalCurrency),
+                  let originalAmount, originalAmount > 0, originalAmount <= Money.maximum,
+                  let rate, let value = Decimal(string: rate, locale: Locale(identifier: "en_US_POSIX")), value > 0,
+                  rateSource != nil else { throw EntryError.invalidAmount }
+        }
         guard Day.date(day) != nil else { throw EntryError.invalidDate }
         guard !allocations.isEmpty else { throw EntryError.missingCategory }
         var sum: Int64 = 0
@@ -118,6 +145,10 @@ enum EntryError: LocalizedError {
 
 enum Money {
     static let maximum: Int64 = 9_000_000_000_000_000
+    /// ISO 4217 shape: three uppercase ASCII letters.
+    static func isCurrencyCode(_ code: String) -> Bool {
+        code.count == 3 && code.unicodeScalars.allSatisfy { ("A"..."Z").contains($0) }
+    }
     static func parse(_ input: String, locale: Locale = .autoupdatingCurrent) throws -> Int64 {
         var value = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if value.hasPrefix("rp") { value = String(value.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
@@ -255,6 +286,10 @@ struct ExpenseDraft: Codable, Equatable {
     var source = "manual"
     /// Empty keeps the original one-category path; nonempty is the advanced split editor.
     var splitAllocations: [DraftAllocation] = []
+    var paidWithID: UUID? = nil
+    /// The edited expense's original-currency values, kept only while its amount is unchanged.
+    var foreign: ForeignAmount? = nil
+    struct ForeignAmount: Codable, Equatable { var amount: Int64; var currency: String; var rate: String; var source: Expense.RateSource }
     var isSplit: Bool { !splitAllocations.isEmpty }
     var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil || !splitAllocations.isEmpty }
     func resolvedAmount() throws -> Int64 {
@@ -278,18 +313,24 @@ struct ExpenseDraft: Codable, Equatable {
                 return .init(categoryID: split.categoryID, amount: value)
             }
         }
-        return Expense(id: id, amount: value, day: civilDay, note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt, bookID: bookID)
+        let keptForeign = value == preservedAmount ? foreign : nil
+        return Expense(id: id, amount: value, day: civilDay, note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt, bookID: bookID,
+                       paidWithID: paidWithID, originalAmount: keptForeign?.amount, originalCurrency: keptForeign?.currency, rate: keptForeign?.rate, rateSource: keptForeign?.source)
     }
     init() {}
     init(expense: Expense) {
         id = expense.id; bookID = expense.bookID; amount = Money.exactDigits(expense.amount); preservedAmount = expense.amount; categoryID = expense.allocations.first?.categoryID
         note = expense.note; date = Day.date(expense.day) ?? .now; civilDay = expense.day; editing = true; createdAt = expense.createdAt; source = expense.source
+        paidWithID = expense.paidWithID
+        if let amount = expense.originalAmount, let currency = expense.originalCurrency, let rate = expense.rate, let source = expense.rateSource {
+            foreign = .init(amount: amount, currency: currency, rate: rate, source: source)
+        }
         if expense.allocations.count > 1 {
             splitAllocations = expense.allocations.map { .init(categoryID: $0.categoryID, amount: Money.exactDigits($0.amount), preservedAmount: $0.amount) }
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations, civilDay, preservedAmount }
+    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations, civilDay, preservedAmount, paidWithID, foreign }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -308,6 +349,8 @@ struct ExpenseDraft: Codable, Equatable {
         createdAt = try values.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         source = try values.decodeIfPresent(String.self, forKey: .source) ?? "manual"
         splitAllocations = try values.decodeIfPresent([DraftAllocation].self, forKey: .splitAllocations) ?? []
+        paidWithID = try values.decodeIfPresent(UUID.self, forKey: .paidWithID)
+        foreign = try values.decodeIfPresent(ForeignAmount.self, forKey: .foreign)
     }
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
@@ -316,6 +359,7 @@ struct ExpenseDraft: Codable, Equatable {
         try values.encode(date, forKey: .date); try values.encode(text, forKey: .text); try values.encode(mode, forKey: .mode)
         try values.encode(editing, forKey: .editing); try values.encode(createdAt, forKey: .createdAt); try values.encode(source, forKey: .source)
         try values.encode(splitAllocations, forKey: .splitAllocations)
+        try values.encodeIfPresent(paidWithID, forKey: .paidWithID); try values.encodeIfPresent(foreign, forKey: .foreign)
         try values.encode(civilDay, forKey: .civilDay); try values.encodeIfPresent(preservedAmount, forKey: .preservedAmount)
     }
 
@@ -332,6 +376,8 @@ struct ExpenseDraft: Codable, Equatable {
         lhs.createdAt == rhs.createdAt &&
         lhs.source == rhs.source &&
         lhs.splitAllocations == rhs.splitAllocations &&
+        lhs.paidWithID == rhs.paidWithID &&
+        lhs.foreign == rhs.foreign &&
         (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
     }
 }
@@ -416,6 +462,8 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
     /// Set only for the first period after a start-day change.
     var transitionEndDay: String?
     var bookID: UUID? = nil
+    /// Set for a "Total until" budget (a goal): one period from effectiveDay up to and including this day.
+    var totalUntilDay: String? = nil
 
     static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = Day.calendar, bookID: UUID? = nil) -> Self {
         let validStartDay = min(31, max(1, startDay))
@@ -433,6 +481,9 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
             guard let start = Day.date(effectiveDay), let end = Day.date(transitionEndDay), end > start else {
                 throw BudgetError.invalidTransition
             }
+        }
+        if let totalUntilDay {
+            guard Day.date(totalUntilDay) != nil, totalUntilDay >= effectiveDay else { throw BudgetError.invalidEffectiveDate }
         }
         var categoryIDs = Set<UUID>()
         for categoryLimit in categoryLimits {
@@ -453,6 +504,7 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
         lhs.startDay == rhs.startDay &&
         lhs.categoryLimits == rhs.categoryLimits &&
         lhs.transitionEndDay == rhs.transitionEndDay &&
+        lhs.totalUntilDay == rhs.totalUntilDay &&
         (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
     }
 }

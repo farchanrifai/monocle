@@ -7,14 +7,23 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
     var name: String
     var kind: BookKind
     var colorIndex: Int
+    /// Budget and totals currency; nil means the workspace reporting currency.
+    var currency: String? = nil
+    /// Pre-filled on new expenses and shown as the secondary amount.
+    var spendingCurrency: String? = nil
+    var defaultPaidWithID: UUID? = nil
 
     static let sample = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .sample, colorIndex: 0)
 
-    init(id: UUID = UUID(), name: String, kind: BookKind = .real, colorIndex: Int = 0) {
+    init(id: UUID = UUID(), name: String, kind: BookKind = .real, colorIndex: Int = 0,
+         currency: String? = nil, spendingCurrency: String? = nil, defaultPaidWithID: UUID? = nil) {
         self.id = id
         self.name = name
         self.kind = kind
         self.colorIndex = colorIndex
+        self.currency = currency
+        self.spendingCurrency = spendingCurrency
+        self.defaultPaidWithID = defaultPaidWithID
     }
 
     static func real(named name: String, colorIndex: Int = 0) throws -> Self {
@@ -27,23 +36,28 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.count <= 40,
               name.rangeOfCharacter(from: .controlCharacters) == nil,
               (0..<CardPalette.standard.count).contains(colorIndex),
-              (kind == .sample) == (id == BookProfile.sample.id) else { throw BackupError.invalid }
+              (kind == .sample) == (id == BookProfile.sample.id),
+              currency.map(Money.isCurrencyCode) ?? true,
+              spendingCurrency.map(Money.isCurrencyCode) ?? true else { throw BackupError.invalid }
     }
 
     func renamed(to name: String) throws -> Self {
         guard kind == .real else { throw BackupError.invalid }
-        var value = try Self.real(named: name, colorIndex: colorIndex)
-        value.id = id
+        var value = self
+        value.name = try Self.real(named: name, colorIndex: colorIndex).name
         return value
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, kind, colorIndex }
+    private enum CodingKeys: String, CodingKey { case id, name, kind, colorIndex, currency, spendingCurrency, defaultPaidWithID }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
         name = try values.decode(String.self, forKey: .name)
         kind = try values.decode(BookKind.self, forKey: .kind)
         colorIndex = try values.decodeIfPresent(Int.self, forKey: .colorIndex) ?? 0
+        currency = try values.decodeIfPresent(String.self, forKey: .currency)
+        spendingCurrency = try values.decodeIfPresent(String.self, forKey: .spendingCurrency)
+        defaultPaidWithID = try values.decodeIfPresent(UUID.self, forKey: .defaultPaidWithID)
     }
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
@@ -51,6 +65,9 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
         try values.encode(name, forKey: .name)
         try values.encode(kind, forKey: .kind)
         try values.encode(colorIndex, forKey: .colorIndex)
+        try values.encodeIfPresent(currency, forKey: .currency)
+        try values.encodeIfPresent(spendingCurrency, forKey: .spendingCurrency)
+        try values.encodeIfPresent(defaultPaidWithID, forKey: .defaultPaidWithID)
     }
 }
 
@@ -200,13 +217,32 @@ struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
     var name: String
     var icon: String = "rectangle.stack"
     var cardIDs: [UUID] = []
+    /// Optional overall cap in reporting-currency minor units; without it the stack budget is the sum of its cards.
+    var capLimit: Int64? = nil
+    var capStartDay: Int? = nil
 
-    init(id: UUID = UUID(), name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) {
+    init(id: UUID = UUID(), name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = [], capLimit: Int64? = nil, capStartDay: Int? = nil) {
         self.id = id
         self.name = name
         self.icon = icon
         self.cardIDs = cardIDs
+        self.capLimit = capLimit
+        self.capStartDay = capStartDay
     }
+}
+
+/// "Paid with": an optional label such as BCA debit or Cash. Never a balance.
+struct PaymentMethod: Identifiable, Codable, Equatable, Hashable, Sendable {
+    enum Kind: String, Codable, CaseIterable, Sendable { case bank, card, cash, eWallet }
+    var id: UUID = UUID()
+    var name: String
+    var kind: Kind = .bank
+}
+
+/// Add Expense fields the user can hide. Amount, Card and Category are always shown.
+enum EntryFormField: String, Codable, CaseIterable, Hashable, Sendable {
+    case date, note, split, paidWith, currency
+    static let hiddenByDefault: [EntryFormField] = [.paidWith, .currency]
 }
 
 enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Hashable, Sendable {
@@ -271,6 +307,9 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
     var shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount]
     var macShortcutBindings: [String: KeyChord] = [:]
+    var paymentMethods: [PaymentMethod] = []
+    var hiddenEntryFields: [EntryFormField] = EntryFormField.hiddenByDefault
+    var reportingCurrency: String = "IDR"
 
     var direction: BookVisualDirection {
         get { BookVisualDirection(rawValue: visualDirection) ?? .light }
@@ -290,7 +329,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
         case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
-        case shortcutInputOrder, macShortcutBindings
+        case shortcutInputOrder, macShortcutBindings, paymentMethods, hiddenEntryFields, reportingCurrency
     }
 
     init(
@@ -308,7 +347,10 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         globalCategories: [GlobalCategory] = [],
         cardInactiveCategoryIDs: [UUID: [UUID]] = [:],
         shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount],
-        macShortcutBindings: [String: KeyChord] = [:]
+        macShortcutBindings: [String: KeyChord] = [:],
+        paymentMethods: [PaymentMethod] = [],
+        hiddenEntryFields: [EntryFormField] = EntryFormField.hiddenByDefault,
+        reportingCurrency: String = "IDR"
     ) {
         self.visibleBookIDs = visibleBookIDs
         self.bookOrder = bookOrder
@@ -325,6 +367,9 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.cardInactiveCategoryIDs = cardInactiveCategoryIDs
         self.shortcutInputOrder = shortcutInputOrder
         self.macShortcutBindings = macShortcutBindings
+        self.paymentMethods = paymentMethods
+        self.hiddenEntryFields = hiddenEntryFields
+        self.reportingCurrency = reportingCurrency
     }
 
     init(from decoder: any Decoder) throws {
@@ -345,6 +390,9 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         let decodedOrder = try container.decodeIfPresent([ShortcutInputField].self, forKey: .shortcutInputOrder) ?? [.card, .category, .note, .amount]
         self.shortcutInputOrder = decodedOrder
         macShortcutBindings = try container.decodeIfPresent([String: KeyChord].self, forKey: .macShortcutBindings) ?? [:]
+        paymentMethods = try container.decodeIfPresent([PaymentMethod].self, forKey: .paymentMethods) ?? []
+        hiddenEntryFields = try container.decodeIfPresent([EntryFormField].self, forKey: .hiddenEntryFields) ?? EntryFormField.hiddenByDefault
+        reportingCurrency = try container.decodeIfPresent(String.self, forKey: .reportingCurrency) ?? "IDR"
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -364,6 +412,9 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(cardInactiveCategoryIDs, forKey: .cardInactiveCategoryIDs)
         try container.encode(shortcutInputOrder, forKey: .shortcutInputOrder)
         try container.encode(macShortcutBindings, forKey: .macShortcutBindings)
+        try container.encode(paymentMethods, forKey: .paymentMethods)
+        try container.encode(hiddenEntryFields, forKey: .hiddenEntryFields)
+        try container.encode(reportingCurrency, forKey: .reportingCurrency)
     }
 }
 
@@ -378,7 +429,8 @@ struct BookBackupItem: Codable, Equatable, Sendable {
 }
 
 struct WorkspaceBackup: Codable, Equatable, Sendable {
-    var formatVersion: Int = 7
+    static let currentFormat = 8
+    var formatVersion: Int = currentFormat
     var exportedAt: Date = .now
     var currency: String = "IDR"
     var minorUnitScale: Int = 2
@@ -387,7 +439,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     var settings: PrototypeSettings
     var cardArtworks: [String: Data]? = nil
 
-    init(formatVersion: Int = 7, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
+    init(formatVersion: Int = currentFormat, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
         self.formatVersion = formatVersion
         self.exportedAt = exportedAt
         self.currency = currency
@@ -445,7 +497,9 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     }
 
     func validate() throws {
-        guard (4...7).contains(formatVersion), currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
+        // Format 8 names the workspace reporting currency; older formats are rupiah only.
+        let expectedCurrency = formatVersion >= 8 ? preferences.reportingCurrency : "IDR"
+        guard (4...Self.currentFormat).contains(formatVersion), currency == expectedCurrency, minorUnitScale == 2 else { throw BackupError.unsupported }
         guard exportedAt.timeIntervalSince1970.isFinite, !books.isEmpty,
               Set(books.map(\.book.id)).count == books.count else { throw BackupError.invalid }
         // The old JSON envelopes retain their historical external-input ceilings.
@@ -462,9 +516,11 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
               Set(billIDs).count == billIDs.count,
               Set(occurrenceIDs).count == occurrenceIDs.count else { throw BackupError.invalid }
         var total: Int64 = 0
+        let paymentMethodIDs = Set(preferences.paymentMethods.map(\.id))
         for item in books {
             try item.validate(legacyLimits: formatVersion < 7)
             for expense in item.expenses {
+                guard expense.paidWithID.map(paymentMethodIDs.contains) ?? true else { throw BackupError.invalid }
                 let next = total.addingReportingOverflow(expense.amount)
                 guard !next.overflow else { throw BackupError.invalid }
                 total = next.partialValue
@@ -508,7 +564,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
 
     func encoded() throws -> Data {
         try validate()
-        if formatVersion == 7 { return try WorkspaceBackupStream.encode(self) }
+        if formatVersion >= 7 { return try WorkspaceBackupStream.encode(self) }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(self)
@@ -517,7 +573,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     }
 
     static func decode(_ data: Data) throws -> WorkspaceBackup {
-        if data.starts(with: WorkspaceBackupStream.magic) {
+        if WorkspaceBackupStream.version(of: data) != nil {
             let workspace = try WorkspaceBackupStream.decode(data)
             try workspace.validate()
             return workspace
@@ -611,7 +667,16 @@ extension WorkspacePreferences {
               Set(stacks.map(\.id)).count == stacks.count,
               activeStackID.map({ id in stacks.contains(where: { $0.id == id }) }) ?? true,
               Set(cardCustomizations.keys).isSubset(of: bookIDs),
-              Set(cardInactiveCategoryIDs.keys).isSubset(of: bookIDs) else { throw BackupError.invalid }
+              Set(cardInactiveCategoryIDs.keys).isSubset(of: bookIDs),
+              Money.isCurrencyCode(reportingCurrency),
+              Set(hiddenEntryFields).count == hiddenEntryFields.count,
+              Set(paymentMethods.map(\.id)).count == paymentMethods.count,
+              books.allSatisfy({ book in book.defaultPaidWithID.map { id in paymentMethods.contains { $0.id == id } } ?? true })
+        else { throw BackupError.invalid }
+        for method in paymentMethods {
+            let name = method.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty, method.name.count <= 40, method.name.rangeOfCharacter(from: .controlCharacters) == nil else { throw BackupError.invalid }
+        }
         for category in globalCategories { guard try category.validated(against: globalCategories) == category else { throw BackupError.invalid } }
         let globalIDs = Set(globalCategories.map(\.id))
         for (bookID, ids) in cardInactiveCategoryIDs {
@@ -621,7 +686,9 @@ extension WorkspacePreferences {
         for stack in stacks {
             guard validBookList(stack.cardIDs), !stack.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   stack.name.count <= 40, stack.name.rangeOfCharacter(from: .controlCharacters) == nil,
-                  !stack.icon.isEmpty, stack.icon.count <= 100, stack.icon.rangeOfCharacter(from: .controlCharacters) == nil else { throw BackupError.invalid }
+                  !stack.icon.isEmpty, stack.icon.count <= 100, stack.icon.rangeOfCharacter(from: .controlCharacters) == nil,
+                  stack.capLimit.map({ (1...Money.maximum).contains($0) }) ?? true,
+                  stack.capStartDay.map({ (1...31).contains($0) }) ?? true else { throw BackupError.invalid }
         }
         for customization in cardCustomizations.values {
             switch customization.style {
@@ -637,12 +704,14 @@ extension WorkspacePreferences {
     }
 }
 
-/// Version 7 is a length-framed record stream, with raw binary asset frames.
+/// Versions 7 and 8 are a length-framed record stream, with raw binary asset frames.
+/// Version 8 adds optional card, expense, budget and preference fields; an older app rejects it instead of dropping them.
 /// Encoding a large ledger never creates a second base64-expanded asset graph;
 /// each record/asset is decoded separately and all frame lengths are checked
 /// against the remaining input before allocation. There is no overall live-data ceiling.
 private enum WorkspaceBackupStream {
-    static let magic = Data("MONOCLE-BACKUP-7\n".utf8)
+    static func magic(_ version: Int) -> Data { Data("MONOCLE-BACKUP-\(version)\n".utf8) }
+    static func version(of data: Data) -> Int? { [8, 7].first { data.starts(with: magic($0)) } }
     private struct Header: Codable {
         var exportedAt: Date
         var currency: String
@@ -664,7 +733,7 @@ private enum WorkspaceBackupStream {
     static func encode(_ workspace: WorkspaceBackup) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        var data = magic
+        var data = magic(workspace.formatVersion)
         func append(_ frame: Data) {
             var length = UInt64(frame.count).bigEndian
             withUnsafeBytes(of: &length) { data.append(contentsOf: $0) }
@@ -691,7 +760,8 @@ private enum WorkspaceBackupStream {
     }
     static func decode(_ data: Data) throws -> WorkspaceBackup {
         let decoder = JSONDecoder()
-        var offset = magic.count
+        guard let fileVersion = Self.version(of: data) else { throw BackupError.unsupported }
+        var offset = magic(fileVersion).count
         func frame() throws -> Data {
             guard data.count - offset >= 8 else { throw BackupError.invalid }
             let length = data[offset..<(offset + 8)].reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
@@ -730,7 +800,7 @@ private enum WorkspaceBackupStream {
             assets[filename] = bytes
         }
         guard offset == data.count else { throw BackupError.invalid }
-        return WorkspaceBackup(formatVersion: 7, exportedAt: header.exportedAt, currency: header.currency, minorUnitScale: header.minorUnitScale,
+        return WorkspaceBackup(formatVersion: fileVersion, exportedAt: header.exportedAt, currency: header.currency, minorUnitScale: header.minorUnitScale,
                                books: books, preferences: header.preferences, settings: header.settings, cardArtworks: assets.isEmpty ? nil : assets)
     }
 }

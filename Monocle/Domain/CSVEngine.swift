@@ -193,7 +193,7 @@ enum CSVExportGenerator {
         categories: [ExpenseCategory],
         books: [BookProfile] = []
     ) -> String {
-        let headers = ["Date", "Time", "Book", "Category", "Amount", "Note", "Source", "Splits"]
+        let headers = ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits"]
         var lines: [String] = []
         lines.append(headers.map { CSVTokenizer.escape($0) }.joined(separator: ","))
 

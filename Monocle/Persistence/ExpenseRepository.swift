@@ -61,6 +61,20 @@ final class ExpenseRepository: ExpenseStore {
         for bookID in changedBillBooks { _ = try billOccurrences(in: bookID) }
     }
 
+    private func writeModelBFields(of profile: BookProfile, to row: NSManagedObject) {
+        row.setValue(profile.currency, forKey: "currency")
+        row.setValue(profile.spendingCurrency, forKey: "spendingCurrency")
+        row.setValue(profile.defaultPaidWithID, forKey: "defaultPaidWithID")
+    }
+
+    private func writeModelBFields(of expense: Expense, to row: NSManagedObject) {
+        row.setValue(expense.paidWithID, forKey: "paidWithID")
+        row.setValue(expense.originalAmount.map { NSNumber(value: $0) }, forKey: "originalAmount")
+        row.setValue(expense.originalCurrency, forKey: "originalCurrency")
+        row.setValue(expense.rate, forKey: "rate")
+        row.setValue(expense.rateSource?.rawValue, forKey: "rateSource")
+    }
+
     init(url: URL? = nil, inMemory: Bool = false) throws {
         guard let modelURL = Bundle.main.url(forResource: "Monocle", withExtension: "momd"),
               let model = NSManagedObjectModel(contentsOf: modelURL) else { throw EntryError.corruptStore }
@@ -93,7 +107,10 @@ final class ExpenseRepository: ExpenseStore {
                   let name = row.value(forKey: "name") as? String else { throw EntryError.corruptStore }
             let kind: BookKind = (id == BookProfile.sample.id) ? .sample : .real
             let colorIndex = (row.value(forKey: "colorIndex") as? NSNumber)?.intValue ?? 0
-            return BookProfile(id: id, name: name, kind: kind, colorIndex: colorIndex)
+            return BookProfile(id: id, name: name, kind: kind, colorIndex: colorIndex,
+                               currency: row.value(forKey: "currency") as? String,
+                               spendingCurrency: row.value(forKey: "spendingCurrency") as? String,
+                               defaultPaidWithID: row.value(forKey: "defaultPaidWithID") as? UUID)
         }
     }
 
@@ -202,7 +219,12 @@ final class ExpenseRepository: ExpenseStore {
             return Allocation(categoryID: categoryID, amount: value)
         }.sorted { $0.categoryID.uuidString < $1.categoryID.uuidString }
         let expense = Expense(id: id, amount: amount, day: day, note: row.value(forKey: "note") as? String ?? "",
-            allocations: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, bookID: bookID)
+            allocations: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, bookID: bookID,
+            paidWithID: row.value(forKey: "paidWithID") as? UUID,
+            originalAmount: (row.value(forKey: "originalAmount") as? NSNumber)?.int64Value,
+            originalCurrency: row.value(forKey: "originalCurrency") as? String,
+            rate: row.value(forKey: "rate") as? String,
+            rateSource: (row.value(forKey: "rateSource") as? String).flatMap(Expense.RateSource.init(rawValue:)))
         try expense.validate(categories: categories)
         return expense
     }
@@ -228,7 +250,8 @@ final class ExpenseRepository: ExpenseStore {
             let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
                                        startDay: startDay, categoryLimits: limits,
                                        transitionEndDay: row.value(forKey: "transitionEndDay") as? String,
-                                       bookID: bookID)
+                                       bookID: bookID,
+                                       totalUntilDay: row.value(forKey: "totalUntilDay") as? String)
             try budget.validate(categories: cats)
             return budget
         }.sorted { $0.effectiveDay < $1.effectiveDay }
@@ -505,6 +528,7 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(expense.id, forKey: "id"); row.setValue(expense.amount, forKey: "amount")
             row.setValue(expense.day, forKey: "day"); row.setValue(expense.note, forKey: "note")
             row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
+            writeModelBFields(of: expense, to: row)
             row.setValue(book, forKey: "book")
             for allocation in row.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] { context.delete(allocation) }
             for value in expense.allocations {
@@ -544,6 +568,7 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(budget.overallLimit, forKey: "overallLimit")
             row.setValue(budget.startDay, forKey: "startDay")
             row.setValue(budget.transitionEndDay, forKey: "transitionEndDay")
+            row.setValue(budget.totalUntilDay, forKey: "totalUntilDay")
             row.setValue(book, forKey: "book")
             for value in row.value(forKey: "categoryLimits") as? Set<NSManagedObject> ?? [] { context.delete(value) }
             for categoryLimit in budget.categoryLimits {
@@ -733,6 +758,7 @@ final class ExpenseRepository: ExpenseStore {
             book.setValue(profile.id, forKey: "id")
             book.setValue(profile.name, forKey: "name")
             book.setValue(profile.colorIndex, forKey: "colorIndex")
+            writeModelBFields(of: profile, to: book)
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
@@ -830,6 +856,7 @@ final class ExpenseRepository: ExpenseStore {
                 book.setValue(item.book.id, forKey: "id")
                 book.setValue(item.book.name, forKey: "name")
                 book.setValue(item.book.colorIndex, forKey: "colorIndex")
+                writeModelBFields(of: item.book, to: book)
                 var categoryRows: [UUID: NSManagedObject] = [:]
                 for category in item.categories {
                     let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
@@ -842,6 +869,7 @@ final class ExpenseRepository: ExpenseStore {
                     row.setValue(expense.id, forKey: "id"); row.setValue(expense.amount, forKey: "amount")
                     row.setValue(expense.day, forKey: "day"); row.setValue(expense.note, forKey: "note")
                     row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
+                    writeModelBFields(of: expense, to: row)
                     row.setValue(book, forKey: "book")
                     for value in expense.allocations {
                         let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
@@ -861,6 +889,7 @@ final class ExpenseRepository: ExpenseStore {
                     row.setValue(budget.overallLimit, forKey: "overallLimit")
                     row.setValue(budget.startDay, forKey: "startDay")
                     row.setValue(budget.transitionEndDay, forKey: "transitionEndDay")
+                    row.setValue(budget.totalUntilDay, forKey: "totalUntilDay")
                     row.setValue(book, forKey: "book")
                     for categoryLimit in budget.categoryLimits {
                         let value = NSEntityDescription.insertNewObject(forEntityName: "BudgetCategoryRecord", into: context)

@@ -1,4 +1,4 @@
-# Backup and restore — formats 1–7
+# Backup and restore — formats 1–8
 
 Updated: 2026-10-05, 0.7.21/build 84. Implementation: WorkspaceBackup, BookBackup, BackupService, ExpenseRepository.replace, CardArtworkStore and BackupView.
 
@@ -20,11 +20,15 @@ The ASCII magic is `MONOCLE-BACKUP-7\n`. Every following frame has an unsigned 6
 
 Foundation JSON dates encode seconds since 2001-01-01. UUIDs and exact minor units remain stable. Lengths/counts check remaining input; truncated/trailing frames fail. Individual JSON frames are bounded; artwork is at most 8 MiB per file and must decode at no more than 1,200 × 1,200 pixels. Filenames cannot escape storage. Every referenced asset must be present; missing artwork explicitly fails export.
 
+## Format 8 (model B, 2026-10-11)
+
+Same stream as format 7 with magic `MONOCLE-BACKUP-8\n`; new exports always write 8. The header `currency` is the workspace reporting currency and must equal `preferences.reportingCurrency` (formats ≤ 7 must be IDR). Added optional fields: card `currency`, `spendingCurrency`, `defaultPaidWithID`; expense `paidWithID`, `originalAmount`, `originalCurrency`, `rate`, `rateSource` (all four foreign fields or none); budget `totalUntilDay`; preferences `paymentMethods`, `hiddenEntryFields`, `reportingCurrency`; stack `capLimit`, `capStartDay`. Every Paid with reference must name an existing payment method. The version bump makes an older app refuse the file instead of silently dropping these fields. Amounts stay minor units at scale 2 for every currency.
+
 Version 7 removes the former whole-workspace 100-card/10,000-expense/10 MiB ceilings and base64 expansion. It still holds the complete graph/output Data in memory; bounded-memory file streaming and a physically profiled supported envelope remain outstanding.
 
 ## Legacy compatibility and validation
 
-Formats 1–3 are single-book JSON; 4–6 are workspace JSON. Historical external-input limits remain (10 MiB document, 100 workspace books, 10,000 expenses per book and bounded record/category counts). Magic selects format 7; otherwise decoding routes legacy JSON.
+Formats 1–3 are single-book JSON; 4–6 are workspace JSON. Historical external-input limits remain (10 MiB document, 100 workspace books, 10,000 expenses per book and bounded record/category counts). Magic selects format 7 or 8; otherwise decoding routes legacy JSON.
 
 Missing legacy budgets/drafts materialize deterministically from exported settings/date/card identity. Formats 4–6 accept exact sample settings beside real cards or stale metadata for an existing same-kind identity; normalization adopts the authoritative exported card metadata. Absent real identities or malformed records fail. Version 7 requires exact settings-profile metadata. No damaged financial identity is silently guessed.
 

@@ -203,7 +203,7 @@ struct CSVInterchangeView: View {
                     .accessibilityIdentifier("shareCSVLink")
                 }
             } footer: {
-                Text("Exports RFC 4180 standard CSV including Date, Time, Book, Category, exact IDR Amount, reversible Splits, Note, and Source.")
+                Text("Exports RFC 4180 standard CSV including Date, Time, Card, Category, exact IDR Amount, reversible Splits, Note, and Source.")
             }
         }
     }

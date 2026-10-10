@@ -381,12 +381,12 @@ final class BillTests: XCTestCase {
         )
 
         let snapshot = try backupService.workspaceSnapshot(currentDraft: ExpenseDraft(), settings: PrototypeSettings())
-        XCTAssertEqual(snapshot.formatVersion, 7)
+        XCTAssertEqual(snapshot.formatVersion, WorkspaceBackup.currentFormat)
 
         // Encode and decode
         let encodedData = try snapshot.encoded()
         let decoded = try WorkspaceBackup.decode(encodedData)
-        XCTAssertEqual(decoded.formatVersion, 7)
+        XCTAssertEqual(decoded.formatVersion, WorkspaceBackup.currentFormat)
 
         let restoredBook = try XCTUnwrap(decoded.books.first { $0.book.id == bookID })
         XCTAssertEqual(restoredBook.bills?.count, 1)

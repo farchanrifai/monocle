@@ -160,7 +160,7 @@ final class CSVTests: XCTestCase {
         let rows = try CSVTokenizer.parse(content: csv, delimiter: ",")
 
         XCTAssertEqual(rows.count, 3)
-        XCTAssertEqual(rows[0], ["Date", "Time", "Book", "Category", "Amount", "Note", "Source", "Splits"])
+        XCTAssertEqual(rows[0], ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits"])
 
         // Row 1
         XCTAssertEqual(rows[1][0], "2026-09-10")

@@ -275,6 +275,7 @@
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
 		AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
 		ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
+		AE1E62E3810C8FA6AC73E2CA /* MonocleV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV5.xcdatamodel; sourceTree = "<group>"; };
 		AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAndLocaleTests.swift; sourceTree = "<group>"; };
 		AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseService.swift; sourceTree = "<group>"; };
 		B77094E961D5E3F21A0C865A /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
@@ -1528,8 +1529,9 @@
 				FF29FB82281C7D6CD71D20CD /* MonocleV2.xcdatamodel */,
 				7F1E5ADD2F79A00BBA98572F /* MonocleV3.xcdatamodel */,
 				FA7E73DA5D3738FE6EB575D4 /* MonocleV4.xcdatamodel */,
+				AE1E62E3810C8FA6AC73E2CA /* MonocleV5.xcdatamodel */,
 			);
-			currentVersion = FA7E73DA5D3738FE6EB575D4 /* MonocleV4.xcdatamodel */;
+			currentVersion = AE1E62E3810C8FA6AC73E2CA /* MonocleV5.xcdatamodel */;
 			path = Monocle.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
