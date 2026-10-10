@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0001C1BF7871C2D438762E7C /* ChatChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168B97772F4D84A4069D459D /* ChatChartView.swift */; };
 		017729CBC6933B915C34CB21 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6486A991712AB436BBFA6A1D /* EntryView.swift */; };
 		048A925144F7E74950D05BA3 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
 		09034E4DD4D927104A87205D /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
@@ -88,8 +89,8 @@
 		9AAEB0DE31E47C1101F07BDF /* BackendDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C7126EAC97EDD86B07098A /* BackendDiagnostics.swift */; };
 		9F11DCEA10BFBC5B4D5545A2 /* BackendSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5717053E6A3C91B893ADB5DA /* BackendSessionTests.swift */; };
 		9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B77094E961D5E3F21A0C865A /* ChatView.swift */; };
+		A2280307B2F14361406D9981 /* ChatChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168B97772F4D84A4069D459D /* ChatChartView.swift */; };
 		A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */; };
-		A440F07BCE399F8418654D19 /* ChatSummaryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */; };
 		A5DF105D10DC5C7A4FB122C1 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */; };
 		A75084F321F54945FD5190C3 /* ClaudeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */; };
 		A915ADE62CAC7D29C79F273F /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */; };
@@ -129,7 +130,6 @@
 		E5CA71EA06D9743D4013FC2A /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A5A20992A825EF1360FD47 /* ToolExecutor.swift */; };
 		E66DAED4975F1E419AF5C0EA /* BackendDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C7126EAC97EDD86B07098A /* BackendDiagnostics.swift */; };
 		E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */; };
-		E7BB8D07916484323C56329B /* ChatSummaryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */; };
 		E802991A6C68D4C9D4C7C56E /* BookBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5917E02740846F6B5ED016CC /* BookBackup.swift */; };
 		E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9824AED70CAEA0CCB49515DA /* FoundationTests.swift */; };
 		E96BFA92344378EEABD6831F /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
@@ -205,6 +205,7 @@
 		0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeClient.swift; sourceTree = "<group>"; };
 		10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
 		15119B5A62BE722F4E6FA3B4 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		168B97772F4D84A4069D459D /* ChatChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatChartView.swift; sourceTree = "<group>"; };
 		16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleWidgetsBundle.swift; sourceTree = "<group>"; };
 		24CD7790B75B1AA86918043C /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
 		259DC603F39D197686C31B1F /* MonocleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleTests.swift; sourceTree = "<group>"; };
@@ -266,7 +267,6 @@
 		9824AED70CAEA0CCB49515DA /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleApp.swift; sourceTree = "<group>"; };
 		9FDCF200A8F160A2708223FC /* AppleChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatTests.swift; sourceTree = "<group>"; };
-		A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSummaryChart.swift; sourceTree = "<group>"; };
 		A7E776EC0867369F536BEBC4 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
@@ -580,9 +580,9 @@
 			isa = PBXGroup;
 			children = (
 				6E5D48F2860CCEE4CCF07F5C /* ChatBubble.swift */,
+				168B97772F4D84A4069D459D /* ChatChartView.swift */,
 				E7C985068FF1DDAD18749F35 /* ChatInputBar.swift */,
 				727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */,
-				A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */,
 				D4BA07EA7DEBD80FDC88F706 /* ChatTranscript.swift */,
 				B77094E961D5E3F21A0C865A /* ChatView.swift */,
 				89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */,
@@ -877,10 +877,10 @@
 				F7558422CD23ACE748747743 /* CategoryValidation.swift in Sources */,
 				E4744CA94D57CE96A6BD7C60 /* ChatAgent.swift in Sources */,
 				18625E8091F4974B32DFD62A /* ChatBubble.swift in Sources */,
+				A2280307B2F14361406D9981 /* ChatChartView.swift in Sources */,
 				2E30B021C9D46E6D22A37A33 /* ChatInputBar.swift in Sources */,
 				B2286718B9150562984000B4 /* ChatSession.swift in Sources */,
 				BF7952BD0D8546FEC5893871 /* ChatSettingsView.swift in Sources */,
-				E7BB8D07916484323C56329B /* ChatSummaryChart.swift in Sources */,
 				192E542F8D2211B574F83755 /* ChatTranscript.swift in Sources */,
 				9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */,
 				A75084F321F54945FD5190C3 /* ClaudeClient.swift in Sources */,
@@ -932,8 +932,8 @@
 				5801D0F8AF99AC57D0F2E73D /* CategoryValidation.swift in Sources */,
 				42AD99E90A28D8A39E432A5B /* ChatAgent.swift in Sources */,
 				C3156F11D71FB7574B6F68D3 /* ChatBubble.swift in Sources */,
+				0001C1BF7871C2D438762E7C /* ChatChartView.swift in Sources */,
 				6F009E1531788C0681806107 /* ChatSession.swift in Sources */,
-				A440F07BCE399F8418654D19 /* ChatSummaryChart.swift in Sources */,
 				1E3E91F27C7CF9A6AC54C0F8 /* ChatTranscript.swift in Sources */,
 				B7A3816FB60EADB653F4AB40 /* ClaudeClient.swift in Sources */,
 				F50EA37D53743014706A7A91 /* Expense.swift in Sources */,

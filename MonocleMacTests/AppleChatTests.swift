@@ -1,4 +1,5 @@
 import FoundationModels
+import SwiftUI
 import XCTest
 @testable import MonocleMac
 
@@ -86,7 +87,7 @@ final class AppleChatTests: XCTestCase {
                 case .proposal(let e): proposals += 1; report += "  proposal: \(e.amount / 100) \(e.note) \(e.day) parts=\(e.allocations.map { $0.amount / 100 })\n"
                 case .change(let c): report += "  change: \(c.original.note) -> \(c.updated.map { "\($0.amount / 100)" } ?? "DELETE")\n"
                 case .bill(let b): report += "  bill: \(b.name) \(b.amount / 100) \(b.recurrence)\n"
-                case .chart(let points): report += "  chart: \(points.count) categories\n"
+                case .chart(let chart): report += "  chart: \(chart.style.rawValue) \(chart.items.count) items\n"
                 case .notice(let text): report += "  notice: \(text)\n"
                 case .error(let text): report += "  ERROR: \(text)\n"
                 }
@@ -106,5 +107,38 @@ final class AppleChatTests: XCTestCase {
         print(report)
         try report.write(to: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("apple-golden.txt"), atomically: true, encoding: .utf8)
         XCTAssertGreaterThan(proposals, 0, "The on-device model proposed nothing at all")
+    }
+}
+
+/// Renders every chat chart style to PNGs (container tmp/chat-charts/) so layout can be checked by eye.
+@MainActor
+final class ChatChartRenderTests: XCTestCase {
+    func testEveryChartStyleRenders() throws {
+        let charts: [ChatChart] = [
+            ChatChart(style: .donut, title: "Last month · All cards", items: [
+                .init(label: "Home", value: 185_000_00), .init(label: "Food & Drink", value: 129_000_00),
+                .init(label: "Leisure", value: 65_000_00), .init(label: "Transport", value: 32_000_00)]),
+            ChatChart(style: .bars, title: "This month · All cards", items: [
+                .init(label: "Daily", value: 173_000_00), .init(label: "Tokyo Travel", value: 52_000_00)]),
+            ChatChart(style: .trend, title: "Last 30 days · Daily", items: (0..<20).map {
+                .init(label: Day.string(Day.calendar.date(byAdding: .day, value: -$0, to: .now)!), value: Int64(($0 * 37 % 9) * 15_000_00)) }),
+            ChatChart(style: .comparison, title: "Last month vs This month · Daily", items: [
+                .init(label: "Total", value: 173_000_00, reference: 60_000_00),
+                .init(label: "Transport", value: 100_000_00, reference: 0),
+                .init(label: "Food & Drink", value: 73_000_00, reference: 60_000_00)], series: ["Last month", "This month"]),
+            ChatChart(style: .budget, title: "Budget this cycle · Daily", items: [
+                .init(label: "Overall", value: 173_000_00, reference: 3_000_000_00),
+                .init(label: "Food & Drink", value: 73_000_00, reference: 50_000_00)]),
+        ]
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("chat-charts")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        // 640 ≈ Mac chat column, 345 ≈ iPhone transcript width.
+        for chart in charts { for width in [640, 345] as [CGFloat] {
+            let renderer = ImageRenderer(content: ChatChartView(chart: chart).frame(width: width).padding(12).background(.white))
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.nsImage, chart.style.rawValue)
+            let rep = try XCTUnwrap(image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:)))
+            try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("\(chart.style.rawValue)-\(Int(width)).png"))
+        } }
     }
 }

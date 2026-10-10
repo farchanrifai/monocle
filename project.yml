@@ -104,7 +104,7 @@ targets:
       - path: Monocle/Features/Chat/ChatBubble.swift
       - path: Monocle/Features/Chat/ChatTranscript.swift
       - path: Monocle/Features/Chat/ExpenseProposalCard.swift
-      - path: Monocle/Features/Chat/ChatSummaryChart.swift
+      - path: Monocle/Features/Chat/ChatChartView.swift
       - path: Monocle/Features/StockDesignViews.swift
       - path: MonocleMac
     info:

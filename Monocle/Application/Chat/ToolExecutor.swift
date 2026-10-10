@@ -13,7 +13,7 @@ struct ToolExecutor {
         var change: ExpenseChange? = nil
         /// A new recurring bill, saved only when the user confirms.
         var bill: BillRule? = nil
-        var chart: [CategorySpendPoint]? = nil
+        var chart: ChatChart? = nil
     }
 
     struct ToolError: Error { let message: String }
@@ -313,8 +313,13 @@ struct ToolExecutor {
         let result = SummaryResult(period: input.period.horizon.rawValue, start: report.range.startDay, end: report.range.endDay,
                                    scope: Self.label(target), total: Amount(report.metrics.totalSpend),
                                    count: report.metrics.transactionCount, groups: groups)
-        let chart = (input.groupBy ?? .category) == .category ? report.categoryPoints : nil
-        return Outcome(json: try Self.encode(result), chart: chart)
+        let title = "\(input.period.horizon.rawValue) · \(target.title)"
+        let chart: ChatChart = switch input.groupBy ?? .category {
+        case .category: ChatChart(categories: report.categoryPoints, title: title)
+        case .card: ChatChart(style: .bars, title: title, items: report.bookPoints.map { .init(label: $0.bookName, value: $0.amount) })
+        case .day: ChatChart(style: .trend, title: title, items: report.dailyPoints.filter { !$0.isFuture }.map { .init(label: $0.day, value: $0.amount) })
+        }
+        return Outcome(json: try Self.encode(result), chart: report.metrics.totalSpend > 0 ? chart : nil)
     }
 
     private func compare(_ input: CompareInput) throws -> Outcome {
@@ -338,7 +343,11 @@ struct ToolExecutor {
         let result = CompareResult(periodA: periodA.horizon.rawValue, periodB: periodB.horizon.rawValue,
                                    scope: Self.label(target), totalA: Amount(a.metrics.totalSpend), totalB: Amount(b.metrics.totalSpend),
                                    change: Amount(change), summary: summary, categories: deltas)
-        return Outcome(json: try Self.encode(result))
+        let rows = names.map { ChatChart.Item(label: $0, value: spentB[$0] ?? 0, reference: spentA[$0] ?? 0) }.sorted { max($0.value, $0.reference ?? 0) > max($1.value, $1.reference ?? 0) }
+        let chart = ChatChart(style: .comparison, title: "\(periodA.horizon.rawValue) vs \(periodB.horizon.rawValue) · \(target.title)",
+                              items: [.init(label: "Total", value: b.metrics.totalSpend, reference: a.metrics.totalSpend)] + rows,
+                              series: [periodA.horizon.rawValue, periodB.horizon.rawValue])
+        return Outcome(json: try Self.encode(result), chart: chart)
     }
 
     private func budgetStatus(_ input: BudgetInput) throws -> Outcome {
@@ -362,7 +371,9 @@ struct ToolExecutor {
             return CategoryBudgetStatus(category: names[limit.categoryID] ?? "Unknown", limit: Amount(limit.limit),
                                         spent: Amount(used), remaining: Amount(limit.limit - used))
         }
-        return Outcome(json: try Self.encode(result))
+        let items = [ChatChart.Item(label: "Overall", value: spent, reference: period.budget.overallLimit)]
+            + period.budget.categoryLimits.map { .init(label: names[$0.categoryID] ?? "Unknown", value: spentByCategory[$0.categoryID] ?? 0, reference: $0.limit) }
+        return Outcome(json: try Self.encode(result), chart: ChatChart(style: .budget, title: "Budget this cycle · \(book.name)", items: items))
     }
 
     private func cardList() -> CardList {

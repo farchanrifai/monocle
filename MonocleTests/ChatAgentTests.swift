@@ -192,4 +192,13 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertLessThanOrEqual(total, 24, "Anthropic rejects strict tool schemas with more than 24 optional parameters")
     }
 
+
+    func testMentionQueryOnlyForATrailingAtWord() {
+        XCTAssertEqual(ChatMentionList.query(in: "@"), "")
+        XCTAssertEqual(ChatMentionList.query(in: "how much on @Tok"), "Tok")
+        XCTAssertEqual(ChatMentionList.query(in: "@Tokyo Tr"), "Tokyo Tr", "Card names can have spaces")
+        XCTAssertNil(ChatMentionList.query(in: "mail me@home"), "An @ inside a word is not a mention")
+        XCTAssertNil(ChatMentionList.query(in: "kopi 28rb"))
+    }
+
 }

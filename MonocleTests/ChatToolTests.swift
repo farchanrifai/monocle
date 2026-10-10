@@ -126,10 +126,12 @@ final class ChatToolTests: XCTestCase {
         let groups = try XCTUnwrap(result["groups"] as? [[String: Any]])
         XCTAssertEqual(groups.first?["name"] as? String, "Food & Drink")
         XCTAssertEqual(rupiah(groups.first?["amount"]), 193_000)
-        XCTAssertNotNil(outcome.chart)
+        XCTAssertEqual(outcome.chart?.style, .donut)
+        XCTAssertEqual(outcome.chart?.items.first?.value, 193_000_00)
 
         let byCard = run("get_summary", ["period": "this_month", "group_by": "card", "scope": "all_cards"])
-        XCTAssertNil(byCard.chart)
+        XCTAssertEqual(byCard.chart?.style, .bars)
+        XCTAssertEqual(run("get_summary", ["period": "this_month", "group_by": "day"]).chart?.style, .trend)
         XCTAssertEqual(Set((json(byCard)["groups"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }), ["Daily", "Tokyo Travel"])
     }
 
@@ -143,6 +145,11 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(rupiah(reversed["change"]), 13_000, "Periods are ordered earlier → later whichever way they're asked")
         XCTAssertEqual(reversed["period_a"] as? String, result["period_a"] as? String)
         XCTAssertTrue((reversed["summary"] as? String)?.hasPrefix("Spending went up by") == true)
+
+        let chart = run("compare_periods", ["period_a": "this_month", "period_b": "last_month", "scope": "card:Daily"]).chart
+        XCTAssertEqual(chart?.series, ["Last month", "This month"], "Chart reads earlier → later too")
+        XCTAssertEqual(chart?.items.first?.label, "Total")
+        XCTAssertEqual(chart?.items.first?.reference, 60_000_00)
     }
 
     // MARK: - get_budget_status / list_cards
@@ -162,6 +169,11 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(rupiah(result["remaining"]), 27_000)
         let category = try XCTUnwrap((result["categories"] as? [[String: Any]])?.first)
         XCTAssertEqual(rupiah(category["remaining"]), -23_000, "Over-budget categories report a negative remainder")
+        let chart = run("get_budget_status", ["card": "Daily"]).chart
+        XCTAssertEqual(chart?.style, .budget)
+        XCTAssertEqual(chart?.items.map(\.label), ["Overall", "Food & Drink"])
+        XCTAssertEqual(chart?.items.last?.value, 73_000_00)
+        XCTAssertEqual(chart?.items.last?.reference, 50_000_00)
     }
 
     func testListCardsShowsStacksAndScope() throws {

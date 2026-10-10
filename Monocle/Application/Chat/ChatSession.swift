@@ -9,6 +9,32 @@ struct ExpenseChange: Codable, Equatable {
     var updated: Expense?
 }
 
+/// A chart under a chat answer, built by ToolExecutor from AnalyticsReport: every number is app-computed.
+struct ChatChart: Codable, Equatable {
+    enum Style: String, Codable { case donut, bars, trend, comparison, budget }
+    struct Item: Codable, Equatable {
+        var label: String
+        /// Minor units. Comparison: the later period. Budget: spent.
+        var value: Int64
+        /// Comparison: the earlier period. Budget: the limit.
+        var reference: Int64? = nil
+    }
+    var style: Style
+    var title: String
+    var items: [Item]
+    /// Comparison only: [earlier, later] period names.
+    var series: [String] = []
+
+    /// Charts saved before ChatChart existed were category donuts.
+    init(categories points: [CategorySpendPoint], title: String) {
+        self.init(style: .donut, title: title, items: points.map { Item(label: $0.categoryName, value: $0.amount) })
+    }
+
+    init(style: Style, title: String, items: [Item], series: [String] = []) {
+        self.style = style; self.title = title; self.items = items; self.series = series
+    }
+}
+
 struct ChatRow: Identifiable, Equatable, Codable {
     enum Kind: Equatable, Codable {
         case user(String)
@@ -16,7 +42,9 @@ struct ChatRow: Identifiable, Equatable, Codable {
         case proposal(Expense, ProposalState)
         case change(ExpenseChange, ProposalState)
         case bill(BillRule, ProposalState)
+        /// Pre-ChatChart saved chats only; new charts use `.chart`.
         case summary([CategorySpendPoint])
+        case chart(ChatChart)
         case notice(String)
         case error(String)
     }
@@ -112,7 +140,7 @@ extension ChatSession {
             case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
             case .change(let change): ChatRow(kind: .change(change, .pending))
             case .bill(let bill): ChatRow(kind: .bill(bill, .pending))
-            case .chart(let points): ChatRow(kind: .summary(points))
+            case .chart(let chart): ChatRow(kind: .chart(chart))
             case .notice(let text): ChatRow(kind: .notice(text))
             case .error(let text): ChatRow(kind: .error(text))
             }

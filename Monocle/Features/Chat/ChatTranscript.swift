@@ -84,7 +84,9 @@ struct ChatTranscript: View {
                 onSave: { session.resolveBill(row.id, bill, as: .saved, model: model) },
                 onDiscard: { session.resolveBill(row.id, bill, as: .discarded, model: model) })
         case .summary(let points):
-            ChatSummaryChart(points: points)
+            ChatChartView(chart: ChatChart(categories: points, title: "Spending by category"))
+        case .chart(let chart):
+            ChatChartView(chart: chart)
         case .notice(let message):
             Text(message).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 6)
         case .error(let message):
@@ -138,6 +140,13 @@ struct ChatScopeMenuItems: View {
 
     private var scope: AnalyticsFilterScope { session.scope ?? Self.homeScope(model) }
 
+    /// Shared by this menu and the @ picker.
+    static func select(_ target: AnalyticsFilterScope, session: ChatSession, model: AppModel) {
+        guard target != (session.scope ?? homeScope(model)) else { return }
+        session.scope = target
+        session.rows.append(ChatRow(kind: .notice("Now answering about \(label(target))")))
+    }
+
     var body: some View {
         if !model.stacks.isEmpty {
             Section("Stacks") {
@@ -155,12 +164,70 @@ struct ChatScopeMenuItems: View {
     }
 
     private func scopeButton(_ target: AnalyticsFilterScope, label: String, icon: String) -> some View {
-        Button {
-            guard target != scope else { return }
-            session.scope = target
-            session.rows.append(ChatRow(kind: .notice("Now answering about \(Self.label(target))")))
-        } label: {
+        Button { Self.select(target, session: session, model: model) } label: {
             if target == scope { Label(label, systemImage: "checkmark") } else { Label(label, systemImage: icon) }
+        }
+    }
+}
+
+/// Typing "@" in the chat input lists stacks and cards; picking one sets the chat scope, like the scope menu.
+struct ChatMentionList: View {
+    let model: AppModel
+    let session: ChatSession
+    @Binding var draft: String
+
+    struct Target { let scope: AnalyticsFilterScope; let name: String; let icon: String }
+
+    /// "…@Da" → "Da"; nil unless the draft ends in an @ word (at the start or after a space).
+    static func query(in text: String) -> String? {
+        guard let at = text.lastIndex(of: "@"), at == text.startIndex || text[text.index(before: at)].isWhitespace else { return nil }
+        let query = text[text.index(after: at)...]
+        return query.contains(where: \.isNewline) ? nil : String(query)
+    }
+
+    static func targets(_ model: AppModel, matching query: String) -> [Target] {
+        let all = model.stacks.map { Target(scope: .stack(id: $0.id, name: $0.name), name: $0.name, icon: $0.icon) }
+            + model.unhiddenBooks.map { Target(scope: .card(id: $0.id, name: $0.name), name: $0.name, icon: "creditcard") }
+            + [Target(scope: .allCards, name: "All Cards", icon: "rectangle.stack")]
+        return query.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
+
+    /// Picks the first match (Return on the Mac). False when no @ word is being typed.
+    @discardableResult
+    static func pickFirst(model: AppModel, session: ChatSession, draft: inout String) -> Bool {
+        guard let query = query(in: draft), let first = targets(model, matching: query).first else { return false }
+        pick(first, session: session, model: model, draft: &draft)
+        return true
+    }
+
+    static func pick(_ target: Target, session: ChatSession, model: AppModel, draft: inout String) {
+        if let at = draft.lastIndex(of: "@") { draft = String(draft[..<at]) + "@\(target.name) " }
+        ChatScopeMenuItems.select(target.scope, session: session, model: model)
+    }
+
+    var body: some View {
+        if let query = Self.query(in: draft) {
+            let targets = Self.targets(model, matching: query)
+            if !targets.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(targets.prefix(6).enumerated()), id: \.offset) { index, target in
+                        Button { Self.pick(target, session: session, model: model, draft: &draft) } label: {
+                            Label(target.name, systemImage: target.icon)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(index == 0 ? Color.secondary.opacity(0.12) : .clear, in: .rect(cornerRadius: 10))
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Answer about \(target.name)")
+                    }
+                }
+                .padding(6)
+                .frame(maxWidth: 320, alignment: .leading)
+                .glassEffect(.regular, in: .rect(cornerRadius: 16))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("chatMentionList")
+            }
         }
     }
 }

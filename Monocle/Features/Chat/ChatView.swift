@@ -40,7 +40,10 @@ struct ChatView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if chatEnabled && hasKey {
-                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
+                    VStack(spacing: 6) {
+                        ChatMentionList(model: model, session: session, draft: $draft).padding(.horizontal, 12)
+                        ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
+                    }
                 } else {
                     Button(chatEnabled ? "Add your API key" : "Turn on AI chat") { showingSetup = true }
                         .buttonStyle(.borderedProminent)
