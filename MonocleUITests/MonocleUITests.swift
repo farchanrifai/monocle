@@ -554,9 +554,11 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(autoToggle.waitForExistence(timeout: 5))
         XCTAssertEqual(autoToggle.value as? String, "0")
 
-        // Tapping Dark in appearanceModePicker
-        XCTAssertTrue(app.segmentedControls["appearanceModePicker"].waitForExistence(timeout: 5))
-        app.segmentedControls["appearanceModePicker"].buttons["Dark"].tap()
+        // The picker sits below the toggle; the lazy Form only loads it once scrolled into view.
+        let picker = app.segmentedControls["appearanceModePicker"]
+        for _ in 0..<3 where !picker.isHittable { app.swipeUp() }
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        picker.buttons["Dark"].tap()
 
         // Turn on auto switch
         autoToggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
@@ -1399,7 +1401,8 @@ final class MonocleUITests: XCTestCase {
         let homeAddFrame = addButton.frame
         let screenWidth = app.windows.firstMatch.frame.width
         XCTAssertGreaterThan(homeAddFrame.midX, screenWidth * 0.6, "Home add button must be on the right side")
-        XCTAssertEqual(homeTab.frame.midY, filterButton.frame.midY, accuracy: 4, "Tab island must align vertically with the filter bubble")
+        // The filter moved to the Home header; chat holds its bottom-bar slot.
+        XCTAssertEqual(homeTab.frame.midY, app.buttons["chatButton"].frame.midY, accuracy: 4, "Tab island must align vertically with the chat bubble")
         XCTAssertEqual(analysisTab.frame.midY, homeAddFrame.midY, accuracy: 4, "Tab island must align vertically with the add bubble")
 
         // 2. Open first card
