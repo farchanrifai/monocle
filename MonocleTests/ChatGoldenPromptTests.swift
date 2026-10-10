@@ -100,6 +100,11 @@ final class ChatGoldenPromptTests: XCTestCase {
         let agent = ChatAgent(model: model) { [client] body in
             let data = try await client!.send(body)
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            // Logged per response: a failed turn is rolled back out of agent.messages.
+            for block in json?["content"] as? [[String: Any]] ?? [] where block["type"] as? String == "tool_use" {
+                let input = (try? JSONSerialization.data(withJSONObject: block["input"] ?? [:])).map { String(decoding: $0, as: UTF8.self) } ?? ""
+                print("  tool: \(block["name"] ?? "") \(input)")
+            }
             let u = json?["usage"] as? [String: Any] ?? [:]
             await MainActor.run {
                 self.usage.append((u["input_tokens"] as? Int ?? 0, u["cache_creation_input_tokens"] as? Int ?? 0,
@@ -109,6 +114,7 @@ final class ChatGoldenPromptTests: XCTestCase {
         }
         let outputs = await agent.send(prompt, scope: .allCards, now: now)
         print("GOLDEN » \(prompt)")
+
         outputs.forEach { print("  \($0)") }
         return outputs
     }

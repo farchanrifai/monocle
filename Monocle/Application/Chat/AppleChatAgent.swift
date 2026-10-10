@@ -140,17 +140,14 @@ final class AppleChatAgent: ChatBackend {
         return Int64(s.filter(\.isNumber))
     }
 
-    /// Optional for Claude, but the small model leaves them out and the defaults are wrong (empty note, today's day).
-    private static let alsoRequired = ["propose_expense": ["note"], "propose_bill": ["day"]]
-
     /// The subset of JSON Schema ChatAgent.tools uses (object, array, enum, string, integer, boolean).
-    /// Apple's twist: `amount` is a string the app parses, and propose_expense must give a note.
+    /// Apple's twist: `amount` is a string the app parses.
     static func schema(_ json: [String: Any], name: String) -> DynamicGenerationSchema {
         let description = json["description"] as? String
         if let choices = json["enum"] as? [String] { return DynamicGenerationSchema(name: name, description: description, anyOf: choices) }
         switch json["type"] as? String {
         case "object":
-            let required = (json["required"] as? [String] ?? []) + (Self.alsoRequired[name] ?? [])
+            let required = json["required"] as? [String] ?? []
             // Required fields first so the model fills them before the optional ones.
             let properties = (json["properties"] as? [String: [String: Any]] ?? [:])
                 .sorted { (required.contains($0.key) ? 0 : 1, $0.key) < (required.contains($1.key) ? 0 : 1, $1.key) }
