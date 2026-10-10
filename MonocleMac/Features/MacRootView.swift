@@ -445,7 +445,7 @@ struct MacOverviewView: View {
             Text("Overview").font(.largeTitle.bold())
             ScrollView(.horizontal) {
                 HStack(spacing: 14) {
-                    ForEach(model.books) { book in
+                    ForEach(model.unhiddenBooks) { book in
                         MacCardView(model: model, book: book)
                             .onTapGesture { state.selectCard(book.id) }
                     }
@@ -540,7 +540,7 @@ struct MacActivityView: View {
 /// The one transaction table (Overview, Activity, card and stack pages). `limit` keeps only the newest rows.
 struct MacExpenseTable: View {
     let state: MacAppState
-    /// nil = every card.
+    /// nil = every card except hidden ones (as iOS "All Activities").
     let bookIDs: [UUID]?
     var limit: Int?
     @State private var sortOrder: [KeyPathComparator<MacExpenseRow>] = []
@@ -560,7 +560,7 @@ struct MacExpenseTable: View {
 
     private func buildRows() {
         let model = state.model
-        var source = bookIDs.map { $0.flatMap(model.expenses(for:)) } ?? model.allExpenses()
+        var source = (bookIDs ?? model.unhiddenBooks.map(\.id)).flatMap(model.expenses(for:))
         if let limit {
             source = Array(source.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }.prefix(limit))
         }

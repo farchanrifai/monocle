@@ -210,7 +210,8 @@ struct MacAnalyticsView: View {
     }
     var body: some View {
         let range = AnalyticsEngine.dateRange(for: horizon, currentCycle: model.cycle)
-        let expenses = model.allExpenses().filter { $0.day >= range.startDay && $0.day <= range.endDay }
+        let expenses = model.unhiddenBooks.flatMap { model.expenses(for: $0.id) } // hidden cards stay out, as on iOS
+            .filter { $0.day >= range.startDay && $0.day <= range.endDay }
         let daily = daily(expenses), categories = categories(expenses)
         return Page(title: "Analytics") {
             Picker("Period", selection: $horizon) { ForEach(AnalyticsTimeHorizon.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)

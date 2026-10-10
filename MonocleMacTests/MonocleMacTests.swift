@@ -189,6 +189,7 @@ final class MonocleMacTests: XCTestCase {
         state.setCardHidden(travel, true)
         XCTAssertEqual(model.hiddenCards.map(\.id), [travel.id])
         XCTAssertFalse(model.books(in: try XCTUnwrap(model.stacks.first)).contains { $0.id == travel.id }, "Hidden cards leave every stack")
+        XCTAssertFalse(model.unhiddenBooks.contains { $0.id == travel.id }, "All-card views (Overview, Activity, Analytics) skip hidden cards")
         state.setCardHidden(travel, false)
         XCTAssertTrue(model.hiddenCards.isEmpty)
 
