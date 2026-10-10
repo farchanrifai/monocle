@@ -801,7 +801,7 @@ struct MacStackView: View {
                 }
                 HStack {
                     SummaryTile(title: "Cycle spending", value: Money.format(cycleTotal), detail: model.cycle.label)
-                    SummaryTile(title: "Transactions", value: "\(expenses.count)", detail: "\(books.count) card\(books.count == 1 ? "" : "s")")
+                    SummaryTile(title: "Expenses", value: "\(expenses.count)", detail: "\(books.count) card\(books.count == 1 ? "" : "s")")
                 }
             }.padding(24)
             Divider()
@@ -1038,7 +1038,7 @@ struct MacInspector: View {
     }
 
     private var empty: some View {
-        ContentUnavailableView("Nothing Selected", systemImage: "cursorarrow.click", description: Text("Select a transaction, bill, or card."))
+        ContentUnavailableView("Nothing Selected", systemImage: "cursorarrow.click", description: Text("Select an expense, bill, or card."))
     }
 }
 
@@ -1098,7 +1098,7 @@ private struct ExpenseInspector: View {
             Section("Details") {
                 LabeledContent("Date", value: Day.title(expense.day))
                 LabeledContent("Card", value: model.books.first(where: { $0.id == expense.bookID })?.name ?? "—")
-                LabeledContent("Recorded", value: expense.createdAt.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("Added", value: expense.createdAt.formatted(date: .abbreviated, time: .shortened))
                 if expense.source != "manual" { LabeledContent("Source", value: expense.source.capitalized) }
             }
             // The header shows two lines of the note; long notes get their full text here.
@@ -1191,13 +1191,13 @@ private struct BillInspector: View {
                     HStack {
                         Button("Skip") { act { try model.skipBillOccurrence(pending.id) } }.buttonStyle(.glass)
                         Spacer()
-                        Button("Record") { act { _ = try model.confirmBillOccurrence(pending.id) } }.buttonStyle(.glassProminent)
+                        Button("Add") { act { _ = try model.confirmBillOccurrence(pending.id) } }.buttonStyle(.glassProminent)
                     }
                 }
             }
             Section("Schedule") {
                 LabeledContent("Repeats", value: bill.recurrence.title)
-                LabeledContent("Recording", value: bill.recordingMode.title)
+                LabeledContent("When due", value: bill.recordingMode.title)
                 LabeledContent("Reminder", value: !bill.hasReminder ? "Off" : bill.reminderLeadDays == 0 ? "On the day" : "\(bill.reminderLeadDays) days before")
                 LabeledContent("Card", value: model.books.first(where: { $0.id == bill.bookID })?.name ?? "—")
             }
@@ -1225,7 +1225,7 @@ private struct CardInspector: View {
                 MacCardView(model: model, book: book).frame(maxWidth: .infinity)
             }
             Section("Spending") {
-                LabeledContent("Transactions", value: "\(expenses.count)")
+                LabeledContent("Expenses", value: "\(expenses.count)")
                 LabeledContent("Total", value: Money.format(expenses.reduce(0) { $0 + $1.amount }))
                 if let last = expenses.map(\.day).max() { LabeledContent("Last expense", value: Day.title(last)) }
             }

@@ -279,7 +279,7 @@ final class MacAppState {
         }
         result += [
             .init(id: MacCommandID.newExpense.rawValue, title: "New Expense", symbol: "plus.circle", commandID: .newExpense, destination: nil),
-            .init(id: MacCommandID.quickRecord.rawValue, title: "Quick Record", symbol: "bolt.circle", commandID: .quickRecord, destination: nil),
+            .init(id: MacCommandID.quickRecord.rawValue, title: "Quick Add", symbol: "bolt.circle", commandID: .quickRecord, destination: nil),
             .init(id: MacCommandID.quickChat.rawValue, title: "Quick Chat", symbol: "bubble.left.and.text.bubble.right", commandID: .quickChat, destination: nil),
             .init(id: MacCommandID.focusSearch.rawValue, title: "Focus Search", symbol: "magnifyingglass", commandID: .focusSearch, destination: nil),
             .init(id: MacCommandID.toggleSidebar.rawValue, title: "Toggle Sidebar", symbol: "sidebar.left", commandID: .toggleSidebar, destination: nil),
@@ -401,7 +401,7 @@ final class MacAppState {
 
     private func showQuickRecord() {
         model.openEntry(); model.showEntry = false
-        quickPanel.show(title: "Quick Record")
+        quickPanel.show(title: "Quick Add")
     }
 
     /// In-app entry is a sheet; the global hotkey uses the floating panel. Both show `MacExpenseForm`.
@@ -469,7 +469,7 @@ struct MonocleMacCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             commandButton("New Expense", .newExpense)
-            commandButton("Quick Record", .quickRecord)
+            commandButton("Quick Add", .quickRecord)
             commandButton("Quick Chat", .quickChat)
         }
         CommandMenu("Navigate") {

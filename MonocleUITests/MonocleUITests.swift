@@ -16,7 +16,7 @@ final class MonocleUITests: XCTestCase {
         app.buttons["addExpense"].tap()
         XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"))
         app.buttons["recordExpense"].tap()
-        XCTAssertTrue(app.staticTexts["Expense recorded"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Expense added"].waitForExistence(timeout: 5))
     }
     @MainActor
     func testTextEntryAndModeSwitchKeepParsedFields() throws {
@@ -191,7 +191,7 @@ final class MonocleUITests: XCTestCase {
         app.buttons["Close entry"].tap()
         app.buttons["Discard"].tap()
         app.buttons["expense-Morning coffee"].tap()
-        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Expense Details"].waitForExistence(timeout: 5))
         app.buttons["transactionDetailEdit"].tap()
         XCTAssertTrue(app.navigationBars["Edit expense"].waitForExistence(timeout: 5))
         app.buttons["key-0"].tap()
@@ -201,7 +201,7 @@ final class MonocleUITests: XCTestCase {
         app.buttons["transactionDetailBack"].tap()
         XCTAssertTrue(app.buttons["expense-Morning coffee"].waitForExistence(timeout: 5))
         app.buttons["expense-Morning coffee"].tap()
-        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Expense Details"].waitForExistence(timeout: 5))
         app.buttons["transactionDetailEdit"].tap()
         app.buttons["Close entry"].tap()
         XCTAssertTrue(app.buttons["transactionDetailBack"].waitForExistence(timeout: 5), "Unmodified edits close without a discard prompt")
@@ -235,7 +235,7 @@ final class MonocleUITests: XCTestCase {
         app.buttons["addExpense"].tap(); app.buttons["key-5"].tap()
         app.terminate(); app.launch()
         app.buttons["expense-Morning coffee"].tap()
-        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Expense Details"].waitForExistence(timeout: 5))
         app.buttons["transactionDetailEdit"].tap()
         XCTAssertTrue(app.buttons["Discard and continue"].waitForExistence(timeout: 5))
         app.buttons["Discard and continue"].tap()
@@ -253,7 +253,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["expense-Morning coffee"].waitForExistence(timeout: 10))
         app.buttons["expense-Morning coffee"].tap()
 
-        XCTAssertTrue(app.navigationBars["Transaction Details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Expense Details"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["transactionDetailAmount"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["transactionDetailEdit"].exists)
         XCTAssertTrue(app.buttons["transactionDetailDelete"].exists)

@@ -100,7 +100,7 @@ struct CardAccessibilityModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .accessibilityElement(children: isSelected ? .contain : .combine)
-            .accessibilityLabel(isSelected ? book.name + " selected card" : "Open \(book.name), \(expenseCount) transactions")
+            .accessibilityLabel(isSelected ? book.name + " selected card" : "Open \(book.name), \(expenseCount) expenses")
             .accessibilityIdentifier("stack-book-\(book.id)")
             .accessibilityAddTraits(.isButton)
             .accessibilityHidden(expanded && !isSelected)
@@ -1034,7 +1034,7 @@ struct CardPresentationView: View {
                 .font(amountFont)
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
-            Text("\(bookExpenses.count) TRANSACTIONS")
+            Text("\(bookExpenses.count) EXPENSES")
                 .font(.system(size: 11, weight: .medium).monospaced())
         }
         .padding(16)
@@ -1095,7 +1095,7 @@ struct CardPresentationView: View {
         let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
-                Text(bookID != nil ? "Latest Transactions" : (isAllCards ? "All Transactions" : "Recent Activities"))
+                Text(bookID != nil ? "Latest Expenses" : (isAllCards ? "All Expenses" : "Recent Expenses"))
                     .font(.system(size: 15, weight: .semibold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
@@ -1125,10 +1125,10 @@ struct CardPresentationView: View {
                     Image(systemName: bookID != nil ? "tray" : "text.book.closed")
                         .font(.system(size: 26))
                         .foregroundStyle(ink.opacity(0.35))
-                    Text(bookID != nil ? "No Transactions Yet" : "Nothing Recorded Yet")
+                    Text(bookID != nil ? "No Expenses Yet" : "Nothing Added Yet")
                         .font(.system(size: 14.5, weight: .semibold))
                         .foregroundStyle(ink)
-                    Text(bookID != nil ? "Transactions recorded for this card will appear here." : "Tap the floating add button below to record your first transaction.")
+                    Text(bookID != nil ? "Expenses you add to this card appear here." : "Tap the add button below to add your first expense.")
                         .font(.system(size: 12.5))
                         .foregroundStyle(ink.opacity(0.6))
                         .multilineTextAlignment(.center)
@@ -1424,11 +1424,11 @@ struct CardPresentationView: View {
                 }
 
                 Section {
-                    Button("Show every book") {
+                    Button("Show every card") {
                         model.hiddenBookIDs = []
                         model.persistWorkspacePreferences()
                     }
-                    Button("Create new book") {
+                    Button("Create new card") {
                         managing = false
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                             openCustomizerForNewBook()

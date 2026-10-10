@@ -252,7 +252,7 @@ struct BillsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Record")
+                        Text("Add")
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
@@ -356,7 +356,7 @@ struct BillsView: View {
                 Text(Money.format(rule.amount))
                     .font(.system(size: 15, weight: .medium, design: .monospaced))
                 if rule.recordingMode == .automatic {
-                    Text("Auto-records").font(.caption2).foregroundStyle(.secondary)
+                    Text("Auto-adds").font(.caption2).foregroundStyle(.secondary)
                 } else {
                     Button("Pay now") {
                         model.performUIAction { _ = try model.confirmBillOccurrence(occurrence.id) }
@@ -497,16 +497,16 @@ struct BillEditor: View {
                 Section {
                     Picker("On the due date", selection: $recordingMode) {
                         Text("Keep pending until confirmed").tag(BillRecordingMode.pending)
-                        Text("Record automatically").tag(BillRecordingMode.automatic)
+                        Text("Add automatically").tag(BillRecordingMode.automatic)
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
                     .accessibilityIdentifier("billModePicker")
                 } header: {
-                    Text("Recording mode")
+                    Text("When due")
                 } footer: {
                     Text(recordingMode == .automatic
-                         ? "An expense is automatically recorded and counts toward spending on the due date."
+                         ? "An expense is added automatically on the due date and counts toward spending."
                          : "Upcoming bills appear in your Action Required queue and will not count as spending until you confirm.")
                 }
 
@@ -531,7 +531,7 @@ struct BillEditor: View {
                             .accessibilityIdentifier("billPauseToggle")
                     } footer: {
                         Text(isPaused
-                             ? "No new occurrences or reminders while paused. Resuming starts again from today; missed dates are not recorded."
+                             ? "No new occurrences or reminders while paused. Resuming starts again from today; missed dates are not added."
                              : "Pause to stop this bill without deleting it.")
                     }
 
@@ -577,7 +577,7 @@ struct BillEditor: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Future occurrences will be removed. Any expenses already recorded in the past will stay in your books.")
+                Text("Future occurrences will be removed. Expenses already added stay on the card.")
             }
             .onAppear(perform: loadExistingRule)
         }
@@ -1039,7 +1039,7 @@ struct AppLockSettingsView: View {
                 Text("Turning this on or changing its timeout confirms your device authentication. monocle covers its interface while it is in the app switcher, then asks for Face ID or your device passcode when the timeout has elapsed.")
             }
             Section("Shortcuts") {
-                Text("Both monocle Shortcuts always use the system device-authentication policy. A background text shortcut can record only after that system check; it does not unlock the app screen. Quick entry may still show this lock when monocle opens.")
+                Text("Both monocle Shortcuts always use the system device-authentication policy. A background text shortcut can add an expense only after that system check; it does not unlock the app screen. Quick entry may still show this lock when monocle opens.")
             }
             if saving { HStack { Spacer(); ProgressView("Saving app lock…"); Spacer() } }
             if let error { Text(error).foregroundStyle(MC.red) }

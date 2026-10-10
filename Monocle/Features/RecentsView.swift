@@ -10,7 +10,7 @@ struct RecentsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Eyebrow(text: "Personal / sample book")
+                        Eyebrow(text: "Personal / demo")
                         Text("A little more\nclarity, every day.").font(.system(.largeTitle, design: .default, weight: .medium)).tracking(-1.2).fixedSize(horizontal: false, vertical: true)
                     }
                     summary

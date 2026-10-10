@@ -173,7 +173,7 @@ struct ExpenseReceiptSnippetView: View {
 
 struct AddExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Expense"
-    static let description = IntentDescription("Records an expense in Monocle using an amount, category, and optional card.")
+    static let description = IntentDescription("Adds an expense in Monocle using an amount, category, and optional card.")
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
     static var supportedModes: IntentModes { .background }
 
@@ -185,7 +185,7 @@ struct AddExpenseIntent: AppIntent {
     @Parameter(title: "Date") var date: Date?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Record on \(\.$card) in \(\.$category) note \(\.$note) for \(\.$amount)") {
+        Summary("Add on \(\.$card) in \(\.$category) note \(\.$note) for \(\.$amount)") {
             \.$date
             \.$inputOrder
         }
@@ -302,7 +302,7 @@ struct AddExpenseIntent: AppIntent {
         let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? targetCard.name
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: targetCategory.symbol, bookID: targetBookID)
         return .result(
-            dialog: "Recorded \(Money.format(expense.amount)) in \(targetCategory.name) on \(bookName).",
+            dialog: "Added \(Money.format(expense.amount)) in \(targetCategory.name) on \(bookName).",
             view: ExpenseReceiptSnippetView(expense: expense, categoryName: targetCategory.name, categorySymbol: targetCategory.symbol, cardName: bookName)
         )
     }
@@ -312,7 +312,7 @@ struct AddExpenseIntent: AppIntent {
 
 struct AddExpenseFromTextIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Expense from Text"
-    static let description = IntentDescription("Record an expense in Monocle using natural text. For example: 'Coffee 28k' or 'Lunch 45k'.")
+    static let description = IntentDescription("Add an expense in Monocle using natural text. For example: 'Coffee 28k' or 'Lunch 45k'.")
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
     static var supportedModes: IntentModes { .background }
 
@@ -320,7 +320,7 @@ struct AddExpenseFromTextIntent: AppIntent {
     @Parameter(title: "Card / Account") var card: CardEntity?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Record \(\.$text)") {
+        Summary("Add \(\.$text)") {
             \.$card
         }
     }
@@ -349,7 +349,7 @@ struct AddExpenseFromTextIntent: AppIntent {
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: catSymbol, bookID: targetBookID)
 
         return .result(
-            dialog: "Recorded \(Money.format(expense.amount)) on \(bookName).",
+            dialog: "Added \(Money.format(expense.amount)) on \(bookName).",
             view: ExpenseReceiptSnippetView(expense: expense, categoryName: catName, categorySymbol: catSymbol, cardName: bookName)
         )
     }
@@ -359,7 +359,7 @@ struct AddExpenseFromTextIntent: AppIntent {
 
 struct OpenQuickEntryIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Quick Entry"
-    static let description = IntentDescription("Open Monocle ready to record an expense.")
+    static let description = IntentDescription("Open Monocle ready to add an expense.")
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
     static var supportedModes: IntentModes { .foreground }
     static var openAppWhenRun: Bool { true }
@@ -444,7 +444,7 @@ struct MonocleShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: OpenQuickEntryIntent(),
             phrases: [
-                "Record an expense in \(.applicationName)",
+                "Add an expense in \(.applicationName)",
                 "Open \(.applicationName)"
             ],
             shortTitle: "Quick entry",
@@ -455,7 +455,7 @@ struct MonocleShortcuts: AppShortcutsProvider {
             phrases: [
                 "Add an expense in \(.applicationName)",
                 "Add \(\.$category) expense in \(.applicationName)",
-                "Record \(\.$category) in \(.applicationName)"
+                "Add \(\.$category) in \(.applicationName)"
             ],
             shortTitle: "Add expense",
             systemImageName: "plus.circle.fill"

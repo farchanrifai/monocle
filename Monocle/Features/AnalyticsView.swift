@@ -339,7 +339,7 @@ private struct AnalyticsReportView: View {
             Divider()
 
             HStack(spacing: 16) {
-                metricColumn(title: "Transactions", value: "\(metrics.transactionCount)")
+                metricColumn(title: "Expenses", value: "\(metrics.transactionCount)")
                 metricColumn(title: "Daily average", value: Money.format(metrics.dailyAverage))
                 if selectedHorizon == .thisCycle || selectedHorizon == .thisMonth {
                     metricColumn(title: "Projected", value: metrics.projectedPeriodTotal.map { Money.format($0) } ?? "Exceeds supported total")
@@ -552,7 +552,7 @@ private struct AnalyticsReportView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Daily Rhythm")
                         .font(.headline)
-                    Text("Day-by-day transaction totals")
+                    Text("Day-by-day totals")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -756,7 +756,7 @@ private struct AnalyticsReportView: View {
             }
 
             if categoryPoints.isEmpty {
-                emptyChartPlaceholder(message: "No category transactions")
+                emptyChartPlaceholder(message: "No expenses in categories")
             } else {
                 // Donut Chart
                 HStack(spacing: 20) {
@@ -876,7 +876,7 @@ private struct AnalyticsReportView: View {
                                     .frame(height: 5)
 
                                     HStack {
-                                        Text("\(cat.transactionCount) transactions")
+                                        Text("\(cat.transactionCount) expenses")
                                         Spacer()
                                         if let limit = cat.budgetLimit, limit > 0 {
                                             if cat.amount > limit {

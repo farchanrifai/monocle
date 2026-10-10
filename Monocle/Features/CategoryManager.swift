@@ -76,7 +76,7 @@ struct CategoryManager: View {
                 deletingGlobalCategory = nil
             }
         } message: {
-            Text("This deletes the category across all cards. Categories with recorded transactions cannot be deleted.")
+            Text("This deletes the category across all cards. Categories used by expenses cannot be deleted.")
         }
         .alert("Unable to delete", isPresented: Binding(
             get: { error != nil },
@@ -220,7 +220,7 @@ struct CategoryManager: View {
             } header: {
                 Text("Card Categories")
             } footer: {
-                Text("Deactivating a category hides it when logging new expenses on this card. Any past expenses using this category remain safely recorded.")
+                Text("Deactivating a category hides it when logging new expenses on this card. Past expenses in this category are kept.")
             }
         }
     }
@@ -414,7 +414,7 @@ struct GlobalCategoryEditor: View {
                 } header: {
                     Text("Active on Cards")
                 } footer: {
-                    Text("Turning off a category on a card removes it from that card's entry options without affecting past transactions.")
+                    Text("Turning off a category on a card removes it from that card's entry options without affecting past expenses.")
                 }
 
                 Section("Future Cards") {
@@ -474,7 +474,7 @@ struct GlobalCategoryEditor: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This removes the category across all cards. Categories with recorded transactions cannot be deleted.")
+                Text("This removes the category across all cards. Categories used by expenses cannot be deleted.")
             }
             .sensoryFeedback(.selection, trigger: symbol)
         }

@@ -23,7 +23,7 @@ struct MacDataTransferView: View {
             Text(title).font(.title2.bold())
             switch mode {
             case .importCSV: csvImport
-            case .exportCSV: exportDescription("Export transactions as a spreadsheet compatible CSV file.", action: exportCSV)
+            case .exportCSV: exportDescription("Export expenses as a CSV file for spreadsheets.", action: exportCSV)
             case .exportBackup: exportDescription("Create a complete Monocle backup for transfer between iPhone and Mac.", action: exportBackup)
             case .restoreBackup: restoreView
             }

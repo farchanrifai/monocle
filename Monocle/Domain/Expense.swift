@@ -105,7 +105,7 @@ enum EntryError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidAmount: "Enter an amount greater than zero, in whole rupiah."
-        case .missingCategory: "Choose a category before recording."
+        case .missingCategory: "Choose a category before adding."
         case .invalidDate: "Choose a valid expense date."
         case .splitMismatch: "Your category splits must equal the total."
         case .duplicateSplitCategory: "Choose each split category only once."

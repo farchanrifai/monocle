@@ -171,13 +171,13 @@ struct CSVInterchangeView: View {
                 dateRange: exportDateRange, customStartDate: customStartDate, customEndDate: customEndDate)
 
             Section("Summary") {
-                LabeledContent("Transactions", value: "\(exportExpenses.count)")
+                LabeledContent("Expenses", value: "\(exportExpenses.count)")
                 LabeledContent("Total Spending", value: Money.format(totalSpent))
             }
 
             Section("Preview (First 3 Rows)") {
                 let previewLines = csvContent.split(separator: "\r\n", maxSplits: 4).prefix(4).joined(separator: "\n")
-                Text(previewLines.isEmpty ? "No records to export" : previewLines)
+                Text(previewLines.isEmpty ? "No expenses to export" : previewLines)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(5)

@@ -190,7 +190,7 @@ final class ChatAgent: ChatBackend {
                "day": {"type": "integer", "description": "Day of month 1-31 (monthly, yearly), e.g. tanggal 5 -> 5. Today's day if the user gave none; ignored for weekly."},
                "weekday": {"type": "integer", "description": "Weekly only: 1 = Sunday ... 7 = Saturday. Omit for today's."},
                "month": {"type": "integer", "description": "Yearly only: 1-12. Omit for this month."},
-               "record": {"type": "string", "enum": ["automatic", "confirm"], "description": "automatic records each payment by itself; confirm (default) asks first."},
+               "record": {"type": "string", "enum": ["automatic", "confirm"], "description": "automatic adds each payment by itself; confirm (default) asks first."},
                "reminder": {"type": "boolean", "description": "Notify on the due day. Default true."},
                "card": {"type": "string", "description": "Card name. Omit for the app_context card."}}}},
           {"name": "list_bills", "strict": true,
@@ -198,7 +198,7 @@ final class ChatAgent: ChatBackend {
            "input_schema": {"type": "object", "additionalProperties": false, "required": [],
              "properties": {"scope": {"type": "string", "description": "Omit for the current scope, or all_cards, or a stack/card name."}}}},
           {"name": "query_expenses",
-           "description": "List expenses, newest first, with the total of all matches. Use for recent transactions or finding specific spending.",
+           "description": "List expenses, newest first, with the total of all matches. Use for recent expenses or finding specific spending.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": [],
              "properties": {
                "period": {"type": "string", "enum": ["this_cycle", "this_month", "last_month", "last_30_days", "last_90_days", "year_to_date"]},

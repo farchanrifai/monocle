@@ -40,7 +40,7 @@ struct ResetDataView: View {
                 } label: {
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Clear active card transactions")
+                            Text("Clear this card's expenses")
                                 .foregroundStyle(.red)
                             Text("\(activeCardName) · \(model.expenses.count) entries")
                                 .font(.caption)
@@ -59,7 +59,7 @@ struct ResetDataView: View {
                     } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Clear all cards transactions")
+                                Text("Clear expenses on all cards")
                                     .foregroundStyle(.red)
                                 Text("Across all \(model.books.count) cards")
                                     .font(.caption)
@@ -73,9 +73,9 @@ struct ResetDataView: View {
                     .accessibilityIdentifier("clearAllCardsButton")
                 }
             } header: {
-                Text("Transactions")
+                Text("Expenses")
             } footer: {
-                Text("Deletes logged transactions and resets card balances to Rp 0. Your card designs, global categories, and recurring bills remain intact.")
+                Text("Deletes added expenses. Your cards, budgets, categories and bills are kept.")
             }
 
             // MARK: Complete Fresh Start
@@ -104,13 +104,13 @@ struct ResetDataView: View {
             } header: {
                 Text("Complete Fresh Start")
             } footer: {
-                Text("Wipes all transactions, recurring bills, and extra cards. Starts fresh with a single clean card in real mode and restores default categories.")
+                Text("Wipes all expenses, recurring bills, and extra cards. Starts fresh with a single clean card in real mode and restores default categories.")
             }
         }
         .navigationTitle("Reset data")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Clear transactions on \"\(activeCardName)\"?", isPresented: $confirmClearActive) {
-            Button("Clear transactions", role: .destructive) {
+        .alert("Clear expenses on \"\(activeCardName)\"?", isPresented: $confirmClearActive) {
+            Button("Clear expenses", role: .destructive) {
                 do {
                     try model.clearActiveCardExpenses()
                     dismiss()
@@ -120,10 +120,10 @@ struct ResetDataView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("All transactions on \"\(activeCardName)\" will be removed. Your categories, card design, and bills are kept. A safety backup is created first.")
+            Text("All expenses on \"\(activeCardName)\" will be removed. Your categories, card design, and bills are kept. A safety backup is created first.")
         }
-        .alert("Clear all transactions across all cards?", isPresented: $confirmClearAll) {
-            Button("Clear all transactions", role: .destructive) {
+        .alert("Clear expenses on all cards?", isPresented: $confirmClearAll) {
+            Button("Clear all expenses", role: .destructive) {
                 do {
                     try model.clearAllTransactions()
                     dismiss()
@@ -133,7 +133,7 @@ struct ResetDataView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("All transactions on all cards will be removed. All card balances will return to Rp 0. A safety backup is created first.")
+            Text("All expenses on all cards will be removed. A safety backup is created first.")
         }
         .alert("Erase all data & start fresh?", isPresented: $confirmResetAll) {
             Button("Erase all and start fresh", role: .destructive) {

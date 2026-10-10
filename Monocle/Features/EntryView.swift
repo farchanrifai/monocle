@@ -56,7 +56,7 @@ struct EntryView: View {
                             .transition(.opacity)
                     }
                     RecordButton(
-                        title: model.draft.editing ? "Save changes" : "Record expense",
+                        title: model.draft.editing ? "Save changes" : "Add expense",
                         symbol: model.draft.editing ? "checkmark" : "plus"
                     ) {
                         if model.saveDraft() { dismiss() }
@@ -104,7 +104,7 @@ struct EntryView: View {
                 }
             } message: {
                 if showDiscard {
-                    Text(model.draft.editing ? "The saved transaction will stay unchanged." : "The amount, category and note you entered will be cleared.")
+                    Text(model.draft.editing ? "The saved expense will stay unchanged." : "The amount, category and note you entered will be cleared.")
                 } else { Text(model.error ?? "") }
             }
             .onChange(of: model.draft.text) { _, _ in
@@ -206,7 +206,7 @@ struct EntryView: View {
             model.draft.note = parsed.note
             model.draft.categoryID = parsed.categoryID
             model.draft.source = "text"
-            message = parsed.categoryID == nil ? "Amount found. Choose a category to finish." : "Ready to record. You can adjust any detail."
+            message = parsed.categoryID == nil ? "Amount found. Choose a category to finish." : "Ready to add. You can adjust any detail."
             if hideKeyboard { focusedField = nil }
         } catch {
             model.draft.amount = ""; model.draft.categoryID = nil
@@ -264,7 +264,7 @@ private struct SplitEditor: View {
                         if remaining == 0 && model.draft.splitAllocations.count > 1 &&
                             Set(model.draft.splitAllocations.map(\.categoryID)).count == model.draft.splitAllocations.count &&
                             model.draft.splitAllocations.allSatisfy({ (try? $0.resolvedAmount()) != nil }) {
-                            Label("Ready to record", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                            Label("Ready to add", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                         } else {
                             Text("Use at least two categories and make allocations match the expense total.").font(.footnote).foregroundStyle(.secondary)
                         }

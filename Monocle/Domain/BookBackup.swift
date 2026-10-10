@@ -739,8 +739,8 @@ enum BackupError: LocalizedError {
     case unsupported, invalid, tooLarge, recoveryRequired, missingArtwork
     var errorDescription: String? {
         switch self {
-        case .unsupported: "This backup version or book type is not supported by this version of monocle."
-        case .invalid: "The backup contains invalid or inconsistent records. Your current book has not been replaced."
+        case .unsupported: "This backup version is not supported by this version of Monocle."
+        case .invalid: "The backup contains invalid or inconsistent records. Your current workspace has not been replaced."
         case .tooLarge: "This legacy backup exceeds its supported size. Export a current workspace backup to preserve all records and artwork."
         case .recoveryRequired: "Restoration could not finish or roll back. Restart monocle to recover from the retained safety backup. Your original data has been kept."
         case .missingArtwork: "A card photo is missing or unreadable. Restore the photo before exporting or replacing this workspace."

@@ -82,7 +82,7 @@ Each phase is its own commit (or set of commits), builds, and passes `MonocleTes
 ### Phase 5: Currency (largest)
 
 1. **Money is currency-aware.** `Money.format(_:currency:)` with the reporting currency as the default; `Money.parse(_:currency:)` accepts decimals only for currencies that have them (USD yes, JPY/IDR no). About 95 `Money.format` call sites. Pass a currency explicitly only where a card or expense currency applies; the rest keep the default.
-2. **Rates.** `ExchangeRateService`: fetch daily rates (candidate: Frankfurter, ECB data, has IDR/JPY/USD; verify coverage and terms before choosing), cache by day in a local JSON file, nearest earlier day when missing (marked ≈ and refetched later). This is the app's first network call for data: update the privacy policy and the App Store privacy label. Manual override per expense.
+2. **Rates.** `ExchangeRateService`: fetch daily rates (Frankfurter, ECB data; confirm IDR/JPY/USD coverage when building), cache by day in a local JSON file, nearest earlier day when missing (marked ≈ and refetched later). This is the app's first network call for data: update the privacy policy and the App Store privacy label. Manual override per expense.
 3. **Entry.** Currency field (hidden by default), defaulting to expense → card spending currency → card currency → reporting currency. Shows the converted amount live. Saving stores original amount, currency, rate, rateSource and `amount` in reporting currency.
 4. **Card display.** Totals and budget in card currency; ≈ line in spending currency, otherwise the reporting currency. Expense rows show the original amount, with the card-currency value beside it when different.
 5. **Stacks, analytics, widgets** in reporting currency.
@@ -102,7 +102,7 @@ Mechanical renames, one commit per type, no behavior change: `BookProfile`/`Book
 - Merge to main only when the user says so; `feat/apple-intelligence-chat` has to be merged first.
 - Rollback: V5 is additive, so an older build can't open a V5 store. Ship phase 1 only together with a phase that users can see, and keep a backup prompt before the first V5 launch.
 
-## Open questions for the user
+## Decided by the user (11 Oct 2026)
 
-1. Phase 6 renames ~680 `bookID` references. Do it, or rename only the types and leave property names?
-2. Exchange rate source: Frankfurter (free, ECB, no key) unless you prefer another.
+1. Phase 6 renames everything, including the ~680 `bookID` references.
+2. Exchange rate source: Frankfurter.

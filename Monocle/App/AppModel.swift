@@ -566,7 +566,7 @@ final class AppModel {
             try requireState().saveWorkspacePreferences(proposed)
         }
         guard let created else { throw EntryError.corruptStore }
-        publishPreferences(proposed); invalidateExpenseCaches(); showToast("Book created")
+        publishPreferences(proposed); invalidateExpenseCaches(); showToast("Card created")
         return created
     }
 
@@ -582,7 +582,7 @@ final class AppModel {
             try expenseService.renameBook(id: id, to: name)
             try requireState().saveSettings(proposed)
         }
-        settings = proposed; invalidateExpenseCaches(); showToast("Book renamed")
+        settings = proposed; invalidateExpenseCaches(); showToast("Card renamed")
     }
 
     func deleteBook(id: UUID) throws {
@@ -620,7 +620,7 @@ final class AppModel {
            !proposed.cardCustomizations.values.contains(where: { $0.style == oldCustom.style }) {
             CardArtworkStore.shared.deleteArtwork(filename: filename)
         }
-        invalidateExpenseCaches(); showToast("Book deleted")
+        invalidateExpenseCaches(); showToast("Card deleted")
     }
 
     func applyCardCustomizations(names: [UUID: String], customizations: [UUID: BookCardCustomization],
@@ -998,13 +998,13 @@ final class AppModel {
         draft = ExpenseDraft(); draft.bookID = settings.book.id
         undoExpense = nil; pendingEntry = nil
         invalidateExpenseCaches()
-        showToast("Your real book is ready")
+        showToast("Your card is ready")
     }
     func renameRealBook(to name: String) throws {
         guard let backups else { throw BackupError.unsupported }
         try recoveryCommand { settings = try backups.renameRealBook(to: name, currentDraft: draft, settings: settings) }
         invalidateExpenseCaches()
-        showToast("Book renamed")
+        showToast("Card renamed")
     }
 
     func clearActiveCardExpenses() throws {
@@ -1015,7 +1015,7 @@ final class AppModel {
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
         try reload()
-        showToast("Transactions cleared")
+        showToast("Expenses cleared")
     }
 
     func clearAllTransactions() throws {
@@ -1026,7 +1026,7 @@ final class AppModel {
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
         try reload()
-        showToast("All transactions cleared")
+        showToast("All expenses cleared")
     }
 
     func resetAllData(cardName: String) throws {
@@ -1134,7 +1134,7 @@ final class AppModel {
             undoExpense = nil
             saveFeedback += 1
             if !editing { recordInSpendingSession(expense) }
-            showToast(editing ? "Expense updated" : "Expense recorded")
+            showToast(editing ? "Expense updated" : "Expense added")
             return true
         } catch {
             self.error = error.localizedDescription
@@ -1200,7 +1200,7 @@ final class AppModel {
             in: bookID
         )
         invalidateExpenseCaches()
-        showToast("Bill recorded")
+        showToast("Bill added")
         return expense
     }
     func skipBillOccurrence(_ occurrenceID: UUID, in bookID: UUID? = nil) throws {

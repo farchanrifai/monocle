@@ -61,7 +61,7 @@ struct MacSettingsView: View {
                     Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
                 }
                 .pickerStyle(.radioGroup)
-                SettingsNote("Quick Record (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
+                SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
             }
         case .appearance:
             Form {

@@ -242,7 +242,7 @@ extension ChatSession {
         let content: [[String: Any]]
         let stop: String
         if last?.first?["type"] as? String == "tool_result" {
-            content = [["type": "text", "text": "Click **Save** to record it."]]; stop = "end_turn"
+            content = [["type": "text", "text": "Click **Save** to add it."]]; stop = "end_turn"
         } else {
             content = [["type": "text", "text": "Adding it."],
                        ["type": "tool_use", "id": "fake1", "name": "propose_expense",

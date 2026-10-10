@@ -118,7 +118,7 @@ struct MacBillsView: View {
                             VStack(alignment: .leading) { Text(rule.name).font(.headline); Text("Due \(occurrence.dueDay)").foregroundStyle(.secondary) }
                             Spacer(); Text(Money.format(rule.amount)).font(.system(.body, design: .monospaced))
                             Button("Skip") { do { try model.skipBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glass)
-                            Button("Record") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glassProminent)
+                            Button("Add") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glassProminent)
                         }.padding(12).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
                     }
                 }
@@ -167,7 +167,7 @@ private struct BillEditor: View {
                     recurrence = value == 0 ? .monthly(day: 1) : value == 1 ? .weekly(weekday: 2) : .yearly(month: 1, day: 1)
                 })) { Text("Monthly").tag(0); Text("Weekly").tag(1); Text("Yearly").tag(2) }
                 recurrenceControls
-                Picker("Recording", selection: $mode) { ForEach(BillRecordingMode.allCases, id: \.self) { Text($0.title).tag($0) } }
+                Picker("When due", selection: $mode) { ForEach(BillRecordingMode.allCases, id: \.self) { Text($0.title).tag($0) } }
                 Toggle("Reminder", isOn: $reminder)
                 if reminder { Stepper("Remind \(leadDays) days before", value: $leadDays, in: 0...30) }
                 Toggle("Active", isOn: $active)
@@ -257,7 +257,7 @@ struct MacAnalyticsView: View {
                     scopeCycle = BudgetHistory.period(containing: .now, budgets: budgets)?.cycle
                 }
             HStack(spacing: 12) {
-                SummaryTile(title: "Total", value: Money.format(total), detail: "\(expenses.count) transactions")
+                SummaryTile(title: "Total", value: Money.format(total), detail: "\(expenses.count) expenses")
                 SummaryTile(title: "Average", value: Money.format(total / Int64(max(1, daily.count))), detail: "per active day")
                 SummaryTile(title: "vs previous", value: change.map { "\($0 > 0 ? "+" : "")\($0)%" } ?? "—", detail: "previous \(length) days: \(Money.format(previous))")
                 SummaryTile(title: "Biggest day", value: Money.format(biggestDay?.1 ?? 0), detail: biggestDay.map { Day.title($0.0) } ?? "No spending")
@@ -325,7 +325,7 @@ struct MacAnalyticsView: View {
                 if !state.analyticsScope.isCard {
                     ChartCard("By card", info: "How the total splits across the cards in view. Hidden cards are not counted.") { BarList(items: cards, total: total) }
                 }
-                ChartCard("Largest transactions", info: "Your six biggest single expenses in this period.") {
+                ChartCard("Largest expenses", info: "Your six biggest single expenses in this period.") {
                     VStack(spacing: 10) {
                         ForEach(expenses.sorted { $0.amount > $1.amount }.prefix(6)) { expense in
                             HStack {
@@ -355,7 +355,7 @@ struct MacAnalyticsView: View {
         return order.map { (calendar.shortWeekdaySymbols[$0], calendar.weekdaySymbols[$0], totals[$0], counts[$0]) }
     }
 
-    private func transactions(_ count: Int) -> String { count == 1 ? "1 transaction" : "\(count) transactions" }
+    private func transactions(_ count: Int) -> String { count == 1 ? "1 expense" : "\(count) expenses" }
 
     /// Two equal-height cards: each fills the row, row height = tallest card.
     private func cardRow(@ViewBuilder _ content: () -> some View) -> some View {

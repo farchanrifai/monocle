@@ -42,15 +42,15 @@ enum BillRecordingMode: String, Codable, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .automatic: return "Record automatically"
-        case .pending: return "Confirm before recording"
+        case .automatic: return "Add automatically"
+        case .pending: return "Confirm before adding"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .automatic: return "Automatically records an expense on the due date."
-        case .pending: return "Requires your confirmation before recording an expense."
+        case .automatic: return "Adds the expense automatically on the due date."
+        case .pending: return "Asks you to confirm before adding the expense."
         }
     }
 }

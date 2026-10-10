@@ -16,7 +16,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if let failure = model.startupError {
-                ContentUnavailableView("Unable to open your book", systemImage: "externaldrive.badge.exclamationmark", description: Text(failure + "\nThe existing store has not been reset."))
+                ContentUnavailableView("Unable to open your workspace", systemImage: "externaldrive.badge.exclamationmark", description: Text(failure + "\nThe existing store has not been reset."))
             } else if model.appLock.blocksContent {
                 AppLockView(lock: model.appLock)
             } else {
@@ -40,7 +40,7 @@ struct RootView: View {
                 .alert("Discard the unfinished expense?", isPresented: Binding(get: { model.pendingEntry != nil }, set: { if !$0 { model.pendingEntry = nil } })) {
                     Button("Discard and continue", role: .destructive) { model.discardAndOpenPendingEntry() }
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
-                } message: { Text("You have an unfinished expense from an interruption. Discard it to open this transaction.") }
+                } message: { Text("You have an unfinished expense from an interruption. Discard it to open this expense.") }
                 .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
                 .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: model.chat) }
                 .alert("Check this", isPresented: Binding(get: { model.error != nil && !model.showEntry }, set: { if !$0 { model.error = nil } })) {

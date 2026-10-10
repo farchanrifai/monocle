@@ -45,7 +45,7 @@ struct TransactionDetailView: View {
                 .padding(.bottom, 40)
             }
             .background(MC.paper.ignoresSafeArea())
-            .navigationTitle("Transaction Details")
+            .navigationTitle("Expense Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -88,7 +88,7 @@ struct TransactionDetailView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Are you sure you want to delete this transaction? You can undo this action from the confirmation toast.")
+                Text("Are you sure you want to delete this expense? You can undo this action from the confirmation toast.")
             }
         }
     }

@@ -120,7 +120,7 @@ struct TodaySpendingWidgetEntryView: View {
 
                     Spacer()
 
-                    Text("\(today.transactionCount) transactions recorded")
+                    Text("\(today.transactionCount) expenses added")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -137,7 +137,7 @@ struct TodaySpendingWidgetEntryView: View {
 
                 if today.recentTransactions.isEmpty {
                     Spacer()
-                    Text("No transactions yet today.")
+                    Text("No expenses yet today.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()

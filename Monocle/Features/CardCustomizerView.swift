@@ -435,7 +435,7 @@ struct CardCustomizerView: View {
                                 activeBookID = placeholderID
                             }
                         }
-                        .accessibilityLabel("Add new book")
+                        .accessibilityLabel("Add new card")
                 } else {
                     Capsule()
                         .fill(isActive ? Color.primary : Color.secondary.opacity(0.3))
@@ -510,7 +510,7 @@ struct CardCustomizerView: View {
             VStack(spacing: 6) {
                 Text("Add a New Card")
                     .font(.title3.bold())
-                Text("Create and customize a new card. Each card gets its own spending limits and transactions.")
+                Text("Create and customize a new card. Make a card for every purpose, like Daily or a trip. Each card has its own budget and expenses.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -645,7 +645,7 @@ struct CardCustomizerView: View {
                 .font(.title.bold())
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
-            Text("\(count) TRANSACTIONS")
+            Text("\(count) EXPENSES")
                 .font(.caption.monospaced())
         }
         .padding(16)

@@ -80,7 +80,7 @@ struct MacExpenseForm: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { requestClose() }
                     .keyboardShortcut(.cancelAction)
-                Button(model.draft.editing ? "Save Changes" : "Record") { save() }
+                Button(model.draft.editing ? "Save Changes" : "Add") { save() }
                     .buttonStyle(.glassProminent).tint(.red)
                     .keyboardShortcut(.return, modifiers: .command)
                     .accessibilityIdentifier("recordExpense")
@@ -95,7 +95,7 @@ struct MacExpenseForm: View {
             Button("Keep Draft and Close") { model.persistDraft(); close(false) }
             Button("Discard Draft", role: .destructive) { if model.discardDraft() { close(false) } }
             Button("Continue Editing", role: .cancel) {}
-        } message: { Text("Your entered details can be kept for the next time you record an expense.") }
+        } message: { Text("Your entered details can be kept for the next time you add an expense.") }
     }
 
     private func label(_ text: String) -> some View {
@@ -128,7 +128,7 @@ struct MacExpenseForm: View {
         if !model.draft.isSplit, model.draft.categoryID == nil { message = "Choose a category."; return }
         guard model.saveDraft() else { message = model.error; model.error = nil; return }
         saved = true
-        message = "Expense recorded"
+        message = "Expense added"
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(650))
             close(true)

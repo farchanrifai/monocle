@@ -40,7 +40,7 @@ import XCTest
 
         app.typeKey("k", modifierFlags: .command)
         XCTAssertTrue(app.textFields["commandBar"].waitForExistence(timeout: 2))
-        app.typeText("Quick Record")
+        app.typeText("Quick Add")
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: [])
         let quickRecord = app.dialogs["monocle"]
         XCTAssertTrue(quickRecord.waitForExistence(timeout: 2))

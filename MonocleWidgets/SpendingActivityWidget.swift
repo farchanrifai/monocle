@@ -169,7 +169,7 @@ private struct LockScreenLiveActivityView: View {
                             .lineLimit(1)
                     }
                 } else {
-                    Text("Recording to \(context.attributes.bookName)")
+                    Text("Adding to \(context.attributes.bookName)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

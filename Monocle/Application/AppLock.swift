@@ -77,7 +77,7 @@ final class AppLockController {
         guard !isAuthenticating else { return .failure(.failed) }
         isAuthenticating = true
         let revision = configurationRevision
-        let result = await authenticator.authenticate(reason: "Unlock your spending records.")
+        let result = await authenticator.authenticate(reason: "Unlock your expenses.")
         isAuthenticating = false
         guard revision == configurationRevision else { return .failure(.failed) }
         if case .success = result { needsAuthentication = false }
@@ -88,7 +88,7 @@ final class AppLockController {
         guard !isAuthenticating else { return .failure(.failed) }
         isAuthenticating = true
         let revision = configurationRevision
-        let result = await authenticator.authenticate(reason: "Confirm app lock for your spending records.")
+        let result = await authenticator.authenticate(reason: "Confirm app lock for your expenses.")
         isAuthenticating = false
         guard revision == configurationRevision else { return .failure(.failed) }
         if case .success = result {
