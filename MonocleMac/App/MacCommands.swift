@@ -44,7 +44,7 @@ enum MacInspectorSelection: Hashable {
 }
 
 enum MacCommandID: String, CaseIterable, Identifiable {
-    case commandBar, newExpense, quickRecord, focusSearch, toggleSidebar, toggleInspector
+    case commandBar, newExpense, quickRecord, quickChat, focusSearch, toggleSidebar, toggleInspector
     case overview, activity, budgets, bills, analytics, cards, chat
     case importCSV, exportCSV, exportBackup, restoreBackup, settings, lock
 
@@ -85,7 +85,8 @@ extension KeyChord {
         .cards: .init("6", modifiers: .command),
         .chat: .init("7", modifiers: .command),
         .toggleInspector: .init("i", modifiers: [.option, .command]),
-        .quickRecord: .init("m", modifiers: [.control, .option, .command])
+        .quickRecord: .init("m", modifiers: [.control, .option, .command]),
+        .quickChat: .init("c", modifiers: [.control, .option, .command])
     ]
 
     var displayName: String {
@@ -160,8 +161,11 @@ final class MacAppState {
 
     /// SwiftUI's own action, captured from the main window: the old showSettingsWindow: selector does nothing on macOS 26+.
     @ObservationIgnored var openSettings: OpenSettingsAction?
-    @ObservationIgnored private let hotKey = GlobalHotKeyController()
+    @ObservationIgnored var openWindow: OpenWindowAction?
+    @ObservationIgnored private let hotKey = GlobalHotKeyController(id: 1)
+    @ObservationIgnored private let chatHotKey = GlobalHotKeyController(id: 2)
     @ObservationIgnored private lazy var quickPanel = QuickRecordPanelController(state: self)
+    @ObservationIgnored private lazy var chatPanel = QuickChatPanelController(state: self)
 
     /// Observation notifies on every set, even same value, which re-renders the whole window; only write on change.
     /// Selecting never reopens a hidden inspector; `reveal` is for controls whose only job is to inspect.
@@ -268,6 +272,7 @@ final class MacAppState {
         result += [
             .init(id: MacCommandID.newExpense.rawValue, title: "New Expense", symbol: "plus.circle", commandID: .newExpense, destination: nil),
             .init(id: MacCommandID.quickRecord.rawValue, title: "Quick Record", symbol: "bolt.circle", commandID: .quickRecord, destination: nil),
+            .init(id: MacCommandID.quickChat.rawValue, title: "Quick Chat", symbol: "bubble.left.and.text.bubble.right", commandID: .quickChat, destination: nil),
             .init(id: MacCommandID.focusSearch.rawValue, title: "Focus Search", symbol: "magnifyingglass", commandID: .focusSearch, destination: nil),
             .init(id: MacCommandID.toggleSidebar.rawValue, title: "Toggle Sidebar", symbol: "sidebar.left", commandID: .toggleSidebar, destination: nil),
             .init(id: MacCommandID.toggleInspector.rawValue, title: "Toggle Inspector", symbol: "sidebar.right", commandID: .toggleInspector, destination: nil),
@@ -289,10 +294,10 @@ final class MacAppState {
         try validate(chord, for: id)
         let old = shortcut(for: id)
         model.workspacePreferences.macShortcutBindings[id.rawValue] = chord
-        if id == .quickRecord {
-            do { try hotKey.register(chord) { [weak self] in self?.showQuickRecord() } }
+        if let (controller, action) = globalHotKey(for: id) {
+            do { try controller.register(chord, action: action) }
             catch {
-                if let old { try? hotKey.register(old) { [weak self] in self?.showQuickRecord() } }
+                if let old { try? controller.register(old, action: action) }
                 model.workspacePreferences.macShortcutBindings[id.rawValue] = old == KeyChord.defaults[id] ? nil : old
                 throw error
             }
@@ -343,6 +348,7 @@ final class MacAppState {
         case .newExpense:
             model.openEntry(); model.showEntry = false; showEntryPanel()
         case .quickRecord: showQuickRecord()
+        case .quickChat: showQuickChat()
         case .focusSearch: searchFocusToken = UUID()
         case .toggleSidebar: NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
         case .toggleInspector: inspectorVisible.toggle()
@@ -393,10 +399,40 @@ final class MacAppState {
     /// In-app entry is a sheet; the global hotkey uses the floating panel. Both show `MacExpenseForm`.
     func showEntryPanel() { regularEntryVisible = true }
 
+    /// The floating chat: same ChatSession as the Chat page, so the conversation shows in both.
+    func showQuickChat() { chatPanel.show() }
+
+    /// From the Quick Chat panel: close it and continue the same conversation in the main window.
+    func openChatInApp() {
+        chatPanel.close()
+        destination = .chat
+        bringMainWindowForward()
+    }
+
+    /// Activates Monocle and fronts the main window, reopening it if it was closed.
+    func bringMainWindowForward() {
+        NSApp.activate()
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") == true }) {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openWindow?(id: "main")
+        }
+    }
+
+    private func globalHotKey(for id: MacCommandID) -> (GlobalHotKeyController, () -> Void)? {
+        switch id {
+        case .quickRecord: (hotKey, { [weak self] in self?.showQuickRecord() })
+        case .quickChat: (chatHotKey, { [weak self] in self?.showQuickChat() })
+        default: nil
+        }
+    }
+
     private func registerGlobalShortcut() {
-        guard let chord = shortcut(for: .quickRecord) else { return }
-        do { try hotKey.register(chord) { [weak self] in self?.showQuickRecord() } }
-        catch { shortcutError = error.localizedDescription }
+        for id in [MacCommandID.quickRecord, .quickChat] {
+            guard let chord = shortcut(for: id), let (controller, action) = globalHotKey(for: id) else { continue }
+            do { try controller.register(chord, action: action) }
+            catch { shortcutError = error.localizedDescription }
+        }
     }
 
     static func encode(_ value: MacDestination) -> String {
@@ -426,6 +462,7 @@ struct MonocleMacCommands: Commands {
         CommandGroup(replacing: .newItem) {
             commandButton("New Expense", .newExpense)
             commandButton("Quick Record", .quickRecord)
+            commandButton("Quick Chat", .quickChat)
         }
         CommandMenu("Navigate") {
             commandButton("Overview", .overview)

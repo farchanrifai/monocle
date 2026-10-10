@@ -2,8 +2,11 @@ import AppKit
 import SwiftUI
 
 /// Chat as a sidebar destination: the shared transcript in a readable column, input pinned to the bottom.
+/// `compact` is the Quick Chat panel: same session and transcript, a slimmer header with "Open in Monocle".
 struct MacChatView: View {
     @Bindable var state: MacAppState
+    var compact = false
+    var close: (() -> Void)? = nil
     @AppStorage("chatEnabled") private var chatEnabled = false
     @AppStorage("chatBackend") private var backend = "claude"
     @State private var savedKey = Self.keyAvailable
@@ -23,7 +26,7 @@ struct MacChatView: View {
                 ScrollView {
                     ChatTranscript(model: model, session: session, send: send)
                         .frame(maxWidth: 720)
-                        .padding(.horizontal, 24).padding(.vertical, 16)
+                        .padding(.horizontal, gutter).padding(.vertical, compact ? 8 : 16)
                         .frame(maxWidth: .infinity)
                 }
                 .defaultScrollAnchor(.bottom)
@@ -31,7 +34,7 @@ struct MacChatView: View {
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     inputBar.overlay(alignment: .top) {
                         ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
-                            .frame(maxWidth: 720).padding(.horizontal, 24).frame(maxWidth: .infinity)
+                            .frame(maxWidth: 720).padding(.horizontal, gutter).frame(maxWidth: .infinity)
                             .alignmentGuide(.top) { $0[.bottom] + 4 }
                     }
                 }
@@ -49,6 +52,7 @@ struct MacChatView: View {
             }
         }
         .navigationTitle("Chat")
+        .onExitCommand { close?() } // Esc hides the Quick Chat panel
         .onAppear {
             if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) }
             inputFocused = true
@@ -66,18 +70,33 @@ struct MacChatView: View {
         return APIKeyStore.read() != nil
     }
 
+    private var gutter: CGFloat { compact ? 16 : 24 }
+
+    private var clearButton: some View {
+        Button("Clear Chat", systemImage: "trash") { session.clear(); session.scope = ChatScopeMenuItems.homeScope(model) }
+            .disabled(session.rows.isEmpty || session.isTyping)
+    }
+
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Chat").font(.largeTitle.bold())
+            if !compact { Text("Chat").font(.largeTitle.bold()) }
             Menu { ChatScopeMenuItems(model: model, session: session) } label: { Text(ChatScopeMenuItems.label(scope)) }
                 .menuStyle(.borderlessButton).fixedSize()
                 .accessibilityLabel("Scope: \(ChatScopeMenuItems.label(scope))")
                 .accessibilityIdentifier("chatScopeMenu")
             Spacer()
-            Button("Clear Chat", systemImage: "trash") { session.clear(); session.scope = ChatScopeMenuItems.homeScope(model) }
-                .disabled(session.rows.isEmpty || session.isTyping)
+            if compact {
+                Button("Open in Monocle", systemImage: "macwindow") { state.openChatInApp() }
+                    .help("Continue this conversation in the main window")
+                    .accessibilityIdentifier("quickChatOpenApp")
+            }
+            if compact {
+                clearButton.labelStyle(.iconOnly).help("Clear Chat")
+            } else {
+                clearButton
+            }
         }
-        .padding(.horizontal, 24).padding(.top, 24).padding(.bottom, 8)
+        .padding(.horizontal, gutter).padding(.top, compact ? 4 : 24).padding(.bottom, 8)
     }
 
     private var inputBar: some View {
@@ -105,7 +124,7 @@ struct MacChatView: View {
             .accessibilityIdentifier("chatSend")
         }
         .frame(maxWidth: 720)
-        .padding(.horizontal, 24).padding(.vertical, 12)
+        .padding(.horizontal, gutter).padding(.vertical, 12)
         .frame(maxWidth: .infinity)
         .background(.bar)
     }
@@ -120,5 +139,58 @@ struct MacChatView: View {
                 AccessibilityNotification.Announcement(reply).post()
             }
         }
+    }
+}
+
+/// The global Quick Chat window: a floating, non-activating panel like Quick Record, showing the same
+/// ChatSession as the Chat page, so a conversation started here continues in the main window.
+@MainActor
+final class QuickChatPanelController {
+    private unowned let state: MacAppState
+    private var panel: NSPanel?
+    private static let autosaveName = "QuickChatPanel"
+
+    init(state: MacAppState) { self.state = state }
+
+    /// The shortcut toggles: pressed again while the panel is in front, it hides.
+    func show() {
+        if let panel, panel.isVisible, panel.isKeyWindow { close(); return }
+        let panel = panel ?? makePanel()
+        if let scheme = state.model.preferredColorScheme {
+            panel.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        } else {
+            panel.appearance = nil
+        }
+        if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(panel.frame) }) {
+            QuickRecordPanelController.centerOnScreen(panel)
+        }
+        panel.orderFrontRegardless()
+        panel.makeKey()
+    }
+
+    func close() { panel?.orderOut(nil) }
+
+    private func makePanel() -> NSPanel {
+        let value = QuickRecordPanelController.makePanel()
+        value.styleMask.insert(.resizable)
+        value.minSize = NSSize(width: 420, height: 420)
+        let controller = NSHostingController(rootView:
+            MacChatView(state: state, compact: true, close: { [weak self] in self?.close() })
+                .preferredColorScheme(state.model.preferredColorScheme)
+                .overlay(alignment: .top) { // "monocle" centred in the transparent title bar, as on Quick Record
+                    GeometryReader { proxy in
+                        Text("monocle").font(.headline).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity).frame(height: proxy.safeAreaInsets.top)
+                            .offset(y: -proxy.safeAreaInsets.top)
+                    }.accessibilityHidden(true)
+                }
+        )
+        controller.sizingOptions = [] // the panel's own (remembered) size wins; the chat fills it
+        value.contentViewController = controller
+        value.setContentSize(NSSize(width: 560, height: 640))
+        if !value.setFrameUsingName(Self.autosaveName) { QuickRecordPanelController.centerOnScreen(value) }
+        value.setFrameAutosaveName(Self.autosaveName)
+        panel = value
+        return value
     }
 }

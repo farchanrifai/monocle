@@ -11,11 +11,16 @@ enum GlobalHotKeyError: LocalizedError {
     }
 }
 
+/// One global hotkey. Each instance has its own `id`; every instance's handler sees every hotkey press,
+/// so a press for another instance is passed on (eventNotHandledErr) instead of consumed.
 @MainActor
 final class GlobalHotKeyController {
+    nonisolated let id: UInt32
     private var hotKey: EventHotKeyRef?
     private var handler: EventHandlerRef?
     private var action: (() -> Void)?
+
+    init(id: UInt32) { self.id = id }
 
     func register(_ chord: KeyChord, action: @escaping () -> Void) throws {
         guard let keyCode = Self.keyCodes[chord.key] else { throw GlobalHotKeyError.unsupported }
@@ -24,16 +29,20 @@ final class GlobalHotKeyController {
         if handler == nil {
             var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
             let pointer = Unmanaged.passUnretained(self).toOpaque()
-            let status = InstallEventHandler(GetApplicationEventTarget(), { _, _, data in
+            let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, data in
                 guard let data else { return noErr }
                 let owner = Unmanaged<GlobalHotKeyController>.fromOpaque(data).takeUnretainedValue()
+                var pressed = EventHotKeyID()
+                GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                                  nil, MemoryLayout<EventHotKeyID>.size, nil, &pressed)
+                guard pressed.id == owner.id else { return OSStatus(eventNotHandledErr) }
                 Task { @MainActor in owner.action?() }
                 return noErr
             }, 1, &spec, pointer, &handler)
             guard status == noErr else { throw GlobalHotKeyError.unavailable }
         }
         var ref: EventHotKeyRef?
-        let status = RegisterEventHotKey(keyCode, Self.carbonModifiers(chord.modifiers), EventHotKeyID(signature: 0x4D4F4E4F, id: 1), GetApplicationEventTarget(), 0, &ref)
+        let status = RegisterEventHotKey(keyCode, Self.carbonModifiers(chord.modifiers), EventHotKeyID(signature: 0x4D4F4E4F, id: id), GetApplicationEventTarget(), 0, &ref)
         guard status == noErr, let ref else {
             if let oldHotKey { self.hotKey = oldHotKey }
             throw GlobalHotKeyError.unavailable

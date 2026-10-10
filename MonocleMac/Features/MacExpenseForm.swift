@@ -311,7 +311,7 @@ final class QuickRecordPanelController {
     private static let autosaveName = "QuickRecordPanel"
 
     /// Exact middle of the screen with the pointer (NSWindow.center() sits higher, by design).
-    private static func centerOnScreen(_ window: NSWindow) {
+    static func centerOnScreen(_ window: NSWindow) {
         let mouse = NSEvent.mouseLocation
         guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main else { return }
         let area = screen.visibleFrame, size = window.frame.size

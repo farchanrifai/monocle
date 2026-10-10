@@ -5,7 +5,7 @@ struct MonocleMacApp: App {
     @State private var state = MacAppState(model: .shared)
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             MacRootView(state: state)
                 .preferredColorScheme(state.model.preferredColorScheme)
                 .modifier(SettingsOpener(state: state))
@@ -22,5 +22,6 @@ struct MonocleMacApp: App {
 private struct SettingsOpener: ViewModifier {
     let state: MacAppState
     @Environment(\.openSettings) private var openSettings
-    func body(content: Content) -> some View { content.onAppear { state.openSettings = openSettings } }
+    @Environment(\.openWindow) private var openWindow
+    func body(content: Content) -> some View { content.onAppear { state.openSettings = openSettings; state.openWindow = openWindow } }
 }

@@ -80,7 +80,8 @@ struct MacRootView: View {
         } message: { Text(model.error ?? state.shortcutError ?? "") }
         .onChange(of: state.searchFocusToken) { _, _ in searchExpanded = true } // an open field refocuses on the token itself
         .onChange(of: model.showEntry) { _, shouldShow in
-            if shouldShow { model.showEntry = false; state.showEntryPanel() }
+            // Also from a Quick Chat card's Edit: the sheet lives on the main window, so bring it forward.
+            if shouldShow { model.showEntry = false; state.showEntryPanel(); state.bringMainWindowForward() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .inactive || phase == .background { model.appLock.suspend() }

@@ -1,5 +1,7 @@
 ## 1. Immediate Next Step
 
+Working mode (user, 2026-10-10): build and test in the demo workspace (`open --env MONOCLE_DEMO=1 …/Debug/Monocle.app`, folder monocle-demo, seeded by DemoWorkspace). Don't merge to main until the user says it's ready. Latest: Quick Chat panel (⌃⌥⌘C global shortcut, same ChatSession as the Chat page, "Open in Monocle" continues there); charts per analytics answer; @ card picker. Awaiting user test feedback.
+
 User verdict 2026-10-10 after trying both in the Mac app: Claude Haiku answers are much better than on-device. Open decision: keep Apple Intelligence as a no-key/offline option or remove it; merge the branch; proxy only once chat is shared beyond the user.
 
 Apple Intelligence chat works as a second backend and now scores 10/10 on the golden prompts on-device (uncommitted). PCC is not an option (user has no access); stay on the local model. Next: try it in the running app (Mac chat, Model = Apple Intelligence) and on iPhone (needs an IPA); add harder prompts (multi-turn follow-ups, English/Indonesian mix, "10 juta", "add 0", list_bills, get_summary chart) to the probe. Do not remove the Claude path.

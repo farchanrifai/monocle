@@ -61,7 +61,7 @@ struct MacSettingsView: View {
                     Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
                 }
                 .pickerStyle(.radioGroup)
-                SettingsNote("Quick Record (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) opens from anywhere while Monocle is running.")
+                SettingsNote("Quick Record (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
             }
         case .appearance:
             Form {
@@ -201,7 +201,7 @@ private struct ShortcutSettings: View {
 
     // Spacing between groups instead of one long wall of rows.
     private static let groups: [[MacCommandID]] = [
-        [.commandBar, .newExpense, .quickRecord, .focusSearch, .toggleSidebar, .toggleInspector],
+        [.commandBar, .newExpense, .quickRecord, .quickChat, .focusSearch, .toggleSidebar, .toggleInspector],
         [.overview, .activity, .budgets, .bills, .analytics, .cards, .chat],
         [.importCSV, .exportCSV, .exportBackup, .restoreBackup, .settings, .lock]
     ]
