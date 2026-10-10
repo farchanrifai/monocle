@@ -1,5 +1,11 @@
 # Model B implementation plan
 
+**Status (2026-10-11): all phases implemented on `feat/model-b`.** Differences from the plan below:
+- Budget kind is `BudgetVersion.totalUntilDay` (nil = monthly) instead of separate `kind` + `endDay`.
+- Phase 5: card totals use a display-only projection into the card's currency (`AppModel.cardAmount`); analytics and widgets stay in the reporting currency (a card budget in another currency is converted at today's cached rate there). Chat amounts stay in the reporting currency.
+- Phase 6: `BudgetPeriod` keeps its name (it pairs a budget with its `Cycle`); Swift file names follow the new type names; stored JSON keys and Core Data names are unchanged (guarded by `GoldenFormatTests`).
+- Deleting a Paid with label that expenses use is blocked, like categories. The Add Expense form has no ⋯ menu; the toggles are in Settings.
+
 Branch `feat/model-b` (from `feat/apple-intelligence-chat` at `23e8586`). Decisions: Monocle Data Model page, https://claude.ai/artifact/8vedGpoUBw6J97NBgRZqPg (decided 11 Oct 2026).
 
 ## What Model B is

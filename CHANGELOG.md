@@ -2,6 +2,17 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.8.0] - 2026-10-11
+### Cards are purposes (model B)
+Back up before updating (Settings → Backup & restore): this version upgrades your data and older versions can't open it afterwards.
+- Wording: Expense and Add everywhere; no balance wording.
+- Stacks: each card is in one stack ("Not in a Stack" otherwise); a stack's budget is the sum of its cards or an optional monthly cap.
+- Budgets: Monthly, or Total until a date for trips and goals.
+- Paid with: optional labels (BCA debit, Cash…) with a card default; By Paid with in Analytics; in CSV and chat. Never a balance.
+- Add Expense form: hide Date, Note, Split, Paid with or Currency in Settings.
+- Currency: reporting currency for the workspace, budget and spending currency per card, rates fetched from the European Central Bank (Frankfurter) with manual override, each expense keeps what you paid.
+- Backups use format 8; formats 1–7 still import.
+
 ## [0.7.21] - 2026-10-05
 ### Backend Reliability and Data Recovery
 - Preserve historical budget categories, bill deletion/undo links, and each card's saved draft.

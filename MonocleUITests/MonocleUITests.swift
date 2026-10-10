@@ -642,7 +642,7 @@ final class MonocleUITests: XCTestCase {
         card.tap()
 
         // 2. Verify card detail sheet is open
-        XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Latest Expenses"].waitForExistence(timeout: 5))
 
         // 3. Tap options menu -> "Customize card" while card detail is open
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
@@ -1311,14 +1311,14 @@ final class MonocleUITests: XCTestCase {
 
         // 1. Open card
         firstCard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
-        XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Latest Expenses"].waitForExistence(timeout: 5))
         sleep(1)
 
         // 2. Test short slow pull (28pt) -> cancel dismissal
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
         start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 28)),
                     withVelocity: .slow, thenHoldForDuration: 0.3)
-        XCTAssertTrue(app.staticTexts["Latest Transactions"].exists, "A short slow pull under threshold must cancel dismissal")
+        XCTAssertTrue(app.staticTexts["Latest Expenses"].exists, "A short slow pull under threshold must cancel dismissal")
 
         // 3. Test committed pull -> commit dismissal and return to slot
         start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.48)))
@@ -1412,7 +1412,7 @@ final class MonocleUITests: XCTestCase {
 
         // 3. Detail header & title
         XCTAssertTrue(app.buttons["homeLogo"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Latest Transactions"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Latest Expenses"].waitForExistence(timeout: 5))
 
         // 4. Header buttons next to title must be removed
         XCTAssertFalse(app.buttons["addExpenseButton"].exists, "Add button next to list title must be removed")
@@ -1614,6 +1614,8 @@ final class MonocleUITests: XCTestCase {
 
         // 2. Tap "Shortcut prompt order" in Settings
         let shortcutLink = app.buttons["shortcutOrderSettings"]
+        // Settings is longer now (Paid with, Currency, Add Expense form); the row may start off screen.
+        for _ in 0..<3 where !shortcutLink.exists { app.swipeUp() }
         XCTAssertTrue(shortcutLink.waitForExistence(timeout: 5))
         shortcutLink.tap()
 
