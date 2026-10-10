@@ -322,18 +322,34 @@ final class BackendBackupTests: XCTestCase {
         XCTAssertThrowsError(try halfForeign.encoded())
     }
 
-    func testEditingKeepsPaidWithAndDropsForeignAmountWhenAmountChanges() throws {
-        let method = UUID(), category = ExpenseCategory.defaults[0].id
-        let expense = Expense(amount: 10_000, day: "2026-10-01", note: "Ramen", allocations: [.init(categoryID: category, amount: 10_000)],
+    func testEditingKeepsPaidWithAndCurrencyAndReconvertsANewAmount() throws {
+        let method = UUID(), food = ExpenseCategory.defaults[0].id, transport = ExpenseCategory.defaults[1].id
+        // ¥100 at Rp107.5 = Rp10,750.
+        let expense = Expense(amount: 1_075_000, day: "2026-10-01", note: "Ramen", allocations: [.init(categoryID: food, amount: 1_075_000)],
                               createdAt: date, bookID: BookProfile.sample.id, paidWithID: method,
-                              originalAmount: 9_300, originalCurrency: "JPY", rate: "107.5", rateSource: .manual)
+                              originalAmount: 10_000, originalCurrency: "JPY", rate: "107.5", rateSource: .manual)
         var draft = ExpenseDraft(expense: expense)
-        XCTAssertEqual(try draft.expense(), expense)
+        XCTAssertEqual(draft.currency, "JPY")
+        XCTAssertEqual(draft.amount, "100")
+        XCTAssertEqual(try draft.expense(reporting: "IDR"), expense)
         draft.amount = "200"
-        let changed = try draft.expense()
+        let changed = try draft.expense(reporting: "IDR")
         XCTAssertEqual(changed.paidWithID, method)
-        XCTAssertNil(changed.originalCurrency)
-        XCTAssertNil(changed.rate)
+        XCTAssertEqual(changed.originalAmount, 20_000)
+        XCTAssertEqual(changed.amount, 2_150_000)
+
+        // A foreign split converts each part and still adds up exactly; editing brings the parts back in yen.
+        var split = ExpenseDraft()
+        split.currency = "JPY"; split.rate = "113.59"; split.rateSource = .fetched; split.amount = "1000"
+        split.splitAllocations = [.init(categoryID: food, amount: "333"), .init(categoryID: transport, amount: "667")]
+        let saved = try split.expense(reporting: "IDR")
+        XCTAssertEqual(saved.amount, 11_359_000)
+        XCTAssertEqual(Money.sum(saved.allocations.map(\.amount)), saved.amount)
+        XCTAssertEqual(ExpenseDraft(expense: saved).splitAllocations.map(\.amount), ["333", "667"])
+
+        // Without a rate a foreign draft refuses to save.
+        split.rate = ""
+        XCTAssertThrowsError(try split.expense(reporting: "IDR"))
     }
 
     private func image(width: Int, height: Int) -> Data {

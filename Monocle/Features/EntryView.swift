@@ -18,6 +18,8 @@ struct EntryView: View {
     private var showsDate: Bool { model.isEntryFieldShown(.date) || model.draft.civilDay != Day.string(.now) }
     private var showsNote: Bool { model.isEntryFieldShown(.note) || !model.draft.note.isEmpty }
     private var showsSplit: Bool { model.isEntryFieldShown(.split) || model.draft.isSplit }
+    private var showsCurrency: Bool { model.isEntryFieldShown(.currency) || model.draft.isForeign(reporting: model.reportingCurrency) }
+    private var draftCurrency: String { model.draft.currency ?? model.reportingCurrency }
     private var showsPaidWith: Bool {
         (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil
     }
@@ -46,6 +48,7 @@ struct EntryView: View {
                                         .font(.subheadline.weight(.semibold))
                                  }.tint(MC.red).accessibilityIdentifier("editSplits") }
                             }
+                            if showsCurrency { currencySection }
                             if showsPaidWith { paidWithMenu }
                             if showsNote {
                                 HStack(spacing: 10) {
@@ -126,6 +129,7 @@ struct EntryView: View {
                 model.prefillDraftDefaults()
                 if model.draft.mode == .text { focusedField = .text }
             }
+            .task(id: "\(model.draft.currency ?? "")|\(model.draft.civilDay)") { await model.refreshDraftRate() }
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
             .interactiveDismissDisabled(model.draftNeedsConfirmation)
     }
@@ -144,7 +148,7 @@ struct EntryView: View {
     private var amountDisplay: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Eyebrow(text: "Amount / IDR")
+                Eyebrow(text: "Amount / \(draftCurrency)")
                 Spacer()
                 if showsDate {
                     Button { focusedField = nil; showDate = true } label: {
@@ -160,6 +164,54 @@ struct EntryView: View {
                 .accessibilityLabel("Amount \(Money.format(amount))").accessibilityIdentifier("amountDisplay")
             Rectangle().fill(MC.line).frame(height: 1)
         }
+    }
+    /// Currency the amount is typed in, with the rate to the reporting currency (fetched, or typed to override).
+    private var currencySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Menu {
+                Picker("Currency", selection: Binding(get: { draftCurrency }, set: { code in
+                    model.draft.currency = code == model.reportingCurrency ? nil : code
+                    model.draft.rate = ""; model.draft.rateSource = nil
+                })) {
+                    ForEach(currencyChoices, id: \.self) { Text($0).tag($0) }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "dollarsign.arrow.circlepath").foregroundStyle(.secondary)
+                    Text("Currency").foregroundStyle(.secondary)
+                    Spacer()
+                    Text(draftCurrency).foregroundStyle(.primary)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.secondary)
+                }.font(.subheadline).frame(minHeight: 44)
+            }.accessibilityIdentifier("currencyMenu")
+            if model.draft.isForeign(reporting: model.reportingCurrency) {
+                HStack(spacing: 8) {
+                    Text("1 \(draftCurrency) =").foregroundStyle(.secondary)
+                    TextField("Rate", text: Binding(get: { model.draft.rate }, set: { model.draft.rate = $0; model.draft.rateSource = .manual }))
+                        .keyboardType(.decimalPad).frame(maxWidth: 120).accessibilityIdentifier("rateField")
+                    Text(model.reportingCurrency).foregroundStyle(.secondary)
+                    Spacer()
+                    if model.draft.rateSource == .manual {
+                        Button("Use fetched") {
+                            model.draft.rateSource = nil
+                            Task { await model.refreshDraftRate() }
+                        }.font(.caption)
+                    }
+                }.font(.subheadline)
+                if let expense = try? model.draft.expense(reporting: model.reportingCurrency) {
+                    Text("≈ \(Money.format(expense.amount, code: model.reportingCurrency))").font(.caption).foregroundStyle(.secondary)
+                } else if let rateError = model.rateError {
+                    Text(rateError).font(.caption).foregroundStyle(MC.red)
+                }
+            }
+        }
+    }
+    private var currencyChoices: [String] {
+        var codes = [model.reportingCurrency]
+        for card in model.books { codes += [card.currency, card.spendingCurrency].compactMap { $0 } }
+        codes += Money.commonCurrencies
+        var seen = Set<String>()
+        return codes.filter { seen.insert($0).inserted }
     }
     private var paidWithMenu: some View {
         Menu {
@@ -195,10 +247,13 @@ struct EntryView: View {
     }
     private func keypad(rowHeight: CGFloat) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 4) {
-            ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", "000", "0", "delete.left"], id: \.self) { key in
+            ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", Money.fractionDigits(draftCurrency) > 0 ? "." : "000", "0", "delete.left"], id: \.self) { key in
                 Button {
                     if key == "delete.left" {
                         if !model.draft.amount.isEmpty { model.draft.amount.removeLast() }
+                    } else if key == "." {
+                        let separator = Locale.current.decimalSeparator ?? "."
+                        if !model.draft.amount.contains(separator) { model.draft.amount += model.draft.amount.isEmpty ? "0" + separator : separator }
                     } else if model.draft.amount.count + key.count <= 13 {
                         if model.draft.amount == "0" { model.draft.amount = "" }
                         model.draft.amount += key

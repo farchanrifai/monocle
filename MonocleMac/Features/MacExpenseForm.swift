@@ -29,7 +29,7 @@ struct MacExpenseForm: View {
                 }
                 GridRow {
                     label("Amount")
-                    TextField("IDR amount", text: $model.draft.amount)
+                    TextField("\(model.draft.currency ?? model.reportingCurrency) amount", text: $model.draft.amount)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.title3, design: .monospaced))
                         .focused($focus, equals: .amount)
@@ -41,7 +41,11 @@ struct MacExpenseForm: View {
                                 selection: Binding(get: { model.draft.bookID ?? model.activeBookID }, set: { id in
                                     guard let id else { return }
                                     _ = model.selectBook(id); model.draft.bookID = id
-                                    if !model.draft.editing { model.draft.paidWithID = nil; model.prefillDraftDefaults() }
+                                    if !model.draft.editing {
+                                        model.draft.paidWithID = nil
+                                        if model.draft.amount.isEmpty { model.draft.currency = nil }
+                                        model.prefillDraftDefaults()
+                                    }
                                 }))
                 }
                 if !model.draft.isSplit {
@@ -53,6 +57,29 @@ struct MacExpenseForm: View {
                     }
                 }
                 // A hidden field still shows when the expense already has a value for it.
+                if model.isEntryFieldShown(.currency) || model.draft.isForeign(reporting: model.reportingCurrency) {
+                    GridRow {
+                        label("Currency")
+                        HStack {
+                            Picker("Currency", selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
+                                model.draft.currency = code == model.reportingCurrency ? nil : code
+                                model.draft.rate = ""; model.draft.rateSource = nil
+                            })) { ForEach(currencyChoices, id: \.self) { Text($0).tag($0) } }
+                                .labelsHidden().fixedSize()
+                            if model.draft.isForeign(reporting: model.reportingCurrency) {
+                                Text("1 \(model.draft.currency ?? "") =").foregroundStyle(.secondary)
+                                TextField("Rate", text: Binding(get: { model.draft.rate }, set: { model.draft.rate = $0; model.draft.rateSource = .manual }))
+                                    .textFieldStyle(.roundedBorder).frame(width: 110)
+                                Text(model.reportingCurrency).foregroundStyle(.secondary)
+                                if let expense = try? model.draft.expense(reporting: model.reportingCurrency) {
+                                    Text("≈ \(Money.format(expense.amount, code: model.reportingCurrency))").foregroundStyle(.secondary)
+                                } else if let rateError = model.rateError {
+                                    Text(rateError).font(.caption).foregroundStyle(.red).lineLimit(2)
+                                }
+                            }
+                        }
+                    }
+                }
                 if (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil {
                     GridRow {
                         label("Paid with")
@@ -106,6 +133,7 @@ struct MacExpenseForm: View {
         .padding(24).padding(.top, topPadding - 24)
         .frame(width: 540)
         .defaultFocus($focus, .text)
+        .task(id: "\(model.draft.currency ?? "")|\(model.draft.civilDay)") { await model.refreshDraftRate() }
         .onAppear {
             model.prefillDraftDefaults()
             DispatchQueue.main.async { focus = .text } // the top field, every time
@@ -115,6 +143,12 @@ struct MacExpenseForm: View {
             Button("Discard Draft", role: .destructive) { if model.discardDraft() { close(false) } }
             Button("Continue Editing", role: .cancel) {}
         } message: { Text("Your entered details can be kept for the next time you add an expense.") }
+    }
+
+    private var currencyChoices: [String] {
+        var seen = Set<String>()
+        let cards = model.books.flatMap { [$0.currency, $0.spendingCurrency].compactMap { $0 } }
+        return ([model.reportingCurrency] + cards + Money.commonCurrencies).filter { seen.insert($0).inserted }
     }
 
     private func label(_ text: String) -> some View {

@@ -18,6 +18,9 @@ struct CSVColumnMapping: Equatable, Sendable {
     var categoryIndex: Int?
     var splitsIndex: Int?
     var paidWithIndex: Int? = nil
+    var currencyIndex: Int? = nil
+    var originalAmountIndex: Int? = nil
+    var rateIndex: Int? = nil
 
     init(dateIndex: Int? = nil, amountIndex: Int? = nil, noteIndex: Int? = nil, categoryIndex: Int? = nil, splitsIndex: Int? = nil) {
         self.dateIndex = dateIndex
@@ -195,7 +198,7 @@ enum CSVExportGenerator {
         books: [BookProfile] = [],
         paymentMethods: [PaymentMethod] = []
     ) -> String {
-        let headers = ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits", "Paid with"]
+        let headers = ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits", "Paid with", "Currency", "Original amount", "Rate"]
         let paidWithMap = Dictionary(uniqueKeysWithValues: paymentMethods.map { ($0.id, $0.name) })
         var lines: [String] = []
         lines.append(headers.map { CSVTokenizer.escape($0) }.joined(separator: ","))
@@ -234,7 +237,9 @@ enum CSVExportGenerator {
             let splitData = (try? JSONEncoder().encode(exactSplits)) ?? Data()
             let splits = String(data: splitData, encoding: .utf8) ?? ""
             let paidWith = expense.paidWithID.flatMap { paidWithMap[$0] } ?? ""
-            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr, splits, paidWith]
+            let original = expense.originalAmount.map(Money.exactDigits) ?? ""
+            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr, splits, paidWith,
+                       expense.originalCurrency ?? "", original, expense.rate ?? ""]
             lines.append(row.map { CSVTokenizer.escape($0) }.joined(separator: ","))
         }
 
@@ -265,6 +270,9 @@ enum CSVImportParser {
 
             if h == "splits" { mapping.splitsIndex = idx }
             if h == "paid with" || h == "dibayar dengan" { mapping.paidWithIndex = idx }
+            if h == "currency" || h == "mata uang" { mapping.currencyIndex = idx }
+            if h == "original amount" { mapping.originalAmountIndex = idx }
+            if h == "rate" || h == "kurs" { mapping.rateIndex = idx }
 
             // Date matches
             if mapping.dateIndex == nil {
@@ -531,7 +539,7 @@ enum CSVImportParser {
             let paidWithID = paidWithName.flatMap { name in
                 paymentMethods.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id
             }
-            let expense = Expense(
+            var expense = Expense(
                 id: UUID(),
                 amount: amountParsed,
                 day: dateParsed.day,
@@ -542,6 +550,15 @@ enum CSVImportParser {
                 bookID: targetBookID,
                 paidWithID: paidWithID
             )
+            // Amount stays the reporting amount; a foreign original comes along only when currency, amount and rate are all valid.
+            func cell(_ index: Int?) -> String? {
+                index.flatMap { rowValues.indices.contains($0) ? rowValues[$0].trimmingCharacters(in: .whitespacesAndNewlines) : nil }.flatMap { $0.isEmpty ? nil : $0 }
+            }
+            if let code = cell(mapping.currencyIndex)?.uppercased(), Money.isCurrencyCode(code), code != Money.reportingCurrency,
+               let original = cell(mapping.originalAmountIndex).flatMap({ try? Money.parseExact($0) }),
+               let rate = cell(mapping.rateIndex), let value = Decimal(string: rate, locale: Locale(identifier: "en_US_POSIX")), value > 0 {
+                expense.originalAmount = original; expense.originalCurrency = code; expense.rate = rate; expense.rateSource = .manual
+            }
 
             do { try expense.validate(categories: categories) }
             catch {

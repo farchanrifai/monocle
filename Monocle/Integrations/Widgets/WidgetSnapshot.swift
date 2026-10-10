@@ -11,6 +11,8 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public var cycleBudget: WidgetBudgetSummary?
     public var todaySpending: WidgetTodaySummary
     public var quickCategories: [WidgetCategoryItem]
+    /// The reporting currency's symbol; older snapshots have none and mean rupiah.
+    public var currencySymbol: String? = nil
 
     public init(
         updatedAt: Date = .now,

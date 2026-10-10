@@ -76,7 +76,7 @@ enum WidgetSnapshotUpdater {
             WidgetCategoryItem(id: cat.id, name: cat.name, symbol: cat.symbol)
         }
 
-        let snapshot = WidgetSnapshot(
+        var snapshot = WidgetSnapshot(
             updatedAt: .now,
             reportingDay: todayStr,
             revision: revision,
@@ -90,6 +90,7 @@ enum WidgetSnapshotUpdater {
             ),
             quickCategories: quickCategories
         )
+        snapshot.currencySymbol = Money.symbol(Money.reportingCurrency)
 
         do { try WidgetSnapshotStore.writeSnapshot(snapshot) }
         catch { BackendDiagnostics.widgetPublicationFailed() }

@@ -2,17 +2,17 @@ import AppKit
 import SwiftUI
 
 private enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, paidWith, appearance, shortcuts, security, chat, data
+    case general, paidWith, currency, appearance, shortcuts, security, chat, data
     var id: Self { self }
     var title: String {
         switch self {
-        case .general: "General"; case .paidWith: "Paid with"; case .appearance: "Appearance"; case .shortcuts: "Shortcuts"
+        case .general: "General"; case .paidWith: "Paid with"; case .currency: "Currency"; case .appearance: "Appearance"; case .shortcuts: "Shortcuts"
         case .security: "Security"; case .chat: "AI Chat"; case .data: "Data"
         }
     }
     var symbol: String {
         switch self {
-        case .general: "gearshape"; case .paidWith: "creditcard.and.123"; case .appearance: "circle.lefthalf.filled"; case .shortcuts: "keyboard"
+        case .general: "gearshape"; case .paidWith: "creditcard.and.123"; case .currency: "dollarsign.arrow.circlepath"; case .appearance: "circle.lefthalf.filled"; case .shortcuts: "keyboard"
         case .security: "lock"; case .chat: "bubble.left.and.text.bubble.right"; case .data: "externaldrive"
         }
     }
@@ -73,6 +73,8 @@ struct MacSettingsView: View {
             }
         case .paidWith:
             PaidWithSettingsPane(model: model)
+        case .currency:
+            CurrencySettingsPane(model: model)
         case .appearance:
             Form {
                 Picker("Appearance:", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
@@ -160,6 +162,48 @@ private struct PaidWithSettingsPane: View {
                 }.fixedSize()
             }
         }
+    }
+}
+
+/// Reporting currency for the workspace; budget and spending currency for the active card.
+private struct CurrencySettingsPane: View {
+    @Bindable var model: AppModel
+    @State private var pending: String?
+    @State private var working = false
+    @State private var error: String?
+    private var card: BookProfile? { model.books.first { $0.id == model.activeBookID } }
+    private var choices: [String] {
+        var seen = Set<String>()
+        return ([model.reportingCurrency] + Money.commonCurrencies).filter { seen.insert($0).inserted }
+    }
+
+    var body: some View {
+        Form {
+            Picker("Reporting currency:", selection: Binding(get: { model.reportingCurrency }, set: { pending = $0 })) {
+                ForEach(choices, id: \.self) { Text($0).tag($0) }
+            }.fixedSize().disabled(working)
+            SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first.")
+            if let card {
+                Picker("\(card.name) budget:", selection: Binding(get: { model.currency(of: card) }, set: { code in
+                    run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: card.id) }
+                })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.fixedSize().disabled(working)
+                Picker("\(card.name) spending:", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
+                    run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: card.id) }
+                })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.fixedSize().disabled(working)
+                SettingsNote("The budget currency is what the card's budget and totals use. New expenses start in the spending currency, and the card shows an ≈ amount in it.")
+            }
+            if working { ProgressView().controlSize(.small) }
+            if let error { SettingsNote(error).foregroundStyle(.red) }
+        }
+        .alert("Change reporting currency to \(pending ?? "")?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {
+            Button("Convert") { let code = pending; pending = nil; if let code { run { try await model.changeReportingCurrency(to: code) } } }
+            Button("Cancel", role: .cancel) { pending = nil }
+        } message: { Text("Every expense is converted at the rate of its own day. Budgets, bills and stack caps convert at today's rate. A safety backup is made first.") }
+    }
+
+    private func run(_ operation: @escaping () async throws -> Void) {
+        working = true; error = nil
+        Task { do { try await operation() } catch { self.error = error.localizedDescription }; working = false }
     }
 }
 

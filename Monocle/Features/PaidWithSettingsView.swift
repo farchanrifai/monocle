@@ -76,6 +76,69 @@ private struct PaymentMethodEditor: View {
     }
 }
 
+/// Workspace reporting currency, and the active card's budget and spending currencies.
+struct CurrencySettingsView: View {
+    @Bindable var model: AppModel
+    let bookID: UUID
+    @State private var pendingReporting: String?
+    @State private var working = false
+    @State private var error: String?
+
+    private var card: BookProfile? { model.books.first { $0.id == bookID } }
+    private var choices: [String] {
+        var seen = Set<String>()
+        return ([model.reportingCurrency] + Money.commonCurrencies).filter { seen.insert($0).inserted }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Reporting currency", selection: Binding(get: { model.reportingCurrency }, set: { pendingReporting = $0 })) {
+                    ForEach(choices, id: \.self) { Text($0).tag($0) }
+                }.disabled(working).accessibilityIdentifier("reportingCurrency")
+            } footer: {
+                Text("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day and makes a safety backup first.")
+            }
+            if let card {
+                Section {
+                    Picker("Budget currency", selection: Binding(get: { model.currency(of: card) }, set: { code in
+                        run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: bookID) }
+                    })) {
+                        ForEach(choices, id: \.self) { Text($0 == model.reportingCurrency ? "\($0) · reporting" : $0).tag($0) }
+                    }.accessibilityIdentifier("cardCurrency")
+                    Picker("Spending currency", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
+                        run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: bookID) }
+                    })) {
+                        ForEach(choices, id: \.self) { Text($0).tag($0) }
+                    }.accessibilityIdentifier("spendingCurrency")
+                } header: { Text(card.name) } footer: {
+                    Text("The card's budget and totals use the budget currency; changing it converts the budget at today's rate. New expenses start in the spending currency, and the card shows an ≈ amount in it, like a Japan trip budgeted in rupiah that you spend in yen.")
+                }
+            }
+            if working { Section { HStack { ProgressView(); Text("Converting…") } } }
+            if let error { Section { Text(error).foregroundStyle(MC.red) } }
+        }
+        .navigationTitle("Currency")
+        .alert("Change reporting currency to \(pendingReporting ?? "")?", isPresented: Binding(get: { pendingReporting != nil }, set: { if !$0 { pendingReporting = nil } })) {
+            Button("Convert") {
+                let code = pendingReporting; pendingReporting = nil
+                if let code { run { try await model.changeReportingCurrency(to: code) } }
+            }
+            Button("Cancel", role: .cancel) { pendingReporting = nil }
+        } message: {
+            Text("Every expense is converted at the rate of its own day. Budgets, bills and stack caps convert at today's rate. A safety backup is made first.")
+        }
+    }
+
+    private func run(_ operation: @escaping () async throws -> Void) {
+        working = true; error = nil
+        Task {
+            do { try await operation() } catch { self.error = error.localizedDescription }
+            working = false
+        }
+    }
+}
+
 /// Which optional fields the Add Expense form shows.
 struct EntryFormSettingsView: View {
     @Bindable var model: AppModel

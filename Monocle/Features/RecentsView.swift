@@ -103,7 +103,10 @@ struct ExpenseRow: View {
                 Text(expense.allocations.count > 1 ? "Split across \(expense.allocations.count) categories" : category?.name ?? "Expense").font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 5)
-            Text(Money.format(expense.amount)).font(.subheadline.monospacedDigit().weight(.medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.75)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(expense.paidText).font(.subheadline.monospacedDigit().weight(.medium)).foregroundStyle(.primary).lineLimit(1).minimumScaleFactor(0.75)
+                if let note = expense.reportingNote { Text(note).font(.caption2.monospacedDigit()).foregroundStyle(.secondary) }
+            }
         }.padding(.vertical, 9).contentShape(Rectangle())
             .accessibilityElement(children: .combine)
     }

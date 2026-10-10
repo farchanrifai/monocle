@@ -127,6 +127,16 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
+extension Expense {
+    /// What was paid, e.g. "¥12,000"; the reporting amount when paid in the reporting currency.
+    var paidText: String {
+        if let originalAmount, let originalCurrency { return Money.format(originalAmount, code: originalCurrency) }
+        return Money.format(amount)
+    }
+    /// "≈ Rp1,284,000" under a foreign amount; nil otherwise.
+    var reportingNote: String? { originalCurrency == nil ? nil : "≈ " + Money.format(amount) }
+}
+
 enum EntryError: LocalizedError {
     case invalidAmount, missingCategory, invalidDate, splitMismatch, duplicateSplitCategory, ambiguousAmount, corruptStore, aggregateOverflow
     var errorDescription: String? {
@@ -145,13 +155,49 @@ enum EntryError: LocalizedError {
 
 enum Money {
     static let maximum: Int64 = 9_000_000_000_000_000
+    /// The workspace reporting currency, kept in sync by AppModel.
+    /// ponytail: one global default for ~95 format/parse call sites; pass `code:` where a card or expense currency applies.
+    nonisolated(unsafe) static var reportingCurrency = "IDR"
+
+    /// Common choices first in pickers; any ISO code the rate source knows also works.
+    static let commonCurrencies = ["IDR", "USD", "SGD", "JPY", "EUR", "MYR", "THB", "AUD", "GBP", "KRW", "CNY", "HKD"]
+
+    /// Digits after the decimal point people type for this currency. Rupiah, yen and won are whole.
+    static func fractionDigits(_ code: String) -> Int {
+        if ["IDR", "JPY", "KRW", "VND", "CLP", "ISK", "HUF", "TWD"].contains(code) { return 0 }
+        let formatter = NumberFormatter(); formatter.numberStyle = .currency; formatter.currencyCode = code
+        return min(2, formatter.maximumFractionDigits)
+    }
+
+    static func symbol(_ code: String) -> String {
+        if code == "IDR" { return "Rp" }
+        let formatter = NumberFormatter(); formatter.numberStyle = .currency; formatter.currencyCode = code
+        formatter.locale = Locale(identifier: "en_US")
+        return formatter.currencySymbol ?? code
+    }
+
+    /// Converts minor units at `rate` (target units per one source unit), rounded to what the target currency shows.
+    static func convert(_ amount: Int64, rate: Decimal, to code: String) throws -> Int64 {
+        guard rate > 0 else { throw EntryError.invalidAmount }
+        var major = Decimal(amount) / 100 * rate
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &major, fractionDigits(code), .plain)
+        let minor = rounded * 100
+        guard minor > 0, minor <= Decimal(maximum) else { throw EntryError.invalidAmount }
+        return NSDecimalNumber(decimal: minor).int64Value
+    }
+
     /// ISO 4217 shape: three uppercase ASCII letters.
     static func isCurrencyCode(_ code: String) -> Bool {
         code.count == 3 && code.unicodeScalars.allSatisfy { ("A"..."Z").contains($0) }
     }
-    static func parse(_ input: String, locale: Locale = .autoupdatingCurrent) throws -> Int64 {
+    static func parse(_ input: String, locale: Locale = .autoupdatingCurrent, code: String? = nil) throws -> Int64 {
+        let code = code ?? reportingCurrency
+        let cents = fractionDigits(code) > 0
         var value = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if value.hasPrefix("rp") { value = String(value.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        for prefix in ["rp", code.lowercased(), symbol(code).lowercased()] where !prefix.isEmpty && value.hasPrefix(prefix) {
+            value = String(value.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces); break
+        }
         let thousands = value.hasSuffix("k")
         if thousands { value.removeLast() }
         let decimalSeparator = locale.decimalSeparator ?? "."
@@ -160,14 +206,14 @@ enum Money {
         let groupingPattern = NSRegularExpression.escapedPattern(for: groupingSeparator)
         // Validate strictly before normalization; NumberFormatter alone accepts malformed grouping.
         let pattern = thousands ? "^[0-9]+(?:" + decimalPattern + "[0-9]{1,3})?$"
-            : "^(?:[0-9]+|[0-9]{1,3}(?:" + groupingPattern + "[0-9]{3})+)(?:" + decimalPattern + "0{1,2})?$"
+            : "^(?:[0-9]+|[0-9]{1,3}(?:" + groupingPattern + "[0-9]{3})+)(?:" + decimalPattern + (cents ? "[0-9]{1,2}" : "0{1,2}") + ")?$"
         guard value.range(of: pattern, options: .regularExpression) != nil else { throw EntryError.invalidAmount }
         if !thousands { value = value.replacingOccurrences(of: groupingSeparator, with: "") }
         value = value.replacingOccurrences(of: decimalSeparator, with: ".")
         guard var decimal = Decimal(string: value, locale: Locale(identifier: "en_US_POSIX")) else { throw EntryError.invalidAmount }
         if thousands { decimal *= 1000 }
         var rounded = Decimal()
-        NSDecimalRound(&rounded, &decimal, 0, .plain)
+        NSDecimalRound(&rounded, &decimal, cents ? 2 : 0, .plain)
         guard rounded == decimal, decimal > 0, decimal <= Decimal(maximum / 100) else { throw EntryError.invalidAmount }
         return NSDecimalNumber(decimal: decimal * 100).int64Value
     }
@@ -217,10 +263,10 @@ enum Money {
     }
 
     static func digits(_ amount: Int64) -> String { String(amount / 100) }
-    static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent) -> String {
+    static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent, code: String? = nil) -> String {
         let value = Decimal(amount) / 100
         let number = value.formatted(.number.locale(locale).precision(.fractionLength(0...(amount % 100 == 0 ? 0 : 2))))
-        return (currency ? "Rp" : "") + number
+        return (currency ? symbol(code ?? reportingCurrency) : "") + number
     }
 }
 
@@ -261,10 +307,10 @@ struct DraftAllocation: Identifiable, Codable, Equatable {
     var amount: String
     /// Only unchanged accepted historical input may retain fractional minor units.
     var preservedAmount: Int64? = nil
-    func resolvedAmount() throws -> Int64 {
+    func resolvedAmount(code: String? = nil) throws -> Int64 {
         if let preservedAmount, preservedAmount > 0, preservedAmount <= Money.maximum,
            amount == Money.exactDigits(preservedAmount) { return preservedAmount }
-        return try Money.parse(amount)
+        return try Money.parse(amount, code: code)
     }
 }
 
@@ -287,50 +333,86 @@ struct ExpenseDraft: Codable, Equatable {
     /// Empty keeps the original one-category path; nonempty is the advanced split editor.
     var splitAllocations: [DraftAllocation] = []
     var paidWithID: UUID? = nil
-    /// The edited expense's original-currency values, kept only while its amount is unchanged.
-    var foreign: ForeignAmount? = nil
-    struct ForeignAmount: Codable, Equatable { var amount: Int64; var currency: String; var rate: String; var source: Expense.RateSource }
+    /// The currency typed amounts are in; nil means the reporting currency.
+    var currency: String? = nil
+    /// Reporting units per one `currency` unit, as typed or fetched; needed when `currency` is foreign.
+    var rate = ""
+    var rateSource: Expense.RateSource? = nil
     var isSplit: Bool { !splitAllocations.isEmpty }
+    func isForeign(reporting: String = Money.reportingCurrency) -> Bool { currency.map { $0 != reporting } ?? false }
     var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil || !splitAllocations.isEmpty }
     func resolvedAmount() throws -> Int64 {
         if let preservedAmount, preservedAmount > 0, preservedAmount <= Money.maximum,
            amount == Money.exactDigits(preservedAmount) { return preservedAmount }
-        return try Money.parse(amount)
+        return try Money.parse(amount, code: currency)
     }
     func resolvedAllocatedAmount() throws -> Int64 {
-        try Money.checkedSum(splitAllocations.map { $0.amount.isEmpty ? 0 : try $0.resolvedAmount() })
+        try Money.checkedSum(splitAllocations.map { $0.amount.isEmpty ? 0 : try $0.resolvedAmount(code: currency) })
     }
-    func expense() throws -> Expense {
+    func resolvedRate() -> Decimal? {
+        Decimal(string: rate.replacingOccurrences(of: ",", with: "."), locale: Locale(identifier: "en_US_POSIX")).flatMap { $0 > 0 ? $0 : nil }
+    }
+    /// Amounts are typed in `currency`; a foreign expense is converted to the reporting currency and keeps its original amount.
+    func expense(reporting: String = Money.reportingCurrency) throws -> Expense {
         let value = try resolvedAmount()
-        let allocations: [Allocation]
+        var allocations: [Allocation]
         if splitAllocations.isEmpty {
             guard let categoryID else { throw EntryError.missingCategory }
             allocations = [.init(categoryID: categoryID, amount: value)]
         } else {
             guard splitAllocations.count > 1 else { throw EntryError.splitMismatch }
             allocations = try splitAllocations.map { split in
-                let value = try split.resolvedAmount()
+                let value = try split.resolvedAmount(code: currency)
                 return .init(categoryID: split.categoryID, amount: value)
             }
         }
-        let keptForeign = value == preservedAmount ? foreign : nil
-        return Expense(id: id, amount: value, day: civilDay, note: note.trimmingCharacters(in: .whitespacesAndNewlines), allocations: allocations, source: source, createdAt: createdAt, bookID: bookID,
-                       paidWithID: paidWithID, originalAmount: keptForeign?.amount, originalCurrency: keptForeign?.currency, rate: keptForeign?.rate, rateSource: keptForeign?.source)
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isForeign(reporting: reporting), let currency else {
+            return Expense(id: id, amount: value, day: civilDay, note: trimmedNote, allocations: allocations, source: source, createdAt: createdAt, bookID: bookID,
+                           paidWithID: paidWithID)
+        }
+        guard let rateValue = resolvedRate() else { throw RateError.unavailable }
+        guard try Money.checkedSum(allocations.map(\.amount)) == value else { throw EntryError.splitMismatch }
+        let converted = try Money.convert(value, rate: rateValue, to: reporting)
+        allocations = try Self.convert(allocations, rate: rateValue, total: converted, to: reporting)
+        return Expense(id: id, amount: converted, day: civilDay, note: trimmedNote, allocations: allocations, source: source, createdAt: createdAt, bookID: bookID,
+                       paidWithID: paidWithID, originalAmount: value, originalCurrency: currency, rate: "\(rateValue)", rateSource: rateSource ?? .manual)
+    }
+
+    /// Converts each split part and gives any rounding difference to the largest part, so parts still add up exactly.
+    static func convert(_ allocations: [Allocation], rate: Decimal, total: Int64, to code: String) throws -> [Allocation] {
+        guard allocations.count > 1 else { return allocations.map { .init(categoryID: $0.categoryID, amount: total) } }
+        var parts = try allocations.map { Allocation(categoryID: $0.categoryID, amount: try Money.convert($0.amount, rate: rate, to: code)) }
+        let difference = total - Money.sum(parts.map(\.amount))
+        if let largest = parts.indices.max(by: { parts[$0].amount < parts[$1].amount }) { parts[largest].amount += difference }
+        guard parts.allSatisfy({ $0.amount > 0 }) else { throw EntryError.splitMismatch }
+        return parts
     }
     init() {}
     init(expense: Expense) {
         id = expense.id; bookID = expense.bookID; amount = Money.exactDigits(expense.amount); preservedAmount = expense.amount; categoryID = expense.allocations.first?.categoryID
         note = expense.note; date = Day.date(expense.day) ?? .now; civilDay = expense.day; editing = true; createdAt = expense.createdAt; source = expense.source
         paidWithID = expense.paidWithID
-        if let amount = expense.originalAmount, let currency = expense.originalCurrency, let rate = expense.rate, let source = expense.rateSource {
-            foreign = .init(amount: amount, currency: currency, rate: rate, source: source)
-        }
-        if expense.allocations.count > 1 {
+        if let original = expense.originalAmount, let currency = expense.originalCurrency, let rate = expense.rate {
+            // Edit in the currency it was paid in; split parts go back by their share of the total.
+            self.currency = currency; self.rate = rate; rateSource = expense.rateSource
+            amount = Money.exactDigits(original); preservedAmount = original
+            if expense.allocations.count > 1 {
+                let unit: Int64 = Money.fractionDigits(currency) == 0 ? 100 : 1 // whole yen, cents for dollars
+                var parts = expense.allocations.map { part in
+                    let scaled = (try? Money.checkedScale(original, numerator: Int(truncatingIfNeeded: part.amount), denominator: Int(truncatingIfNeeded: expense.amount))) ?? 0
+                    return Allocation(categoryID: part.categoryID, amount: (scaled + unit / 2) / unit * unit)
+                }
+                let difference = original - Money.sum(parts.map(\.amount))
+                if let largest = parts.indices.max(by: { parts[$0].amount < parts[$1].amount }) { parts[largest].amount += difference }
+                splitAllocations = parts.map { .init(categoryID: $0.categoryID, amount: Money.exactDigits($0.amount), preservedAmount: $0.amount) }
+            }
+        } else if expense.allocations.count > 1 {
             splitAllocations = expense.allocations.map { .init(categoryID: $0.categoryID, amount: Money.exactDigits($0.amount), preservedAmount: $0.amount) }
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations, civilDay, preservedAmount, paidWithID, foreign }
+    private enum CodingKeys: String, CodingKey { case id, bookID, amount, categoryID, note, date, text, mode, editing, createdAt, source, splitAllocations, civilDay, preservedAmount, paidWithID, currency, rate, rateSource }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -350,7 +432,9 @@ struct ExpenseDraft: Codable, Equatable {
         source = try values.decodeIfPresent(String.self, forKey: .source) ?? "manual"
         splitAllocations = try values.decodeIfPresent([DraftAllocation].self, forKey: .splitAllocations) ?? []
         paidWithID = try values.decodeIfPresent(UUID.self, forKey: .paidWithID)
-        foreign = try values.decodeIfPresent(ForeignAmount.self, forKey: .foreign)
+        currency = try values.decodeIfPresent(String.self, forKey: .currency)
+        rate = try values.decodeIfPresent(String.self, forKey: .rate) ?? ""
+        rateSource = try values.decodeIfPresent(Expense.RateSource.self, forKey: .rateSource)
     }
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
@@ -359,7 +443,8 @@ struct ExpenseDraft: Codable, Equatable {
         try values.encode(date, forKey: .date); try values.encode(text, forKey: .text); try values.encode(mode, forKey: .mode)
         try values.encode(editing, forKey: .editing); try values.encode(createdAt, forKey: .createdAt); try values.encode(source, forKey: .source)
         try values.encode(splitAllocations, forKey: .splitAllocations)
-        try values.encodeIfPresent(paidWithID, forKey: .paidWithID); try values.encodeIfPresent(foreign, forKey: .foreign)
+        try values.encodeIfPresent(paidWithID, forKey: .paidWithID); try values.encodeIfPresent(currency, forKey: .currency)
+        try values.encode(rate, forKey: .rate); try values.encodeIfPresent(rateSource, forKey: .rateSource)
         try values.encode(civilDay, forKey: .civilDay); try values.encodeIfPresent(preservedAmount, forKey: .preservedAmount)
     }
 
@@ -377,7 +462,7 @@ struct ExpenseDraft: Codable, Equatable {
         lhs.source == rhs.source &&
         lhs.splitAllocations == rhs.splitAllocations &&
         lhs.paidWithID == rhs.paidWithID &&
-        lhs.foreign == rhs.foreign &&
+        lhs.currency == rhs.currency && lhs.rate == rhs.rate && lhs.rateSource == rhs.rateSource &&
         (lhs.bookID == nil || rhs.bookID == nil || lhs.bookID == rhs.bookID)
     }
 }

@@ -11,12 +11,12 @@ struct BudgetsView: View {
                     Text("Room for what\nmatters.").font(.largeTitle.weight(.medium)).tracking(-1)
                     VStack(alignment: .leading, spacing: 14) {
                         Eyebrow(text: model.remaining < 0 ? "Over budget" : (model.activeBudget.totalUntilDay != nil ? "Left until \(Day.title(model.activeBudget.totalUntilDay!))" : "Left this cycle"))
-                        Text(Money.format(abs(model.remaining))).font(.system(size: 37, weight: .medium, design: .monospaced)).tracking(-1.5).minimumScaleFactor(0.6).lineLimit(1)
+                        Text(Money.format(abs(model.remaining), code: model.activeCardCurrency)).font(.system(size: 37, weight: .medium, design: .monospaced)).tracking(-1.5).minimumScaleFactor(0.6).lineLimit(1)
                         ProgressView(value: min(1, Double(model.spent) / Double(max(1, model.activeBudget.overallLimit)))).tint(MC.red)
                         HStack {
-                            Text("\(Money.format(model.spent)) spent")
+                            Text("\(Money.format(model.spent, code: model.activeCardCurrency)) spent")
                             Spacer()
-                            Text("of \(Money.format(model.activeBudget.overallLimit))")
+                            Text("of \(Money.format(model.activeBudget.overallLimit, code: model.activeCardCurrency))")
                         }.font(.caption).foregroundStyle(.secondary)
                     }.padding(22).background(MC.surface, in: RoundedRectangle(cornerRadius: 22))
 
@@ -61,7 +61,7 @@ struct BudgetsView: View {
                                     HStack {
                                         Text(category.name).font(.subheadline)
                                         Spacer()
-                                        Text(limit.map { "\(Money.format(spent)) / \(Money.format($0))" } ?? Money.format(spent))
+                                        Text(limit.map { "\(Money.format(spent, code: model.activeCardCurrency)) / \(Money.format($0, code: model.activeCardCurrency))" } ?? Money.format(spent, code: model.activeCardCurrency))
                                             .font(.subheadline.monospacedDigit())
                                     }
                                     if let limit {
@@ -87,7 +87,7 @@ struct BudgetsView: View {
                                     }
                                 }
                                 Spacer()
-                                Text(Money.format(budget.overallLimit)).font(.subheadline.monospacedDigit())
+                                Text(Money.format(budget.overallLimit, code: model.activeCardCurrency)).font(.subheadline.monospacedDigit())
                             }
                         }
                     }
@@ -138,7 +138,7 @@ struct BudgetEditor: View {
                     Text(isTotal ? "One amount for the whole period, from \(Day.title(Day.string(model.cycle.start))) through the last day. Use it for a trip or a goal."
                                  : "The budget repeats every cycle.")
                 }
-                Section("Overall budget · IDR") {
+                Section("Overall budget · \(model.activeCardCurrency)") {
                     TextField("4500000", text: $amount).keyboardType(.numberPad)
                 }
                 if !isTotal { Section {

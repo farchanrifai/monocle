@@ -43,6 +43,11 @@ struct RootView: View {
                 } message: { Text("You have an unfinished expense from an interruption. Discard it to open this expense.") }
                 .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
                 .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: model.chat) }
+                .alert(model.spendingCurrencyQuestion, isPresented: Binding(get: { model.spendingCurrencySuggestion != nil && !model.showEntry },
+                                                                             set: { if !$0 { model.spendingCurrencySuggestion = nil } })) {
+                    Button("Use it") { Task { await model.acceptSpendingCurrencySuggestion() } }
+                    Button("Not now", role: .cancel) { model.spendingCurrencySuggestion = nil }
+                } message: { Text("New expenses on this card will start in that currency, and the card shows an ≈ amount in it.") }
                 .alert("Check this", isPresented: Binding(get: { model.error != nil && !model.showEntry }, set: { if !$0 { model.error = nil } })) {
                     Button("OK") { model.error = nil }
                 } message: { Text(model.error ?? "") }

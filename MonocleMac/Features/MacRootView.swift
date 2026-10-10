@@ -77,6 +77,10 @@ struct MacRootView: View {
         .confirmationDialog("Delete “\(state.deletingCard?.name ?? "")”?", isPresented: Binding(get: { state.deletingCard != nil }, set: { if !$0 { state.deletingCard = nil } }), titleVisibility: .visible) {
             Button("Delete Card", role: .destructive) { if let book = state.deletingCard { state.deleteCard(book) } }
         } message: { Text("All expenses, budgets and bills on this card are deleted too. This can't be undone.") }
+        .alert(model.spendingCurrencyQuestion, isPresented: Binding(get: { model.spendingCurrencySuggestion != nil }, set: { if !$0 { model.spendingCurrencySuggestion = nil } })) {
+            Button("Use It") { Task { await model.acceptSpendingCurrencySuggestion() } }
+            Button("Not Now", role: .cancel) { model.spendingCurrencySuggestion = nil }
+        } message: { Text("New expenses on this card will start in that currency, and the card shows an ≈ amount in it.") }
         .alert("Monocle", isPresented: Binding(get: { model.error != nil || state.shortcutError != nil }, set: { if !$0 { model.error = nil; state.shortcutError = nil } })) {
             Button("OK") { model.error = nil; state.shortcutError = nil }
         } message: { Text(model.error ?? state.shortcutError ?? "") }
@@ -459,8 +463,8 @@ struct MacOverviewView: View {
                 }.padding(.vertical, 12) // room for the shadow and hover lift
             }.scrollIndicators(.hidden).scrollClipDisabled() // clipping cut the shadow into a hard edge
             HStack {
-                SummaryTile(title: "Cycle spending", value: Money.format(model.spent), detail: model.cycle.label)
-                SummaryTile(title: "Remaining", value: Money.format(model.remaining), detail: "of \(Money.format(model.activeBudget.overallLimit))")
+                SummaryTile(title: "Cycle spending", value: Money.format(model.spent, code: model.activeCardCurrency), detail: model.cycle.label)
+                SummaryTile(title: "Remaining", value: Money.format(model.remaining, code: model.activeCardCurrency), detail: "of \(Money.format(model.activeBudget.overallLimit, code: model.activeCardCurrency))")
                 SummaryTile(title: "Upcoming bills", value: "\(model.billOccurrences.filter { $0.status == .pending }.count)", detail: "Awaiting action")
             }
             Text("Recent Activity").font(.title2.bold())
@@ -484,7 +488,7 @@ private struct MacCardView: View {
             HStack { Image(systemName: "circle.grid.cross.fill"); Spacer(); Text("MONOCLE").font(.caption2.bold()) }
             Spacer()
             Text(book.name).font(.title3.bold())
-            Text(Money.format(model.expenses(for: book.id).reduce(0) { $0 + $1.amount })).font(.system(.headline, design: .monospaced))
+            Text(Money.format(model.spent(for: book.id), code: model.currency(of: book))).font(.system(.headline, design: .monospaced))
         }
             .offset(x: tilt.width * 4, y: tilt.height * 4) // text floats above the face for depth
             .foregroundStyle(CardPalette.resolvedTextColor(for: customization)).padding(16).frame(width: Self.size.width, height: Self.size.height)
@@ -632,7 +636,7 @@ private struct MacActivityTable: View {
                 TableColumn("Note", value: \.title) { Text($0.title) }.width(min: 60, ideal: 180)
                 TableColumn("Category", value: \.category) { Text($0.category) }.width(min: 50, ideal: 120)
                 TableColumn("Card", value: \.book) { Text($0.book) }.width(min: 50, ideal: 120)
-                TableColumn("Amount", value: \.amountMinor) { Text(Money.format($0.amountMinor)).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 130)
+                TableColumn("Amount", value: \.amountMinor) { Text($0.expense.paidText).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 130)
             }
             .contextMenu(forSelectionType: Expense.ID.self) { ids in
                 let picked = expenses(ids)
@@ -1128,6 +1132,10 @@ private struct ExpenseInspector: View {
             Section("Details") {
                 LabeledContent("Date", value: Day.title(expense.day))
                 LabeledContent("Card", value: model.books.first(where: { $0.id == expense.bookID })?.name ?? "—")
+                if expense.originalCurrency != nil {
+                    LabeledContent("Paid", value: expense.paidText)
+                    LabeledContent("Rate", value: "1 \(expense.originalCurrency ?? "") = \(expense.rate ?? "") \(model.reportingCurrency)\(expense.rateSource == .manual ? " (entered)" : "")")
+                }
                 if let method = model.paymentMethod(expense.paidWithID) { LabeledContent("Paid with", value: method.name) }
                 LabeledContent("Added", value: expense.createdAt.formatted(date: .abbreviated, time: .shortened))
                 if expense.source != "manual" { LabeledContent("Source", value: expense.source.capitalized) }

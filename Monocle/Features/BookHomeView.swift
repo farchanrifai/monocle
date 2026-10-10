@@ -1030,10 +1030,16 @@ struct CardPresentationView: View {
 
             Spacer(minLength: 0)
 
-            Text(Money.format(total))
+            Text(Money.format(total, code: model.currency(of: book)))
                 .font(amountFont)
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
+            if let other = model.secondaryCurrency(of: book),
+               let approx = model.approximate(total, from: model.currency(of: book), to: other) {
+                Text("≈ \(Money.format(approx, code: other))")
+                    .font(.caption.monospacedDigit())
+                    .opacity(0.8)
+            }
             Text("\(bookExpenses.count) EXPENSES")
                 .font(.system(size: 11, weight: .medium).monospaced())
         }
@@ -1177,10 +1183,15 @@ struct CardPresentationView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                Text(Money.format(expense.amount))
-                    .font(.system(size: 13.5, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(ink)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(expense.paidText)
+                        .font(.system(size: 13.5, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(ink)
+                    if let note = expense.reportingNote {
+                        Text(note).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, isPlatter ? 16 : 0)

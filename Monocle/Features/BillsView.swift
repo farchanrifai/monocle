@@ -743,16 +743,22 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("paidWithSettings")
 
-                    LabeledContent {
-                        Text("IDR")
-                            .foregroundStyle(.secondary)
+                    NavigationLink {
+                        CurrencySettingsView(model: model, bookID: activeBook.id)
                     } label: {
-                        Label {
-                            Text("Currency")
-                        } icon: {
-                            SettingsIcon(symbol: "banknote.fill", color: .green)
+                        LabeledContent {
+                            Text(model.currency(of: activeBook) == model.reportingCurrency ? model.reportingCurrency
+                                 : "\(model.currency(of: activeBook)) · reports \(model.reportingCurrency)")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label {
+                                Text("Currency")
+                            } icon: {
+                                SettingsIcon(symbol: "banknote.fill", color: .green)
+                            }
                         }
                     }
+                    .accessibilityIdentifier("currencySettings")
                 } header: {
                     Text("Active Card")
                 }

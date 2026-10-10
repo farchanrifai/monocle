@@ -45,6 +45,7 @@
 		3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */; };
 		3B8470529B752702C70AE75F /* AppleChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0FAA76BAE011AE440A2F5C /* AppleChatAgent.swift */; };
 		3F5EC9F1986CC3398370E5C2 /* MacPlanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FD0BAA32721C9D15AFF734 /* MacPlanningViews.swift */; };
+		3FA3D984A16D4227C11B0BC6 /* ExchangeRates.swift in Sources */ = {isa = PBXBuildFile; fileRef = A788AC314A298A5FC0EA2582 /* ExchangeRates.swift */; };
 		40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15119B5A62BE722F4E6FA3B4 /* AppLock.swift */; };
 		42AD99E90A28D8A39E432A5B /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD14F3361CFDC5E8013E693F /* ChatAgent.swift */; };
 		43CF2AB8B75D34B1C999940C /* SpendingSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8DBB20CD055FF10D332F /* SpendingSessionManager.swift */; };
@@ -53,6 +54,7 @@
 		513A64D5406ECE7A34AC5B43 /* AnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9724B1C00A878339AAC34BE8 /* AnalyticsTests.swift */; };
 		513C43A2B343A972889B9183 /* BookBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5917E02740846F6B5ED016CC /* BookBackup.swift */; };
 		52CC147611D1086BA699DFBF /* MacDataTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38FE13CFCB9D53BA73C3010C /* MacDataTransferView.swift */; };
+		53F4C08F5761E9CE7ACC8FFB /* ExchangeRates.swift in Sources */ = {isa = PBXBuildFile; fileRef = A788AC314A298A5FC0EA2582 /* ExchangeRates.swift */; };
 		55131960B7D854494235E8D9 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82F954B55004100EBACB8D /* AppModel.swift */; };
 		5640B130FC9787B963F18096 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C095F291D89DF974579CA6 /* AppEnvironment.swift */; };
 		567705BF6D6300C8BCEF3377 /* BackendPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B62852A29171B87745473F /* BackendPersistenceTests.swift */; };
@@ -108,6 +110,7 @@
 		B42BEC75B82DAD88D288D4CC /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
 		B6865924C5C269586C6693BE /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4B81B891A0740B138F4E63 /* MacRootView.swift */; };
 		B7A3816FB60EADB653F4AB40 /* ClaudeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */; };
+		B953F90FAE6FA551045A553A /* CurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF44CD5DC0A62A383D229A8 /* CurrencyTests.swift */; };
 		B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8205E545FE1B914526921654 /* RecentsView.swift */; };
 		BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */; };
 		BF7952BD0D8546FEC5893871 /* ChatSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */; };
@@ -206,6 +209,7 @@
 		06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutOrderSettingsView.swift; sourceTree = "<group>"; };
 		0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
 		0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
+		0EF44CD5DC0A62A383D229A8 /* CurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyTests.swift; sourceTree = "<group>"; };
 		0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeClient.swift; sourceTree = "<group>"; };
 		10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
 		15119B5A62BE722F4E6FA3B4 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
@@ -272,6 +276,7 @@
 		9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleApp.swift; sourceTree = "<group>"; };
 		9FDCF200A8F160A2708223FC /* AppleChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatTests.swift; sourceTree = "<group>"; };
 		A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidWithSettingsView.swift; sourceTree = "<group>"; };
+		A788AC314A298A5FC0EA2582 /* ExchangeRates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRates.swift; sourceTree = "<group>"; };
 		A7E776EC0867369F536BEBC4 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
@@ -527,6 +532,7 @@
 				15119B5A62BE722F4E6FA3B4 /* AppLock.swift */,
 				D9C7126EAC97EDD86B07098A /* BackendDiagnostics.swift */,
 				55C6F2F7E78348046E865E34 /* BackupService.swift */,
+				A788AC314A298A5FC0EA2582 /* ExchangeRates.swift */,
 				AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */,
 				868577581FC31D6AAAB43D65 /* Chat */,
 			);
@@ -578,6 +584,7 @@
 				86ED238DECE01E7A09BB6BDE /* ChatGoldenPromptTests.swift */,
 				FDBB1B75740C243E89A417B8 /* ChatToolTests.swift */,
 				37911938CA6DB5DDAECA328B /* CSVTests.swift */,
+				0EF44CD5DC0A62A383D229A8 /* CurrencyTests.swift */,
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
 				F27F454BBE1A750AB3A31B55 /* IntentTests.swift */,
 				259DC603F39D197686C31B1F /* MonocleTests.swift */,
@@ -848,6 +855,7 @@
 				8934E3DC238F21D7D643E592 /* ChatAgentTests.swift in Sources */,
 				342B00F87025248D249D7CF1 /* ChatGoldenPromptTests.swift in Sources */,
 				C5DC8F7BE36766741920CD01 /* ChatToolTests.swift in Sources */,
+				B953F90FAE6FA551045A553A /* CurrencyTests.swift in Sources */,
 				E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */,
 				385B102CD99B88F0C2E0F9B2 /* IntentTests.swift in Sources */,
 				2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */,
@@ -907,6 +915,7 @@
 				5A6FE820268F52CCC4934D9C /* DemoWorkspace.swift in Sources */,
 				E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */,
 				017729CBC6933B915C34CB21 /* EntryView.swift in Sources */,
+				3FA3D984A16D4227C11B0BC6 /* ExchangeRates.swift in Sources */,
 				2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */,
 				1F43DAD5443F13C72FB2BE7F /* ExpenseIntents.swift in Sources */,
 				23843A06C992562945B53391 /* ExpenseProposalCard.swift in Sources */,
@@ -959,6 +968,7 @@
 				1E3E91F27C7CF9A6AC54C0F8 /* ChatTranscript.swift in Sources */,
 				B7A3816FB60EADB653F4AB40 /* ClaudeClient.swift in Sources */,
 				465B452A38CAE0B76AB14776 /* DemoWorkspace.swift in Sources */,
+				53F4C08F5761E9CE7ACC8FFB /* ExchangeRates.swift in Sources */,
 				F50EA37D53743014706A7A91 /* Expense.swift in Sources */,
 				D28862952E06ADCA4386CF2A /* ExpenseIntents.swift in Sources */,
 				D6A62922768B3F0E803F2844 /* ExpenseProposalCard.swift in Sources */,

@@ -259,7 +259,11 @@ final class AppModel {
         let currentCycle = cycle
         return expenses.filter { currentCycle.contains($0) }
     }
-    var spent: Int64 { Money.sum(cycleExpenses.map(\.amount)) }
+    /// In the active card's currency, like its budget.
+    var spent: Int64 {
+        guard let card = books.first(where: { $0.id == activeBookID }) else { return Money.sum(cycleExpenses.map(\.amount)) }
+        return Money.sum(cycleExpenses.map { cardAmount($0, in: card) })
+    }
     var remaining: Int64 { activeBudget.overallLimit - spent }
 
     init(expenses: ExpenseService, state: any LocalStateStore, draft: ExpenseDraft = ExpenseDraft(), settings: PrototypeSettings = PrototypeSettings(), appLock: AppLockController? = nil, backups: BackupService? = nil) {
@@ -286,6 +290,7 @@ final class AppModel {
             try expenses.reconcileBills()
             expenses.onCommit = { [weak self] in self?.committedWorkspaceChanged() }
             syncWidgetSnapshot()
+            Task { [weak self] in await self?.prefetchCardRates() }
         } catch {
             startupError = error.localizedDescription
             expenses.isBlocked = true
@@ -412,6 +417,7 @@ final class AppModel {
     }
 
     private func publishPreferences(_ preferences: WorkspacePreferences) {
+        Money.reportingCurrency = preferences.reportingCurrency
         workspacePreferences = preferences
         durablePreferences = preferences
         hiddenBookIDs = Set(preferences.visibleBookIDs.isEmpty ? [] : books.map(\.id).filter { !preferences.visibleBookIDs.contains($0) })
@@ -441,7 +447,13 @@ final class AppModel {
     }
     func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.allocations.first?.categoryID)?.name ?? "Expense" : expense.note }
     func spent(in category: ExpenseCategory) -> Int64 {
-        Money.sum(cycleExpenses.flatMap(\.allocations).filter { $0.categoryID == category.id }.map(\.amount))
+        let card = books.first { $0.id == activeBookID }
+        return Money.sum(cycleExpenses.compactMap { expense -> Int64? in
+            guard let part = expense.allocations.first(where: { $0.categoryID == category.id }) else { return nil }
+            guard let card, currency(of: card) != reportingCurrency else { return part.amount }
+            return (try? Money.checkedScale(cardAmount(expense, in: card), numerator: Int(truncatingIfNeeded: part.amount),
+                                            denominator: Int(truncatingIfNeeded: max(1, expense.amount)))) ?? 0
+        })
     }
     var draftNeedsConfirmation: Bool {
         if draft.editing {
@@ -879,6 +891,16 @@ final class AppModel {
         syncWidgetSnapshot()
     }
 
+    /// Widgets add up in the reporting currency; a card budget in another currency is shown at today's cached rate.
+    private var widgetBudget: BudgetVersion {
+        var budget = activeBudget
+        let code = activeCardCurrency
+        guard code != reportingCurrency else { return budget }
+        budget.overallLimit = approximate(budget.overallLimit, from: code, to: reportingCurrency) ?? budget.overallLimit
+        budget.categoryLimits = budget.categoryLimits.map { .init(categoryID: $0.categoryID, limit: approximate($0.limit, from: code, to: reportingCurrency) ?? $0.limit) }
+        return budget
+    }
+
     func syncWidgetSnapshot() {
         guard startupError == nil, expenseService?.projectionRefreshError == nil else { return }
         guard let activeBook = books.first(where: { $0.id == activeBookID }) ?? books.first else { return }
@@ -898,7 +920,7 @@ final class AppModel {
             stackExpenses: stackExp,
             categories: categories,
             captureCategories: activeCategories(for: activeBookID),
-            budget: activeBudget,
+            budget: widgetBudget,
             cycle: cycle,
             revision: expenseService?.committedRevision
         )
@@ -916,11 +938,13 @@ final class AppModel {
         return result
     }
 
+    /// All-time total in the card's currency.
     func spent(for bookID: UUID) -> Int64 {
         if let cached = spentCache[bookID] {
             return cached
         }
-        let total = Money.sum(expenses(for: bookID).map(\.amount))
+        let card = books.first { $0.id == bookID }
+        let total = Money.sum(expenses(for: bookID).map { expense in card.map { cardAmount(expense, in: $0) } ?? expense.amount })
         spentCache[bookID] = total
         return total
     }
@@ -934,6 +958,228 @@ final class AppModel {
             return active.overallLimit
         }
         return stack.budgetLimit(cardLimits: limits)
+    }
+
+    // MARK: - Currency
+
+    var reportingCurrency: String { workspacePreferences.reportingCurrency }
+    @ObservationIgnored var rates = ExchangeRates.shared
+    /// Why the entry form has no rate yet, shown under the rate field.
+    var rateError: String?
+    /// Offered once after a card's first expense in another currency: (card, currency).
+    var spendingCurrencySuggestion: (cardID: UUID, code: String)?
+
+    /// A card's budget and totals currency.
+    func currency(of card: BookProfile) -> String { card.currency ?? reportingCurrency }
+    func currency(ofCard id: UUID) -> String { books.first { $0.id == id }.map(currency(of:)) ?? reportingCurrency }
+    var activeCardCurrency: String { currency(ofCard: activeBookID) }
+    /// The secondary "≈" line: the card's spending currency, else the reporting currency, if either differs.
+    func secondaryCurrency(of card: BookProfile) -> String? {
+        let code = card.spendingCurrency ?? reportingCurrency
+        return code == currency(of: card) ? nil : code
+    }
+
+    /// An expense's amount in the card's currency: the paid amount if paid in it, else converted from the reporting
+    /// amount at that day's rate. Display only; never saved.
+    func cardAmount(_ expense: Expense, in card: BookProfile) -> Int64 {
+        let code = currency(of: card)
+        if code == reportingCurrency { return expense.amount }
+        if expense.originalCurrency == code, let original = expense.originalAmount { return original }
+        // ponytail: falls back to the reporting amount until the day's rate is cached (prefetchCardRates fills it).
+        guard let rate = rates.cachedRate(from: reportingCurrency, to: code, on: expense.day) else { return expense.amount }
+        return (try? Money.convert(expense.amount, rate: rate, to: code)) ?? expense.amount
+    }
+
+    /// Converts `amount` (in `from`) for display in `to` with the newest cached rate, if any.
+    func approximate(_ amount: Int64, from: String, to: String) -> Int64? {
+        guard let rate = rates.cachedRate(from: from, to: to, on: Day.string(.now)) else { return nil }
+        return try? Money.convert(amount, rate: rate, to: to)
+    }
+
+    /// Fetches rates that card totals and "≈" lines need, then refreshes the views that use them.
+    func prefetchCardRates() async {
+        guard books.contains(where: { currency(of: $0) != reportingCurrency || ($0.spendingCurrency.map { $0 != reportingCurrency } ?? false) })
+        else { return } // nothing to fetch: no network request for single-currency users
+        let today = Day.string(.now)
+        var pairs = Set<String>()
+        for card in books {
+            let code = currency(of: card)
+            for other in [code, card.spendingCurrency ?? reportingCurrency] where other != reportingCurrency { pairs.insert(other) }
+            if code != reportingCurrency, let first = expenses(for: card.id).map(\.day).min() {
+                try? await rates.prefetch(from: reportingCurrency, to: code, start: first, end: today)
+            }
+        }
+        for code in pairs {
+            try? await rates.prefetch(from: reportingCurrency, to: code, start: today, end: today)
+            try? await rates.prefetch(from: code, to: reportingCurrency, start: today, end: today)
+        }
+        invalidateExpenseCaches()
+    }
+
+    /// Fetches the draft's rate unless the user typed one.
+    func refreshDraftRate() async {
+        guard let code = draft.currency, draft.isForeign(reporting: reportingCurrency), draft.rateSource != .manual else { rateError = nil; return }
+        let day = draft.civilDay
+        do {
+            let rate = try await rates.rate(from: code, to: reportingCurrency, on: day)
+            guard draft.currency == code, draft.civilDay == day, draft.rateSource != .manual else { return }
+            draft.rate = "\(rate)"; draft.rateSource = .fetched; rateError = nil
+        } catch {
+            rateError = error.localizedDescription
+        }
+    }
+
+    /// Sets a card's budget currency and spending currency. Changing the budget currency converts its budgets at today's rate.
+    func setCardCurrencies(budget: String?, spending: String?, for bookID: UUID) async throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        guard var card = books.first(where: { $0.id == bookID }) else { throw BackupError.invalid }
+        let budget = budget == reportingCurrency ? nil : budget
+        let spending = spending == (budget ?? reportingCurrency) ? nil : spending
+        let old = currency(of: card), new = budget ?? reportingCurrency
+        var converted: [BudgetVersion] = []
+        if old != new {
+            let rate = try await rates.rate(from: old, to: new, on: Day.string(.now))
+            converted = try expenseService.budgets(for: bookID).map { version in
+                var value = version
+                value.overallLimit = try Money.convert(version.overallLimit, rate: rate, to: new)
+                value.categoryLimits = try version.categoryLimits.map { .init(categoryID: $0.categoryID, limit: try Money.convert($0.limit, rate: rate, to: new)) }
+                return value
+            }
+        }
+        card.currency = budget; card.spendingCurrency = spending
+        try performWorkspaceCommand {
+            try expenseService.updateCard(card)
+            for version in converted { try expenseService.save(version, in: bookID) }
+        }
+        if settings.book.id == bookID {
+            var proposed = settings; proposed.book = card
+            try requireState().saveSettings(proposed); settings = proposed
+        }
+        invalidateExpenseCaches()
+        await prefetchCardRates()
+    }
+
+    var spendingCurrencyQuestion: String {
+        guard let suggestion = spendingCurrencySuggestion else { return "" }
+        let name = books.first { $0.id == suggestion.cardID }?.name ?? "this card"
+        return "Use \(suggestion.code) as \(name)'s spending currency?"
+    }
+
+    func acceptSpendingCurrencySuggestion() async {
+        guard let suggestion = spendingCurrencySuggestion, let card = books.first(where: { $0.id == suggestion.cardID }) else { return }
+        spendingCurrencySuggestion = nil
+        do { try await setCardCurrencies(budget: card.currency, spending: suggestion.code, for: card.id) }
+        catch { self.error = error.localizedDescription }
+    }
+
+    /// Suggest a spending currency after the first expense on a card paid in a currency the card doesn't use yet.
+    func suggestSpendingCurrency(after expense: Expense) {
+        guard let code = expense.originalCurrency, let id = expense.bookID, let card = books.first(where: { $0.id == id }),
+              card.spendingCurrency == nil, currency(of: card) != code,
+              expenses(for: id).filter({ $0.originalCurrency == code }).count == 1 else { return }
+        spendingCurrencySuggestion = (id, code)
+    }
+
+    /// Re-converts every expense from what was paid, at its own day's rate; a manual rate is kept by chaining it through
+    /// the old reporting currency. Budgets, bills and stack caps in the reporting currency convert at today's rate.
+    /// Runs as one workspace command, so a safety backup is written first and a failure changes nothing.
+    func changeReportingCurrency(to new: String) async throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let old = reportingCurrency
+        guard new != old, Money.isCurrencyCode(new) else { return }
+        let today = Day.string(.now)
+        var byCard: [UUID: [Expense]] = [:]
+        for card in books { byCard[card.id] = try expenseService.expenses(for: card.id) }
+        let all = byCard.values.flatMap { $0 }
+        // One request per currency pair, covering the whole history.
+        var spans: [String: (String, String)] = [:]
+        for expense in all {
+            for source in Set([expense.originalCurrency ?? old, old]) where source != new {
+                let span = spans[source] ?? (expense.day, expense.day)
+                spans[source] = (min(span.0, expense.day), max(span.1, expense.day))
+            }
+        }
+        spans[old] = (min(spans[old]?.0 ?? today, today), today)
+        for (source, span) in spans { try await rates.prefetch(from: source, to: new, start: span.0, end: span.1) }
+        func rate(_ from: String, on day: String) throws -> Decimal {
+            guard let value = rates.cachedRate(from: from, to: new, on: day) else { throw RateError.unavailable }
+            return value
+        }
+
+        var updated: [UUID: [Expense]] = [:]
+        for (cardID, expenses) in byCard {
+            updated[cardID] = try expenses.map { expense in
+                var value = expense
+                let source = expense.originalCurrency ?? old
+                let paid = expense.originalAmount ?? expense.amount
+                if source == new {
+                    value.amount = paid
+                    value.originalAmount = nil; value.originalCurrency = nil; value.rate = nil; value.rateSource = nil
+                } else {
+                    let manual = expense.rateSource == .manual ? expense.rate.flatMap { Decimal(string: $0, locale: Locale(identifier: "en_US_POSIX")) } : nil
+                    let newRate = try manual.map { $0 * (try rate(old, on: expense.day)) } ?? rate(source, on: expense.day)
+                    value.amount = try Money.convert(paid, rate: newRate, to: new)
+                    value.originalAmount = paid; value.originalCurrency = source
+                    value.rate = "\(newRate)"; value.rateSource = manual == nil ? .fetched : .manual
+                }
+                value.allocations = try Self.rescale(expense.allocations, from: expense.amount, to: value.amount)
+                return value
+            }
+        }
+        let todayRate = try rate(old, on: today)
+        var budgets: [UUID: [BudgetVersion]] = [:]
+        var bills: [UUID: [BillRule]] = [:]
+        for card in books where card.currency == nil || card.currency == old {
+            budgets[card.id] = try expenseService.budgets(for: card.id).map { version in
+                var value = version
+                value.overallLimit = try Money.convert(version.overallLimit, rate: todayRate, to: new)
+                value.categoryLimits = try version.categoryLimits.map { .init(categoryID: $0.categoryID, limit: try Money.convert($0.limit, rate: todayRate, to: new)) }
+                return value
+            }
+        }
+        for card in books {
+            bills[card.id] = try expenseService.bills(for: card.id).map { bill in
+                var value = bill; value.amount = try Money.convert(bill.amount, rate: todayRate, to: new); return value
+            }
+        }
+        var proposed = workspacePreferences
+        proposed.reportingCurrency = new
+        proposed.stacks = try proposed.stacks.map { stack in
+            var value = stack; value.capLimit = try stack.capLimit.map { try Money.convert($0, rate: todayRate, to: new) }; return value
+        }
+        // A card that named the new currency explicitly now just follows the reporting currency.
+        let cards = books.map { card -> BookProfile in
+            var value = card
+            if value.currency == new { value.currency = nil }
+            if value.spendingCurrency == new { value.spendingCurrency = nil }
+            return value
+        }
+        try performWorkspaceCommand {
+            for card in cards { try expenseService.updateCard(card) }
+            for (cardID, values) in updated { try expenseService.saveExpenses(values, in: cardID) }
+            for (cardID, values) in budgets { for version in values { try expenseService.save(version, in: cardID) } }
+            for (cardID, values) in bills { for bill in values { try expenseService.saveBill(bill, in: cardID) } }
+            try requireState().saveWorkspacePreferences(proposed)
+        }
+        publishPreferences(proposed)
+        var proposedSettings = settings
+        proposedSettings.budget = activeBudget.overallLimit
+        if let card = books.first(where: { $0.id == settings.book.id }) { proposedSettings.book = card }
+        try requireState().saveSettings(proposedSettings); settings = proposedSettings
+        invalidateExpenseCaches()
+        await prefetchCardRates()
+    }
+
+    /// Keeps each part's share when a total changes; rounding goes to the largest part.
+    static func rescale(_ allocations: [Allocation], from oldTotal: Int64, to newTotal: Int64) throws -> [Allocation] {
+        guard allocations.count > 1 else { return allocations.map { .init(categoryID: $0.categoryID, amount: newTotal) } }
+        var parts = try allocations.map {
+            Allocation(categoryID: $0.categoryID, amount: try Money.checkedScale(newTotal, numerator: Int(truncatingIfNeeded: $0.amount), denominator: Int(truncatingIfNeeded: max(1, oldTotal))))
+        }
+        let difference = newTotal - Money.sum(parts.map(\.amount))
+        if let largest = parts.indices.max(by: { parts[$0].amount < parts[$1].amount }) { parts[largest].amount += difference }
+        guard parts.allSatisfy({ $0.amount > 0 }) else { throw EntryError.splitMismatch }
+        return parts
     }
 
     // MARK: - Paid with and the Add Expense form
@@ -994,11 +1240,16 @@ final class AppModel {
         invalidateExpenseCaches()
     }
 
-    /// A new expense starts with its card's default Paid with.
+    /// A new expense starts with its card's default Paid with and spending currency.
     func prefillDraftDefaults() {
-        guard !draft.editing, draft.paidWithID == nil else { return }
+        guard !draft.editing else { return }
         let bookID = draft.bookID ?? selectedBookID ?? activeBookID
-        draft.paidWithID = books.first { $0.id == bookID }?.defaultPaidWithID
+        guard let card = books.first(where: { $0.id == bookID }) else { return }
+        if draft.paidWithID == nil { draft.paidWithID = card.defaultPaidWithID }
+        if draft.currency == nil, !draft.hasContent {
+            let code = card.spendingCurrency ?? card.currency
+            if let code, code != reportingCurrency { draft.currency = code; draft.rate = ""; draft.rateSource = nil }
+        }
     }
 
     /// Cards a scope covers; stacks keep their own card order.
@@ -1229,6 +1480,7 @@ final class AppModel {
             undoExpense = nil
             saveFeedback += 1
             if !editing { recordInSpendingSession(expense) }
+            suggestSpendingCurrency(after: expense)
             showToast(editing ? "Expense updated" : "Expense added")
             return true
         } catch {

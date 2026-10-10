@@ -126,11 +126,14 @@ struct TransactionDetailView: View {
                 .lineLimit(2)
 
             // Formatted Amount
-            Text(Money.format(expense.amount))
+            Text(expense.paidText)
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Color.primary)
                 .accessibilityIdentifier("transactionDetailAmount")
+            if let note = expense.reportingNote {
+                Text(note).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+            }
 
             // Timestamp Subtitle
             Text("\(Day.title(expense.day)) · \(formattedTime)")
@@ -172,6 +175,14 @@ struct TransactionDetailView: View {
                         Text(book.name)
                             .font(.system(size: 15, weight: .medium))
                     }
+                }
+                Divider().padding(.leading, 16)
+            }
+
+            if let code = expense.originalCurrency, let rate = expense.rate {
+                detailRow(label: "Rate") {
+                    Text("1 \(code) = \(rate) \(model.reportingCurrency)\(expense.rateSource == .manual ? " · entered" : "")")
+                        .font(.system(size: 15, weight: .medium)).monospacedDigit()
                 }
                 Divider().padding(.leading, 16)
             }

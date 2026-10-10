@@ -11,25 +11,23 @@ struct MacBudgetsView: View {
         return Int((ratio * 100).rounded())
     }
     var body: some View {
-        var spent: [UUID: Int64] = [:]
-        for allocation in model.cycleExpenses.lazy.flatMap(\.allocations) { spent[allocation.categoryID, default: 0] += allocation.amount }
         return Page(title: "Budgets") {
             HStack {
-                SummaryTile(title: "Limit", value: Money.format(model.activeBudget.overallLimit), detail: model.cycle.label)
-                SummaryTile(title: "Spent", value: Money.format(model.spent), detail: "\(usedPercent)% used")
-                SummaryTile(title: "Remaining", value: Money.format(model.remaining),
+                SummaryTile(title: "Limit", value: Money.format(model.activeBudget.overallLimit, code: model.activeCardCurrency), detail: model.cycle.label)
+                SummaryTile(title: "Spent", value: Money.format(model.spent, code: model.activeCardCurrency), detail: "\(usedPercent)% used")
+                SummaryTile(title: "Remaining", value: Money.format(model.remaining, code: model.activeCardCurrency),
                             detail: model.activeBudget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Cycle day \(model.activeBudget.startDay)")
             }
             HStack { Text("Category budgets").font(.title2.bold()); Spacer(); Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
             Table(categories) {
                 TableColumn("Category") { category in Label(category.name, systemImage: category.symbol) }
-                TableColumn("Spent") { category in Text(Money.format(spent[category.id] ?? 0)).font(.system(.body, design: .monospaced)) }
+                TableColumn("Spent") { category in Text(Money.format(model.spent(in: category), code: model.activeCardCurrency)).font(.system(.body, design: .monospaced)) }
                 TableColumn("Limit") { category in
-                    Text(model.activeBudget.limit(for: category.id).map { Money.format($0) } ?? "—").font(.system(.body, design: .monospaced))
+                    Text(model.activeBudget.limit(for: category.id).map { Money.format($0, code: model.activeCardCurrency) } ?? "—").font(.system(.body, design: .monospaced))
                 }
                 TableColumn("Progress") { category in
                     let limit = model.activeBudget.limit(for: category.id) ?? model.activeBudget.overallLimit
-                    ProgressView(value: min(1, Double(spent[category.id] ?? 0) / Double(max(1, limit))))
+                    ProgressView(value: min(1, Double(model.spent(in: category)) / Double(max(1, limit))))
                 }
             }.frame(minHeight: 280)
         }
@@ -66,7 +64,7 @@ private struct BudgetEditor: View {
                     Text("Monthly").tag(false)
                     Text("Total until").tag(true)
                 }.pickerStyle(.segmented)
-                TextField("Overall limit", text: $amount)
+                TextField("Overall limit (\(model.activeCardCurrency))", text: $amount)
                 if isTotal {
                     DatePicker("Last day", selection: $totalUntil, in: model.cycle.start..., displayedComponents: .date)
                     Text("One amount from \(Day.title(Day.string(model.cycle.start))) through the last day. Use it for a trip or a goal.")
