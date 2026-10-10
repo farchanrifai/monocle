@@ -5,7 +5,9 @@ import SwiftUI
 struct MacChatView: View {
     @Bindable var state: MacAppState
     @AppStorage("chatEnabled") private var chatEnabled = false
-    @State private var hasKey = Self.keyAvailable
+    @AppStorage("chatBackend") private var backend = "claude"
+    @State private var savedKey = Self.keyAvailable
+    private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var draft = ""
     @FocusState private var inputFocused: Bool
     private var model: AppModel { state.model }
@@ -30,7 +32,7 @@ struct MacChatView: View {
                 ContentUnavailableView {
                     Label(chatEnabled ? "Add Your API Key" : "AI Chat Is Off", systemImage: "bubble.left.and.text.bubble.right")
                 } description: {
-                    Text("Turn on chat and save your Anthropic API key in Settings ▸ AI Chat.")
+                    Text(chatEnabled ? "Save your Anthropic API key, or switch Model to Apple Intelligence, in Settings ▸ AI Chat." : "Turn on chat in Settings ▸ AI Chat.")
                 } actions: {
                     Button("Open Settings…") { state.perform(.settings) }
                         .buttonStyle(.borderedProminent).tint(MC.red)
@@ -46,7 +48,7 @@ struct MacChatView: View {
         }
         // Back from the Settings window: pick up a newly saved or removed key.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            hasKey = Self.keyAvailable
+            savedKey = Self.keyAvailable
         }
     }
 

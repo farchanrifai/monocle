@@ -37,6 +37,7 @@ final class AppEnvironment {
             if directory.lastPathComponent.hasPrefix("monocle-ui-test-") {
                 APIKeyStore.delete()
                 UserDefaults.standard.removeObject(forKey: "chatEnabled")
+                UserDefaults.standard.removeObject(forKey: "chatBackend")
             }
             if directory.lastPathComponent.hasPrefix("monocle-ui-test-"),
                ProcessInfo.processInfo.environment["MONOCLE_TEST_THREE_CARDS"] == "1",

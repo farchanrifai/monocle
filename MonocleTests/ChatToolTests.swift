@@ -138,6 +138,11 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(rupiah(result["total_a"]), 60_000)
         XCTAssertEqual(rupiah(result["total_b"]), 73_000)
         XCTAssertEqual(rupiah(result["change"]), 13_000)
+
+        let reversed = json(run("compare_periods", ["period_a": "this_month", "period_b": "last_month", "scope": "card:Daily"]))
+        XCTAssertEqual(rupiah(reversed["change"]), 13_000, "Periods are ordered earlier → later whichever way they're asked")
+        XCTAssertEqual(reversed["period_a"] as? String, result["period_a"] as? String)
+        XCTAssertTrue((reversed["summary"] as? String)?.hasPrefix("Spending went up by") == true)
     }
 
     // MARK: - get_budget_status / list_cards

@@ -158,6 +158,8 @@ final class MacAppState {
     var transferSheet: DataTransferSheet?
     var shortcutError: String?
 
+    /// SwiftUI's own action, captured from the main window: the old showSettingsWindow: selector does nothing on macOS 26+.
+    @ObservationIgnored var openSettings: OpenSettingsAction?
     @ObservationIgnored private let hotKey = GlobalHotKeyController()
     @ObservationIgnored private lazy var quickPanel = QuickRecordPanelController(state: self)
 
@@ -355,7 +357,7 @@ final class MacAppState {
         case .exportCSV: transferSheet = .exportCSV
         case .exportBackup: transferSheet = .exportBackup
         case .restoreBackup: transferSheet = .restoreBackup
-        case .settings: NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        case .settings: openSettings?()
         case .lock: model.appLock.suspend(now: .distantPast); model.appLock.resume()
         }
     }

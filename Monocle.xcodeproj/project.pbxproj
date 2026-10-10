@@ -42,6 +42,7 @@
 		385B102CD99B88F0C2E0F9B2 /* IntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27F454BBE1A750AB3A31B55 /* IntentTests.swift */; };
 		38D80CE49FF838CA72FAFEB0 /* MonocleWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */; };
 		3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */; };
+		3B8470529B752702C70AE75F /* AppleChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0FAA76BAE011AE440A2F5C /* AppleChatAgent.swift */; };
 		3F5EC9F1986CC3398370E5C2 /* MacPlanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FD0BAA32721C9D15AFF734 /* MacPlanningViews.swift */; };
 		40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15119B5A62BE722F4E6FA3B4 /* AppLock.swift */; };
 		42AD99E90A28D8A39E432A5B /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD14F3361CFDC5E8013E693F /* ChatAgent.swift */; };
@@ -83,6 +84,7 @@
 		93620C230BF2DE9775F51514 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */; };
 		97C85326D836EB3446CC59B6 /* BillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */; };
 		9855DB0AA96F706694837126 /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEB4F6A31934928B688178D /* BillReconciliationEngine.swift */; };
+		9A8E2E0BA45239871273EAF1 /* AppleChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0FAA76BAE011AE440A2F5C /* AppleChatAgent.swift */; };
 		9AAEB0DE31E47C1101F07BDF /* BackendDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C7126EAC97EDD86B07098A /* BackendDiagnostics.swift */; };
 		9F11DCEA10BFBC5B4D5545A2 /* BackendSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5717053E6A3C91B893ADB5DA /* BackendSessionTests.swift */; };
 		9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B77094E961D5E3F21A0C865A /* ChatView.swift */; };
@@ -132,6 +134,7 @@
 		E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9824AED70CAEA0CCB49515DA /* FoundationTests.swift */; };
 		E96BFA92344378EEABD6831F /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
 		EA063225367C0294629084A8 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4391823DC40DCB9EC94E3F48 /* AnalyticsEngine.swift */; };
+		ECCAC168025AFC19BAD53BF0 /* AppleChatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FDCF200A8F160A2708223FC /* AppleChatTests.swift */; };
 		ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAB59F8D69B863E198985F9 /* BillsView.swift */; };
 		F50EA37D53743014706A7A91 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
 		F5AD4F7EBE1C78FF7BE84803 /* BackendBackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D595B81662BC7EEBCA6BC3F1 /* BackendBackupTests.swift */; };
@@ -262,6 +265,7 @@
 		974482A5BBD28EBCF813DC6E /* BackendFinancialTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendFinancialTests.swift; sourceTree = "<group>"; };
 		9824AED70CAEA0CCB49515DA /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		9B734DFAD4E41BA8CCFA01EA /* MonocleApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleApp.swift; sourceTree = "<group>"; };
+		9FDCF200A8F160A2708223FC /* AppleChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatTests.swift; sourceTree = "<group>"; };
 		A2550CCD3445A35B7666108A /* ChatSummaryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSummaryChart.swift; sourceTree = "<group>"; };
 		A7E776EC0867369F536BEBC4 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
@@ -294,6 +298,7 @@
 		E88A8115A260295093DD9EEA /* MonocleUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9324FD39B2CDB5C5C5602BC /* BackendCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendCommandTests.swift; sourceTree = "<group>"; };
 		EAE6B2EDE434F3EAB4F40462 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		EC0FAA76BAE011AE440A2F5C /* AppleChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatAgent.swift; sourceTree = "<group>"; };
 		EC82F954B55004100EBACB8D /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		EE369F72DE2591D9D60E1B77 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
 		EE4B81B891A0740B138F4E63 /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
@@ -464,6 +469,7 @@
 			isa = PBXGroup;
 			children = (
 				3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */,
+				EC0FAA76BAE011AE440A2F5C /* AppleChatAgent.swift */,
 				FD14F3361CFDC5E8013E693F /* ChatAgent.swift */,
 				528ED8945811020013D20C79 /* ChatSession.swift */,
 				0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */,
@@ -587,6 +593,7 @@
 		D38BD6A9CCB2D14E76139598 /* MonocleMacTests */ = {
 			isa = PBXGroup;
 			children = (
+				9FDCF200A8F160A2708223FC /* AppleChatTests.swift */,
 				E0867C42321975FF8870E11C /* MonocleMacTests.swift */,
 			);
 			path = MonocleMacTests;
@@ -847,6 +854,7 @@
 				5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */,
 				40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */,
 				B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */,
+				3B8470529B752702C70AE75F /* AppleChatAgent.swift in Sources */,
 				9AAEB0DE31E47C1101F07BDF /* BackendDiagnostics.swift in Sources */,
 				37B80FDB18C1C00EA9CFCEE8 /* BackupService.swift in Sources */,
 				C8E13ADF4E646F830D5BC69A /* BackupView.swift in Sources */,
@@ -911,6 +919,7 @@
 				5640B130FC9787B963F18096 /* AppEnvironment.swift in Sources */,
 				130694EFB39C5DB23F31DAD3 /* AppLock.swift in Sources */,
 				55131960B7D854494235E8D9 /* AppModel.swift in Sources */,
+				9A8E2E0BA45239871273EAF1 /* AppleChatAgent.swift in Sources */,
 				E66DAED4975F1E419AF5C0EA /* BackendDiagnostics.swift in Sources */,
 				DDEBFCFF6342B39DCFB0D54D /* BackupService.swift in Sources */,
 				58571F587DB6D0AE8D964E19 /* Bill.swift in Sources */,
@@ -971,6 +980,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ECCAC168025AFC19BAD53BF0 /* AppleChatTests.swift in Sources */,
 				AF1936EC613A0D1C544AA414 /* MonocleMacTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

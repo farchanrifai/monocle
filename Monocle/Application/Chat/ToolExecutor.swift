@@ -109,7 +109,7 @@ struct ToolExecutor {
     struct Group: Encodable { let name: String; let amount: Amount; let share: Int?; let count: Int }
     struct SummaryResult: Encodable { let period: String; let start: String; let end: String; let scope: String; let total: Amount; let count: Int; let groups: [Group] }
     struct Delta: Encodable { let category: String; let a: Amount; let b: Amount; let change: Amount }
-    struct CompareResult: Encodable { let periodA: String; let periodB: String; let scope: String; let totalA: Amount; let totalB: Amount; let change: Amount; let categories: [Delta] }
+    struct CompareResult: Encodable { let periodA: String; let periodB: String; let scope: String; let totalA: Amount; let totalB: Amount; let change: Amount; let summary: String; let categories: [Delta] }
     struct CategoryBudgetStatus: Encodable { let category: String; let limit: Amount; let spent: Amount; let remaining: Amount }
     struct BudgetResult: Encodable {
         let card: String; let hasBudget: Bool; var cycleStart: String?; var cycleEnd: String?
@@ -319,8 +319,11 @@ struct ToolExecutor {
 
     private func compare(_ input: CompareInput) throws -> Outcome {
         let target = try resolveScope(input.scope)
-        let a = try report(input.periodA, scope: target)
-        let b = try report(input.periodB, scope: target)
+        var (periodA, periodB) = (input.periodA, input.periodB)
+        var a = try report(periodA, scope: target)
+        var b = try report(periodB, scope: target)
+        // Always earlier → later, so `change` and every delta read forward in time whichever order the model asked in.
+        if b.range.startDay < a.range.startDay { swap(&a, &b); swap(&periodA, &periodB) }
         let spentA = Dictionary(a.categoryPoints.map { ($0.categoryName, $0.amount) }) { $0 + $1 }
         let spentB = Dictionary(b.categoryPoints.map { ($0.categoryName, $0.amount) }) { $0 + $1 }
         let names = Set(spentA.keys).union(spentB.keys).sorted()
@@ -328,9 +331,13 @@ struct ToolExecutor {
             let x = spentA[name] ?? 0, y = spentB[name] ?? 0
             return Delta(category: name, a: Amount(x), b: Amount(y), change: Amount(y - x))
         }
-        let result = CompareResult(periodA: input.periodA.horizon.rawValue, periodB: input.periodB.horizon.rawValue,
+        let change = b.metrics.totalSpend - a.metrics.totalSpend
+        // Spelled out so a small model never has to read the sign of `change` itself.
+        let summary = "Spending \(change == 0 ? "stayed the same" : "went \(change > 0 ? "up" : "down") by \(Money.format(abs(change)))"): "
+            + "\(periodA.rawValue) \(Money.format(a.metrics.totalSpend)), \(periodB.rawValue) \(Money.format(b.metrics.totalSpend))."
+        let result = CompareResult(periodA: periodA.horizon.rawValue, periodB: periodB.horizon.rawValue,
                                    scope: Self.label(target), totalA: Amount(a.metrics.totalSpend), totalB: Amount(b.metrics.totalSpend),
-                                   change: Amount(b.metrics.totalSpend - a.metrics.totalSpend), categories: deltas)
+                                   change: Amount(change), summary: summary, categories: deltas)
         return Outcome(json: try Self.encode(result))
     }
 

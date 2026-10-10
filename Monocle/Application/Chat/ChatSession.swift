@@ -37,7 +37,7 @@ final class ChatSession {
     var isTyping = false
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
-    @ObservationIgnored var agent: ChatAgent?
+    @ObservationIgnored var agent: (any ChatBackend)?
     /// Claude's side of a restored conversation, handed to the agent when it is first created.
     @ObservationIgnored private(set) var restoredMessages: [[String: Any]] = []
     @ObservationIgnored private let fileURL: URL?
@@ -71,7 +71,7 @@ final class ChatSession {
         guard !loading, let fileURL else { return }
         do {
             let ui = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Snapshot(rows: rows, scope: scope)))
-            let json: [String: Any] = ["version": 1, "ui": ui, "messages": agent?.messages ?? restoredMessages]
+            let json: [String: Any] = ["version": 1, "ui": ui, "messages": (agent as? ChatAgent)?.messages ?? restoredMessages]
             try JSONSerialization.data(withJSONObject: json).write(to: fileURL, options: .atomic)
         } catch {
             // ponytail: history is a convenience copy; a failed write never interrupts the chat.
@@ -80,6 +80,9 @@ final class ChatSession {
 }
 
 extension ChatSession {
+    /// Settings ▸ AI Chat ▸ Model: "claude" (default) or "apple" (on-device Apple Intelligence, no key needed).
+    static var usesApple: Bool { UserDefaults.standard.string(forKey: "chatBackend") == "apple" }
+
     /// Sends one user message and appends Claude's reply rows. Returns the reply so the caller can announce it.
     @discardableResult
     func send(_ input: String, model: AppModel, scope: AnalyticsFilterScope) async -> [ChatAgent.Output] {
@@ -87,16 +90,21 @@ extension ChatSession {
         guard !text.isEmpty, !isTyping else { return [] }
         rows.append(ChatRow(kind: .user(text)))
         isTyping = true
+        // Switching backend starts the other model fresh; Claude's history is kept for when it comes back.
+        if Self.usesApple != (agent is AppleChatAgent) {
+            if let claude = agent as? ChatAgent { restoredMessages = claude.messages }
+            agent = nil
+        }
         // The key is read per request, so changing it in Settings keeps the conversation.
-        let agent = agent ?? ChatAgent(model: model, messages: restoredMessages) { body in
+        let agent = agent ?? (Self.usesApple ? AppleChatAgent(model: model) : ChatAgent(model: model, messages: restoredMessages) { body in
             #if DEBUG
             if Self.usesFakeClaude { return try Self.fakeClaude(body) }
             #endif
             guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
             return try await ClaudeClient(apiKey: key).send(body)
-        }
+        })
         self.agent = agent
-        let outputs = await agent.send(text, scope: scope)
+        let outputs = await agent.send(text, scope: scope, now: .now)
         isTyping = false
         rows += outputs.map { output in
             switch output {

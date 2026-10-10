@@ -8,6 +8,7 @@ struct MonocleMacApp: App {
         WindowGroup {
             MacRootView(state: state)
                 .preferredColorScheme(state.model.preferredColorScheme)
+                .modifier(SettingsOpener(state: state))
         }
         .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentMinSize)
@@ -15,4 +16,11 @@ struct MonocleMacApp: App {
 
         Settings { MacSettingsView(state: state).preferredColorScheme(state.model.preferredColorScheme) }
     }
+}
+
+/// Hands the environment's openSettings to MacAppState so commands outside a view (command bar, buttons) can use it.
+private struct SettingsOpener: ViewModifier {
+    let state: MacAppState
+    @Environment(\.openSettings) private var openSettings
+    func body(content: Content) -> some View { content.onAppear { state.openSettings = openSettings } }
 }

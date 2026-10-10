@@ -9,7 +9,9 @@ struct ChatView: View {
     @State private var sentCount = 0
     @FocusState private var inputFocused: Bool
     @AppStorage("chatEnabled") private var chatEnabled = false
-    @State private var hasKey = APIKeyStore.read() != nil
+    @AppStorage("chatBackend") private var backend = "claude"
+    @State private var savedKey = APIKeyStore.read() != nil
+    private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var showingSetup = false
 
     private var isTyping: Bool { session.isTyping }
@@ -83,7 +85,7 @@ struct ChatView: View {
         }
         .tint(MC.red)
         .onAppear { if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) } }
-        .sheet(isPresented: $showingSetup, onDismiss: { hasKey = APIKeyStore.read() != nil }) {
+        .sheet(isPresented: $showingSetup, onDismiss: { savedKey = APIKeyStore.read() != nil }) {
             NavigationStack {
                 ChatSettingsView()
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }

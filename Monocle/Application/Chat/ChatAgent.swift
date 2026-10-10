@@ -2,8 +2,16 @@ import Foundation
 
 /// The tool loop (CHAT_SPEC §6): send the conversation, run every requested tool on-device, return all
 /// results in one user message, repeat until Claude answers. History is append-only (preserved thinking).
+/// A chat model behind the shared tools: Claude (ChatAgent) or Apple Intelligence (AppleChatAgent).
 @MainActor
-final class ChatAgent {
+protocol ChatBackend: AnyObject {
+    func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output]
+    func note(_ text: String)
+    func reset()
+}
+
+@MainActor
+final class ChatAgent: ChatBackend {
     enum Output: Equatable {
         case text(String)
         case proposal(Expense)
@@ -42,7 +50,7 @@ final class ChatAgent {
         }
         let checkpoint = messages.count
         let executor = ToolExecutor(model: model, scope: scope, now: now)
-        var content: [[String: Any]] = [["type": "text", "text": context(executor, now: now)]]
+        var content: [[String: Any]] = [["type": "text", "text": Self.context(executor, now: now)]]
         content += notes.map { ["type": "text", "text": "App note: \($0)"] }
         content.append(["type": "text", "text": text])
         messages.append(["role": "user", "content": content])
@@ -106,7 +114,8 @@ final class ChatAgent {
     }
 
     /// Per-request facts go in the user turn so the system prompt and tools stay byte-stable.
-    private func context(_ executor: ToolExecutor, now: Date) -> String {
+    static func context(_ executor: ToolExecutor, now: Date) -> String {
+        let model = executor.model
         let card = try? executor.targetCard()
         let categories = card.flatMap { try? model.activeCategories(in: $0.id) }?.map(\.name) ?? []
         let books = model.books(in: executor.scope).map(\.name)

@@ -116,6 +116,7 @@ private struct SettingsNote: View {
 /// Opt-in, disclosure and personal API key (CHAT_SPEC §0 rule 6, §9); the iPhone has its own sheet.
 private struct ChatSettingsPane: View {
     @AppStorage("chatEnabled") private var chatEnabled = false
+    @AppStorage("chatBackend") private var backend = "claude"
     @State private var keyDraft = ""
     @State private var hasKey = APIKeyStore.read() != nil
 
@@ -124,10 +125,17 @@ private struct ChatSettingsPane: View {
             LabeledContent("AI Chat:") {
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle("Enable AI chat", isOn: $chatEnabled).accessibilityIdentifier("chatEnabledToggle")
-                    SettingsNote("Your messages, plus the spending data needed to answer them (amounts, dates, notes, category and card names), are sent to Anthropic's Claude. Nothing is sent until you use chat, and expenses are only saved when you click Save.")
+                    Picker("Model", selection: $backend) {
+                        Text("Claude").tag("claude")
+                        Text("Apple Intelligence").tag("apple")
+                    }
+                    .fixedSize()
+                    SettingsNote(backend == "apple"
+                                 ? (AppleChatAgent.unavailableReason ?? "Chat runs on this Mac with Apple Intelligence; nothing leaves the device. Expenses are only saved when you click Save.")
+                                 : "Your messages, plus the spending data needed to answer them (amounts, dates, notes, category and card names), are sent to Anthropic's Claude. Nothing is sent until you use chat, and expenses are only saved when you click Save.")
                 }
             }
-            LabeledContent("API key:") {
+            if backend == "claude" { LabeledContent("API key:") {
                 VStack(alignment: .leading, spacing: 8) {
                     if hasKey {
                         HStack {
@@ -145,7 +153,7 @@ private struct ChatSettingsPane: View {
                     }
                     SettingsNote("Stored in the Keychain on this Mac only. Create one at platform.claude.com.")
                 }
-            }
+            } }
         }
     }
 
