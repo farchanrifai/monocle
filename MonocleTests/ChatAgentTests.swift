@@ -176,4 +176,20 @@ final class ChatAgentTests: XCTestCase {
     private func toolUse(_ id: String, _ name: String, _ input: [String: Any]) -> [String: Any] {
         ["type": "tool_use", "id": id, "name": name, "input": input]
     }
+
+    func testStrictToolsStayUnderTheAPIOptionalParameterLimit() {
+        func optionals(_ schema: [String: Any]) -> Int {
+            let properties = schema["properties"] as? [String: [String: Any]] ?? [:]
+            let required = Set(schema["required"] as? [String] ?? [])
+            return properties.reduce(0) { sum, entry in
+                let items = entry.value["items"] as? [String: Any]
+                return sum + (required.contains(entry.key) ? 0 : 1) + (entry.value["type"] as? String == "object" ? optionals(entry.value) : 0)
+                    + (items.map(optionals) ?? 0)
+            }
+        }
+        let total = ChatAgent.tools.filter { $0["strict"] as? Bool == true }
+            .reduce(0) { $0 + optionals($1["input_schema"] as? [String: Any] ?? [:]) }
+        XCTAssertLessThanOrEqual(total, 24, "Anthropic rejects strict tool schemas with more than 24 optional parameters")
+    }
+
 }
