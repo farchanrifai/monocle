@@ -198,39 +198,241 @@ private struct BillEditor: View {
 
 struct MacAnalyticsView: View {
     @Bindable var state: MacAppState
-    @State private var horizon: AnalyticsTimeHorizon = .thisCycle
+    @State private var horizon: AnalyticsTimeHorizon? = .thisCycle // nil = custom
+    @State private var customStart = Calendar.current.date(byAdding: .day, value: -29, to: .now) ?? .now
+    @State private var customEnd = Date.now
+    @State private var editingDate: Bool? // true = start, false = end
     private var model: AppModel { state.model }
-    private func daily(_ expenses: [Expense]) -> [(String, Int64)] { Dictionary(grouping: expenses, by: \.day).map { ($0.key, $0.value.reduce(0) { $0 + $1.amount }) }.sorted { $0.0 < $1.0 } }
-    private func categories(_ expenses: [Expense]) -> [(String, Int64)] {
-        var byID: [UUID: Int64] = [:]
-        for expense in expenses { for allocation in expense.allocations { byID[allocation.categoryID, default: 0] += allocation.amount } }
-        var values: [String: Int64] = [:]
-        for (id, amount) in byID { values[model.category(id)?.name ?? "Other", default: 0] += amount }
-        return values.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
+    private static let idr = Decimal.FormatStyle.Currency(code: "IDR").precision(.fractionLength(0))
+
+    /// "This month" is dropped when the budget cycle is the calendar month (identical data).
+    private var horizons: [AnalyticsTimeHorizon] {
+        let cycle = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: model.cycle)
+        let month = AnalyticsEngine.dateRange(for: .thisMonth)
+        return AnalyticsTimeHorizon.allCases.filter { $0 != .thisMonth || cycle.startDay != month.startDay || cycle.endDay != month.endDay }
     }
+    private var range: (startDate: Date, endDate: Date, startDay: String, endDay: String) {
+        horizon.map { AnalyticsEngine.dateRange(for: $0, currentCycle: model.cycle) }
+            ?? (customStart, customEnd, Day.string(customStart), Day.string(customEnd))
+    }
+    private func cardExpenses(from start: String, to end: String) -> [(card: String, expense: Expense)] {
+        model.unhiddenBooks.flatMap { book in // hidden cards stay out, as on iOS
+            model.expenses(for: book.id).filter { $0.day >= start && $0.day <= end }.map { (book.name, $0) }
+        }
+    }
+    private func grouped(_ pairs: [(String, Int64)]) -> [(String, Int64)] {
+        Dictionary(pairs, uniquingKeysWith: +).map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
+    }
+
     var body: some View {
-        let range = AnalyticsEngine.dateRange(for: horizon, currentCycle: model.cycle)
-        let expenses = model.unhiddenBooks.flatMap { model.expenses(for: $0.id) } // hidden cards stay out, as on iOS
-            .filter { $0.day >= range.startDay && $0.day <= range.endDay }
-        let daily = daily(expenses), categories = categories(expenses)
+        let range = range
+        let rows = cardExpenses(from: range.startDay, to: range.endDay)
+        let expenses = rows.map(\.expense)
+        let total = expenses.reduce(0) { $0 + $1.amount }
+        let daily = grouped(expenses.map { ($0.day, $0.amount) }).sorted { $0.0 < $1.0 }
+        var running: Int64 = 0
+        let cumulative = daily.map { running += $0.1; return ($0.0, running) }
+        let categories = grouped(expenses.flatMap(\.allocations).map { (model.category($0.categoryID)?.name ?? "Other", $0.amount) })
+        let cards = grouped(rows.map { ($0.card, $0.expense.amount) })
+        let weekdays = weekdayTotals(expenses)
+        // Previous period of equal length, for the comparison tile.
+        let length = max(1, (Calendar.current.dateComponents([.day], from: range.startDate, to: range.endDate).day ?? 0) + 1)
+        let prevEnd = Calendar.current.date(byAdding: .day, value: -1, to: range.startDate) ?? range.startDate
+        let prevStart = Calendar.current.date(byAdding: .day, value: -(length - 1), to: prevEnd) ?? prevEnd
+        let previous = cardExpenses(from: Day.string(prevStart), to: Day.string(prevEnd)).reduce(0) { $0 + $1.expense.amount }
+        let change = previous == 0 ? nil : Int((Double(total - previous) / Double(previous) * 100).rounded())
+        let biggestDay = daily.max { $0.1 < $1.1 }
+
         return Page(title: "Analytics") {
-            Picker("Period", selection: $horizon) { ForEach(AnalyticsTimeHorizon.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
-            HStack {
-                SummaryTile(title: "Total", value: Money.format(expenses.reduce(0) { $0 + $1.amount }), detail: "\(expenses.count) transactions")
-                SummaryTile(title: "Average", value: Money.format(expenses.isEmpty ? 0 : expenses.reduce(0) { $0 + $1.amount } / Int64(max(1, daily.count))), detail: "per active day")
+            periodBar(range)
+            HStack(spacing: 12) {
+                SummaryTile(title: "Total", value: Money.format(total), detail: "\(expenses.count) transactions")
+                SummaryTile(title: "Average", value: Money.format(total / Int64(max(1, daily.count))), detail: "per active day")
+                SummaryTile(title: "vs previous", value: change.map { "\($0 > 0 ? "+" : "")\($0)%" } ?? "—", detail: "previous \(length) days: \(Money.format(previous))")
+                SummaryTile(title: "Biggest day", value: Money.format(biggestDay?.1 ?? 0), detail: biggestDay.map { Day.title($0.0) } ?? "No spending")
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 18)], spacing: 18) {
-                GroupBox("Spending over time") {
+            cardRow {
+                ChartCard("Spending over time", info: "How much you spent each day. Tall bars show your busiest spending days.") {
                     Chart(daily, id: \.0) { point in
-                        BarMark(x: .value("Day", point.0), y: .value("Amount", point.1 / 100)).foregroundStyle(.red.gradient)
-                    }.chartYAxis { AxisMarks(format: Decimal.FormatStyle.Currency(code: "IDR").precision(.fractionLength(0))) }.frame(height: 260).padding(8)
+                        BarMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Amount", point.1 / 100)).foregroundStyle(.red.gradient)
+                    }.chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { AxisGridLine(); AxisValueLabel(format: .dateTime.day().month(.abbreviated)) } }
+                    .chartYAxis { AxisMarks(format: Self.idr) }
                 }
-                GroupBox("By category") {
-                    Chart(categories.prefix(8), id: \.0) { point in
-                        BarMark(x: .value("Amount", point.1 / 100), y: .value("Category", point.0)).foregroundStyle(.red.gradient)
-                    }.chartXAxis { AxisMarks(format: Decimal.FormatStyle.Currency(code: "IDR").precision(.fractionLength(0))) }.frame(height: 260).padding(8)
+                ChartCard("By category", info: "Where your money went, biggest category first. The percentage is its share of the total.") { BarList(items: Array(categories.prefix(8)), total: total) }
+            }
+            cardRow {
+                ChartCard("Cumulative", info: "Your total adding up day by day. A steeper line means you spent faster.") {
+                    Chart(cumulative, id: \.0) { point in
+                        AreaMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red.opacity(0.15).gradient)
+                        LineMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red)
+                    }.chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { AxisGridLine(); AxisValueLabel(format: .dateTime.day().month(.abbreviated)) } }
+                    .chartYAxis { AxisMarks(format: Self.idr) }
+                }
+                ChartCard("By weekday", info: "Spending grouped by day of the week. Shows which days you tend to spend most.") {
+                    Chart(weekdays, id: \.0) { point in
+                        BarMark(x: .value("Weekday", point.0), y: .value("Amount", point.1 / 100)).foregroundStyle(.red.gradient).cornerRadius(4)
+                    }.chartYAxis { AxisMarks(format: Self.idr) }
+                }
+            }
+            cardRow {
+                ChartCard("By card", info: "How the total splits across your cards. Hidden cards are not counted.") { BarList(items: cards, total: total) }
+                ChartCard("Largest transactions", info: "Your six biggest single expenses in this period.") {
+                    VStack(spacing: 10) {
+                        ForEach(expenses.sorted { $0.amount > $1.amount }.prefix(6)) { expense in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(expense.note.isEmpty ? (model.category(expense.allocations.first?.categoryID)?.name ?? "Expense") : expense.note).lineLimit(1)
+                                    Text(Day.title(expense.day)).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text(Money.format(expense.amount)).monospacedDigit()
+                            }.font(.callout)
+                        }
+                    }.frame(maxHeight: .infinity, alignment: .top)
                 }
             }
         }
     }
+
+    private func weekdayTotals(_ expenses: [Expense]) -> [(String, Int64)] {
+        let calendar = Calendar.current
+        var totals = [Int64](repeating: 0, count: 7)
+        for expense in expenses { if let date = Day.date(expense.day) { totals[calendar.component(.weekday, from: date) - 1] += expense.amount } }
+        let order = (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 }
+        return order.map { (calendar.shortWeekdaySymbols[$0], totals[$0]) }
+    }
+
+    /// Two equal-height cards: each fills the row, row height = tallest card.
+    private func cardRow(@ViewBuilder _ content: () -> some View) -> some View {
+        HStack(alignment: .top, spacing: 18) { content() }.fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func periodBar(_ range: (startDate: Date, endDate: Date, startDay: String, endDay: String)) -> some View {
+        HStack(spacing: 8) {
+            ForEach(horizons) { option in Pill(option.rawValue, selected: horizon == option) { horizon = option } }
+            Pill("Custom", selected: horizon == nil) { useCustom(range) }
+            Divider().frame(height: 18).padding(.horizontal, 4)
+            datePill(range.startDate, start: true, range: range)
+            Text("–").foregroundStyle(.secondary)
+            datePill(range.endDate, start: false, range: range)
+        }
+    }
+
+    private func useCustom(_ range: (startDate: Date, endDate: Date, startDay: String, endDay: String)) {
+        if horizon != nil { customStart = range.startDate; customEnd = range.endDate } // keep the visible range
+        horizon = nil
+    }
+
+    private func datePill(_ date: Date, start: Bool, range: (startDate: Date, endDate: Date, startDay: String, endDay: String)) -> some View {
+        Pill(date.formatted(date: .abbreviated, time: .omitted), selected: horizon == nil && editingDate == start) {
+            useCustom(range); editingDate = start
+        }
+        .popover(isPresented: Binding(get: { editingDate == start }, set: { if !$0 { editingDate = nil } }), arrowEdge: .bottom) {
+            MonthCalendar(selection: start ? $customStart : $customEnd, rangeStart: customStart, rangeEnd: customEnd,
+                          bounds: start ? Date.distantPast...customEnd : customStart...Date.distantFuture)
+        }
+    }
+}
+
+private struct Pill: View {
+    let title: String, selected: Bool, action: () -> Void
+    init(_ title: String, selected: Bool, action: @escaping () -> Void) { self.title = title; self.selected = selected; self.action = action }
+    var body: some View {
+        Button { withAnimation(.snappy) { action() } } label: {
+            Text(title).font(.callout.weight(.medium)).padding(.horizontal, 14).padding(.vertical, 7)
+                .background(selected ? Color.accentColor : Color.secondary.opacity(0.12), in: Capsule())
+                .foregroundStyle(selected ? Color.white : Color.primary)
+        }.buttonStyle(.plain)
+    }
+}
+
+private struct ChartCard<Content: View>: View {
+    let title: String, info: String
+    @ViewBuilder let content: Content
+    @State private var showInfo = false
+    init(_ title: String, info: String, @ViewBuilder content: () -> Content) { self.title = title; self.info = info; self.content = content() }
+    var body: some View {
+        GroupBox { content.frame(minHeight: 240, maxHeight: .infinity).padding(8) } label: {
+            HStack(spacing: 4) {
+                Text(title)
+                Button { showInfo.toggle() } label: { Image(systemName: "info.circle").foregroundStyle(.secondary) }
+                    .buttonStyle(.plain).accessibilityLabel("About \(title)")
+                    .popover(isPresented: $showInfo, arrowEdge: .bottom) {
+                        Text(info).font(.callout).fixedSize(horizontal: false, vertical: true).frame(width: 240, alignment: .leading).padding(14)
+                    }
+            }
+        }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// Labelled horizontal bars; plain rows because Charts overlapped category labels on macOS.
+private struct BarList: View {
+    let items: [(String, Int64)], total: Int64
+    var body: some View {
+        let peak = max(1, items.map(\.1).max() ?? 1)
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(items, id: \.0) { name, amount in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(name); Spacer()
+                        Text("\(Int((Double(amount) / Double(max(1, total)) * 100).rounded()))%").foregroundStyle(.tertiary)
+                        Text(Money.format(amount)).foregroundStyle(.secondary).monospacedDigit()
+                    }.font(.callout)
+                    GeometryReader { Capsule().fill(.red.gradient).frame(width: max(6, $0.size.width * CGFloat(amount) / CGFloat(peak))) }.frame(height: 8)
+                }
+            }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+/// Month grid in SwiftUI; the AppKit graphical DatePicker drew a dated focus ring.
+private struct MonthCalendar: View {
+    @Binding var selection: Date
+    let rangeStart: Date, rangeEnd: Date, bounds: ClosedRange<Date>
+    @State private var month: Date = .now
+    @Environment(\.dismiss) private var dismiss
+    private let calendar = Calendar.current
+
+    var body: some View {
+        let first = calendar.dateInterval(of: .month, for: month)?.start ?? month
+        let lead = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
+        let count = calendar.range(of: .day, in: .month, for: first)?.count ?? 30
+        let days: [Date?] = Array(repeating: nil, count: lead) + (0..<count).map { calendar.date(byAdding: .day, value: $0, to: first) }
+        let symbols = (0..<7).map { calendar.veryShortWeekdaySymbols[(calendar.firstWeekday - 1 + $0) % 7] }
+        VStack(spacing: 10) {
+            HStack {
+                Text(first.formatted(.dateTime.month(.wide).year())).font(.headline)
+                Spacer()
+                Button { shift(-1) } label: { Image(systemName: "chevron.left") }
+                Button { shift(1) } label: { Image(systemName: "chevron.right") }
+            }.buttonStyle(.borderless)
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: 2), count: 7), spacing: 2) {
+                ForEach(symbols.indices, id: \.self) { Text(symbols[$0]).font(.caption.weight(.semibold)).foregroundStyle(.secondary) }
+                ForEach(days.indices, id: \.self) { index in
+                    if let day = days[index] { cell(day) } else { Color.clear.frame(height: 32) }
+                }
+            }
+        }
+        .padding(14).frame(width: 260)
+        .onAppear { month = selection }
+    }
+
+    private func cell(_ day: Date) -> some View {
+        let selected = calendar.isDate(day, inSameDayAs: selection)
+        let inRange = day >= calendar.startOfDay(for: rangeStart) && day <= rangeEnd
+        let enabled = bounds.contains(day) || calendar.isDate(day, inSameDayAs: bounds.lowerBound)
+        return Button { selection = day; dismiss() } label: {
+            Text("\(calendar.component(.day, from: day))").font(.callout.weight(selected ? .semibold : .regular)).monospacedDigit()
+                .frame(width: 32, height: 32)
+                .background {
+                    if selected { Circle().fill(Color.accentColor) } else if inRange { Circle().fill(Color.accentColor.opacity(0.15)) }
+                }
+                .foregroundStyle(selected ? Color.white : calendar.isDateInToday(day) ? Color.accentColor : Color.primary)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain).disabled(!enabled).opacity(enabled ? 1 : 0.3)
+    }
+
+    private func shift(_ value: Int) { withAnimation(.snappy) { month = calendar.date(byAdding: .month, value: value, to: month) ?? month } }
 }
