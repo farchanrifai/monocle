@@ -70,6 +70,8 @@ No chat library. Pure SwiftUI (iOS 26, also compiles for a future macOS target).
 | `compare_periods` | period_a, period_b, scope? | both totals + per-category deltas | `AnalyticsEngine.calculateMonthOverMonthComparison` / two reports |
 | `get_budget_status` | card? | overall + per-category limit vs spent for the current cycle | `BudgetHistory.period` + report metrics |
 | `list_cards` | – | cards and stacks with names | `model.books`, `model.stacks` |
+| `propose_edit` | id (from `query_expenses` rows), amount?, category?, note?, day? | `{status:"shown_to_user", card, before, after}` or error | edits a copy; splits only allow note/day |
+| `propose_delete` | id | `{status:"shown_to_user", card, before}` or error | – |
 
 `period` is an enum mirroring `AnalyticsTimeHorizon`: `this_cycle | this_month | last_month | last_30_days | last_90_days | year_to_date`. Use explicit `start`/`end` only when the user names dates ("since 1 Sept").
 
@@ -77,7 +79,9 @@ No chat library. Pure SwiftUI (iOS 26, also compiles for a future macOS target).
 
 Tool definitions use `strict: true` + `additionalProperties: false`. Executor errors return `tool_result` with `is_error: true` and a plain-language message.
 
-v2: `edit_expense`, `delete_expense` (confirm + existing delete undo), bills, splits.
+**Edit/delete flow:** Claude finds the expense with `query_expenses` (rows carry `id`), then proposes. The card shows before → after (edit) or the expense (delete) with Save/Discard or Delete/Keep. Applying re-checks the expense is unchanged since the card was made, else errors. After applying, the card offers Undo (edit: save the original; delete: `AppModel.restore` with its bill links). App notes tell Claude what the user chose.
+
+v2 remaining: bills, splits.
 
 ## 5. Model and API
 
@@ -147,7 +151,7 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 - **ToolExecutor** with a fake `ExpenseStore`: each tool; rupiah↔minor conversion; overflow; unknown/inactive category; invalid day; scope resolution (default stack, all cards, named card/stack, unknown name); target-card selection.
 - **ChatAgent** with a scripted fake client: text-only reply, single tool, parallel tools, error tool result, `max_tokens`/`refusal`, 6-iteration cap.
 - **UI tests:** chat opens full screen from `chatButton` and closes back to Home; locking the app dismisses chat; filter button now in the Home header (`activityFilterButton`); confirm card Save writes one expense, Discard writes none. Don't build on the 3 known flaky card-animation tests.
-- **Golden prompts** (manual, real API, not per commit): "coffee 28k", "bensin 100rb kemarin", "lunch 45k and parking 5k", "berapa pengeluaran makan bulan ini?", "compare this month vs last", "am I over budget?", "show all cards this month", "delete my last expense" (must decline), "add 0", "add 10 juta" (confirm card shows Rp10.000.000).
+- **Golden prompts** (manual, real API, not per commit): "coffee 28k", "bensin 100rb kemarin", "lunch 45k and parking 5k", "berapa pengeluaran makan bulan ini?", "compare this month vs last", "am I over budget?", "show all cards this month", "delete my last expense" (delete card for the newest, nothing deleted), "ubah kopi kemarin jadi 30rb" (edit card Rp28.000 → Rp30.000), "add 0", "add 10 juta" (confirm card shows Rp10.000.000).
 
 ## 11. Build order
 
@@ -157,4 +161,4 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 4. `propose_expense` confirm card + Save/Discard.
 5. Inline summary chart.
 6. `compare_periods`, `get_budget_status`; offline/error states; golden-prompt pass.
-7. Proxy before sharing. v2: streaming, edit/delete, splits, localized UI strings, macOS target.
+7. Proxy before sharing. v2: streaming, splits, localized UI strings, macOS target.

@@ -65,6 +65,15 @@ struct ChatTranscript: View {
                 onSave: { session.resolveProposal(row.id, expense, as: .saved, model: model) },
                 onDiscard: { session.resolveProposal(row.id, expense, as: .discarded, model: model) },
                 onEdit: { session.resolveProposal(row.id, expense, as: .opened, model: model) })
+        case .change(let change, let state):
+            ExpenseChangeCard(
+                change: change,
+                categoryName: categoryName,
+                cardName: model.books.first { $0.id == change.original.bookID }?.name ?? "",
+                state: state,
+                onApply: { session.resolveChange(row.id, change, as: .saved, model: model) },
+                onKeep: { session.resolveChange(row.id, change, as: .discarded, model: model) },
+                onUndo: { session.resolveChange(row.id, change, as: .undone, model: model) })
         case .summary(let points):
             ChatSummaryChart(points: points)
         case .notice(let message):
@@ -72,6 +81,11 @@ struct ChatTranscript: View {
         case .error(let message):
             Text(message).font(.footnote).foregroundStyle(MC.red).frame(maxWidth: .infinity)
         }
+    }
+
+    private func categoryName(_ expense: Expense) -> String {
+        let categories = expense.bookID.flatMap { id in try? model.expenseService?.categories(for: id) } ?? []
+        return expense.allocations.compactMap { a in categories.first { $0.id == a.categoryID }?.name }.joined(separator: ", ")
     }
 
     // Tails sit on the last bubble of a same-sender run, as in Messages.

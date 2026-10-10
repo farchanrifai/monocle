@@ -1,13 +1,20 @@
 import Foundation
 import Observation
 
-enum ProposalState: Equatable, Codable { case pending, saved, discarded, opened }
+enum ProposalState: Equatable, Codable { case pending, saved, discarded, opened, undone }
+
+/// Claude's proposed edit (`updated`) or delete (`updated == nil`) of a saved expense.
+struct ExpenseChange: Codable, Equatable {
+    var original: Expense
+    var updated: Expense?
+}
 
 struct ChatRow: Identifiable, Equatable, Codable {
     enum Kind: Equatable, Codable {
         case user(String)
         case assistant(String)
         case proposal(Expense, ProposalState)
+        case change(ExpenseChange, ProposalState)
         case summary([CategorySpendPoint])
         case notice(String)
         case error(String)
@@ -94,6 +101,7 @@ extension ChatSession {
             switch output {
             case .text(let text): ChatRow(kind: .assistant(text))
             case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
+            case .change(let change): ChatRow(kind: .change(change, .pending))
             case .chart(let points): ChatRow(kind: .summary(points))
             case .notice(let text): ChatRow(kind: .notice(text))
             case .error(let text): ChatRow(kind: .error(text))
@@ -118,10 +126,51 @@ extension ChatSession {
             model.openInEntry(expense)
         case .discarded:
             agent?.note("The user discarded the proposed expense \(summary).")
-        case .pending:
+        case .pending, .undone:
             break
         }
         rows[index].kind = .proposal(expense, state)
+    }
+}
+
+extension ChatSession {
+    /// Apply (`.saved`), keep (`.discarded`) or undo (`.undone`) an edit/delete card. Nothing is written until the user confirms.
+    func resolveChange(_ id: UUID, _ change: ExpenseChange, as state: ProposalState, model: AppModel) {
+        guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
+        let original = change.original
+        let label = "\(Money.format(original.amount)) \(original.note.isEmpty ? "" : "\"\(original.note)\" ")on \(original.day)"
+        let verb = change.updated == nil ? "delete" : "edit"
+        do {
+            switch state {
+            case .saved:
+                // The card was built from a snapshot; refuse if the expense changed since, rather than overwrite it.
+                guard let bookID = original.bookID, model.expenses(for: bookID).contains(where: { $0 == original }) else {
+                    throw ToolExecutor.ToolError(message: "That expense changed or was deleted since. Ask again to see it as it is now.")
+                }
+                if let updated = change.updated { try model.save(updated) } else { try delete(original, model: model) }
+                agent?.note("The user confirmed the \(verb) of the expense \(label).")
+            case .undone:
+                if change.updated != nil { try model.save(original) }
+                else { model.restore(original, occurrences: model.undoExpense?.id == original.id ? model.undoOccurrences : []) }
+                agent?.note("The user undid the \(verb) of the expense \(label); it is back as it was.")
+            case .discarded:
+                agent?.note("The user declined the \(verb) of the expense \(label); nothing changed.")
+            case .pending, .opened:
+                break
+            }
+        } catch {
+            rows.append(ChatRow(kind: .error((error as? ToolExecutor.ToolError)?.message ?? error.localizedDescription)))
+            return
+        }
+        rows[index].kind = .change(change, state)
+    }
+
+    /// AppModel.delete reports failure through `model.error`; surface it here instead.
+    private func delete(_ expense: Expense, model: AppModel) throws {
+        model.delete(expense)
+        guard model.undoExpense?.id == expense.id else {
+            throw ToolExecutor.ToolError(message: model.error ?? "Couldn't delete the expense.")
+        }
     }
 }
 

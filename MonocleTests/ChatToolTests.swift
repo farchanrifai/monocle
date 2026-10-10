@@ -169,6 +169,83 @@ final class ChatToolTests: XCTestCase {
         XCTAssertTrue(run("no_such_tool", [:]).isError)
     }
 
+    // MARK: - propose_edit / propose_delete
+
+    func testEditProposesOnlyGivenFieldsAndNeverWrites() throws {
+        let kopi = try kopiID()
+        let unknown = run("propose_edit", ["id": kopi, "amount": 30000, "category": "Pets"])
+        XCTAssertTrue((json(unknown)["error"] as? String ?? "").contains("Food & Drink"), "Error lists valid categories")
+
+        let edit = run("propose_edit", ["id": kopi, "amount": 30000, "note": "Kopi susu"])
+        XCTAssertFalse(edit.isError, edit.json)
+        let change = try XCTUnwrap(edit.change)
+        let updated = try XCTUnwrap(change.updated)
+        XCTAssertEqual(updated.id, change.original.id)
+        XCTAssertEqual(updated.amount, 3_000_000)
+        XCTAssertEqual(updated.allocations.map(\.amount), [3_000_000], "Single allocation follows the amount")
+        XCTAssertEqual(updated.note, "Kopi susu")
+        XCTAssertEqual(updated.day, change.original.day)
+        XCTAssertEqual(rupiah((json(edit)["before"] as? [String: Any])?["amount"]), 28_000)
+        XCTAssertEqual(rupiah((json(edit)["after"] as? [String: Any])?["amount"]), 30_000)
+        XCTAssertEqual(try repo.expenses(in: daily.id).first { $0.id.uuidString == kopi }?.amount, 2_800_000, "Proposals never write")
+
+        XCTAssertTrue(run("propose_edit", ["id": kopi]).isError, "Nothing to change")
+        XCTAssertTrue(run("propose_edit", ["id": kopi, "day": "2026-02-30"]).isError)
+        XCTAssertTrue(run("propose_edit", ["id": UUID().uuidString, "amount": 1000]).isError)
+        XCTAssertTrue(run("propose_edit", ["id": "latest", "amount": 1000]).isError)
+    }
+
+    func testEditRefusesAmountOrCategoryChangeOnSplitButAllowsNote() throws {
+        let food = try category("Food & Drink", in: daily), shopping = try category("Shopping", in: daily)
+        let split = Expense(amount: 10_000_00, day: "2026-09-12", note: "Market",
+                            allocations: [.init(categoryID: food.id, amount: 6_000_00), .init(categoryID: shopping.id, amount: 4_000_00)], bookID: daily.id)
+        try model.save(split)
+        XCTAssertTrue(run("propose_edit", ["id": split.id.uuidString, "amount": 12000]).isError)
+        XCTAssertEqual(run("propose_edit", ["id": split.id.uuidString, "note": "Pasar"]).change?.updated?.allocations, split.allocations)
+    }
+
+    func testDeleteProposesWithoutDeleting() throws {
+        let kopi = try kopiID()
+        let outcome = run("propose_delete", ["id": kopi])
+        XCTAssertFalse(outcome.isError, outcome.json)
+        XCTAssertNil(outcome.change?.updated)
+        XCTAssertEqual(outcome.change?.original.id.uuidString, kopi)
+        XCTAssertNotNil(try repo.expenses(in: daily.id).first { $0.id.uuidString == kopi })
+    }
+
+    func testConfirmedChangesApplyAndUndoAndStaleCardsAreRefused() throws {
+        let session = ChatSession()
+        let kopi = try kopiID()
+        let edit = try XCTUnwrap(run("propose_edit", ["id": kopi, "amount": 30000]).change)
+        let delete = try XCTUnwrap(run("propose_delete", ["id": kopi]).change)
+        session.rows = [ChatRow(kind: .change(edit, .pending)), ChatRow(kind: .change(delete, .pending))]
+        let (editRow, deleteRow) = (session.rows[0].id, session.rows[1].id)
+        func stored() -> Expense? { model.expenses(for: daily.id).first { $0.id.uuidString == kopi } }
+
+        session.resolveChange(editRow, edit, as: .saved, model: model)
+        XCTAssertEqual(stored()?.amount, 3_000_000)
+        XCTAssertEqual(session.rows[0].kind, .change(edit, .saved))
+
+        // The delete card still shows the old Rp28.000 snapshot: refuse instead of deleting what the user now has.
+        session.resolveChange(deleteRow, delete, as: .saved, model: model)
+        XCTAssertNotNil(stored())
+        XCTAssertEqual(session.rows[1].kind, .change(delete, .pending))
+        guard case .error = session.rows.last?.kind else { return XCTFail("Expected a stale-card error row") }
+
+        session.resolveChange(editRow, edit, as: .undone, model: model)
+        XCTAssertEqual(stored()?.amount, 2_800_000)
+
+        session.resolveChange(deleteRow, delete, as: .saved, model: model)
+        XCTAssertNil(stored())
+        session.resolveChange(deleteRow, delete, as: .undone, model: model)
+        XCTAssertEqual(stored(), delete.original)
+    }
+
+    private func kopiID() throws -> String {
+        let rows = try XCTUnwrap(json(run("query_expenses", ["period": "this_month", "text": "kopi"]))["rows"] as? [[String: Any]])
+        return try XCTUnwrap(rows.first?["id"] as? String)
+    }
+
     // MARK: - Helpers
 
     private var tripScope: AnalyticsFilterScope { .stack(id: trip.id, name: trip.name) }

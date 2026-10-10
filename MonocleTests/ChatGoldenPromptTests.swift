@@ -76,11 +76,16 @@ final class ChatGoldenPromptTests: XCTestCase {
         }
     }
 
-    func testDeleteIsDeclined() async throws {
-        let before = model.expenses(for: try XCTUnwrap(model.books.first?.id)).count
-        let outputs = await ask("delete my last expense")
-        XCTAssertTrue(proposals(outputs).isEmpty)
-        XCTAssertEqual(model.expenses(for: try XCTUnwrap(model.books.first?.id)).count, before)
+    func testEditAndDeleteOnlyPropose() async throws {
+        let bookID = try XCTUnwrap(model.books.first?.id)
+        let before = model.expenses(for: bookID)
+        let delete = await ask("delete my last expense")
+        let deletes = changes(delete).filter { $0.updated == nil }
+        XCTAssertEqual(deletes.map(\.original.note), ["Lunch"], "Newest expense, shown as a confirm card")
+
+        let edit = await ask("ubah kopi kemarin jadi 30rb")
+        XCTAssertEqual(changes(edit).compactMap(\.updated).map(\.amount), [3_000_000])
+        XCTAssertEqual(model.expenses(for: bookID), before, "Nothing changes until the user confirms")
     }
 
     /// Fresh agent per prompt so each golden prompt is judged on its own.
@@ -99,6 +104,10 @@ final class ChatGoldenPromptTests: XCTestCase {
         print("GOLDEN » \(prompt)")
         outputs.forEach { print("  \($0)") }
         return outputs
+    }
+
+    private func changes(_ outputs: [ChatAgent.Output]) -> [ExpenseChange] {
+        outputs.compactMap { if case .change(let c) = $0 { c } else { nil } }
     }
 
     private func proposals(_ outputs: [ChatAgent.Output]) -> [Expense] {

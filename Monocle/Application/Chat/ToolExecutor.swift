@@ -9,6 +9,8 @@ struct ToolExecutor {
         var isError = false
         /// Shown as a confirm card; nothing is saved until the user taps Save.
         var proposal: Expense? = nil
+        /// An edit or delete of a saved expense, applied only when the user confirms.
+        var change: ExpenseChange? = nil
         var chart: [CategorySpendPoint]? = nil
     }
 
@@ -23,6 +25,8 @@ struct ToolExecutor {
         do {
             switch name {
             case "propose_expense": return try proposeExpense(decode(input))
+            case "propose_edit": return try proposeEdit(decode(input))
+            case "propose_delete": return try proposeDelete(decode(input))
             case "query_expenses": return try queryExpenses(decode(input))
             case "get_summary": return try summary(decode(input))
             case "compare_periods": return try compare(decode(input))
@@ -60,6 +64,8 @@ struct ToolExecutor {
     enum GroupBy: String, Decodable { case category, day, card }
 
     struct ProposeInput: Decodable { let amount: Int64; let category: String; var note: String?; var day: String?; var card: String? }
+    struct EditInput: Decodable { let id: String; var amount: Int64?; var category: String?; var note: String?; var day: String? }
+    struct DeleteInput: Decodable { let id: String }
     struct QueryInput: Decodable {
         var period: Period?; var start: String?; var end: String?
         var category: String?; var text: String?; var scope: String?; var limit: Int?; var offset: Int?
@@ -81,7 +87,9 @@ struct ToolExecutor {
     }
 
     struct ProposalResult: Encodable { let status: String; let card: String; let category: String; let amount: Amount; let day: String; let note: String }
-    struct Row: Encodable { let day: String; let amount: Amount; let category: String; let note: String; let card: String }
+    struct ExpenseSummary: Encodable { let amount: Amount; let category: String; let day: String; let note: String }
+    struct ChangeResult: Encodable { let status: String; let card: String; let before: ExpenseSummary; var after: ExpenseSummary? }
+    struct Row: Encodable { let id: String; let day: String; let amount: Amount; let category: String; let note: String; let card: String }
     struct QueryResult: Encodable { let start: String; let end: String; let scope: String; let count: Int; let total: Amount; let rows: [Row]; let hasMore: Bool }
     struct Group: Encodable { let name: String; let amount: Amount; let share: Int?; let count: Int }
     struct SummaryResult: Encodable { let period: String; let start: String; let end: String; let scope: String; let total: Amount; let count: Int; let groups: [Group] }
@@ -115,6 +123,60 @@ struct ToolExecutor {
         let result = ProposalResult(status: "shown_to_user", card: book.name, category: category.name,
                                     amount: Amount(minor), day: day, note: note)
         return Outcome(json: try Self.encode(result), proposal: expense)
+    }
+
+    private func proposeEdit(_ input: EditInput) throws -> Outcome {
+        let (original, book) = try savedExpense(input.id)
+        var updated = original
+        if let amount = input.amount {
+            guard amount > 0, amount <= Money.maximum / 100 else {
+                throw ToolError(message: "Amount must be whole rupiah above 0, for example 28000.")
+            }
+            updated.amount = amount * 100
+        }
+        let categories = try model.activeCategories(in: book.id)
+        let categoryID = try input.category.map { try category(named: $0, in: categories).id }
+        if input.amount != nil || categoryID != nil {
+            // ponytail: chat edits single-category expenses only; splits are edited in the app.
+            guard original.allocations.count == 1 else {
+                throw ToolError(message: "This expense is split across categories. Its amount and category can only be changed in the app.")
+            }
+            updated.allocations = [Allocation(categoryID: categoryID ?? original.allocations[0].categoryID, amount: updated.amount)]
+        }
+        if let note = input.note { updated.note = note.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if let day = input.day {
+            guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
+            updated.day = day
+        }
+        guard updated != original else { throw ToolError(message: "Nothing to change. Give a new amount, category, note or day.") }
+        // Same catalog the store validates against, so a kept archived category still passes.
+        guard let service = model.expenseService else { throw EntryError.corruptStore }
+        try updated.validate(categories: try service.categories(for: book.id))
+        let result = ChangeResult(status: "shown_to_user", card: book.name,
+                                  before: try summary(of: original, in: book), after: try summary(of: updated, in: book))
+        return Outcome(json: try Self.encode(result), change: ExpenseChange(original: original, updated: updated))
+    }
+
+    private func proposeDelete(_ input: DeleteInput) throws -> Outcome {
+        let (expense, book) = try savedExpense(input.id)
+        let result = ChangeResult(status: "shown_to_user", card: book.name, before: try summary(of: expense, in: book))
+        return Outcome(json: try Self.encode(result), change: ExpenseChange(original: expense, updated: nil))
+    }
+
+    private func savedExpense(_ id: String) throws -> (Expense, BookProfile) {
+        if let uuid = UUID(uuidString: id) {
+            for book in model.books {
+                if let expense = model.expenses(for: book.id).first(where: { $0.id == uuid }) { return (expense, book) }
+            }
+        }
+        throw ToolError(message: "No expense with id \(id). Find it with query_expenses first.")
+    }
+
+    private func summary(of expense: Expense, in book: BookProfile) throws -> ExpenseSummary {
+        guard let service = model.expenseService else { throw EntryError.corruptStore }
+        let names = Dictionary(try service.categories(for: book.id).map { ($0.id, $0.name) }) { first, _ in first }
+        return ExpenseSummary(amount: Amount(expense.amount), category: expense.allocations.compactMap { names[$0.categoryID] }.joined(separator: ", "),
+                              day: expense.day, note: expense.note)
     }
 
     private func queryExpenses(_ input: QueryInput) throws -> Outcome {
@@ -156,7 +218,7 @@ struct ToolExecutor {
         matches.sort { ($0.expense.day, $0.expense.createdAt) > ($1.expense.day, $1.expense.createdAt) }
         let total = try Money.checkedSum(matches.map(\.amount))
         let page = matches.dropFirst(offset).prefix(limit).map {
-            Row(day: $0.expense.day, amount: Amount($0.amount), category: $0.categories, note: $0.expense.note, card: $0.card)
+            Row(id: $0.expense.id.uuidString, day: $0.expense.day, amount: Amount($0.amount), category: $0.categories, note: $0.expense.note, card: $0.card)
         }
         let result = QueryResult(start: start, end: end, scope: Self.label(target), count: matches.count,
                                  total: Amount(total), rows: page, hasMore: offset + page.count < matches.count)
