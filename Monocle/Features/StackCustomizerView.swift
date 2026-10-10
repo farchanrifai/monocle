@@ -100,6 +100,9 @@ struct StackCustomizerView: View {
                     // MARK: - Cards in This Stack
                     cardsInStackSection
 
+                    // MARK: - Stack Budget
+                    stackBudgetSection
+
                     // MARK: - Always Hidden / Archive Section
                     archiveSection
 
@@ -525,8 +528,8 @@ struct StackCustomizerView: View {
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
-                                Text(Money.format(model.spent(for: book.id)))
-                                    .font(.caption.monospacedDigit())
+                                Text(otherStackName(for: book.id).map { "In \($0)" } ?? "Not in a Stack")
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
 
@@ -536,8 +539,8 @@ struct StackCustomizerView: View {
                                 addCard(book.id)
                             } label: {
                                 HStack(spacing: 4) {
-                                    Image(systemName: "plus.circle.fill")
-                                    Text("Add")
+                                    Image(systemName: otherStackName(for: book.id) == nil ? "plus.circle.fill" : "arrow.right.circle.fill")
+                                    Text(otherStackName(for: book.id) == nil ? "Add" : "Move")
                                 }
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(MC.red)
@@ -711,10 +714,59 @@ struct StackCustomizerView: View {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         withAnimation(.snappy(duration: 0.22)) {
+            // A card belongs to one stack, so adding it here moves it out of any other.
+            for index in workingStacks.indices where index != sIdx { workingStacks[index].cardIDs.removeAll { $0 == bookID } }
             if !workingStacks[sIdx].cardIDs.contains(bookID) {
                 workingStacks[sIdx].cardIDs.append(bookID)
             }
         }
+    }
+
+    private func otherStackName(for bookID: UUID) -> String? {
+        workingStacks.first { $0.id != currentStackID && $0.cardIDs.contains(bookID) }?.name
+    }
+
+    // MARK: - Stack Budget Section
+    private var stackBudgetSection: some View {
+        let idx = currentStackIndex
+        let stack = idx.map { workingStacks[$0] } ?? activeStack
+        var uncapped = stack; uncapped.capLimit = nil
+        let cardSum = model.stackBudgetLimit(uncapped)
+        let capOn = Binding(get: { stack.capLimit != nil }, set: { on in
+            guard let idx else { return }
+            workingStacks[idx].capLimit = on ? (cardSum ?? 1_000_000 * 100) : nil
+        })
+        let capText = Binding(get: { stack.capLimit.map(Money.exactDigits) ?? "" }, set: { text in
+            guard let idx, let value = try? Money.parse(text) else { return }
+            workingStacks[idx].capLimit = value
+        })
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Stack Budget")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            Toggle("Monthly cap", isOn: capOn)
+                .tint(MC.red)
+                .accessibilityIdentifier("stackCapToggle")
+            if stack.capLimit != nil {
+                HStack {
+                    Text("Rp").foregroundStyle(.secondary)
+                    TextField("Cap", text: capText)
+                        .keyboardType(.numberPad)
+                        .font(.body.monospacedDigit())
+                        .accessibilityIdentifier("stackCapField")
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.05)))
+            }
+            Text(stack.capLimit != nil
+                 ? "The cap replaces the sum of this stack's card budgets. It runs on the calendar month."
+                 : cardSum.map { "Without a cap, the stack budget is the sum of its cards' monthly budgets: \(Money.format($0))." }
+                    ?? "Without a cap, the stack budget is the sum of its cards' monthly budgets.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
     }
 
     private func toggleAlwaysHidden(for bookID: UUID, isHidden: Bool) {

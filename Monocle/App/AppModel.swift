@@ -282,6 +282,7 @@ final class AppModel {
             publishPreferences(prefs)
             try ensureGlobalCategories()
             try ensureDefaultStack()
+            try ensureSingleStackPerCard()
             try expenses.reconcileBills()
             expenses.onCommit = { [weak self] in self?.committedWorkspaceChanged() }
             syncWidgetSnapshot()
@@ -308,8 +309,18 @@ final class AppModel {
         if proposed != workspacePreferences { try commitPresentationPreferences(proposed) }
     }
 
+    /// One-time cleanup for workspaces saved before cards were limited to one stack.
+    func ensureSingleStackPerCard() throws {
+        var proposed = workspacePreferences
+        guard proposed.keepEachCardInOneStack() > 0 else { return }
+        try commitPresentationPreferences(proposed)
+        showToast("Each card now belongs to one stack")
+    }
+
     private func commitPresentationPreferences(_ proposed: WorkspacePreferences) throws {
         guard startupError == nil, expenseService?.isBlocked != true else { throw BackupError.recoveryRequired }
+        var proposed = proposed
+        proposed.keepEachCardInOneStack()
         var categoriesByBook: [UUID: [ExpenseCategory]] = [:]
         for book in books { categoriesByBook[book.id] = try expenseService?.categories(for: book.id) }
         try proposed.validate(books: books, categoriesByBook: categoriesByBook)
@@ -414,6 +425,7 @@ final class AppModel {
         try expenseService.reconcileBills()
         invalidateExpenseCaches()
         try ensureDefaultStack()
+        try ensureSingleStackPerCard()
         try ensureGlobalCategories()
         appLock.applyPersistedConfiguration(settings.appLockTimeout)
     }
@@ -766,6 +778,7 @@ final class AppModel {
         let stack = CardStack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
         var proposed = workspacePreferences
         proposed.stacks.append(stack); proposed.activeStackID = stack.id; proposed.filterScope = .activeStack
+        proposed.keepEachCardInOneStack(preferring: stack.id) // adding a card moves it here
         try commitPresentationPreferences(proposed)
         showToast("Stack '\(finalName)' created")
         return stack
@@ -774,6 +787,7 @@ final class AppModel {
     func updateStack(_ stack: CardStack) throws {
         guard let index = stacks.firstIndex(where: { $0.id == stack.id }) else { throw BackupError.invalid }
         var proposed = workspacePreferences; proposed.stacks[index] = stack
+        proposed.keepEachCardInOneStack(preferring: stack.id)
         try commitPresentationPreferences(proposed)
     }
 
@@ -821,6 +835,7 @@ final class AppModel {
 
     func persistWorkspacePreferences() {
         guard startupError == nil else { return }
+        workspacePreferences.keepEachCardInOneStack()
         workspacePreferences.visibleBookIDs = books.map(\.id).filter { !hiddenBookIDs.contains($0) }
         workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
         do {
@@ -910,6 +925,17 @@ final class AppModel {
         return total
     }
 
+    /// Sum of the stack's cards' current monthly budgets, or the stack's cap. "Total until" budgets don't count.
+    func stackBudgetLimit(_ stack: CardStack) -> Int64? {
+        let cards = stack.cardIDs.compactMap { id in books.first { $0.id == id } }.filter { !alwaysHiddenBookIDs.contains($0.id) }
+        let limits = cards.compactMap { book -> Int64? in
+            guard let budgets = try? expenseService?.budgets(for: book.id),
+                  let active = BudgetHistory.active(on: .now, budgets: budgets), active.totalUntilDay == nil else { return nil }
+            return active.overallLimit
+        }
+        return stack.budgetLimit(cardLimits: limits)
+    }
+
     /// Cards a scope covers; stacks keep their own card order.
     func books(in scope: AnalyticsFilterScope) -> [BookProfile] {
         switch scope {
@@ -944,6 +970,10 @@ final class AppModel {
                 data.billOccurrences += try expenseService.billOccurrences(for: book.id)
             }
             if case .card(let id, _) = scope { data.budgets = try expenseService.budgets(for: id) }
+            if case .stack(let id, _) = scope, let stack = stacks.first(where: { $0.id == id }), let limit = stackBudgetLimit(stack) {
+                // A stack budget runs on the calendar month (or its cap's start day) and has no category limits.
+                data.budgets = [BudgetVersion(id: stack.id, effectiveDay: "2000-01-01", overallLimit: limit, startDay: stack.capStartDay ?? 1)]
+            }
         } catch { data.errorMessage = error.localizedDescription }
         return data
     }

@@ -778,7 +778,10 @@ struct MacStackView: View {
     var body: some View {
         let books = stack.map(model.books(in:)) ?? model.hiddenCards
         let expenses = books.flatMap { model.expenses(for: $0.id) }
-        let cycleTotal = expenses.filter { model.cycle.contains($0) }.reduce(0) { $0 + $1.amount }
+        // Stacks use the calendar month, like iOS; a single card's own cycle doesn't apply here.
+        let month = BudgetCycle.containing(.now, startDay: 1)
+        let cycleTotal = expenses.filter { month.contains($0) }.reduce(0) { $0 + $1.amount }
+        let budget = stack.flatMap(model.stackBudgetLimit)
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
@@ -800,7 +803,11 @@ struct MacStackView: View {
                     }.scrollIndicators(.hidden).scrollClipDisabled()
                 }
                 HStack {
-                    SummaryTile(title: "Cycle spending", value: Money.format(cycleTotal), detail: model.cycle.label)
+                    SummaryTile(title: "This month", value: Money.format(cycleTotal), detail: month.label)
+                    if let budget, let stack {
+                        SummaryTile(title: "Stack budget", value: Money.format(budget),
+                                    detail: stack.capLimit != nil ? "Cap · \(Money.format(budget - cycleTotal)) left" : "Sum of cards · \(Money.format(budget - cycleTotal)) left")
+                    }
                     SummaryTile(title: "Expenses", value: "\(expenses.count)", detail: "\(books.count) card\(books.count == 1 ? "" : "s")")
                 }
             }.padding(24)
@@ -967,10 +974,28 @@ private struct MacStackEditor: View {
                 Picker("Icon", selection: $stack.icon) { ForEach(Self.icons, id: \.self) { Image(systemName: $0).tag($0) } }
                 Section("Cards") {
                     ForEach(model.orderedBooks.filter { !model.alwaysHiddenBookIDs.contains($0.id) }) { book in
-                        Toggle(book.name, isOn: Binding(get: { stack.cardIDs.contains(book.id) }, set: { on in
+                        // A card belongs to one stack; turning it on here moves it when saved.
+                        let elsewhere = model.stacks.first { $0.id != original.id && $0.cardIDs.contains(book.id) }?.name
+                        Toggle(isOn: Binding(get: { stack.cardIDs.contains(book.id) }, set: { on in
                             if on { stack.cardIDs.append(book.id) } else { stack.cardIDs.removeAll { $0 == book.id } }
+                        })) {
+                            Text(book.name)
+                            if let elsewhere, !stack.cardIDs.contains(book.id) { Text("In \(elsewhere)") }
+                        }
+                    }
+                }
+                Section {
+                    Toggle("Monthly cap", isOn: Binding(get: { stack.capLimit != nil }, set: { on in
+                        stack.capLimit = on ? (cardSum ?? 1_000_000 * 100) : nil
+                    }))
+                    if stack.capLimit != nil {
+                        TextField("Cap (Rp)", text: Binding(get: { stack.capLimit.map(Money.exactDigits) ?? "" }, set: { text in
+                            if let value = try? Money.parse(text) { stack.capLimit = value }
                         }))
                     }
+                } header: { Text("Budget") } footer: {
+                    Text(stack.capLimit != nil ? "The cap replaces the sum of this stack's card budgets."
+                         : cardSum.map { "Sum of card budgets: \(Money.format($0)) a month." } ?? "Sum of the cards' monthly budgets.")
                 }
             }.formStyle(.grouped)
             if let error { Text(error).foregroundStyle(.red) }
@@ -983,12 +1008,17 @@ private struct MacStackEditor: View {
                 Button("Cancel", role: .cancel, action: close)
                 Button("Save") { save() }.buttonStyle(.borderedProminent).keyboardShortcut(.return, modifiers: .command)
             }
-        }.padding(24).frame(width: 440, height: 520)
+        }.padding(24).frame(width: 440, height: 600)
     }
+
+    private var cardSum: Int64? { var uncapped = stack; uncapped.capLimit = nil; return model.stackBudgetLimit(uncapped) }
 
     private func save() {
         do {
-            if isNew { try model.createStack(name: stack.name, icon: stack.icon, cardIDs: stack.cardIDs) }
+            if isNew {
+                let created = try model.createStack(name: stack.name, icon: stack.icon, cardIDs: stack.cardIDs)
+                if stack.capLimit != nil { var value = created; value.capLimit = stack.capLimit; try model.updateStack(value) }
+            }
             else {
                 var value = stack
                 let trimmed = value.name.trimmingCharacters(in: .whitespacesAndNewlines)

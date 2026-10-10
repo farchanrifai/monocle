@@ -231,6 +231,38 @@ struct CardStack: Identifiable, Codable, Equatable, Hashable, Sendable {
     }
 }
 
+extension CardStack {
+    /// The stack budget for a calendar-month cycle: its cap when set, otherwise the sum of its cards' monthly budgets.
+    func budgetLimit(cardLimits: [Int64]) -> Int64? {
+        if let capLimit { return capLimit }
+        guard let sum = try? Money.checkedSum(cardLimits), sum > 0 else { return nil }
+        return min(sum, Money.maximum)
+    }
+}
+
+extension WorkspacePreferences {
+    /// A card belongs to at most one stack. Keeps it in `preferred` when that stack holds it, otherwise in the
+    /// first stack (in stack order) that does; returns how many duplicate placements were removed.
+    @discardableResult
+    mutating func keepEachCardInOneStack(preferring preferred: UUID? = nil) -> Int {
+        var owner: [UUID: UUID] = [:]
+        if let preferred, let stack = stacks.first(where: { $0.id == preferred }) {
+            for id in stack.cardIDs { owner[id] = preferred }
+        }
+        for stack in stacks { for id in stack.cardIDs where owner[id] == nil { owner[id] = stack.id } }
+        var removed = 0
+        for index in stacks.indices {
+            var seen = Set<UUID>()
+            let kept = stacks[index].cardIDs.filter { owner[$0] == stacks[index].id && seen.insert($0).inserted }
+            removed += stacks[index].cardIDs.count - kept.count
+            stacks[index].cardIDs = kept
+        }
+        return removed
+    }
+
+    func stack(containing cardID: UUID) -> CardStack? { stacks.first { $0.cardIDs.contains(cardID) } }
+}
+
 /// "Paid with": an optional label such as BCA debit or Cash. Never a balance.
 struct PaymentMethod: Identifiable, Codable, Equatable, Hashable, Sendable {
     enum Kind: String, Codable, CaseIterable, Sendable { case bank, card, cash, eWallet }

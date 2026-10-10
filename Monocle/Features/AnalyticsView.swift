@@ -207,7 +207,9 @@ private struct AnalyticsReportView: View {
         VStack(spacing: 12) {
             scopeMenu
             if !selectedScope.isCard {
-                Text("Multiple-card cycles use the calendar month. Select a card to see its budget pace.")
+                Text(report.period != nil
+                     ? "Stacks use the calendar month. The budget is the stack's cap, or the sum of its cards' monthly budgets."
+                     : "Multiple-card cycles use the calendar month. Select a card to see its budget pace.")
                     .font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

@@ -411,16 +411,57 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(oldTripDirect.count, 1)
         XCTAssertEqual(oldTripDirect.first?.note, "Old Resort")
 
-        // 4. Multiple stacks: Shopping card can also be in Daily Stack
+        // 4. A card belongs to one stack: putting Shopping in Daily moves it out of Tokyo Trip
         let dailyStack = try model.createStack(name: "Home Daily", icon: "house", cardIDs: [daily.id, shopping.id])
         model.setActiveStack(id: dailyStack.id)
         let inDaily: [UUID] = model.cardsInCurrentStack.map { $0.id }
         XCTAssertEqual(inDaily, [daily.id, shopping.id])
+        XCTAssertEqual(model.stacks.first { $0.id == travelStack.id }?.cardIDs, [travel.id])
 
         // 5. Delete stack
         model.deleteStack(id: travelStack.id)
         XCTAssertFalse(model.stacks.contains(where: { $0.id == travelStack.id }))
         XCTAssertTrue(model.books.contains(where: { $0.id == travel.id })) // Book itself still exists!
+    }
+
+    func testEachCardKeepsOneStackAndStackBudgetSumsCardsOrUsesCap() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleBook()
+        let tokyo = try repo.createBook(named: "Tokyo")
+        let bali = try repo.createBook(named: "Bali")
+        try repo.save(BudgetVersion.initial(overallLimit: 20_000_000_00, startDay: 1, bookID: tokyo.id), in: tokyo.id)
+        try repo.save(BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 10, bookID: bali.id), in: bali.id)
+        var goal = BudgetVersion.initial(overallLimit: 9_000_000_00, startDay: 1, bookID: BookProfile.sample.id)
+        goal.totalUntilDay = "2099-12-31"
+        try repo.save(goal, in: BookProfile.sample.id)
+
+        // A workspace saved before the rule: Bali sits in two stacks.
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let travel = CardStack(name: "Travel", cardIDs: [tokyo.id, bali.id, BookProfile.sample.id])
+        let beach = CardStack(name: "Beach", cardIDs: [bali.id])
+        try state.saveWorkspacePreferences(WorkspacePreferences(stacks: [travel, beach], activeStackID: travel.id))
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: state)
+        XCTAssertNil(model.startupError)
+        XCTAssertEqual(model.stacks.map(\.cardIDs), [[tokyo.id, bali.id, BookProfile.sample.id], []])
+        XCTAssertEqual(try state.loadWorkspacePreferences().stacks.map(\.cardIDs), model.stacks.map(\.cardIDs))
+
+        // Sum of the cards' monthly budgets; the "Total until" goal budget doesn't count.
+        let saved = try XCTUnwrap(model.stacks.first)
+        XCTAssertEqual(model.stackBudgetLimit(saved), 25_000_000_00)
+        let report = AnalyticsReport.build(data: model.reportingData(for: .stack(id: saved.id, name: saved.name)), horizon: .thisCycle)
+        XCTAssertEqual(report.period?.budget.overallLimit, 25_000_000_00)
+        XCTAssertEqual(report.period?.cycle.start, BudgetCycle.containing(.now, startDay: 1).start)
+
+        // A cap replaces the sum, and moving a card through updateStack takes it out of Travel.
+        var beachEdit = try XCTUnwrap(model.stacks.last)
+        beachEdit.cardIDs = [bali.id]; beachEdit.capLimit = 3_000_000_00
+        try model.updateStack(beachEdit)
+        XCTAssertEqual(model.stacks.first?.cardIDs, [tokyo.id, BookProfile.sample.id])
+        XCTAssertEqual(model.stackBudgetLimit(try XCTUnwrap(model.stacks.last)), 3_000_000_00)
+        XCTAssertNil(CardStack(name: "Empty").budgetLimit(cardLimits: []))
     }
 
     func testStackCardReorderingAndFrontCard() throws {
