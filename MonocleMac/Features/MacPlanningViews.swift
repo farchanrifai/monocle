@@ -202,21 +202,25 @@ struct MacAnalyticsView: View {
     @State private var customStart = Calendar.current.date(byAdding: .day, value: -29, to: .now) ?? .now
     @State private var customEnd = Date.now
     @State private var editingDate: Bool? // true = start, false = end
+    @State private var scopeCycle: BudgetCycle? // nil = calendar month, as on iOS for multi-card scopes
+    @State private var hoverDay: String?
+    @State private var hoverCumulative: String?
+    @State private var hoverWeekday: String?
     private var model: AppModel { state.model }
     private static let idr = Decimal.FormatStyle.Currency(code: "IDR").precision(.fractionLength(0))
 
     /// "This month" is dropped when the budget cycle is the calendar month (identical data).
     private var horizons: [AnalyticsTimeHorizon] {
-        let cycle = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: model.cycle)
+        let cycle = AnalyticsEngine.dateRange(for: .thisCycle, currentCycle: scopeCycle)
         let month = AnalyticsEngine.dateRange(for: .thisMonth)
         return AnalyticsTimeHorizon.allCases.filter { $0 != .thisMonth || cycle.startDay != month.startDay || cycle.endDay != month.endDay }
     }
     private var range: (startDate: Date, endDate: Date, startDay: String, endDay: String) {
-        horizon.map { AnalyticsEngine.dateRange(for: $0, currentCycle: model.cycle) }
+        horizon.map { AnalyticsEngine.dateRange(for: $0, currentCycle: scopeCycle) }
             ?? (customStart, customEnd, Day.string(customStart), Day.string(customEnd))
     }
     private func cardExpenses(from start: String, to end: String) -> [(card: String, expense: Expense)] {
-        model.unhiddenBooks.flatMap { book in // hidden cards stay out, as on iOS
+        model.books(in: state.analyticsScope).flatMap { book in // hidden cards stay out unless picked directly
             model.expenses(for: book.id).filter { $0.day >= start && $0.day <= end }.map { (book.name, $0) }
         }
     }
@@ -235,6 +239,8 @@ struct MacAnalyticsView: View {
         let categories = grouped(expenses.flatMap(\.allocations).map { (model.category($0.categoryID)?.name ?? "Other", $0.amount) })
         let cards = grouped(rows.map { ($0.card, $0.expense.amount) })
         let weekdays = weekdayTotals(expenses)
+        let dayCounts = Dictionary(grouping: expenses, by: \.day).mapValues(\.count)
+        let dayAmounts = Dictionary(uniqueKeysWithValues: daily)
         // Previous period of equal length, for the comparison tile.
         let length = max(1, (Calendar.current.dateComponents([.day], from: range.startDate, to: range.endDate).day ?? 0) + 1)
         let prevEnd = Calendar.current.date(byAdding: .day, value: -1, to: range.startDate) ?? range.startDate
@@ -245,6 +251,11 @@ struct MacAnalyticsView: View {
 
         return Page(title: "Analytics") {
             periodBar(range)
+                .task(id: state.analyticsScope) {
+                    // Only a single card has one budget cycle; stacks and all cards use the calendar month.
+                    guard case .card(let id, _) = state.analyticsScope, let budgets = try? model.expenseService?.budgets(for: id) else { scopeCycle = nil; return }
+                    scopeCycle = BudgetHistory.period(containing: .now, budgets: budgets)?.cycle
+                }
             HStack(spacing: 12) {
                 SummaryTile(title: "Total", value: Money.format(total), detail: "\(expenses.count) transactions")
                 SummaryTile(title: "Average", value: Money.format(total / Int64(max(1, daily.count))), detail: "per active day")
@@ -253,29 +264,67 @@ struct MacAnalyticsView: View {
             }
             cardRow {
                 ChartCard("Spending over time", info: "How much you spent each day. Tall bars show your busiest spending days.") {
-                    Chart(daily, id: \.0) { point in
-                        BarMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Amount", point.1 / 100)).foregroundStyle(.red.gradient)
-                    }.chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { AxisGridLine(); AxisValueLabel(format: .dateTime.day().month(.abbreviated)) } }
+                    Chart {
+                        ForEach(daily, id: \.0) { point in
+                            BarMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Amount", point.1 / 100))
+                                .foregroundStyle(.red.gradient).opacity(hoverDay == nil || hoverDay == point.0 ? 1 : 0.35)
+                        }
+                        if let day = hoverDay, let amount = dayAmounts[day] {
+                            RuleMark(x: .value("Day", Day.date(day) ?? .now, unit: .day)).foregroundStyle(.clear)
+                                .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
+                                    ChartTooltip(title: Day.title(day), amount: amount, detail: transactions(dayCounts[day] ?? 0))
+                                }
+                        }
+                    }
+                    .chartOverlay { proxy in HoverOverlay(proxy: proxy) { x in hoverDay = x.flatMap { proxy.value(atX: $0, as: Date.self) }.map { Day.string($0) }.flatMap { dayAmounts[$0] == nil ? nil : $0 } } }
+                    .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { AxisGridLine(); AxisValueLabel(format: .dateTime.day().month(.abbreviated)) } }
                     .chartYAxis { AxisMarks(format: Self.idr) }
                 }
                 ChartCard("By category", info: "Where your money went, biggest category first. The percentage is its share of the total.") { BarList(items: Array(categories.prefix(8)), total: total) }
             }
             cardRow {
                 ChartCard("Cumulative", info: "Your total adding up day by day. A steeper line means you spent faster.") {
-                    Chart(cumulative, id: \.0) { point in
-                        AreaMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red.opacity(0.15).gradient)
-                        LineMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red)
-                    }.chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { AxisGridLine(); AxisValueLabel(format: .dateTime.day().month(.abbreviated)) } }
+                    Chart {
+                        ForEach(cumulative, id: \.0) { point in
+                            AreaMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red.opacity(0.15).gradient)
+                            LineMark(x: .value("Day", Day.date(point.0) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red)
+                        }
+                        if let day = hoverCumulative, let point = cumulative.first(where: { $0.0 == day }) {
+                            RuleMark(x: .value("Day", Day.date(day) ?? .now, unit: .day)).foregroundStyle(.secondary.opacity(0.5))
+                            PointMark(x: .value("Day", Day.date(day) ?? .now, unit: .day), y: .value("Total", point.1 / 100)).foregroundStyle(.red)
+                                .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
+                                    ChartTooltip(title: "Total by \(Day.title(day))", amount: point.1, detail: "\(Money.format(dayAmounts[day] ?? 0)) that day")
+                                }
+                        }
+                    }
+                    .chartOverlay { proxy in HoverOverlay(proxy: proxy) { x in
+                        // Snap to the latest active day at or before the cursor.
+                        let day = x.flatMap { proxy.value(atX: $0, as: Date.self) }.map { Day.string($0) }
+                        hoverCumulative = day.flatMap { d in cumulative.last(where: { $0.0 <= d })?.0 }
+                    } }.chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { AxisGridLine(); AxisValueLabel(format: .dateTime.day().month(.abbreviated)) } }
                     .chartYAxis { AxisMarks(format: Self.idr) }
                 }
                 ChartCard("By weekday", info: "Spending grouped by day of the week. Shows which days you tend to spend most.") {
-                    Chart(weekdays, id: \.0) { point in
-                        BarMark(x: .value("Weekday", point.0), y: .value("Amount", point.1 / 100)).foregroundStyle(.red.gradient).cornerRadius(4)
-                    }.chartYAxis { AxisMarks(format: Self.idr) }
+                    Chart {
+                        ForEach(weekdays, id: \.name) { point in
+                            BarMark(x: .value("Weekday", point.name), y: .value("Amount", point.amount / 100))
+                                .foregroundStyle(.red.gradient).cornerRadius(4).opacity(hoverWeekday == nil || hoverWeekday == point.name ? 1 : 0.35)
+                        }
+                        if let name = hoverWeekday, let point = weekdays.first(where: { $0.name == name }) {
+                            RuleMark(x: .value("Weekday", name)).foregroundStyle(.clear)
+                                .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
+                                    ChartTooltip(title: point.full, amount: point.amount, detail: transactions(point.count))
+                                }
+                        }
+                    }
+                    .chartOverlay { proxy in HoverOverlay(proxy: proxy) { x in hoverWeekday = x.flatMap { proxy.value(atX: $0, as: String.self) } } }
+                    .chartYAxis { AxisMarks(format: Self.idr) }
                 }
             }
             cardRow {
-                ChartCard("By card", info: "How the total splits across your cards. Hidden cards are not counted.") { BarList(items: cards, total: total) }
+                if !state.analyticsScope.isCard {
+                    ChartCard("By card", info: "How the total splits across the cards in view. Hidden cards are not counted.") { BarList(items: cards, total: total) }
+                }
                 ChartCard("Largest transactions", info: "Your six biggest single expenses in this period.") {
                     VStack(spacing: 10) {
                         ForEach(expenses.sorted { $0.amount > $1.amount }.prefix(6)) { expense in
@@ -294,13 +343,19 @@ struct MacAnalyticsView: View {
         }
     }
 
-    private func weekdayTotals(_ expenses: [Expense]) -> [(String, Int64)] {
+    private func weekdayTotals(_ expenses: [Expense]) -> [(name: String, full: String, amount: Int64, count: Int)] {
         let calendar = Calendar.current
-        var totals = [Int64](repeating: 0, count: 7)
-        for expense in expenses { if let date = Day.date(expense.day) { totals[calendar.component(.weekday, from: date) - 1] += expense.amount } }
+        var totals = [Int64](repeating: 0, count: 7), counts = [Int](repeating: 0, count: 7)
+        for expense in expenses {
+            guard let date = Day.date(expense.day) else { continue }
+            let index = calendar.component(.weekday, from: date) - 1
+            totals[index] += expense.amount; counts[index] += 1
+        }
         let order = (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 }
-        return order.map { (calendar.shortWeekdaySymbols[$0], totals[$0]) }
+        return order.map { (calendar.shortWeekdaySymbols[$0], calendar.weekdaySymbols[$0], totals[$0], counts[$0]) }
     }
+
+    private func transactions(_ count: Int) -> String { count == 1 ? "1 transaction" : "\(count) transactions" }
 
     /// Two equal-height cards: each fills the row, row height = tallest card.
     private func cardRow(@ViewBuilder _ content: () -> some View) -> some View {
@@ -309,6 +364,8 @@ struct MacAnalyticsView: View {
 
     private func periodBar(_ range: (startDate: Date, endDate: Date, startDay: String, endDay: String)) -> some View {
         HStack(spacing: 8) {
+            scopeMenu
+            Divider().frame(height: 18).padding(.horizontal, 4)
             ForEach(horizons) { option in Pill(option.rawValue, selected: horizon == option) { horizon = option } }
             Pill("Custom", selected: horizon == nil) { useCustom(range) }
             Divider().frame(height: 18).padding(.horizontal, 4)
@@ -316,6 +373,31 @@ struct MacAnalyticsView: View {
             Text("–").foregroundStyle(.secondary)
             datePill(range.endDate, start: false, range: range)
         }
+    }
+
+    private var scopeMenu: some View {
+        let scope = state.analyticsScope
+        let pick = { (new: AnalyticsFilterScope) in withAnimation(.snappy) { state.analyticsScope = new } }
+        return Menu {
+            Button { pick(.allCards) } label: { Label("All cards", systemImage: "rectangle.stack") }
+            if !model.stacks.isEmpty {
+                Section("Stacks") {
+                    ForEach(model.stacks) { stack in Button { pick(.stack(id: stack.id, name: stack.name)) } label: { Label(stack.name, systemImage: stack.icon) } }
+                }
+            }
+            Section("Cards") {
+                ForEach(model.unhiddenBooks) { book in Button { pick(.card(id: book.id, name: book.name)) } label: { Label(book.name, systemImage: "creditcard") } }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: scope.icon)
+                Text(scope.title)
+                Image(systemName: "chevron.down").font(.caption2.weight(.bold))
+            }
+            .font(.callout.weight(.medium)).padding(.horizontal, 14).padding(.vertical, 7)
+            .background(Color.secondary.opacity(0.12), in: Capsule())
+        }
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
     }
 
     private func useCustom(_ range: (startDate: Date, endDate: Date, startDay: String, endDay: String)) {
@@ -435,4 +517,31 @@ private struct MonthCalendar: View {
     }
 
     private func shift(_ value: Int) { withAnimation(.snappy) { month = calendar.date(byAdding: .month, value: value, to: month) ?? month } }
+}
+
+/// Reports the hovered x position inside the plot area, or nil when the pointer leaves.
+private struct HoverOverlay: View {
+    let proxy: ChartProxy
+    let onHover: (CGFloat?) -> Void
+    var body: some View {
+        GeometryReader { geometry in
+            Rectangle().fill(.clear).contentShape(Rectangle()).onContinuousHover { phase in
+                if case .active(let point) = phase, let plot = proxy.plotFrame { onHover(point.x - geometry[plot].minX) } else { onHover(nil) }
+            }
+        }
+    }
+}
+
+private struct ChartTooltip: View {
+    let title: String, amount: Int64, detail: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(Money.format(amount)).font(.callout.weight(.semibold)).monospacedDigit()
+            Text(detail).font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+    }
 }

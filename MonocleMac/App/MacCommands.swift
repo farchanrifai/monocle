@@ -140,8 +140,16 @@ final class MacAppState {
         didSet {
             UserDefaults.standard.set(Self.encode(destination), forKey: "MacDestination")
             if inspectorSelection != nil { inspectorSelection = nil } // a selection from another screen has no row to match
+            // Analytics opens on whatever card or stack the sidebar last showed.
+            switch destination {
+            case .card(let id): analyticsScope = .card(id: id, name: model.books.first { $0.id == id }?.name ?? "Card")
+            case .stack(let id): analyticsScope = .stack(id: id, name: model.stacks.first { $0.id == id }?.name ?? "Stack")
+            case .overview, .activity, .cards: analyticsScope = .allCards
+            default: break
+            }
         }
     }
+    var analyticsScope: AnalyticsFilterScope = .allCards
     var inspectorSelection: MacInspectorSelection?
     var inspectorVisible = true { didSet { UserDefaults.standard.set(inspectorVisible, forKey: "MacInspectorVisible") } }
     var editingBill: BillRule?
