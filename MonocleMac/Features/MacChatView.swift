@@ -9,6 +9,7 @@ struct MacChatView: View {
     @State private var savedKey = Self.keyAvailable
     private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var draft = ""
+    @State private var mentionSelection = 0
     @FocusState private var inputFocused: Bool
     private var model: AppModel { state.model }
     private var session: ChatSession { state.model.chat }
@@ -28,10 +29,10 @@ struct MacChatView: View {
                 .defaultScrollAnchor(.bottom)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    VStack(spacing: 6) {
-                        ChatMentionList(model: model, session: session, draft: $draft)
+                    inputBar.overlay(alignment: .top) {
+                        ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
                             .frame(maxWidth: 720).padding(.horizontal, 24).frame(maxWidth: .infinity)
-                        inputBar
+                            .alignmentGuide(.top) { $0[.bottom] + 4 }
                     }
                 }
             } else {
@@ -87,7 +88,9 @@ struct MacChatView: View {
                 .lineLimit(1...6)
                 .focused($inputFocused)
                 // Return picks the highlighted @ suggestion while one is showing.
-                .onSubmit { if !ChatMentionList.pickFirst(model: model, session: session, draft: &draft) { send(draft) } }
+                .onSubmit { if !ChatMentionList.pickSelected(mentionSelection, model: model, session: session, draft: &draft) { send(draft) } }
+                .onKeyPress(.downArrow) { ChatMentionList.move(1, selection: &mentionSelection, model: model, draft: draft) ? .handled : .ignored }
+                .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
                 .accessibilityIdentifier("chatInput")

@@ -13,6 +13,7 @@ struct ChatView: View {
     @State private var savedKey = APIKeyStore.read() != nil
     private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var showingSetup = false
+    @State private var mentionSelection = 0
 
     private var isTyping: Bool { session.isTyping }
     private var scope: AnalyticsFilterScope { session.scope ?? ChatScopeMenuItems.homeScope(model) }
@@ -40,10 +41,12 @@ struct ChatView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if chatEnabled && hasKey {
-                    VStack(spacing: 6) {
-                        ChatMentionList(model: model, session: session, draft: $draft).padding(.horizontal, 12)
-                        ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
-                    }
+                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
+                        .overlay(alignment: .top) {
+                            ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
+                                .padding(.horizontal, 12)
+                                .alignmentGuide(.top) { $0[.bottom] + 4 }
+                        }
                 } else {
                     Button(chatEnabled ? "Add your API key" : "Turn on AI chat") { showingSetup = true }
                         .buttonStyle(.borderedProminent)

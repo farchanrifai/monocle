@@ -142,3 +142,14 @@ final class ChatChartRenderTests: XCTestCase {
         } }
     }
 }
+
+final class DemoWorkspaceTests: XCTestCase {
+    func testDemoWorkspacePassesBackupValidationAndIsLarge() throws {
+        let demo = try DemoWorkspace.make().normalized()
+        XCTAssertEqual(demo.books.count, 5)
+        XCTAssertEqual(demo.preferences.stacks.map(\.name), ["Everyday", "Travel", "Work"])
+        XCTAssertGreaterThan(demo.books.reduce(0) { $0 + $1.expenses.count }, 1500)
+        XCTAssertEqual(DemoWorkspace.make(now: .distantPast).books[0].expenses.count,
+                       DemoWorkspace.make(now: .distantPast).books[0].expenses.count, "Deterministic")
+    }
+}

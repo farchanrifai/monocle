@@ -48,6 +48,7 @@
 		40E5F6EE40C8D681B8C997FD /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15119B5A62BE722F4E6FA3B4 /* AppLock.swift */; };
 		42AD99E90A28D8A39E432A5B /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD14F3361CFDC5E8013E693F /* ChatAgent.swift */; };
 		43CF2AB8B75D34B1C999940C /* SpendingSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8DBB20CD055FF10D332F /* SpendingSessionManager.swift */; };
+		465B452A38CAE0B76AB14776 /* DemoWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */; };
 		4F6ECEAEF550F957029CEB09 /* CategoryAndLocaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */; };
 		513A64D5406ECE7A34AC5B43 /* AnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9724B1C00A878339AAC34BE8 /* AnalyticsTests.swift */; };
 		513C43A2B343A972889B9183 /* BookBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5917E02740846F6B5ED016CC /* BookBackup.swift */; };
@@ -57,6 +58,7 @@
 		567705BF6D6300C8BCEF3377 /* BackendPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B62852A29171B87745473F /* BackendPersistenceTests.swift */; };
 		5801D0F8AF99AC57D0F2E73D /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */; };
 		58571F587DB6D0AE8D964E19 /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62059E64D0898BAE71F1C761 /* Bill.swift */; };
+		5A6FE820268F52CCC4934D9C /* DemoWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */; };
 		5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C095F291D89DF974579CA6 /* AppEnvironment.swift */; };
 		5D29416C2734213E56EC7E4C /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
 		5EFF303B139E8F81ABB4B62D /* SampleBookSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */; };
@@ -270,6 +272,7 @@
 		A7E776EC0867369F536BEBC4 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
+		AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
 		ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAndLocaleTests.swift; sourceTree = "<group>"; };
 		AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseService.swift; sourceTree = "<group>"; };
@@ -384,6 +387,7 @@
 			isa = PBXGroup;
 			children = (
 				8DD9FB88E2A572D015D39DA4 /* CardArtworkStore.swift */,
+				AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */,
 				F71AF5A96AE3AD0274CA3832 /* ExpenseRepository.swift */,
 				AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */,
 				02D118EA4C769DF1B9F8D392 /* SampleBookSeeder.swift */,
@@ -884,6 +888,7 @@
 				192E542F8D2211B574F83755 /* ChatTranscript.swift in Sources */,
 				9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */,
 				A75084F321F54945FD5190C3 /* ClaudeClient.swift in Sources */,
+				5A6FE820268F52CCC4934D9C /* DemoWorkspace.swift in Sources */,
 				E694301AE97CBAAC861AE2FE /* EntryDismissalGuard.swift in Sources */,
 				017729CBC6933B915C34CB21 /* EntryView.swift in Sources */,
 				2F09EB61EEA67CE3C7651365 /* Expense.swift in Sources */,
@@ -936,6 +941,7 @@
 				6F009E1531788C0681806107 /* ChatSession.swift in Sources */,
 				1E3E91F27C7CF9A6AC54C0F8 /* ChatTranscript.swift in Sources */,
 				B7A3816FB60EADB653F4AB40 /* ClaudeClient.swift in Sources */,
+				465B452A38CAE0B76AB14776 /* DemoWorkspace.swift in Sources */,
 				F50EA37D53743014706A7A91 /* Expense.swift in Sources */,
 				D28862952E06ADCA4386CF2A /* ExpenseIntents.swift in Sources */,
 				D6A62922768B3F0E803F2844 /* ExpenseProposalCard.swift in Sources */,

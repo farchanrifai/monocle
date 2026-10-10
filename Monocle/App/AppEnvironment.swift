@@ -61,6 +61,14 @@ final class AppEnvironment {
             #endif
             model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings, appLock: appLock, backups: backups)
             model.chat = ChatSession(fileURL: directory.appendingPathComponent("chat.json"))
+            #if DEBUG
+            // MONOCLE_DEMO=1: a separate monocle-demo folder, filled once with DemoWorkspace through the normal restore path.
+            let demoMarker = directory.appendingPathComponent("demo-seeded")
+            if directory.lastPathComponent == "monocle-demo", !FileManager.default.fileExists(atPath: demoMarker.path) {
+                try model.restoreWorkspaceBackup(DemoWorkspace.make())
+                try Data("1".utf8).write(to: demoMarker, options: .atomic)
+            }
+            #endif
         } catch {
             expenses = nil
             model = AppModel(startupFailure: error.localizedDescription)
@@ -78,6 +86,7 @@ final class AppEnvironment {
         if let run = ProcessInfo.processInfo.environment["MONOCLE_TEST_RUN"], UUID(uuidString: run) != nil {
             folder = "monocle-ui-test-" + run
         }
+        if ProcessInfo.processInfo.environment["MONOCLE_DEMO"] == "1" { folder = "monocle-demo" }
         #endif
         let directory = support.appendingPathComponent(folder, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

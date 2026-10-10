@@ -171,10 +171,13 @@ struct ChatScopeMenuItems: View {
 }
 
 /// Typing "@" in the chat input lists stacks and cards; picking one sets the chat scope, like the scope menu.
+/// Floats above the input (attach with `.overlay(alignment: .top)`), so the transcript never moves.
 struct ChatMentionList: View {
     let model: AppModel
     let session: ChatSession
     @Binding var draft: String
+    /// Highlighted row; arrow keys move it on the Mac, Return picks it.
+    @Binding var selection: Int
 
     struct Target { let scope: AnalyticsFilterScope; let name: String; let icon: String }
 
@@ -189,14 +192,28 @@ struct ChatMentionList: View {
         let all = model.stacks.map { Target(scope: .stack(id: $0.id, name: $0.name), name: $0.name, icon: $0.icon) }
             + model.unhiddenBooks.map { Target(scope: .card(id: $0.id, name: $0.name), name: $0.name, icon: "creditcard") }
             + [Target(scope: .allCards, name: "All Cards", icon: "rectangle.stack")]
-        return query.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(query) }
+        return Array((query.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(query) }).prefix(6))
     }
 
-    /// Picks the first match (Return on the Mac). False when no @ word is being typed.
+    /// Rows currently shown for the draft (empty when no @ word is being typed).
+    static func visible(_ model: AppModel, draft: String) -> [Target] {
+        query(in: draft).map { targets(model, matching: $0) } ?? []
+    }
+
+    /// Picks the highlighted row (Return on the Mac). False when the list isn't showing.
     @discardableResult
-    static func pickFirst(model: AppModel, session: ChatSession, draft: inout String) -> Bool {
-        guard let query = query(in: draft), let first = targets(model, matching: query).first else { return false }
-        pick(first, session: session, model: model, draft: &draft)
+    static func pickSelected(_ selection: Int, model: AppModel, session: ChatSession, draft: inout String) -> Bool {
+        let rows = visible(model, draft: draft)
+        guard !rows.isEmpty else { return false }
+        pick(rows[min(max(selection, 0), rows.count - 1)], session: session, model: model, draft: &draft)
+        return true
+    }
+
+    /// Moves the highlight; false (key not handled) when the list isn't showing.
+    static func move(_ step: Int, selection: inout Int, model: AppModel, draft: String) -> Bool {
+        let count = visible(model, draft: draft).count
+        guard count > 0 else { return false }
+        selection = min(max(selection + step, 0), count - 1)
         return true
     }
 
@@ -206,16 +223,15 @@ struct ChatMentionList: View {
     }
 
     var body: some View {
-        if let query = Self.query(in: draft) {
-            let targets = Self.targets(model, matching: query)
-            if !targets.isEmpty {
+        let targets = Self.visible(model, draft: draft)
+        if !targets.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(targets.prefix(6).enumerated()), id: \.offset) { index, target in
+                    ForEach(Array(targets.enumerated()), id: \.offset) { index, target in
                         Button { Self.pick(target, session: session, model: model, draft: &draft) } label: {
                             Label(target.name, systemImage: target.icon)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(index == 0 ? Color.secondary.opacity(0.12) : .clear, in: .rect(cornerRadius: 10))
+                                .background(index == min(selection, targets.count - 1) ? Color.secondary.opacity(0.14) : .clear, in: .rect(cornerRadius: 10))
                                 .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
@@ -227,7 +243,7 @@ struct ChatMentionList: View {
                 .glassEffect(.regular, in: .rect(cornerRadius: 16))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("chatMentionList")
-            }
+                .onChange(of: Self.query(in: draft)) { selection = 0 }
         }
     }
 }
