@@ -44,8 +44,10 @@ struct MacRootView: View {
                 }
                 .clipped()
                 .animation(.smooth(duration: 0.25), value: state.inspectorVisible)
+                .toolbar { toolbar } // on the detail column: on the split view the spacers were ignored
             }
-            .toolbar { toolbar }
+            // Scroll vs table pages gave the bar different backgrounds; the title is hidden at the scene (showsTitle: false).
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .disabled(model.appLock.blocksContent)
             .blur(radius: model.appLock.blocksContent ? 10 : 0)
 
@@ -183,19 +185,23 @@ struct MacRootView: View {
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItemGroup {
-            searchField
+        // No title fills the leading side any more, so a flexible spacer pushes the buttons trailing.
+        ToolbarSpacer(.flexible, placement: .primaryAction)
+        ToolbarItem(placement: .primaryAction) { searchField }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarItemGroup(placement: .primaryAction) {
             Button { state.perform(.commandBar) } label: { Label("Commands", systemImage: "command") }
                 .help("Command Bar (\(state.shortcut(for: .commandBar)?.displayName ?? ""))")
-            Button { state.perform(.newExpense) } label: { Label("Expense", systemImage: "plus") }
-                .buttonStyle(.borderedProminent).tint(MacTheme.accent)
-                .accessibilityIdentifier("newExpense")
-        }
-        ToolbarItem {
-            Button { state.perform(.toggleInspector) } label: { Label("Inspector", systemImage: "sidebar.right") }
+            Button { state.perform(.toggleInspector) } label: { Label("Inspector", systemImage: "pointer.arrow.click") }
                 .disabled(state.destination == .chat)
                 .help("Toggle Inspector (\(state.shortcut(for: .toggleInspector)?.displayName ?? ""))")
                 .accessibilityIdentifier("toggleInspector")
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarItem(placement: .primaryAction) {
+            Button { state.perform(.newExpense) } label: { Label("Expense", systemImage: "plus") }
+                .buttonStyle(.borderedProminent).tint(MacTheme.accent)
+                .accessibilityIdentifier("newExpense")
         }
     }
 }

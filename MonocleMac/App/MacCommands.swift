@@ -283,7 +283,7 @@ final class MacAppState {
             .init(id: MacCommandID.quickChat.rawValue, title: "Quick Chat", symbol: "bubble.left.and.text.bubble.right", commandID: .quickChat, destination: nil),
             .init(id: MacCommandID.focusSearch.rawValue, title: "Focus Search", symbol: "magnifyingglass", commandID: .focusSearch, destination: nil),
             .init(id: MacCommandID.toggleSidebar.rawValue, title: "Toggle Sidebar", symbol: "sidebar.left", commandID: .toggleSidebar, destination: nil),
-            .init(id: MacCommandID.toggleInspector.rawValue, title: "Toggle Inspector", symbol: "sidebar.right", commandID: .toggleInspector, destination: nil),
+            .init(id: MacCommandID.toggleInspector.rawValue, title: "Toggle Inspector", symbol: "pointer.arrow.click", commandID: .toggleInspector, destination: nil),
             .init(id: MacCommandID.importCSV.rawValue, title: "Import CSV", symbol: "square.and.arrow.down", commandID: .importCSV, destination: nil),
             .init(id: MacCommandID.exportCSV.rawValue, title: "Export CSV", symbol: "tablecells", commandID: .exportCSV, destination: nil),
             .init(id: MacCommandID.exportBackup.rawValue, title: "Export Backup", symbol: "externaldrive", commandID: .exportBackup, destination: nil),

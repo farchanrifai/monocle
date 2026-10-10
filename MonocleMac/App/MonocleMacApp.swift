@@ -10,6 +10,7 @@ struct MonocleMacApp: App {
                 .preferredColorScheme(state.model.preferredColorScheme)
                 .modifier(SettingsOpener(state: state))
         }
+        .windowToolbarStyle(.unified(showsTitle: false)) // every page draws its own large title
         .defaultSize(width: 1180, height: 760)
         .windowResizability(.contentMinSize)
         .commands { MonocleMacCommands(state: state) }
