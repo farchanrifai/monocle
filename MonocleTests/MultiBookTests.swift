@@ -464,6 +464,40 @@ final class MultiBookTests: XCTestCase {
         XCTAssertNil(CardStack(name: "Empty").budgetLimit(cardLimits: []))
     }
 
+    func testTotalUntilBudgetIsOnePeriodAndSwitchingBackReplacesIt() throws {
+        // Domain: one period from the start through the last day, including after it ends.
+        let goal = BudgetVersion(effectiveDay: "2026-10-01", overallLimit: 10_000_000_00, startDay: 1, totalUntilDay: "2027-03-31")
+        let during = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date("2026-12-15")), budgets: [goal]))
+        XCTAssertEqual(Day.string(during.cycle.start), "2026-10-01")
+        XCTAssertEqual(Day.string(during.cycle.end), "2027-04-01")
+        XCTAssertTrue(during.cycle.contains(Expense(amount: 1, day: "2027-03-31", note: "", allocations: [])))
+        XCTAssertFalse(during.cycle.contains(Expense(amount: 1, day: "2027-04-01", note: "", allocations: [])))
+        let after = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date("2027-05-01")), budgets: [goal]))
+        XCTAssertEqual(after.cycle, during.cycle)
+        var backwards = goal; backwards.totalUntilDay = "2026-09-30"
+        XCTAssertThrowsError(try backwards.validate(categories: []))
+
+        // App: save a goal, then go back to monthly from the same start.
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleBook()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
+        try model.saveBudget(overallLimit: 3_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        let lastDay = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 45, to: .now))
+        try model.saveBudget(overallLimit: 25_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false, totalUntil: lastDay)
+        XCTAssertEqual(model.activeBudget.totalUntilDay, Day.string(lastDay, calendar: .current))
+        XCTAssertEqual(model.activeBudget.overallLimit, 25_000_000_00)
+        XCTAssertEqual(Day.string(model.cycle.end), Day.string(try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: lastDay))))
+        XCTAssertEqual(model.budgetHistory.count, 1)
+        try model.saveBudget(overallLimit: 4_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        XCTAssertNil(model.activeBudget.totalUntilDay)
+        XCTAssertEqual(model.budgetHistory.count, 1)
+        XCTAssertThrowsError(try model.saveBudget(overallLimit: 1_00, startDay: 1, categoryLimits: [], applyToNextCycle: false,
+                                                  totalUntil: XCTUnwrap(Calendar.current.date(byAdding: .day, value: -60, to: .now))))
+    }
+
     func testStackCardReorderingAndFrontCard() throws {
         let store = try ExpenseRepository(inMemory: true)
         let b1 = try store.createBook(named: "Card 1")

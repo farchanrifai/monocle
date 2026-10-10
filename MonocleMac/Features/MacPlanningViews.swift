@@ -17,7 +17,8 @@ struct MacBudgetsView: View {
             HStack {
                 SummaryTile(title: "Limit", value: Money.format(model.activeBudget.overallLimit), detail: model.cycle.label)
                 SummaryTile(title: "Spent", value: Money.format(model.spent), detail: "\(usedPercent)% used")
-                SummaryTile(title: "Remaining", value: Money.format(model.remaining), detail: "Cycle day \(model.activeBudget.startDay)")
+                SummaryTile(title: "Remaining", value: Money.format(model.remaining),
+                            detail: model.activeBudget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Cycle day \(model.activeBudget.startDay)")
             }
             HStack { Text("Category budgets").font(.title2.bold()); Spacer(); Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
             Table(categories) {
@@ -44,21 +45,36 @@ private struct BudgetEditor: View {
     @State private var categoryAmounts: [UUID: String]
     @State private var nextCycle = false
     @State private var error: String?
+    @State private var isTotal: Bool
+    @State private var totalUntil: Date
 
     init(model: AppModel, close: @escaping () -> Void) {
         self.model = model; self.close = close
         _amount = State(initialValue: Money.digits(model.activeBudget.overallLimit))
         _startDay = State(initialValue: model.activeBudget.startDay)
         _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: model.activeBudget.categoryLimits.map { ($0.categoryID, Money.digits($0.limit)) }))
+        _isTotal = State(initialValue: model.activeBudget.totalUntilDay != nil)
+        _totalUntil = State(initialValue: model.activeBudget.totalUntilDay.flatMap { Day.date($0) }
+            ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Edit Budget").font(.title2.bold())
             Form {
+                Picker("Budget", selection: $isTotal) {
+                    Text("Monthly").tag(false)
+                    Text("Total until").tag(true)
+                }.pickerStyle(.segmented)
                 TextField("Overall limit", text: $amount)
-                Stepper("Cycle begins on day \(startDay)", value: $startDay, in: 1...31)
-                Toggle("Apply to next cycle", isOn: $nextCycle)
+                if isTotal {
+                    DatePicker("Last day", selection: $totalUntil, in: model.cycle.start..., displayedComponents: .date)
+                    Text("One amount from \(Day.title(Day.string(model.cycle.start))) through the last day. Use it for a trip or a goal.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Stepper("Cycle begins on day \(startDay)", value: $startDay, in: 1...31)
+                    Toggle("Apply to next cycle", isOn: $nextCycle)
+                }
                 Section("Categories") {
                     ForEach(model.activeCategories) { category in
                         TextField(category.name, text: Binding(get: { categoryAmounts[category.id] ?? "" }, set: { categoryAmounts[category.id] = $0 }))
@@ -76,7 +92,8 @@ private struct BudgetEditor: View {
                 guard !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
                 return CategoryBudget(categoryID: id, limit: try Money.parse(value))
             }
-            try model.saveBudget(overallLimit: total, startDay: startDay, categoryLimits: categories, applyToNextCycle: nextCycle)
+            try model.saveBudget(overallLimit: total, startDay: isTotal ? model.activeBudget.startDay : startDay, categoryLimits: categories,
+                                 applyToNextCycle: !isTotal && nextCycle, totalUntil: isTotal ? totalUntil : nil)
             close()
         } catch { self.error = error.localizedDescription }
     }

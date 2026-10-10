@@ -10,7 +10,7 @@ struct BudgetsView: View {
                     Eyebrow(text: model.currentBudgetPeriod.isTransition ? "Transition · \(model.cycle.label)" : model.cycle.label)
                     Text("Room for what\nmatters.").font(.largeTitle.weight(.medium)).tracking(-1)
                     VStack(alignment: .leading, spacing: 14) {
-                        Eyebrow(text: model.remaining >= 0 ? "Left this cycle" : "Over budget")
+                        Eyebrow(text: model.remaining < 0 ? "Over budget" : (model.activeBudget.totalUntilDay != nil ? "Left until \(Day.title(model.activeBudget.totalUntilDay!))" : "Left this cycle"))
                         Text(Money.format(abs(model.remaining))).font(.system(size: 37, weight: .medium, design: .monospaced)).tracking(-1.5).minimumScaleFactor(0.6).lineLimit(1)
                         ProgressView(value: min(1, Double(model.spent) / Double(max(1, model.activeBudget.overallLimit)))).tint(MC.red)
                         HStack {
@@ -79,7 +79,7 @@ struct BudgetsView: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("From \(Day.title(budget.effectiveDay))")
-                                    Text("Cycle starts on day \(budget.startDay)")
+                                    Text(budget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Cycle starts on day \(budget.startDay)")
                                         .font(.caption).foregroundStyle(.secondary)
                                     if let transitionEndDay = budget.transitionEndDay {
                                         Text("Transition ends \(Day.title(transitionEndDay))")
@@ -111,6 +111,8 @@ struct BudgetEditor: View {
     @State private var categoryAmounts: [UUID: String] = [:]
     @State private var originalBudget: BudgetVersion?
     @State private var error: String?
+    @State private var isTotal = false
+    @State private var totalUntil = Date.now
 
     private func resolveInput(_ input: String, preserving previous: Int64?) throws -> Int64 {
         if let previous, input == Money.exactDigits(previous) { return previous }
@@ -124,10 +126,22 @@ struct BudgetEditor: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Budget", selection: $isTotal) {
+                        Text("Monthly").tag(false)
+                        Text("Total until").tag(true)
+                    }.pickerStyle(.segmented)
+                    if isTotal {
+                        DatePicker("Last day", selection: $totalUntil, in: model.cycle.start..., displayedComponents: .date)
+                    }
+                } footer: {
+                    Text(isTotal ? "One amount for the whole period, from \(Day.title(Day.string(model.cycle.start))) through the last day. Use it for a trip or a goal."
+                                 : "The budget repeats every cycle.")
+                }
                 Section("Overall budget · IDR") {
                     TextField("4500000", text: $amount).keyboardType(.numberPad)
                 }
-                Section {
+                if !isTotal { Section {
                     Picker("Day of month", selection: $startDay) {
                         ForEach(1...31, id: \.self) { Text("Day \($0)").tag($0) }
                     }
@@ -145,7 +159,7 @@ struct BudgetEditor: View {
                     Text(changingStartDay
                          ? "The new amount applies during this transition period. Future cycles begin on day \(startDay)."
                          : "Historical cycles keep their saved budget. Only this version and later periods use the new amount.")
-                }
+                } }
                 Section {
                     ForEach(model.categories) { category in
                         TextField(category.name + " · no limit", text: Binding(
@@ -169,9 +183,11 @@ struct BudgetEditor: View {
                                     guard !value.isEmpty else { return nil }
                                     return CategoryBudget(categoryID: category.id, limit: try resolveInput(value, preserving: originalBudget?.limit(for: category.id)))
                                 }
-                                try model.saveBudget(overallLimit: try resolveInput(amount, preserving: originalBudget?.overallLimit), startDay: startDay,
+                                try model.saveBudget(overallLimit: try resolveInput(amount, preserving: originalBudget?.overallLimit),
+                                                     startDay: isTotal ? model.activeBudget.startDay : startDay,
                                                      categoryLimits: limits,
-                                                     applyToNextCycle: !changingStartDay && applyToNextCycle)
+                                                     applyToNextCycle: !isTotal && !changingStartDay && applyToNextCycle,
+                                                     totalUntil: isTotal ? totalUntil : nil)
                                 dismiss()
                             } catch { self.error = error.localizedDescription }
                         }
@@ -181,6 +197,9 @@ struct BudgetEditor: View {
                     originalBudget = model.activeBudget
                     amount = Money.exactDigits(model.activeBudget.overallLimit)
                     startDay = model.activeBudget.startDay
+                    isTotal = model.activeBudget.totalUntilDay != nil
+                    totalUntil = model.activeBudget.totalUntilDay.flatMap { Day.date($0) }
+                        ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now
                     categoryAmounts = Dictionary(uniqueKeysWithValues: model.categories.map { category in
                         (category.id, model.activeBudget.limit(for: category.id).map { Money.exactDigits($0) } ?? "")
                     })

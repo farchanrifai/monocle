@@ -1449,8 +1449,9 @@ final class AppModel {
         }
     }
 
+    /// `totalUntil` makes a "Total until" budget (a goal): one amount from the current period's start through that day.
     func saveBudget(overallLimit: Int64, startDay: Int, categoryLimits: [CategoryBudget], applyToNextCycle: Bool,
-                    date: Date = .now, calendar: Calendar = .current) throws {
+                    totalUntil: Date? = nil, date: Date = .now, calendar: Calendar = .current) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: date, calendar: calendar)
         let current = BudgetHistory.period(containing: date, budgets: budgetHistory, calendar: calendar)
@@ -1458,7 +1459,11 @@ final class AppModel {
         let effectiveStart: Date
         let transitionEndDay: String?
         let isTransition = current.budget.transitionEndDay == Day.string(current.cycle.end, calendar: calendar)
-        if startDay == current.budget.startDay {
+        if totalUntil != nil || current.budget.totalUntilDay != nil {
+            // Switching kind, or editing a goal, replaces the version from the same start; no transition period.
+            effectiveStart = current.cycle.start
+            transitionEndDay = nil
+        } else if startDay == current.budget.startDay {
             effectiveStart = applyToNextCycle ? current.cycle.end : current.cycle.start
             transitionEndDay = applyToNextCycle ? nil : (isTransition ? current.budget.transitionEndDay : nil)
         } else {
@@ -1467,8 +1472,11 @@ final class AppModel {
         }
         let effectiveDay = Day.string(effectiveStart, calendar: calendar)
         let id = budgetHistory.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
+        let totalUntilDay = totalUntil.map { Day.string($0, calendar: calendar) }
+        if let totalUntilDay { guard totalUntilDay >= effectiveDay else { throw BudgetError.invalidEffectiveDate } }
         let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
-                                   startDay: startDay, categoryLimits: categoryLimits, transitionEndDay: transitionEndDay)
+                                   startDay: startDay, categoryLimits: categoryLimits, transitionEndDay: transitionEndDay,
+                                   totalUntilDay: totalUntilDay)
         var proposed = settings
         proposed.budget = overallLimit
         proposed.startDay = startDay

@@ -524,6 +524,13 @@ enum BudgetHistory {
     static func period(containing date: Date, budgets: [BudgetVersion], calendar: Calendar = Day.calendar) -> BudgetPeriod? {
         guard let budget = active(on: date, budgets: budgets, calendar: calendar) else { return nil }
         let day = Day.string(date, calendar: calendar)
+        // A "Total until" budget is one period from its start through its last day, even after that day passes.
+        if let lastDay = budget.totalUntilDay, let start = Day.date(budget.effectiveDay, calendar: calendar),
+           let last = Day.date(lastDay, calendar: calendar) {
+            let reporting = Day.reportingCalendar(calendar)
+            let end = reporting.date(byAdding: .day, value: 1, to: reporting.startOfDay(for: last)) ?? last
+            return BudgetPeriod(budget: budget, cycle: BudgetCycle(start: reporting.startOfDay(for: start), end: end, calendar: calendar))
+        }
         if let start = Day.date(budget.effectiveDay, calendar: calendar),
            let endDay = budget.transitionEndDay, let end = Day.date(endDay, calendar: calendar),
            day >= budget.effectiveDay, day < endDay {
