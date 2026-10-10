@@ -211,28 +211,28 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(sumPct, 1.0, accuracy: 0.001)
     }
 
-    // MARK: - Cross-Book Distribution
+    // MARK: - Cross-Card Distribution
 
-    func testCrossBookDistribution() {
-        let b1 = BookProfile(id: UUID(), name: "Personal", colorIndex: 0)
-        let b2 = BookProfile(id: UUID(), name: "Work", colorIndex: 1)
+    func testCrossCardDistribution() {
+        let b1 = Card(id: UUID(), name: "Personal", colorIndex: 0)
+        let b2 = Card(id: UUID(), name: "Work", colorIndex: 1)
 
-        let exp1 = Expense(id: UUID(), amount: 100_000_00, day: "2026-09-01", note: "P1", allocations: [], source: "manual", bookID: b1.id)
-        let exp2 = Expense(id: UUID(), amount: 300_000_00, day: "2026-09-02", note: "W1", allocations: [], source: "manual", bookID: b2.id)
+        let exp1 = Expense(id: UUID(), amount: 100_000_00, day: "2026-09-01", note: "P1", allocations: [], source: "manual", cardID: b1.id)
+        let exp2 = Expense(id: UUID(), amount: 300_000_00, day: "2026-09-02", note: "W1", allocations: [], source: "manual", cardID: b2.id)
 
-        let distribution = AnalyticsEngine.calculateBookDistribution(
-            expensesByBook: [b1.id: [exp1], b2.id: [exp2]],
-            books: [b1, b2]
+        let distribution = AnalyticsEngine.calculateCardDistribution(
+            expensesByCard: [b1.id: [exp1], b2.id: [exp2]],
+            cards: [b1, b2]
         )
 
         XCTAssertEqual(distribution.count, 2)
         // Work is top with 75%
-        XCTAssertEqual(distribution[0].bookName, "Work")
+        XCTAssertEqual(distribution[0].cardName, "Work")
         XCTAssertEqual(distribution[0].amount, 300_000_00)
         XCTAssertEqual(distribution[0].percentage, 0.75, accuracy: 0.001)
 
         // Personal is second with 25%
-        XCTAssertEqual(distribution[1].bookName, "Personal")
+        XCTAssertEqual(distribution[1].cardName, "Personal")
         XCTAssertEqual(distribution[1].amount, 100_000_00)
         XCTAssertEqual(distribution[1].percentage, 0.25, accuracy: 0.001)
     }

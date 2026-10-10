@@ -19,8 +19,8 @@ enum DemoWorkspace {
         let utilities = category(1, "Utilities", "wifi"), kids = category(2, "Kids", "graduationcap")
         let office = category(3, "Office", "briefcase"), lodging = category(4, "Lodging", "house"), activities = category(5, "Activities", "sparkles")
 
-        func card(_ n: Int, _ name: String, _ color: Int) -> BookProfile {
-            BookProfile(id: UUID(uuidString: String(format: "60000000-0000-0000-0000-%012d", n))!, name: name, colorIndex: color)
+        func card(_ n: Int, _ name: String, _ color: Int) -> Card {
+            Card(id: UUID(uuidString: String(format: "60000000-0000-0000-0000-%012d", n))!, name: name, colorIndex: color)
         }
         let daily = card(1, "Daily", 0), household = card(2, "Household", 1), work = card(3, "Work", 2)
         let tokyo = card(4, "Tokyo Trip", 3), bali = card(5, "Bali Trip", 4)
@@ -55,7 +55,7 @@ enum DemoWorkspace {
         ]
 
         var counter = 0
-        func expenses(_ patterns: [Pattern], days: [Int], book: BookProfile, scale: Double = 1) -> [Expense] {
+        func expenses(_ patterns: [Pattern], days: [Int], card: Card, scale: Double = 1) -> [Expense] {
             var result: [Expense] = []
             for offset in days {
                 // Spending drifts up toward recent months and peaks in December, so trends and comparisons have shape.
@@ -73,14 +73,14 @@ enum DemoWorkspace {
                         let id = UUID(uuidString: String(format: "70000000-0000-0000-0000-%012d", counter))!
                         result.append(Expense(id: id, amount: minor, day: day(offset), note: note,
                                               allocations: [.init(categoryID: category.id, amount: minor)], source: "demo",
-                                              createdAt: date.addingTimeInterval(Double(8 * 3600 + counter % 36_000)), bookID: book.id))
+                                              createdAt: date.addingTimeInterval(Double(8 * 3600 + counter % 36_000)), cardID: card.id))
                     }
                 }
             }
             return result
         }
 
-        var dailyExpenses = expenses(dailyPatterns, days: Array(0..<365), book: daily)
+        var dailyExpenses = expenses(dailyPatterns, days: Array(0..<365), card: daily)
         // A few split purchases (one receipt, two categories).
         for offset in stride(from: 3, to: 360, by: 17) {
             counter += 1
@@ -88,41 +88,41 @@ enum DemoWorkspace {
             dailyExpenses.append(Expense(id: UUID(uuidString: String(format: "70000000-0000-0000-0000-%012d", counter))!,
                                          amount: foodPart + homePart, day: day(offset), note: "Pasar",
                                          allocations: [.init(categoryID: food.id, amount: foodPart), .init(categoryID: home.id, amount: homePart)],
-                                         source: "demo", bookID: daily.id))
+                                         source: "demo", cardID: daily.id))
         }
-        let householdExpenses = expenses(householdPatterns, days: Array(0..<365), book: household)
+        let householdExpenses = expenses(householdPatterns, days: Array(0..<365), card: household)
         let workdays = (0..<365).filter { !cal.isDateInWeekend(cal.date(byAdding: .day, value: -$0, to: today)!) }
-        let workExpenses = expenses(workPatterns, days: workdays, book: work)
+        let workExpenses = expenses(workPatterns, days: workdays, card: work)
         // Tokyo about seven months ago, Bali in the last few weeks.
-        let tokyoExpenses = expenses(tripPatterns, days: Array(205..<215), book: tokyo, scale: 1.4)
-        let baliExpenses = expenses(tripPatterns, days: Array(12..<18), book: bali)
+        let tokyoExpenses = expenses(tripPatterns, days: Array(205..<215), card: tokyo, scale: 1.4)
+        let baliExpenses = expenses(tripPatterns, days: Array(12..<18), card: bali)
 
-        func budget(_ book: BookProfile, _ limit: Int64, _ limits: [(ExpenseCategory, Int64)]) -> [BudgetVersion] {
-            var version = BudgetVersion.initial(overallLimit: limit * 100, startDay: 1, date: cal.date(byAdding: .year, value: -1, to: today)!, bookID: book.id)
+        func budget(_ card: Card, _ limit: Int64, _ limits: [(ExpenseCategory, Int64)]) -> [BudgetVersion] {
+            var version = BudgetVersion.initial(overallLimit: limit * 100, startDay: 1, date: cal.date(byAdding: .year, value: -1, to: today)!, cardID: card.id)
             version.categoryLimits = limits.map { CategoryBudget(categoryID: $0.0.id, limit: $0.1 * 100) }
             return [version]
         }
-        func bill(_ n: Int, _ book: BookProfile, _ name: String, _ rupiah: Int64, _ category: ExpenseCategory, _ recurrence: BillRecurrence) -> BillRule {
-            BillRule(id: UUID(uuidString: String(format: "80000000-0000-0000-0000-%012d", n))!, bookID: book.id, name: name,
+        func bill(_ n: Int, _ card: Card, _ name: String, _ rupiah: Int64, _ category: ExpenseCategory, _ recurrence: BillRecurrence) -> BillRule {
+            BillRule(id: UUID(uuidString: String(format: "80000000-0000-0000-0000-%012d", n))!, cardID: card.id, name: name,
                      amount: rupiah * 100, categoryID: category.id, recurrence: recurrence, recordingMode: .pending, hasReminder: true)
         }
 
-        let books = [
-            BookBackupItem(book: daily, categories: base, expenses: dailyExpenses,
+        let cards = [
+            CardBackupItem(card: daily, categories: base, expenses: dailyExpenses,
                            budgets: budget(daily, 9_000_000, [(food, 3_500_000), (transport, 1_200_000), (leisure, 900_000), (shopping, 1_000_000)]),
                            bills: [bill(1, daily, "Netflix", 186_000, leisure, .monthly(day: 5)),
                                    bill(2, daily, "Spotify", 55_000, leisure, .monthly(day: 12)),
                                    bill(3, daily, "Gym membership", 450_000, wellbeing, .monthly(day: 1))]),
-            BookBackupItem(book: household, categories: base + [utilities, kids], expenses: householdExpenses,
+            CardBackupItem(card: household, categories: base + [utilities, kids], expenses: householdExpenses,
                            budgets: budget(household, 7_000_000, [(home, 4_000_000), (kids, 1_500_000)]),
                            bills: [bill(4, household, "Internet", 450_000, utilities, .monthly(day: 10)),
                                    bill(5, household, "Electricity", 900_000, utilities, .monthly(day: 20)),
                                    bill(6, household, "Car insurance", 4_800_000, utilities, .yearly(month: 3, day: 15))]),
-            BookBackupItem(book: work, categories: [food, transport, office], expenses: workExpenses,
+            CardBackupItem(card: work, categories: [food, transport, office], expenses: workExpenses,
                            budgets: budget(work, 3_000_000, [(office, 1_000_000)])),
-            BookBackupItem(book: tokyo, categories: [food, transport, shopping, lodging, activities], expenses: tokyoExpenses,
+            CardBackupItem(card: tokyo, categories: [food, transport, shopping, lodging, activities], expenses: tokyoExpenses,
                            budgets: budget(tokyo, 25_000_000, [])),
-            BookBackupItem(book: bali, categories: [food, transport, shopping, lodging, activities], expenses: baliExpenses,
+            CardBackupItem(card: bali, categories: [food, transport, shopping, lodging, activities], expenses: baliExpenses,
                            budgets: budget(bali, 15_000_000, [])),
         ]
 
@@ -132,11 +132,11 @@ enum DemoWorkspace {
                               CardStack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000002")!, name: "Travel", icon: "airplane", cardIDs: [tokyo.id, bali.id]),
                               CardStack(id: UUID(uuidString: "90000000-0000-0000-0000-000000000003")!, name: "Work", icon: "briefcase", cardIDs: [work.id])]
         preferences.activeStackID = everyday.id
-        preferences.bookOrder = books.map(\.book.id)
+        preferences.cardOrder = cards.map(\.card.id)
         var settings = PrototypeSettings()
-        settings.book = daily
+        settings.card = daily
         settings.budget = 9_000_000_00
-        return WorkspaceBackup(books: books, preferences: preferences, settings: settings)
+        return WorkspaceBackup(cards: cards, preferences: preferences, settings: settings)
     }
 
     /// SplitMix64: small, seedable, and the same on every run.

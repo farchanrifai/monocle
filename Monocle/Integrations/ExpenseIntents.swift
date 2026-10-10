@@ -58,9 +58,9 @@ struct CardEntity: AppEntity {
     let id: String
     let name: String
 
-    init(_ book: BookProfile) {
-        id = book.id.uuidString
-        name = book.name
+    init(_ card: Card) {
+        id = card.id.uuidString
+        name = card.name
     }
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Card / Account")
@@ -85,11 +85,11 @@ struct CardEntityQuery: EntityStringQuery, EnumerableEntityQuery {
     private func cards() async -> [CardEntity] {
         await MainActor.run {
             let model = AppEnvironment.shared.model
-            let unhidden = model.unhiddenBooks
+            let unhidden = model.unhiddenCards
             if !unhidden.isEmpty {
                 return unhidden.map(CardEntity.init)
             }
-            return model.books.map(CardEntity.init)
+            return model.cards.map(CardEntity.init)
         }
     }
 }
@@ -177,9 +177,9 @@ struct AddExpenseIntent: AppIntent {
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
     static var supportedModes: IntentModes { .background }
 
-    @Parameter(title: "Amount (IDR)", requestValueDialog: IntentDialog("How much?")) var amount: Int?
+    @Parameter(title: "Amount", requestValueDialog: IntentDialog("How much?")) var amount: Int?
     @Parameter(title: "Category", requestValueDialog: IntentDialog("Which category?")) var category: ExpenseCategoryEntity?
-    @Parameter(title: "Card / Account", requestValueDialog: IntentDialog("Which card / account?")) var card: CardEntity?
+    @Parameter(title: "Card", requestValueDialog: IntentDialog("Which card?")) var card: CardEntity?
     @Parameter(title: "Short Note", requestValueDialog: IntentDialog("Short note (optional)?")) var note: String?
     @Parameter(title: "Input Order") var inputOrder: ShortcutPromptOrder?
     @Parameter(title: "Date") var date: Date?
@@ -203,12 +203,12 @@ struct AddExpenseIntent: AppIntent {
         var resolvedNote = note
         var resolvedAmount = amount
 
-        // If card was not provided, but there is only 1 book, auto-resolve it
+        // If card was not provided, but there is only 1 card, auto-resolve it
         if resolvedCard == nil {
-            let unhidden = AppEnvironment.shared.model.unhiddenBooks
+            let unhidden = AppEnvironment.shared.model.unhiddenCards
             if unhidden.count == 1, let single = unhidden.first {
                 resolvedCard = CardEntity(single)
-            } else if unhidden.isEmpty, let fallback = AppEnvironment.shared.model.books.first {
+            } else if unhidden.isEmpty, let fallback = AppEnvironment.shared.model.cards.first {
                 resolvedCard = CardEntity(fallback)
             }
         }
@@ -217,21 +217,21 @@ struct AddExpenseIntent: AppIntent {
             switch field {
             case .card:
                 if resolvedCard == nil {
-                    let availableBooks = AppEnvironment.shared.model.unhiddenBooks
-                    let entities = availableBooks.map(CardEntity.init)
+                    let availableCards = AppEnvironment.shared.model.unhiddenCards
+                    let entities = availableCards.map(CardEntity.init)
                     if entities.count > 1 {
                         resolvedCard = try await $card.requestDisambiguation(among: entities, dialog: IntentDialog("Which card?"))
                     } else if let single = entities.first {
                         resolvedCard = single
-                    } else if let fallback = AppEnvironment.shared.model.books.first {
+                    } else if let fallback = AppEnvironment.shared.model.cards.first {
                         resolvedCard = CardEntity(fallback)
                     }
                 }
 
             case .category:
                 if resolvedCategory == nil {
-                    let targetBookID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedBookID ?? AppEnvironment.shared.model.activeBookID
-                    let active = AppEnvironment.shared.model.activeCategories(for: targetBookID)
+                    let targetCardID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
+                    let active = AppEnvironment.shared.model.activeCategories(for: targetCardID)
                     let entities = active.map(ExpenseCategoryEntity.init)
                     if entities.count > 1 {
                         resolvedCategory = try await $category.requestDisambiguation(among: entities, dialog: IntentDialog("Which category?"))
@@ -265,18 +265,18 @@ struct AddExpenseIntent: AppIntent {
 
         // Final validations and resolution
         if resolvedCard == nil {
-            let unhidden = AppEnvironment.shared.model.unhiddenBooks
+            let unhidden = AppEnvironment.shared.model.unhiddenCards
             if let first = unhidden.first {
                 resolvedCard = CardEntity(first)
-            } else if let fallback = AppEnvironment.shared.model.books.first {
+            } else if let fallback = AppEnvironment.shared.model.cards.first {
                 resolvedCard = CardEntity(fallback)
             }
         }
-        guard let targetCard = resolvedCard, let targetBookID = UUID(uuidString: targetCard.id) else {
+        guard let targetCard = resolvedCard, let targetCardID = UUID(uuidString: targetCard.id) else {
             throw EntryError.corruptStore
         }
 
-        let active = AppEnvironment.shared.model.activeCategories(for: targetBookID)
+        let active = AppEnvironment.shared.model.activeCategories(for: targetCardID)
         let resolvedCategoryID = resolvedCategory.flatMap { UUID(uuidString: $0.id) }
         if !active.contains(where: { $0.id == resolvedCategoryID }) {
             let entities = active.map(ExpenseCategoryEntity.init)
@@ -298,12 +298,12 @@ struct AddExpenseIntent: AppIntent {
         }
 
         let finalNote = resolvedNote ?? ""
-        let expense = try service.record(amountInRupiah: Int64(validAmount), categoryID: categoryID, note: finalNote, date: date ?? .now, in: targetBookID)
-        let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? targetCard.name
-        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: targetCategory.symbol, bookID: targetBookID)
+        let expense = try service.record(amountInRupiah: Int64(validAmount), categoryID: categoryID, note: finalNote, date: date ?? .now, in: targetCardID)
+        let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? targetCard.name
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: targetCategory.symbol, cardID: targetCardID)
         return .result(
-            dialog: "Added \(Money.format(expense.amount)) in \(targetCategory.name) on \(bookName).",
-            view: ExpenseReceiptSnippetView(expense: expense, categoryName: targetCategory.name, categorySymbol: targetCategory.symbol, cardName: bookName)
+            dialog: "Added \(Money.format(expense.amount)) in \(targetCategory.name) on \(cardName).",
+            view: ExpenseReceiptSnippetView(expense: expense, categoryName: targetCategory.name, categorySymbol: targetCategory.symbol, cardName: cardName)
         )
     }
 }
@@ -317,7 +317,7 @@ struct AddExpenseFromTextIntent: AppIntent {
     static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "Expense", description: "For example, Coffee 28k", requestValueDialog: IntentDialog("What did you spend on? (e.g. Coffee 28k)")) var text: String
-    @Parameter(title: "Card / Account") var card: CardEntity?
+    @Parameter(title: "Card") var card: CardEntity?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$text)") {
@@ -330,27 +330,27 @@ struct AddExpenseFromTextIntent: AppIntent {
         guard let service = AppEnvironment.shared.expenses else { throw EntryError.corruptStore }
         var resolvedCard = card
         if resolvedCard == nil {
-            let availableBooks = AppEnvironment.shared.model.unhiddenBooks
-            let entities = availableBooks.map(CardEntity.init)
+            let availableCards = AppEnvironment.shared.model.unhiddenCards
+            let entities = availableCards.map(CardEntity.init)
             if entities.count > 1 {
                 resolvedCard = try await $card.requestDisambiguation(among: entities, dialog: IntentDialog("Which card?"))
             } else if let single = entities.first {
                 resolvedCard = single
-            } else if let fallback = AppEnvironment.shared.model.books.first {
+            } else if let fallback = AppEnvironment.shared.model.cards.first {
                 resolvedCard = CardEntity(fallback)
             }
         }
-        let targetBookID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedBookID ?? AppEnvironment.shared.model.activeBookID
-        let expense = try service.record(text: text, in: targetBookID)
-        let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? "Card"
-        let cat = AppEnvironment.shared.model.activeCategories(for: targetBookID).first(where: { $0.id == expense.allocations.first?.categoryID })
+        let targetCardID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
+        let expense = try service.record(text: text, in: targetCardID)
+        let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? "Card"
+        let cat = AppEnvironment.shared.model.activeCategories(for: targetCardID).first(where: { $0.id == expense.allocations.first?.categoryID })
         let catName = cat?.name ?? "Expense"
         let catSymbol = cat?.symbol ?? "creditcard"
-        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: catSymbol, bookID: targetBookID)
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: catSymbol, cardID: targetCardID)
 
         return .result(
-            dialog: "Added \(Money.format(expense.amount)) on \(bookName).",
-            view: ExpenseReceiptSnippetView(expense: expense, categoryName: catName, categorySymbol: catSymbol, cardName: bookName)
+            dialog: "Added \(Money.format(expense.amount)) on \(cardName).",
+            view: ExpenseReceiptSnippetView(expense: expense, categoryName: catName, categorySymbol: catSymbol, cardName: cardName)
         )
     }
 }
@@ -364,7 +364,7 @@ struct OpenQuickEntryIntent: AppIntent {
     static var supportedModes: IntentModes { .foreground }
     static var openAppWhenRun: Bool { true }
 
-    @Parameter(title: "Card / Account") var card: CardEntity?
+    @Parameter(title: "Card") var card: CardEntity?
     @Parameter(title: "Category") var category: ExpenseCategoryEntity?
 
     static var parameterSummary: some ParameterSummary {
@@ -375,9 +375,9 @@ struct OpenQuickEntryIntent: AppIntent {
     }
 
     @MainActor func perform() async throws -> some IntentResult {
-        let targetBookID = card.flatMap { UUID(uuidString: $0.id) }
+        let targetCardID = card.flatMap { UUID(uuidString: $0.id) }
         let targetCatID = category.flatMap { UUID(uuidString: $0.id) }
-        AppModel.shared.openEntry(for: targetBookID, categoryID: targetCatID)
+        AppModel.shared.openEntry(for: targetCardID, categoryID: targetCatID)
         return .result()
     }
 }
@@ -392,7 +392,7 @@ struct StartSpendingSessionIntent: AppIntent {
     static var supportedModes: IntentModes { .background }
 
     @Parameter(title: "Session Name", default: "Shopping Session") var name: String
-    @Parameter(title: "Card / Account") var card: CardEntity?
+    @Parameter(title: "Card") var card: CardEntity?
     @Parameter(title: "Budget Limit (IDR)") var budgetLimit: Int?
 
     static var parameterSummary: some ParameterSummary {
@@ -403,16 +403,16 @@ struct StartSpendingSessionIntent: AppIntent {
     }
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
-        let targetBookID = card.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedBookID ?? AppEnvironment.shared.model.activeBookID
-        let bookName = AppEnvironment.shared.model.books.first(where: { $0.id == targetBookID })?.name ?? "Card"
+        let targetCardID = card.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
+        let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? "Card"
         var limit: Int64?
         if let budgetLimit, budgetLimit > 0 {
             let converted = Int64(budgetLimit).multipliedReportingOverflow(by: 100)
             guard !converted.overflow, converted.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
             limit = converted.partialValue
         }
-        SpendingSessionManager.shared.startSession(name: name, bookName: bookName, bookID: targetBookID, budgetLimit: limit)
-        return .result(dialog: "Started spending session '\(name)' on \(bookName).")
+        SpendingSessionManager.shared.startSession(name: name, cardName: cardName, cardID: targetCardID, budgetLimit: limit)
+        return .result(dialog: "Started spending session '\(name)' on \(cardName).")
     }
 }
 

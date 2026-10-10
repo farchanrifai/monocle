@@ -10,7 +10,7 @@ final class ChatAgentTests: XCTestCase {
 
     override func setUp() async throws {
         let repo = try ExpenseRepository(inMemory: true)
-        _ = try repo.createBook(named: "Daily")
+        _ = try repo.createCard(named: "Daily")
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
@@ -104,10 +104,10 @@ final class ChatAgentTests: XCTestCase {
     }
 
     func testChatSaveWritesAndEditOpensUnsavedDraftInEntrySheet() async throws {
-        let bookID = try XCTUnwrap(model.books.first?.id)
-        let category = try XCTUnwrap(try model.activeCategories(in: bookID).first)
+        let cardID = try XCTUnwrap(model.cards.first?.id)
+        let category = try XCTUnwrap(try model.activeCategories(in: cardID).first)
         let expense = Expense(amount: 2_800_000, day: "2026-09-14", note: "Kopi",
-                              allocations: [.init(categoryID: category.id, amount: 2_800_000)], source: "chat", bookID: bookID)
+                              allocations: [.init(categoryID: category.id, amount: 2_800_000)], source: "chat", cardID: cardID)
 
         model.showChat = true
         model.openInEntry(expense)
@@ -118,10 +118,10 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertEqual(try model.draft.expense().amount, 2_800_000)
         XCTAssertEqual(model.draft.civilDay, "2026-09-14")
         XCTAssertEqual(model.draft.source, "chat")
-        XCTAssertFalse(model.expenses(for: bookID).contains { $0.id == expense.id }, "Opening the editor never saves")
+        XCTAssertFalse(model.expenses(for: cardID).contains { $0.id == expense.id }, "Opening the editor never saves")
 
         try model.saveFromChat(expense)
-        XCTAssertTrue(model.expenses(for: bookID).contains { $0.id == expense.id && $0.source == "chat" })
+        XCTAssertTrue(model.expenses(for: cardID).contains { $0.id == expense.id && $0.source == "chat" })
     }
 
     func testChatSessionRestoresBothSidesOfTheConversationFromDisk() async throws {

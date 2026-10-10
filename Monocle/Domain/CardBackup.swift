@@ -1,11 +1,11 @@
 import Foundation
 
-enum BookKind: String, Codable, Equatable { case sample, real }
+enum CardKind: String, Codable, Equatable { case demo = "sample", real }
 
-struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
+struct Card: Identifiable, Codable, Equatable, Hashable, Sendable {
     var id: UUID
     var name: String
-    var kind: BookKind
+    var kind: CardKind
     var colorIndex: Int
     /// Budget and totals currency; nil means the workspace reporting currency.
     var currency: String? = nil
@@ -13,9 +13,9 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
     var spendingCurrency: String? = nil
     var defaultPaidWithID: UUID? = nil
 
-    static let sample = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .sample, colorIndex: 0)
+    static let demo = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .demo, colorIndex: 0)
 
-    init(id: UUID = UUID(), name: String, kind: BookKind = .real, colorIndex: Int = 0,
+    init(id: UUID = UUID(), name: String, kind: CardKind = .real, colorIndex: Int = 0,
          currency: String? = nil, spendingCurrency: String? = nil, defaultPaidWithID: UUID? = nil) {
         self.id = id
         self.name = name
@@ -36,7 +36,7 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.count <= 40,
               name.rangeOfCharacter(from: .controlCharacters) == nil,
               (0..<CardPalette.standard.count).contains(colorIndex),
-              (kind == .sample) == (id == BookProfile.sample.id),
+              (kind == .demo) == (id == Card.demo.id),
               currency.map(Money.isCurrencyCode) ?? true,
               spendingCurrency.map(Money.isCurrencyCode) ?? true else { throw BackupError.invalid }
     }
@@ -53,7 +53,7 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
         name = try values.decode(String.self, forKey: .name)
-        kind = try values.decode(BookKind.self, forKey: .kind)
+        kind = try values.decode(CardKind.self, forKey: .kind)
         colorIndex = try values.decodeIfPresent(Int.self, forKey: .colorIndex) ?? 0
         currency = try values.decodeIfPresent(String.self, forKey: .currency)
         spendingCurrency = try values.decodeIfPresent(String.self, forKey: .spendingCurrency)
@@ -71,14 +71,13 @@ struct BookProfile: Identifiable, Codable, Equatable, Hashable, Sendable {
     }
 }
 
-typealias Book = BookProfile
 
-struct BookBackup: Codable {
+struct CardBackup: Codable {
     var formatVersion = 3
     var exportedAt = Date.now
-    var bookID = BookProfile.sample.id
-    var bookName = BookProfile.sample.name
-    var bookKind = BookKind.sample.rawValue
+    var cardID = Card.demo.id
+    var cardName = Card.demo.name
+    var cardKind = CardKind.demo.rawValue
     var currency = "IDR"
     var minorUnitScale = 2
     var sampleSeeded = true
@@ -88,20 +87,20 @@ struct BookBackup: Codable {
     var settings: PrototypeSettings
     var budgets: [BudgetVersion]
 
-    init(formatVersion: Int = 3, exportedAt: Date = .now, bookID: UUID = BookProfile.sample.id,
-         bookName: String = BookProfile.sample.name, bookKind: String = BookKind.sample.rawValue,
+    init(formatVersion: Int = 3, exportedAt: Date = .now, cardID: UUID = Card.demo.id,
+         cardName: String = Card.demo.name, cardKind: String = CardKind.demo.rawValue,
          currency: String = "IDR", minorUnitScale: Int = 2, sampleSeeded: Bool = true,
          categories: [ExpenseCategory], expenses: [Expense], draft: ExpenseDraft,
          settings: PrototypeSettings, budgets: [BudgetVersion]? = nil) {
-        self.formatVersion = formatVersion; self.exportedAt = exportedAt; self.bookID = bookID
-        self.bookName = bookName; self.bookKind = bookKind; self.currency = currency
+        self.formatVersion = formatVersion; self.exportedAt = exportedAt; self.cardID = cardID
+        self.cardName = cardName; self.cardKind = cardKind; self.currency = currency
         self.minorUnitScale = minorUnitScale; self.sampleSeeded = sampleSeeded
         self.categories = categories; self.expenses = expenses; self.draft = draft; self.settings = settings
         self.budgets = budgets ?? [BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: exportedAt)]
     }
 
     private enum CodingKeys: String, CodingKey {
-        case formatVersion, exportedAt, bookID, bookName, bookKind, currency, minorUnitScale, sampleSeeded
+        case formatVersion, exportedAt, cardID = "bookID", cardName = "bookName", cardKind = "bookKind", currency, minorUnitScale, sampleSeeded
         case categories, expenses, draft, settings, budgets
     }
 
@@ -109,9 +108,9 @@ struct BookBackup: Codable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         formatVersion = try values.decodeIfPresent(Int.self, forKey: .formatVersion) ?? 1
         exportedAt = try values.decodeIfPresent(Date.self, forKey: .exportedAt) ?? .now
-        bookID = try values.decodeIfPresent(UUID.self, forKey: .bookID) ?? BookProfile.sample.id
-        bookName = try values.decodeIfPresent(String.self, forKey: .bookName) ?? BookProfile.sample.name
-        bookKind = try values.decodeIfPresent(String.self, forKey: .bookKind) ?? BookKind.sample.rawValue
+        cardID = try values.decodeIfPresent(UUID.self, forKey: .cardID) ?? Card.demo.id
+        cardName = try values.decodeIfPresent(String.self, forKey: .cardName) ?? Card.demo.name
+        cardKind = try values.decodeIfPresent(String.self, forKey: .cardKind) ?? CardKind.demo.rawValue
         currency = try values.decodeIfPresent(String.self, forKey: .currency) ?? "IDR"
         minorUnitScale = try values.decodeIfPresent(Int.self, forKey: .minorUnitScale) ?? 2
         sampleSeeded = try values.decodeIfPresent(Bool.self, forKey: .sampleSeeded) ?? true
@@ -125,8 +124,8 @@ struct BookBackup: Codable {
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(formatVersion, forKey: .formatVersion); try values.encode(exportedAt, forKey: .exportedAt)
-        try values.encode(bookID, forKey: .bookID); try values.encode(bookName, forKey: .bookName)
-        try values.encode(bookKind, forKey: .bookKind); try values.encode(currency, forKey: .currency)
+        try values.encode(cardID, forKey: .cardID); try values.encode(cardName, forKey: .cardName)
+        try values.encode(cardKind, forKey: .cardKind); try values.encode(currency, forKey: .currency)
         try values.encode(minorUnitScale, forKey: .minorUnitScale); try values.encode(sampleSeeded, forKey: .sampleSeeded)
         try values.encode(categories, forKey: .categories); try values.encode(expenses, forKey: .expenses)
         try values.encode(draft, forKey: .draft); try values.encode(settings, forKey: .settings)
@@ -138,12 +137,12 @@ struct BookBackup: Codable {
     func validate() throws {
         guard (1...3).contains(formatVersion), currency == "IDR", minorUnitScale == 2 else { throw BackupError.unsupported }
         if formatVersion == 1 {
-            guard bookKind == BookKind.sample.rawValue, bookID == BookProfile.sample.id,
-                  bookName == BookProfile.sample.name, sampleSeeded else { throw BackupError.unsupported }
+            guard cardKind == CardKind.demo.rawValue, cardID == Card.demo.id,
+                  cardName == Card.demo.name, sampleSeeded else { throw BackupError.unsupported }
         } else {
-            guard let kind = BookKind(rawValue: bookKind), !bookName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  bookName.count <= 40, settings.book == .init(id: bookID, name: bookName, kind: kind),
-                  (kind == .sample) == sampleSeeded else { throw BackupError.invalid }
+            guard let kind = CardKind(rawValue: cardKind), !cardName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  cardName.count <= 40, settings.card == .init(id: cardID, name: cardName, kind: kind),
+                  (kind == .demo) == sampleSeeded else { throw BackupError.invalid }
         }
         guard expenses.count <= 10_000, categories.count <= 500,
               Set(expenses.map(\.id)).count == expenses.count,
@@ -159,7 +158,7 @@ struct BookBackup: Codable {
         var sum: Int64 = 0
         for expense in expenses {
             try expense.validate(categories: categories)
-            guard expense.bookID == nil || expense.bookID == bookID,
+            guard expense.cardID == nil || expense.cardID == cardID,
                   expense.createdAt.timeIntervalSince1970.isFinite else { throw BackupError.invalid }
             let next = sum.addingReportingOverflow(expense.amount)
             guard !next.overflow else { throw BackupError.invalid }
@@ -170,12 +169,12 @@ struct BookBackup: Codable {
             guard Set(budgets.map(\.id)).count == budgets.count,
                   Set(budgets.map(\.effectiveDay)).count == budgets.count else { throw BackupError.invalid }
             for budget in budgets {
-                guard budget.bookID == nil || budget.bookID == bookID else { throw BackupError.invalid }
+                guard budget.cardID == nil || budget.cardID == cardID else { throw BackupError.invalid }
                 try budget.validate(categories: categories)
             }
         }
         if let id = draft.categoryID { guard categories.contains(where: { $0.id == id }) else { throw BackupError.invalid } }
-        guard draft.bookID == nil || draft.bookID == bookID,
+        guard draft.cardID == nil || draft.cardID == cardID,
               draft.date.timeIntervalSince1970.isFinite, draft.createdAt.timeIntervalSince1970.isFinite,
               draft.splitAllocations.allSatisfy({ allocation in categories.contains(where: { $0.id == allocation.categoryID }) }),
               Set(draft.splitAllocations.map(\.id)).count == draft.splitAllocations.count,
@@ -199,7 +198,7 @@ struct BookBackup: Codable {
     }
 }
 
-enum BookVisualDirection: String, CaseIterable, Identifiable, Codable, Sendable {
+enum CardVisualDirection: String, CaseIterable, Identifiable, Codable, Sendable {
     case light = "Light"
     case instrument = "Instrument"
     case ledger = "Ledger"
@@ -366,13 +365,13 @@ struct KeyChord: Codable, Equatable, Hashable, Sendable {
 }
 
 struct WorkspacePreferences: Codable, Equatable, Sendable {
-    var visibleBookIDs: [UUID] = []
-    var bookOrder: [UUID] = []
+    var visibleCardIDs: [UUID] = []
+    var cardOrder: [UUID] = []
     var allActivitiesScope: Bool = false
     var visualDirection: String = "Light"
     var autoAppearance: Bool = false
-    var cardCustomizations: [UUID: BookCardCustomization] = [:]
-    var alwaysHiddenBookIDs: [UUID] = []
+    var cardCustomizations: [UUID: CardCustomization] = [:]
+    var alwaysHiddenCardIDs: [UUID] = []
     var stacks: [CardStack] = []
     var activeStackID: UUID? = nil
     var filterScopeRaw: String = "activeStack"
@@ -385,8 +384,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var hiddenEntryFields: [EntryFormField] = EntryFormField.hiddenByDefault
     var reportingCurrency: String = "IDR"
 
-    var direction: BookVisualDirection {
-        get { BookVisualDirection(rawValue: visualDirection) ?? .light }
+    var direction: CardVisualDirection {
+        get { CardVisualDirection(rawValue: visualDirection) ?? .light }
         set { visualDirection = newValue.rawValue }
     }
 
@@ -401,19 +400,19 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case visibleBookIDs, bookOrder, allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
-        case alwaysHiddenBookIDs, stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
+        case visibleCardIDs = "visibleBookIDs", cardOrder = "bookOrder", allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
+        case alwaysHiddenCardIDs = "alwaysHiddenBookIDs", stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
         case shortcutInputOrder, macShortcutBindings, paymentMethods, hiddenEntryFields, reportingCurrency
     }
 
     init(
-        visibleBookIDs: [UUID] = [],
-        bookOrder: [UUID] = [],
+        visibleCardIDs: [UUID] = [],
+        cardOrder: [UUID] = [],
         allActivitiesScope: Bool = false,
         visualDirection: String = "Light",
         autoAppearance: Bool = false,
-        cardCustomizations: [UUID: BookCardCustomization] = [:],
-        alwaysHiddenBookIDs: [UUID] = [],
+        cardCustomizations: [UUID: CardCustomization] = [:],
+        alwaysHiddenCardIDs: [UUID] = [],
         stacks: [CardStack] = [],
         activeStackID: UUID? = nil,
         filterScope: StackFilterScope = .activeStack,
@@ -426,13 +425,13 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         hiddenEntryFields: [EntryFormField] = EntryFormField.hiddenByDefault,
         reportingCurrency: String = "IDR"
     ) {
-        self.visibleBookIDs = visibleBookIDs
-        self.bookOrder = bookOrder
+        self.visibleCardIDs = visibleCardIDs
+        self.cardOrder = cardOrder
         self.allActivitiesScope = allActivitiesScope
         self.visualDirection = visualDirection
         self.autoAppearance = autoAppearance
         self.cardCustomizations = cardCustomizations
-        self.alwaysHiddenBookIDs = alwaysHiddenBookIDs
+        self.alwaysHiddenCardIDs = alwaysHiddenCardIDs
         self.stacks = stacks
         self.activeStackID = activeStackID
         self.filterScopeRaw = filterScope.rawValue
@@ -448,13 +447,13 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        visibleBookIDs = try container.decodeIfPresent([UUID].self, forKey: .visibleBookIDs) ?? []
-        bookOrder = try container.decodeIfPresent([UUID].self, forKey: .bookOrder) ?? []
+        visibleCardIDs = try container.decodeIfPresent([UUID].self, forKey: .visibleCardIDs) ?? []
+        cardOrder = try container.decodeIfPresent([UUID].self, forKey: .cardOrder) ?? []
         allActivitiesScope = try container.decodeIfPresent(Bool.self, forKey: .allActivitiesScope) ?? false
         visualDirection = try container.decodeIfPresent(String.self, forKey: .visualDirection) ?? "Light"
         autoAppearance = try container.decodeIfPresent(Bool.self, forKey: .autoAppearance) ?? false
-        cardCustomizations = try container.decodeIfPresent([UUID: BookCardCustomization].self, forKey: .cardCustomizations) ?? [:]
-        alwaysHiddenBookIDs = try container.decodeIfPresent([UUID].self, forKey: .alwaysHiddenBookIDs) ?? []
+        cardCustomizations = try container.decodeIfPresent([UUID: CardCustomization].self, forKey: .cardCustomizations) ?? [:]
+        alwaysHiddenCardIDs = try container.decodeIfPresent([UUID].self, forKey: .alwaysHiddenCardIDs) ?? []
         stacks = try container.decodeIfPresent([CardStack].self, forKey: .stacks) ?? []
         activeStackID = try container.decodeIfPresent(UUID.self, forKey: .activeStackID)
         filterScopeRaw = try container.decodeIfPresent(String.self, forKey: .filterScopeRaw) ?? "activeStack"
@@ -471,13 +470,13 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
 
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(visibleBookIDs, forKey: .visibleBookIDs)
-        try container.encode(bookOrder, forKey: .bookOrder)
+        try container.encode(visibleCardIDs, forKey: .visibleCardIDs)
+        try container.encode(cardOrder, forKey: .cardOrder)
         try container.encode(allActivitiesScope, forKey: .allActivitiesScope)
         try container.encode(visualDirection, forKey: .visualDirection)
         try container.encode(autoAppearance, forKey: .autoAppearance)
         try container.encode(cardCustomizations, forKey: .cardCustomizations)
-        try container.encode(alwaysHiddenBookIDs, forKey: .alwaysHiddenBookIDs)
+        try container.encode(alwaysHiddenCardIDs, forKey: .alwaysHiddenCardIDs)
         try container.encode(stacks, forKey: .stacks)
         try container.encodeIfPresent(activeStackID, forKey: .activeStackID)
         try container.encode(filterScopeRaw, forKey: .filterScopeRaw)
@@ -492,14 +491,16 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     }
 }
 
-struct BookBackupItem: Codable, Equatable, Sendable {
-    var book: BookProfile
+struct CardBackupItem: Codable, Equatable, Sendable {
+    var card: Card
     var categories: [ExpenseCategory]
     var expenses: [Expense]
     var budgets: [BudgetVersion]
     var draft: ExpenseDraft?
     var bills: [BillRule]?
     var billOccurrences: [BillOccurrence]?
+    // Stored keys keep their pre-rename names so existing backups, drafts and settings still load.
+    private enum CodingKeys: String, CodingKey { case card = "book", categories, expenses, budgets, draft, bills, billOccurrences }
 }
 
 struct WorkspaceBackup: Codable, Equatable, Sendable {
@@ -508,61 +509,65 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     var exportedAt: Date = .now
     var currency: String = "IDR"
     var minorUnitScale: Int = 2
-    var books: [BookBackupItem]
+    var cards: [CardBackupItem]
     var preferences: WorkspacePreferences
     var settings: PrototypeSettings
     var cardArtworks: [String: Data]? = nil
+    // Stored keys keep their pre-rename names so existing backups, drafts and settings still load.
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, exportedAt, currency, minorUnitScale, cards = "books", preferences, settings, cardArtworks
+    }
 
-    init(formatVersion: Int = currentFormat, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, books: [BookBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
+    init(formatVersion: Int = currentFormat, exportedAt: Date = .now, currency: String = "IDR", minorUnitScale: Int = 2, cards: [CardBackupItem], preferences: WorkspacePreferences = .init(), settings: PrototypeSettings = .init(), cardArtworks: [String: Data]? = nil) {
         self.formatVersion = formatVersion
         self.exportedAt = exportedAt
         self.currency = currency
         self.minorUnitScale = minorUnitScale
-        self.books = books
+        self.cards = cards
         self.preferences = preferences
         self.settings = settings
         self.cardArtworks = cardArtworks
     }
 
-    /// Convert a single-book BookBackup (formats 1–3) into a WorkspaceBackup
-    init(singleBook backup: BookBackup) {
-        let kind = BookKind(rawValue: backup.bookKind) ?? (backup.bookID == BookProfile.sample.id ? .sample : .real)
-        let profile = BookProfile(id: backup.bookID, name: backup.bookName, kind: kind)
-        let item = BookBackupItem(book: profile, categories: backup.categories, expenses: backup.expenses, budgets: backup.budgets, draft: backup.draft, bills: nil, billOccurrences: nil)
+    /// Convert a single-card CardBackup (formats 1–3) into a WorkspaceBackup
+    init(singleCard backup: CardBackup) {
+        let kind = CardKind(rawValue: backup.cardKind) ?? (backup.cardID == Card.demo.id ? .demo : .real)
+        let profile = Card(id: backup.cardID, name: backup.cardName, kind: kind)
+        let item = CardBackupItem(card: profile, categories: backup.categories, expenses: backup.expenses, budgets: backup.budgets, draft: backup.draft, bills: nil, billOccurrences: nil)
         self.init(
             formatVersion: 6,
             exportedAt: backup.exportedAt,
             currency: backup.currency,
             minorUnitScale: backup.minorUnitScale,
-            books: [item],
-            preferences: WorkspacePreferences(visibleBookIDs: [profile.id], bookOrder: [profile.id]),
+            cards: [item],
+            preferences: WorkspacePreferences(visibleCardIDs: [profile.id], cardOrder: [profile.id]),
             settings: backup.settings
         )
     }
 
     /// Explicitly migrate older workspace metadata without silently repairing records.
-    /// Formats 4–6 allowed sample settings beside real books and missing budget history.
+    /// Formats 4–6 allowed sample settings beside real cards and missing budget history.
     func normalized() throws -> Self {
         try validate()
         var result = self
-        if formatVersion < 7, !books.contains(where: { $0.book == settings.book }) {
-            result.settings.book = books.first(where: { $0.book.id == settings.book.id })?.book ?? books[0].book
+        if formatVersion < 7, !cards.contains(where: { $0.card == settings.card }) {
+            result.settings.card = cards.first(where: { $0.card.id == settings.card.id })?.card ?? cards[0].card
         }
-        result.books = books.map { item in
+        result.cards = cards.map { item in
             var item = item
-            item.expenses = item.expenses.map { var value = $0; value.bookID = item.book.id; return value }
+            item.expenses = item.expenses.map { var value = $0; value.cardID = item.card.id; return value }
             if item.budgets.isEmpty {
-                var budget = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: exportedAt, bookID: item.book.id)
-                budget.id = item.book.id // deterministic legacy materialization
+                var budget = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: exportedAt, cardID: item.card.id)
+                budget.id = item.card.id // deterministic legacy materialization
                 item.budgets = [budget]
             }
-            item.budgets = item.budgets.map { var value = $0; value.bookID = item.book.id; return value }
+            item.budgets = item.budgets.map { var value = $0; value.cardID = item.card.id; return value }
             if item.draft == nil {
                 var draft = ExpenseDraft()
-                draft.id = item.book.id; draft.date = exportedAt; draft.createdAt = exportedAt
+                draft.id = item.card.id; draft.date = exportedAt; draft.createdAt = exportedAt
                 item.draft = draft
             }
-            item.draft?.bookID = item.book.id
+            item.draft?.cardID = item.card.id
             item.bills = item.bills ?? []
             item.billOccurrences = item.billOccurrences ?? []
             return item
@@ -574,24 +579,24 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
         // Format 8 names the workspace reporting currency; older formats are rupiah only.
         let expectedCurrency = formatVersion >= 8 ? preferences.reportingCurrency : "IDR"
         guard (4...Self.currentFormat).contains(formatVersion), currency == expectedCurrency, minorUnitScale == 2 else { throw BackupError.unsupported }
-        guard exportedAt.timeIntervalSince1970.isFinite, !books.isEmpty,
-              Set(books.map(\.book.id)).count == books.count else { throw BackupError.invalid }
+        guard exportedAt.timeIntervalSince1970.isFinite, !cards.isEmpty,
+              Set(cards.map(\.card.id)).count == cards.count else { throw BackupError.invalid }
         // The old JSON envelopes retain their historical external-input ceilings.
         // Version 7 separates records and binary assets, so admitted live stores remain recoverable.
         if formatVersion < 7 {
-            guard books.count <= 100 else { throw BackupError.tooLarge }
+            guard cards.count <= 100 else { throw BackupError.tooLarge }
         }
-        try preferences.validate(books: books.map(\.book), categoriesByBook: Dictionary(uniqueKeysWithValues: books.map { ($0.book.id, $0.categories) }))
-        try settings.validate(books: books, globalCategories: preferences.globalCategories, allowLegacySampleProfile: formatVersion < 7)
-        let expenseIDs = books.flatMap { $0.expenses.map(\.id) }
-        let billIDs = books.flatMap { ($0.bills ?? []).map(\.id) }
-        let occurrenceIDs = books.flatMap { ($0.billOccurrences ?? []).map(\.id) }
+        try preferences.validate(cards: cards.map(\.card), categoriesByCard: Dictionary(uniqueKeysWithValues: cards.map { ($0.card.id, $0.categories) }))
+        try settings.validate(cards: cards, globalCategories: preferences.globalCategories, allowLegacySampleProfile: formatVersion < 7)
+        let expenseIDs = cards.flatMap { $0.expenses.map(\.id) }
+        let billIDs = cards.flatMap { ($0.bills ?? []).map(\.id) }
+        let occurrenceIDs = cards.flatMap { ($0.billOccurrences ?? []).map(\.id) }
         guard Set(expenseIDs).count == expenseIDs.count,
               Set(billIDs).count == billIDs.count,
               Set(occurrenceIDs).count == occurrenceIDs.count else { throw BackupError.invalid }
         var total: Int64 = 0
         let paymentMethodIDs = Set(preferences.paymentMethods.map(\.id))
-        for item in books {
+        for item in cards {
             try item.validate(legacyLimits: formatVersion < 7)
             for expense in item.expenses {
                 guard expense.paidWithID.map(paymentMethodIDs.contains) ?? true else { throw BackupError.invalid }
@@ -615,7 +620,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
     /// A canonical graph for comparing a complete materialized preview.
     func canonical() throws -> Self {
         var result = try normalized()
-        result.books = result.books.map { item in
+        result.cards = result.cards.map { item in
             var item = item
             item.categories.sort { $0.id.uuidString < $1.id.uuidString }
             item.expenses = item.expenses.map { value in
@@ -631,7 +636,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             item.bills?.sort { $0.id.uuidString < $1.id.uuidString }
             item.billOccurrences?.sort { $0.id.uuidString < $1.id.uuidString }
             return item
-        }.sorted { $0.book.id.uuidString < $1.book.id.uuidString }
+        }.sorted { $0.card.id.uuidString < $1.card.id.uuidString }
         result.cardArtworks = result.cardArtworks ?? [:]
         return result
     }
@@ -642,7 +647,7 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(self)
-        guard data.count <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
+        guard data.count <= CardBackup.maximumBytes else { throw BackupError.tooLarge }
         return data
     }
 
@@ -652,9 +657,9 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             try workspace.validate()
             return workspace
         }
-        guard data.count <= BookBackup.maximumBytes else { throw BackupError.tooLarge }
+        guard data.count <= CardBackup.maximumBytes else { throw BackupError.tooLarge }
         // Decode the envelope before selecting its validator; malformed workspace JSON
-        // must not be misinterpreted as a single-book backup with default fields.
+        // must not be misinterpreted as a single-card backup with default fields.
         struct Version: Decodable { var formatVersion: Int? }
         let version = try JSONDecoder().decode(Version.self, from: data).formatVersion ?? 1
         if version >= 4 {
@@ -663,16 +668,16 @@ struct WorkspaceBackup: Codable, Equatable, Sendable {
             try workspace.validate()
             return workspace
         }
-        let legacy = try BookBackup.decode(data)
-        let workspace = WorkspaceBackup(singleBook: legacy)
+        let legacy = try CardBackup.decode(data)
+        let workspace = WorkspaceBackup(singleCard: legacy)
         try workspace.validate()
         return workspace
     }
 }
 
-extension BookBackupItem {
+extension CardBackupItem {
     func validate(legacyLimits: Bool = false) throws {
-        try book.validate()
+        try card.validate()
         guard Set(categories.map(\.id)).count == categories.count,
               Set(expenses.map(\.id)).count == expenses.count,
               Set(budgets.map(\.id)).count == budgets.count,
@@ -683,17 +688,17 @@ extension BookBackupItem {
         }
         for category in categories { guard try category.validated(against: categories) == category else { throw BackupError.invalid } }
         for expense in expenses {
-            guard expense.bookID == nil || expense.bookID == book.id,
+            guard expense.cardID == nil || expense.cardID == card.id,
                   expense.createdAt.timeIntervalSince1970.isFinite else { throw BackupError.invalid }
             try expense.validate(categories: categories)
         }
         for budget in budgets {
-            guard budget.bookID == nil || budget.bookID == book.id else { throw BackupError.invalid }
+            guard budget.cardID == nil || budget.cardID == card.id else { throw BackupError.invalid }
             try budget.validate(categories: categories)
         }
         if let draft {
             let categoryIDs = Set(categories.map(\.id))
-            guard draft.bookID == nil || draft.bookID == book.id,
+            guard draft.cardID == nil || draft.cardID == card.id,
                   draft.date.timeIntervalSince1970.isFinite, draft.createdAt.timeIntervalSince1970.isFinite,
                   draft.categoryID.map(categoryIDs.contains) ?? true,
                   draft.splitAllocations.allSatisfy({ categoryIDs.contains($0.categoryID) }),
@@ -703,24 +708,24 @@ extension BookBackupItem {
         let rules = bills ?? []
         guard Set(rules.map(\.id)).count == rules.count else { throw BackupError.invalid }
         for rule in rules {
-            guard rule.bookID == book.id else { throw BackupError.invalid }
+            guard rule.cardID == card.id else { throw BackupError.invalid }
             try rule.validate(categories: categories)
         }
-        try BillOccurrence.validate(billOccurrences ?? [], rules: rules, expenses: expenses, bookID: book.id)
+        try BillOccurrence.validate(billOccurrences ?? [], rules: rules, expenses: expenses, cardID: card.id)
     }
 }
 
 extension PrototypeSettings {
-    func validate(books: [BookBackupItem], globalCategories: [GlobalCategory] = [], allowLegacySampleProfile: Bool = false) throws {
-        try book.validate()
-        let legacyProfile = allowLegacySampleProfile && (book == .sample || books.contains { $0.book.id == book.id && $0.book.kind == book.kind })
+    func validate(cards: [CardBackupItem], globalCategories: [GlobalCategory] = [], allowLegacySampleProfile: Bool = false) throws {
+        try card.validate()
+        let legacyProfile = allowLegacySampleProfile && (card == .demo || cards.contains { $0.card.id == card.id && $0.card.kind == card.kind })
         guard budget > 0, budget <= Money.maximum, (1...31).contains(startDay),
-              books.contains(where: { $0.book == book }) || legacyProfile,
+              cards.contains(where: { $0.card == card }) || legacyProfile,
               Set(categoryRules.map(\.id)).count == categoryRules.count,
               Set(categoryRules.map(\.keyword)).count == categoryRules.count else { throw BackupError.invalid }
         // The archive/rule catalog is workspace-wide; a category may be inactive on
         // the settings profile's card and retained for another card's history.
-        let categories = books.flatMap(\.categories) + globalCategories.map { $0.toExpenseCategory() }
+        let categories = cards.flatMap(\.categories) + globalCategories.map { $0.toExpenseCategory() }
         guard archivedCategoryIDs.isSubset(of: Set(categories.map(\.id))) else { throw BackupError.invalid }
         for rule in categoryRules {
             guard try rule.validated(against: categories, archivedIDs: archivedCategoryIDs) == rule else { throw BackupError.invalid }
@@ -729,23 +734,23 @@ extension PrototypeSettings {
 }
 
 extension WorkspacePreferences {
-    func validate(books: [BookProfile], categoriesByBook: [UUID: [ExpenseCategory]]) throws {
-        for book in books { try book.validate() }
-        let bookIDs = Set(books.map(\.id))
-        func validBookList(_ ids: [UUID]) -> Bool { Set(ids).count == ids.count && Set(ids).isSubset(of: bookIDs) }
-        guard validBookList(visibleBookIDs), validBookList(bookOrder), validBookList(alwaysHiddenBookIDs),
-              BookVisualDirection(rawValue: visualDirection) != nil,
+    func validate(cards: [Card], categoriesByCard: [UUID: [ExpenseCategory]]) throws {
+        for card in cards { try card.validate() }
+        let cardIDs = Set(cards.map(\.id))
+        func validCardList(_ ids: [UUID]) -> Bool { Set(ids).count == ids.count && Set(ids).isSubset(of: cardIDs) }
+        guard validCardList(visibleCardIDs), validCardList(cardOrder), validCardList(alwaysHiddenCardIDs),
+              CardVisualDirection(rawValue: visualDirection) != nil,
               StackFilterScope(rawValue: filterScopeRaw) != nil, EntryMode(rawValue: entryModeRaw) != nil,
               Set(shortcutInputOrder) == Set(ShortcutInputField.allCases), shortcutInputOrder.count == ShortcutInputField.allCases.count,
               Set(globalCategories.map(\.id)).count == globalCategories.count,
               Set(stacks.map(\.id)).count == stacks.count,
               activeStackID.map({ id in stacks.contains(where: { $0.id == id }) }) ?? true,
-              Set(cardCustomizations.keys).isSubset(of: bookIDs),
-              Set(cardInactiveCategoryIDs.keys).isSubset(of: bookIDs),
+              Set(cardCustomizations.keys).isSubset(of: cardIDs),
+              Set(cardInactiveCategoryIDs.keys).isSubset(of: cardIDs),
               Money.isCurrencyCode(reportingCurrency),
               Set(hiddenEntryFields).count == hiddenEntryFields.count,
               Set(paymentMethods.map(\.id)).count == paymentMethods.count,
-              books.allSatisfy({ book in book.defaultPaidWithID.map { id in paymentMethods.contains { $0.id == id } } ?? true })
+              cards.allSatisfy({ card in card.defaultPaidWithID.map { id in paymentMethods.contains { $0.id == id } } ?? true })
         else { throw BackupError.invalid }
         for method in paymentMethods {
             let name = method.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -753,12 +758,12 @@ extension WorkspacePreferences {
         }
         for category in globalCategories { guard try category.validated(against: globalCategories) == category else { throw BackupError.invalid } }
         let globalIDs = Set(globalCategories.map(\.id))
-        for (bookID, ids) in cardInactiveCategoryIDs {
-            let validIDs = globalIDs.union((categoriesByBook[bookID] ?? []).map(\.id))
+        for (cardID, ids) in cardInactiveCategoryIDs {
+            let validIDs = globalIDs.union((categoriesByCard[cardID] ?? []).map(\.id))
             guard Set(ids).count == ids.count, Set(ids).isSubset(of: validIDs) else { throw BackupError.invalid }
         }
         for stack in stacks {
-            guard validBookList(stack.cardIDs), !stack.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            guard validCardList(stack.cardIDs), !stack.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   stack.name.count <= 40, stack.name.rangeOfCharacter(from: .controlCharacters) == nil,
                   !stack.icon.isEmpty, stack.icon.count <= 100, stack.icon.rangeOfCharacter(from: .controlCharacters) == nil,
                   stack.capLimit.map({ (1...Money.maximum).contains($0) }) ?? true,
@@ -792,17 +797,19 @@ private enum WorkspaceBackupStream {
         var minorUnitScale: Int
         var settings: PrototypeSettings
         var preferences: WorkspacePreferences
-        var bookCount: Int
+        var cardCount: Int
         var assetCount: Int
+        private enum CodingKeys: String, CodingKey { case exportedAt, currency, minorUnitScale, settings, preferences, cardCount = "bookCount", assetCount }
     }
-    private struct BookHeader: Codable {
-        var book: BookProfile
+    private struct CardHeader: Codable {
+        var card: Card
         var draft: ExpenseDraft?
         var categories: Int
         var expenses: Int
         var budgets: Int
         var bills: Int?
         var occurrences: Int?
+        private enum CodingKeys: String, CodingKey { case card = "book", draft, categories, expenses, budgets, bills, occurrences }
     }
     static func encode(_ workspace: WorkspaceBackup) throws -> Data {
         let encoder = JSONEncoder()
@@ -815,10 +822,10 @@ private enum WorkspaceBackupStream {
         }
         func appendJSON<T: Encodable>(_ value: T) throws { append(try encoder.encode(value)) }
         try appendJSON(Header(exportedAt: workspace.exportedAt, currency: workspace.currency, minorUnitScale: workspace.minorUnitScale,
-                              settings: workspace.settings, preferences: workspace.preferences, bookCount: workspace.books.count,
+                              settings: workspace.settings, preferences: workspace.preferences, cardCount: workspace.cards.count,
                               assetCount: workspace.cardArtworks?.count ?? 0))
-        for item in workspace.books {
-            try appendJSON(BookHeader(book: item.book, draft: item.draft, categories: item.categories.count, expenses: item.expenses.count,
+        for item in workspace.cards {
+            try appendJSON(CardHeader(card: item.card, draft: item.draft, categories: item.categories.count, expenses: item.expenses.count,
                                       budgets: item.budgets.count, bills: item.bills?.count, occurrences: item.billOccurrences?.count))
             for value in item.categories { try appendJSON(value) }
             for value in item.expenses { try appendJSON(value) }
@@ -853,17 +860,17 @@ private enum WorkspaceBackupStream {
             return values
         }
         let header = try read(Header.self)
-        guard header.bookCount > 0, header.bookCount <= (data.count - offset) / 8,
+        guard header.cardCount > 0, header.cardCount <= (data.count - offset) / 8,
               header.assetCount >= 0, header.assetCount <= (data.count - offset) / 16 else { throw BackupError.invalid }
-        var books: [BookBackupItem] = []
-        for _ in 0..<header.bookCount {
-            let book = try read(BookHeader.self)
-            let categories = try records(book.categories, ExpenseCategory.self)
-            let expenses = try records(book.expenses, Expense.self)
-            let budgets = try records(book.budgets, BudgetVersion.self)
-            let bills = try book.bills.map { try records($0, BillRule.self) }
-            let occurrences = try book.occurrences.map { try records($0, BillOccurrence.self) }
-            books.append(BookBackupItem(book: book.book, categories: categories, expenses: expenses, budgets: budgets, draft: book.draft, bills: bills, billOccurrences: occurrences))
+        var cards: [CardBackupItem] = []
+        for _ in 0..<header.cardCount {
+            let card = try read(CardHeader.self)
+            let categories = try records(card.categories, ExpenseCategory.self)
+            let expenses = try records(card.expenses, Expense.self)
+            let budgets = try records(card.budgets, BudgetVersion.self)
+            let bills = try card.bills.map { try records($0, BillRule.self) }
+            let occurrences = try card.occurrences.map { try records($0, BillOccurrence.self) }
+            cards.append(CardBackupItem(card: card.card, categories: categories, expenses: expenses, budgets: budgets, draft: card.draft, bills: bills, billOccurrences: occurrences))
         }
         var assets: [String: Data] = [:]
         for _ in 0..<header.assetCount {
@@ -875,7 +882,7 @@ private enum WorkspaceBackupStream {
         }
         guard offset == data.count else { throw BackupError.invalid }
         return WorkspaceBackup(formatVersion: fileVersion, exportedAt: header.exportedAt, currency: header.currency, minorUnitScale: header.minorUnitScale,
-                               books: books, preferences: header.preferences, settings: header.settings, cardArtworks: assets.isEmpty ? nil : assets)
+                               cards: cards, preferences: header.preferences, settings: header.settings, cardArtworks: assets.isEmpty ? nil : assets)
     }
 }
 

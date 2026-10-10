@@ -18,8 +18,8 @@ final class BackendFinancialTests: XCTestCase {
         return calendar
     }
 
-    private func expense(amount: Int64 = 150, day: String = "2026-10-01", category: UUID = ExpenseCategory.defaults[0].id, bookID: UUID? = nil) -> Expense {
-        Expense(amount: amount, day: day, note: "Original", allocations: [.init(categoryID: category, amount: amount)], bookID: bookID)
+    private func expense(amount: Int64 = 150, day: String = "2026-10-01", category: UUID = ExpenseCategory.defaults[0].id, cardID: UUID? = nil) -> Expense {
+        Expense(amount: amount, day: day, note: "Original", allocations: [.init(categoryID: category, amount: amount)], cardID: cardID)
     }
 
     func testExactAggregateAdmissionBoundary() throws {
@@ -99,7 +99,7 @@ final class BackendFinancialTests: XCTestCase {
         XCTAssertEqual(table[1][4], "2.75")
         XCTAssertTrue(table[1][3].contains("1.25"))
         let mapping = CSVImportParser.detectColumnMapping(headers: table[0])
-        let rows = CSVImportParser.processRows(rawRows: table, hasHeader: true, mapping: mapping, targetBookID: UUID(),
+        let rows = CSVImportParser.processRows(rawRows: table, hasHeader: true, mapping: mapping, targetCardID: UUID(),
                                                categories: ExpenseCategory.defaults, defaultCategoryID: ExpenseCategory.defaults[2].id, existingExpenses: [])
         let imported = try XCTUnwrap(rows.first?.parsedExpense)
         XCTAssertEqual(imported.amount, original.amount)

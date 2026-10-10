@@ -208,7 +208,7 @@ struct EntryView: View {
     }
     private var currencyChoices: [String] {
         var codes = [model.reportingCurrency]
-        for card in model.books { codes += [card.currency, card.spendingCurrency].compactMap { $0 } }
+        for card in model.cards { codes += [card.currency, card.spendingCurrency].compactMap { $0 } }
         codes += Money.commonCurrencies
         var seen = Set<String>()
         return codes.filter { seen.insert($0).inserted }

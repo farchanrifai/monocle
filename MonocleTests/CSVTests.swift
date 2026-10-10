@@ -125,11 +125,11 @@ final class CSVTests: XCTestCase {
     // MARK: - CSV Export Generator
 
     func testCSVExportGenerator() throws {
-        let bookID = UUID()
+        let cardID = UUID()
         let foodCat = ExpenseCategory(id: UUID(), name: "Food & Drink", symbol: "cup.and.saucer")
         let transCat = ExpenseCategory(id: UUID(), name: "Transport", symbol: "tram")
         let categories = [foodCat, transCat]
-        let books = [BookProfile(id: bookID, name: "Daily", kind: .sample, colorIndex: 0)]
+        let cards = [Card(id: cardID, name: "Daily", kind: .demo, colorIndex: 0)]
 
         let exp1 = Expense(
             id: UUID(),
@@ -139,7 +139,7 @@ final class CSVTests: XCTestCase {
             allocations: [.init(categoryID: foodCat.id, amount: 35_000_00)],
             source: "manual",
             createdAt: Date.now,
-            bookID: bookID
+            cardID: cardID
         )
 
         let exp2 = Expense(
@@ -153,30 +153,30 @@ final class CSVTests: XCTestCase {
             ],
             source: "manual",
             createdAt: Date.now,
-            bookID: bookID
+            cardID: cardID
         )
 
         // Paid with round-trips by label name; an unknown name imports unset.
         let bca = PaymentMethod(name: "BCA debit")
         var paid = exp1; paid.paidWithID = bca.id
         paid.originalAmount = 30_000; paid.originalCurrency = "JPY"; paid.rate = "116.67"; paid.rateSource = .fetched
-        let paidCSV = CSVExportGenerator.generate(expenses: [paid, exp2], categories: categories, books: books, paymentMethods: [bca])
+        let paidCSV = CSVExportGenerator.generate(expenses: [paid, exp2], categories: categories, cards: cards, paymentMethods: [bca])
         let paidRows = try CSVTokenizer.parse(content: paidCSV, delimiter: ",")
         XCTAssertEqual(paidRows[1][8], "BCA debit")
         let paidMapping = CSVImportParser.detectColumnMapping(headers: paidRows[0])
         XCTAssertEqual(paidMapping.paidWithIndex, 8)
-        let imported = CSVImportParser.processRows(rawRows: paidRows, hasHeader: true, mapping: paidMapping, targetBookID: bookID,
+        let imported = CSVImportParser.processRows(rawRows: paidRows, hasHeader: true, mapping: paidMapping, targetCardID: cardID,
                                                    categories: categories, defaultCategoryID: foodCat.id, existingExpenses: [],
                                                    paymentMethods: [bca])
         XCTAssertEqual(imported.compactMap(\.parsedExpense).map(\.paidWithID), [bca.id, nil])
         XCTAssertEqual(imported.first?.parsedExpense?.originalCurrency, "JPY")
         XCTAssertEqual(imported.first?.parsedExpense?.originalAmount, 30_000)
         XCTAssertNil(imported.last?.parsedExpense?.originalCurrency)
-        let unknown = CSVImportParser.processRows(rawRows: paidRows, hasHeader: true, mapping: paidMapping, targetBookID: bookID,
+        let unknown = CSVImportParser.processRows(rawRows: paidRows, hasHeader: true, mapping: paidMapping, targetCardID: cardID,
                                                   categories: categories, defaultCategoryID: foodCat.id, existingExpenses: [])
         XCTAssertEqual(unknown.compactMap(\.parsedExpense).compactMap(\.paidWithID), [])
 
-        let csv = CSVExportGenerator.generate(expenses: [exp1, exp2], categories: categories, books: books)
+        let csv = CSVExportGenerator.generate(expenses: [exp1, exp2], categories: categories, cards: cards)
         let rows = try CSVTokenizer.parse(content: csv, delimiter: ",")
 
         XCTAssertEqual(rows.count, 3)
@@ -201,12 +201,12 @@ final class CSVTests: XCTestCase {
     @MainActor
     func testAllCardExportUsesCategoriesFromEveryCard() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let travel = GlobalCategory(name: "Rail Pass", symbol: "tram.fill")
-        let second = try store.createBook(named: "Travel", initialCategories: [travel])
+        let second = try store.createCard(named: "Travel", initialCategories: [travel])
         try store.save(
             Expense(amount: 80_000_00, day: "2026-09-11", note: "Airport train",
-                    allocations: [.init(categoryID: travel.id, amount: 80_000_00)], bookID: second.id),
+                    allocations: [.init(categoryID: travel.id, amount: 80_000_00)], cardID: second.id),
             in: second.id
         )
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -224,7 +224,7 @@ final class CSVTests: XCTestCase {
     // MARK: - Row Processing & Duplicate Detection
 
     func testRowProcessingAndDuplicateDetection() {
-        let bookID = UUID()
+        let cardID = UUID()
         let foodCat = ExpenseCategory(id: UUID(), name: "Food & Drink", symbol: "cup.and.saucer")
         let categories = [foodCat]
 
@@ -233,7 +233,7 @@ final class CSVTests: XCTestCase {
             day: "2026-09-11",
             note: "Sushi Lunch",
             allocations: [.init(categoryID: foodCat.id, amount: 50_000_00)],
-            bookID: bookID
+            cardID: cardID
         )
 
         let rawRows = [
@@ -249,7 +249,7 @@ final class CSVTests: XCTestCase {
             rawRows: rawRows,
             hasHeader: true,
             mapping: mapping,
-            targetBookID: bookID,
+            targetCardID: cardID,
             categories: categories,
             defaultCategoryID: foodCat.id,
             existingExpenses: [existingExpense]
@@ -285,19 +285,19 @@ final class CSVTests: XCTestCase {
     @MainActor
     func testBatchSaveExpensesInExpenseService() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let book = try store.createBook(named: "Batch Test")
-        let cats = try store.categories(in: book.id)
+        let card = try store.createCard(named: "Batch Test")
+        let cats = try store.categories(in: card.id)
         let defaultCat = cats[0]
 
         let expenseService = try ExpenseService(store: store)
 
-        let exp1 = Expense(amount: 15_000_00, day: "2026-09-11", note: "Snack 1", allocations: [.init(categoryID: defaultCat.id, amount: 15_000_00)], bookID: book.id)
-        let exp2 = Expense(amount: 25_000_00, day: "2026-09-11", note: "Snack 2", allocations: [.init(categoryID: defaultCat.id, amount: 25_000_00)], bookID: book.id)
-        let exp3 = Expense(amount: 35_000_00, day: "2026-09-11", note: "Snack 3", allocations: [.init(categoryID: defaultCat.id, amount: 35_000_00)], bookID: book.id)
+        let exp1 = Expense(amount: 15_000_00, day: "2026-09-11", note: "Snack 1", allocations: [.init(categoryID: defaultCat.id, amount: 15_000_00)], cardID: card.id)
+        let exp2 = Expense(amount: 25_000_00, day: "2026-09-11", note: "Snack 2", allocations: [.init(categoryID: defaultCat.id, amount: 25_000_00)], cardID: card.id)
+        let exp3 = Expense(amount: 35_000_00, day: "2026-09-11", note: "Snack 3", allocations: [.init(categoryID: defaultCat.id, amount: 35_000_00)], cardID: card.id)
 
-        try expenseService.saveExpenses([exp1, exp2, exp3], in: book.id)
+        try expenseService.saveExpenses([exp1, exp2, exp3], in: card.id)
 
-        let saved = try store.expenses(in: book.id)
+        let saved = try store.expenses(in: card.id)
         XCTAssertEqual(saved.count, 3)
         XCTAssertTrue(saved.contains(where: { $0.note == "Snack 1" }))
         XCTAssertTrue(saved.contains(where: { $0.note == "Snack 2" }))
@@ -325,12 +325,12 @@ extension CSVTests {
         let rows = [["2026-09-01", "1000", "Coffee", ""], ["2026-09-01", "1000", " coffee ", ""]]
         let parsed = CSVImportParser.processRows(rawRows: rows, hasHeader: false,
             mapping: CSVColumnMapping(dateIndex: 0, amountIndex: 1, noteIndex: 2, categoryIndex: 3),
-            targetBookID: UUID(), categories: categories, defaultCategoryID: categories[1].id, existingExpenses: [])
+            targetCardID: UUID(), categories: categories, defaultCategoryID: categories[1].id, existingExpenses: [])
         XCTAssertFalse(parsed[0].isDuplicate)
         XCTAssertTrue(parsed[1].isDuplicate)
         XCTAssertEqual(parsed[0].parsedExpense?.allocations.first?.categoryID, categories[1].id)
         let invalid = CSVImportParser.processRows(rawRows: rows, hasHeader: false,
-            mapping: CSVColumnMapping(dateIndex: -1, amountIndex: 1), targetBookID: UUID(),
+            mapping: CSVColumnMapping(dateIndex: -1, amountIndex: 1), targetCardID: UUID(),
             categories: categories, defaultCategoryID: categories[0].id, existingExpenses: [])
         XCTAssertNil(invalid[0].parsedExpense)
     }

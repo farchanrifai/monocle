@@ -15,7 +15,7 @@ final class ChatGoldenPromptTests: XCTestCase {
 
     override func setUp() async throws {
         repo = try ExpenseRepository(inMemory: true)
-        let daily = try repo.createBook(named: "Daily")
+        let daily = try repo.createCard(named: "Daily")
         let categories = try repo.categories(in: daily.id)
         let food = try XCTUnwrap(categories.first { $0.name == "Food & Drink" })
         let transport = try XCTUnwrap(categories.first { $0.name == "Transport" })
@@ -24,9 +24,9 @@ final class ChatGoldenPromptTests: XCTestCase {
             let minor = Int64(rupiah) * 100
             let day = Day.string(Day.calendar.date(byAdding: .day, value: -daysAgo, to: now)!)
             try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)],
-                                  bookID: daily.id), in: daily.id)
+                                  cardID: daily.id), in: daily.id)
         }
-        var budget = BudgetVersion.initial(overallLimit: 3_000_000_00, startDay: 1, date: now, bookID: daily.id)
+        var budget = BudgetVersion.initial(overallLimit: 3_000_000_00, startDay: 1, date: now, cardID: daily.id)
         budget.categoryLimits = [CategoryBudget(categoryID: food.id, limit: 50_000_00)]
         try repo.save(budget, in: daily.id)
 
@@ -84,15 +84,15 @@ final class ChatGoldenPromptTests: XCTestCase {
     }
 
     func testEditAndDeleteOnlyPropose() async throws {
-        let bookID = try XCTUnwrap(model.books.first?.id)
-        let before = model.expenses(for: bookID)
+        let cardID = try XCTUnwrap(model.cards.first?.id)
+        let before = model.expenses(for: cardID)
         let delete = await ask("delete my last expense")
         let deletes = changes(delete).filter { $0.updated == nil }
         XCTAssertEqual(deletes.map(\.original.note), ["Lunch"], "Newest expense, shown as a confirm card")
 
         let edit = await ask("ubah kopi kemarin jadi 30rb")
         XCTAssertEqual(changes(edit).compactMap(\.updated).map(\.amount), [3_000_000])
-        XCTAssertEqual(model.expenses(for: bookID), before, "Nothing changes until the user confirms")
+        XCTAssertEqual(model.expenses(for: cardID), before, "Nothing changes until the user confirms")
     }
 
     /// Fresh agent per prompt so each golden prompt is judged on its own.

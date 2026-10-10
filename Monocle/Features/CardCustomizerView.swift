@@ -12,19 +12,19 @@ enum CustomizerTab: String, CaseIterable, Identifiable {
 
 struct CardCustomizerView: View {
     @Bindable var model: AppModel
-    let initialBook: BookProfile?
-    let isCreatingNewBook: Bool
+    let initialCard: Card?
+    let isCreatingNewCard: Bool
     var onDismiss: () -> Void
 
     private let placeholderID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
-    @State private var customizerBooks: [BookProfile]
-    @State private var newBookIDs: Set<UUID>
-    @State private var activeBookID: UUID?
-    @State private var settledBookID: UUID
-    @State private var drafts: [UUID: BookCardCustomization]
+    @State private var customizerCards: [Card]
+    @State private var newCardIDs: Set<UUID>
+    @State private var activeCardID: UUID?
+    @State private var settledCardID: UUID
+    @State private var drafts: [UUID: CardCustomization]
     @State private var draftNames: [UUID: String]
-    @State private var editingBookNameID: UUID? = nil
+    @State private var editingCardNameID: UUID? = nil
     @FocusState private var isNameFieldFocused: Bool
     @State private var selectedTab: CustomizerTab = .colors
     @State private var customColor: Color = .orange
@@ -32,101 +32,101 @@ struct CardCustomizerView: View {
     @State private var isProcessingPhoto = false
     @State private var photoError: String? = nil
     @State private var cardCategorySelections: [UUID: Set<UUID>]
-    @State private var editingCategoriesForBookID: UUID? = nil
+    @State private var editingCategoriesForCardID: UUID? = nil
 
     init(
         model: AppModel,
-        initialBook: BookProfile? = nil,
-        books: [BookProfile]? = nil,
-        isCreatingNewBook: Bool = false,
+        initialCard: Card? = nil,
+        cards: [Card]? = nil,
+        isCreatingNewCard: Bool = false,
         onDismiss: @escaping () -> Void
     ) {
         self.model = model
-        self.initialBook = initialBook
-        self.isCreatingNewBook = isCreatingNewBook
+        self.initialCard = initialCard
+        self.isCreatingNewCard = isCreatingNewCard
         self.onDismiss = onDismiss
 
-        let visibleBooks = books ?? {
-            let list = model.orderedBooks.filter { !model.hiddenBookIDs.contains($0.id) }
-            return list.isEmpty ? model.books : list
+        let visibleCards = cards ?? {
+            let list = model.orderedCards.filter { !model.hiddenCardIDs.contains($0.id) }
+            return list.isEmpty ? model.cards : list
         }()
 
-        var booksList: [BookProfile] = []
-        var initialDrafts: [UUID: BookCardCustomization] = [:]
+        var cardsList: [Card] = []
+        var initialDrafts: [UUID: CardCustomization] = [:]
         var initialNames: [UUID: String] = [:]
         var initialNewIDs: Set<UUID> = []
         var activeID: UUID?
 
-        if let initBook = initialBook {
-            if !visibleBooks.contains(where: { $0.id == initBook.id }) {
-                booksList = [initBook] + visibleBooks
+        if let initCard = initialCard {
+            if !visibleCards.contains(where: { $0.id == initCard.id }) {
+                cardsList = [initCard] + visibleCards
             } else {
-                booksList = visibleBooks
+                cardsList = visibleCards
             }
-            activeID = initBook.id
+            activeID = initCard.id
         } else {
-            booksList = visibleBooks
-            activeID = visibleBooks.first?.id
+            cardsList = visibleCards
+            activeID = visibleCards.first?.id
         }
 
         var initialCategorySelections: [UUID: Set<UUID>] = [:]
-        for b in booksList {
+        for b in cardsList {
             initialDrafts[b.id] = model.customization(for: b.id)
             initialNames[b.id] = b.name
             initialCategorySelections[b.id] = model.activeCategoryIDs(for: b.id)
         }
 
-        if isCreatingNewBook {
+        if isCreatingNewCard {
             let newID = UUID()
-            let nextIndex = booksList.count + 1
+            let nextIndex = cardsList.count + 1
             let defaultName = "New Card \(nextIndex)"
-            let defaultPaletteIndex = booksList.count % CardPalette.standard.count
-            let newDraftBook = BookProfile(id: newID, name: defaultName, kind: .real, colorIndex: defaultPaletteIndex)
+            let defaultPaletteIndex = cardsList.count % CardPalette.standard.count
+            let newDraftCard = Card(id: newID, name: defaultName, kind: .real, colorIndex: defaultPaletteIndex)
 
-            booksList.append(newDraftBook)
+            cardsList.append(newDraftCard)
             initialNewIDs.insert(newID)
-            initialDrafts[newID] = BookCardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
+            initialDrafts[newID] = CardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
             initialNames[newID] = defaultName
             let defaults = Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))
             initialCategorySelections[newID] = defaults.isEmpty ? Set(model.globalCategories.map(\.id)) : defaults
             activeID = newID
-            _editingBookNameID = State(initialValue: newID)
+            _editingCardNameID = State(initialValue: newID)
         }
 
         _cardCategorySelections = State(initialValue: initialCategorySelections)
-        _customizerBooks = State(initialValue: booksList)
-        _newBookIDs = State(initialValue: initialNewIDs)
+        _customizerCards = State(initialValue: cardsList)
+        _newCardIDs = State(initialValue: initialNewIDs)
         _drafts = State(initialValue: initialDrafts)
         _draftNames = State(initialValue: initialNames)
-        _activeBookID = State(initialValue: activeID)
-        let initialSettledID = activeID ?? booksList.first?.id ?? placeholderID
-        _settledBookID = State(initialValue: initialSettledID)
+        _activeCardID = State(initialValue: activeID)
+        let initialSettledID = activeID ?? cardsList.first?.id ?? placeholderID
+        _settledCardID = State(initialValue: initialSettledID)
 
         if let targetID = activeID, let custom = initialDrafts[targetID], case .customColor(let hex) = custom.style {
             _customColor = State(initialValue: CardPalette.color(fromHex: hex))
         }
     }
 
-    init(model: AppModel, book: BookProfile, onDismiss: @escaping () -> Void) {
-        self.init(model: model, initialBook: book, books: nil, isCreatingNewBook: false, onDismiss: onDismiss)
+    init(model: AppModel, card: Card, onDismiss: @escaping () -> Void) {
+        self.init(model: model, initialCard: card, cards: nil, isCreatingNewCard: false, onDismiss: onDismiss)
     }
 
-    private var currentBookID: UUID {
-        activeBookID ?? settledBookID
+    private var currentCardID: UUID {
+        activeCardID ?? settledCardID
     }
 
-    private var activeBook: BookProfile {
-        customizerBooks.first(where: { $0.id == currentBookID }) ?? initialBook ?? BookProfile.sample
+    private var activeCard: Card {
+        customizerCards.first(where: { $0.id == currentCardID }) ?? initialCard ?? Card.demo
     }
 
-    private var currentDraft: Binding<BookCardCustomization> {
+    private var currentDraft: Binding<CardCustomization> {
         Binding(
             get: {
-                drafts[currentBookID] ?? BookCardCustomization(style: .palette(index: 0), textTone: .auto)
+                drafts[currentCardID] ?? CardCustomization(style: .palette(index: 0), textTone: .auto)
             },
             set: { newCustomization in
-                if currentBookID != placeholderID {
-                    drafts[currentBookID] = newCustomization
+                if currentCardID != placeholderID {
+                    drafts[currentCardID] = newCustomization
                 }
             }
         )
@@ -142,7 +142,7 @@ struct CardCustomizerView: View {
                         cardCarousel(width: screenWidth)
                             .padding(.top, 8)
 
-                        if currentBookID == placeholderID {
+                        if currentCardID == placeholderID {
                             placeholderControlsSection
                         } else {
                             // MARK: - Text Tone Picker
@@ -190,7 +190,7 @@ struct CardCustomizerView: View {
                                     .textCase(.uppercase)
 
                                 Button {
-                                    editingCategoriesForBookID = currentBookID
+                                    editingCategoriesForCardID = currentCardID
                                 } label: {
                                     HStack(spacing: 12) {
                                         Image(systemName: "tag.fill")
@@ -203,7 +203,7 @@ struct CardCustomizerView: View {
                                             Text("Active Categories")
                                                 .font(.system(size: 15, weight: .semibold))
                                                 .foregroundStyle(Color.primary)
-                                            let count = (cardCategorySelections[currentBookID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
+                                            let count = (cardCategorySelections[currentCardID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
                                             Text("\(count) of \(model.globalCategories.count) active on this card")
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
@@ -234,7 +234,7 @@ struct CardCustomizerView: View {
                 }
                 .scrollBounceBehavior(.always)
             }
-            .navigationTitle(isCreatingNewBook ? "New Card" : "Customize Card")
+            .navigationTitle(isCreatingNewCard ? "New Card" : "Customize Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -245,13 +245,13 @@ struct CardCustomizerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let editingID = editingBookNameID {
+                        if let editingID = editingCardNameID {
                             commitEditingName(for: editingID)
                         }
 
                         do {
                             try model.applyCardCustomizations(names: draftNames, customizations: drafts,
-                                                              newBookIDs: Set(newBookIDs), selections: cardCategorySelections)
+                                                              newCardIDs: Set(newCardIDs), selections: cardCategorySelections)
                             onDismiss()
                         } catch { model.error = error.localizedDescription }
 
@@ -261,23 +261,23 @@ struct CardCustomizerView: View {
                 }
             }
             .sheet(isPresented: Binding(
-                get: { editingCategoriesForBookID != nil },
-                set: { if !$0 { editingCategoriesForBookID = nil } }
+                get: { editingCategoriesForCardID != nil },
+                set: { if !$0 { editingCategoriesForCardID = nil } }
             )) {
-                if let bookID = editingCategoriesForBookID {
-                    let cardName = draftNames[bookID] ?? customizerBooks.first(where: { $0.id == bookID })?.name ?? "Card"
+                if let cardID = editingCategoriesForCardID {
+                    let cardName = draftNames[cardID] ?? customizerCards.first(where: { $0.id == cardID })?.name ?? "Card"
                     CardCategoryPickerSheet(
                         cardName: cardName,
                         globalCategories: model.globalCategories,
                         selectedIDs: Binding(
-                            get: { cardCategorySelections[bookID] ?? [] },
-                            set: { cardCategorySelections[bookID] = $0 }
+                            get: { cardCategorySelections[cardID] ?? [] },
+                            set: { cardCategorySelections[cardID] = $0 }
                         )
                     )
                 }
             }
             .onAppear {
-                if isCreatingNewBook, let active = activeBookID, newBookIDs.contains(active) {
+                if isCreatingNewCard, let active = activeCardID, newCardIDs.contains(active) {
                     isNameFieldFocused = true
                 }
             }
@@ -295,11 +295,11 @@ struct CardCustomizerView: View {
                 guard let newItem else { return }
                 loadSelectedPhoto(newItem)
             }
-            .onChange(of: activeBookID) { oldID, newID in
+            .onChange(of: activeCardID) { oldID, newID in
                 if let newID, newID != oldID {
                     UISelectionFeedbackGenerator().selectionChanged()
-                    settledBookID = newID
-                    if let editingID = editingBookNameID, editingID != newID {
+                    settledCardID = newID
+                    if let editingID = editingCardNameID, editingID != newID {
                         commitEditingName(for: editingID)
                     }
                     if newID != placeholderID, let custom = drafts[newID], case .customColor(let hex) = custom.style {
@@ -310,61 +310,61 @@ struct CardCustomizerView: View {
         }
     }
 
-    private func addNewDraftBook() {
+    private func addNewDraftCard() {
         let newID = UUID()
-        let nextIndex = customizerBooks.count + 1
+        let nextIndex = customizerCards.count + 1
         let defaultName = "New Card \(nextIndex)"
-        let defaultPaletteIndex = customizerBooks.count % CardPalette.standard.count
-        let newBook = BookProfile(id: newID, name: defaultName, kind: .real, colorIndex: defaultPaletteIndex)
+        let defaultPaletteIndex = customizerCards.count % CardPalette.standard.count
+        let newCard = Card(id: newID, name: defaultName, kind: .real, colorIndex: defaultPaletteIndex)
 
-        customizerBooks.append(newBook)
-        newBookIDs.insert(newID)
-        drafts[newID] = BookCardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
+        customizerCards.append(newCard)
+        newCardIDs.insert(newID)
+        drafts[newID] = CardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
         draftNames[newID] = defaultName
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-            activeBookID = newID
-            settledBookID = newID
+            activeCardID = newID
+            settledCardID = newID
         }
         startEditingName(for: newID)
     }
 
-    private func removeDraftBook(_ bookID: UUID) {
-        guard newBookIDs.contains(bookID) else { return }
+    private func removeDraftCard(_ cardID: UUID) {
+        guard newCardIDs.contains(cardID) else { return }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-            if let index = customizerBooks.firstIndex(where: { $0.id == bookID }) {
-                customizerBooks.remove(at: index)
+            if let index = customizerCards.firstIndex(where: { $0.id == cardID }) {
+                customizerCards.remove(at: index)
             }
-            newBookIDs.remove(bookID)
-            drafts.removeValue(forKey: bookID)
-            draftNames.removeValue(forKey: bookID)
-            if activeBookID == bookID {
-                let nextID = customizerBooks.last?.id ?? placeholderID
-                activeBookID = nextID
-                settledBookID = nextID
+            newCardIDs.remove(cardID)
+            drafts.removeValue(forKey: cardID)
+            draftNames.removeValue(forKey: cardID)
+            if activeCardID == cardID {
+                let nextID = customizerCards.last?.id ?? placeholderID
+                activeCardID = nextID
+                settledCardID = nextID
             }
         }
     }
 
-    private func startEditingName(for bookID: UUID) {
+    private func startEditingName(for cardID: UUID) {
         withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-            editingBookNameID = bookID
+            editingCardNameID = cardID
             isNameFieldFocused = true
         }
     }
 
-    private func commitEditingName(for bookID: UUID) {
-        if let current = draftNames[bookID] {
+    private func commitEditingName(for cardID: UUID) {
+        if let current = draftNames[cardID] {
             let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty {
-                let original = customizerBooks.first(where: { $0.id == bookID })?.name ?? "Card"
-                draftNames[bookID] = original
+                let original = customizerCards.first(where: { $0.id == cardID })?.name ?? "Card"
+                draftNames[cardID] = original
             } else {
-                draftNames[bookID] = String(trimmed.prefix(40))
+                draftNames[cardID] = String(trimmed.prefix(40))
             }
         }
         withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-            editingBookNameID = nil
+            editingCardNameID = nil
             isNameFieldFocused = false
         }
     }
@@ -378,20 +378,20 @@ struct CardCustomizerView: View {
         return VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: spacing) {
-                    ForEach(customizerBooks) { book in
-                        previewCard(for: book)
+                    ForEach(customizerCards) { card in
+                        previewCard(for: card)
                             .frame(width: cardWidth)
                             .scrollTransition(.interactive) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
                                     .opacity(phase.isIdentity ? 1.0 : 0.65)
                             }
-                            .id(book.id)
+                            .id(card.id)
                             .onTapGesture {
-                                if currentBookID != book.id {
-                                    settledBookID = book.id
+                                if currentCardID != card.id {
+                                    settledCardID = card.id
                                     withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                                        activeBookID = book.id
+                                        activeCardID = card.id
                                     }
                                 }
                             }
@@ -410,7 +410,7 @@ struct CardCustomizerView: View {
             }
             .contentMargins(.horizontal, sideInset, for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $activeBookID)
+            .scrollPosition(id: $activeCardID)
             .frame(height: 204)
 
             pageIndicator
@@ -419,10 +419,10 @@ struct CardCustomizerView: View {
     }
 
     private var pageIndicator: some View {
-        let allIDs = customizerBooks.map(\.id) + [placeholderID]
+        let allIDs = customizerCards.map(\.id) + [placeholderID]
         return HStack(spacing: 6) {
             ForEach(allIDs, id: \.self) { id in
-                let isActive = (id == currentBookID)
+                let isActive = (id == currentCardID)
                 let isPlaceholder = (id == placeholderID)
                 if isPlaceholder {
                     Image(systemName: "plus")
@@ -430,9 +430,9 @@ struct CardCustomizerView: View {
                         .foregroundStyle(isActive ? Color.accentColor : Color.secondary.opacity(0.4))
                         .frame(width: isActive ? 18 : 6, height: 6)
                         .onTapGesture {
-                            settledBookID = placeholderID
+                            settledCardID = placeholderID
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                                activeBookID = placeholderID
+                                activeCardID = placeholderID
                             }
                         }
                         .accessibilityLabel("Add new card")
@@ -440,11 +440,11 @@ struct CardCustomizerView: View {
                     Capsule()
                         .fill(isActive ? Color.primary : Color.secondary.opacity(0.3))
                         .frame(width: isActive ? 18 : 6, height: 6)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentBookID)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentCardID)
                         .onTapGesture {
-                            settledBookID = id
+                            settledCardID = id
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                                activeBookID = id
+                                activeCardID = id
                             }
                         }
                 }
@@ -456,9 +456,9 @@ struct CardCustomizerView: View {
     }
 
     private func placeholderCard(cardWidth: CGFloat) -> some View {
-        let isActive = (currentBookID == placeholderID)
+        let isActive = (currentCardID == placeholderID)
         return Button {
-            addNewDraftBook()
+            addNewDraftCard()
         } label: {
             VStack(spacing: 12) {
                 ZStack {
@@ -494,7 +494,7 @@ struct CardCustomizerView: View {
                     )
             )
             .shadow(color: Color.black.opacity(isActive ? 0.08 : 0.02), radius: isActive ? 8 : 3, y: isActive ? 3 : 1)
-            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
+            .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentCardID)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add new card")
@@ -518,7 +518,7 @@ struct CardCustomizerView: View {
             }
 
             Button {
-                addNewDraftBook()
+                addNewDraftCard()
             } label: {
                 Label("Create New Card", systemImage: "plus")
                     .font(.headline)
@@ -532,16 +532,16 @@ struct CardCustomizerView: View {
         .padding(.top, 24)
     }
 
-    private func previewCard(for book: BookProfile) -> some View {
-        let custom = drafts[book.id] ?? model.customization(for: book.id)
+    private func previewCard(for card: Card) -> some View {
+        let custom = drafts[card.id] ?? model.customization(for: card.id)
         let textStyle = CardPalette.resolvedTextColor(for: custom)
-        let isNewDraft = newBookIDs.contains(book.id)
-        let total = isNewDraft ? 0 : model.spent(for: book.id)
-        let count = isNewDraft ? 0 : model.expenses(for: book.id).count
-        let isActive = (book.id == currentBookID)
-        let bookIndex = (customizerBooks.firstIndex(where: { $0.id == book.id }) ?? 0) + 1
-        let isEditingThisName = (editingBookNameID == book.id)
-        let displayName = draftNames[book.id] ?? book.name
+        let isNewDraft = newCardIDs.contains(card.id)
+        let total = isNewDraft ? 0 : model.spent(for: card.id)
+        let count = isNewDraft ? 0 : model.expenses(for: card.id).count
+        let isActive = (card.id == currentCardID)
+        let cardIndex = (customizerCards.firstIndex(where: { $0.id == card.id }) ?? 0) + 1
+        let isEditingThisName = (editingCardNameID == card.id)
+        let displayName = draftNames[card.id] ?? card.name
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -550,8 +550,8 @@ struct CardCustomizerView: View {
                         TextField(
                             "Card Name",
                             text: Binding(
-                                get: { draftNames[book.id] ?? book.name },
-                                set: { draftNames[book.id] = $0 }
+                                get: { draftNames[card.id] ?? card.name },
+                                set: { draftNames[card.id] = $0 }
                             )
                         )
                         .font(.headline)
@@ -560,13 +560,13 @@ struct CardCustomizerView: View {
                         .focused($isNameFieldFocused)
                         .submitLabel(.done)
                         .onSubmit {
-                            commitEditingName(for: book.id)
+                            commitEditingName(for: card.id)
                         }
                         .accessibilityIdentifier("cardNameInlineTextField")
 
-                        if !(draftNames[book.id] ?? "").isEmpty {
+                        if !(draftNames[card.id] ?? "").isEmpty {
                             Button {
-                                draftNames[book.id] = ""
+                                draftNames[card.id] = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .font(.subheadline)
@@ -577,7 +577,7 @@ struct CardCustomizerView: View {
                         }
 
                         Button {
-                            commitEditingName(for: book.id)
+                            commitEditingName(for: card.id)
                         } label: {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.headline)
@@ -599,7 +599,7 @@ struct CardCustomizerView: View {
                 } else {
                     if isActive {
                         Button {
-                            startEditingName(for: book.id)
+                            startEditingName(for: card.id)
                         } label: {
                             HStack(spacing: 5) {
                                 Text(displayName)
@@ -612,7 +612,7 @@ struct CardCustomizerView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("cardNameButton-\(book.id)")
+                        .accessibilityIdentifier("cardNameButton-\(card.id)")
                     } else {
                         Text(displayName)
                             .font(.headline)
@@ -624,7 +624,7 @@ struct CardCustomizerView: View {
 
                 if isNewDraft {
                     Button {
-                        removeDraftBook(book.id)
+                        removeDraftCard(card.id)
                     } label: {
                         Image(systemName: "trash")
                             .font(.caption.weight(.semibold))
@@ -632,10 +632,10 @@ struct CardCustomizerView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Discard draft card")
-                    .accessibilityIdentifier("discardDraftCardButton-\(book.id)")
+                    .accessibilityIdentifier("discardDraftCardButton-\(card.id)")
                 }
 
-                Text(String(format: "%02d", bookIndex))
+                Text(String(format: "%02d", cardIndex))
                     .font(.caption.monospaced())
             }
 
@@ -652,20 +652,20 @@ struct CardCustomizerView: View {
         .frame(maxWidth: .infinity)
         .frame(height: 190, alignment: .topLeading)
         .foregroundStyle(textStyle)
-        .background(cardBackgroundView(for: custom, book: book))
+        .background(cardBackgroundView(for: custom, card: card))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
-        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentBookID)
+        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: currentCardID)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("customizer-preview-\(book.id)")
+        .accessibilityIdentifier("customizer-preview-\(card.id)")
     }
 
     @ViewBuilder
-    private func cardBackgroundView(for custom: BookCardCustomization, book: BookProfile) -> some View {
+    private func cardBackgroundView(for custom: CardCustomization, card: Card) -> some View {
         switch custom.style {
         case .palette(let index):
             CardPalette.color(for: index)
@@ -679,7 +679,7 @@ struct CardCustomizerView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                CardPalette.color(for: book.colorIndex)
+                CardPalette.color(for: card.colorIndex)
             }
         }
     }
@@ -890,7 +890,7 @@ struct CardCustomizerView: View {
         photoTask?.cancel()
         isProcessingPhoto = true
         photoError = nil
-        let targetBookID = currentBookID
+        let targetCardID = currentCardID
         photoTask = Task {
             defer { if !Task.isCancelled { isProcessingPhoto = false } }
             do {
@@ -899,14 +899,14 @@ struct CardCustomizerView: View {
                 }
                 try Task.checkCancellation()
                 let filename = try await Task.detached(priority: .userInitiated) {
-                    try CardArtworkStore.shared.saveArtwork(data, for: targetBookID)
+                    try CardArtworkStore.shared.saveArtwork(data, for: targetCardID)
                 }.value
                 guard !Task.isCancelled else {
                     CardArtworkStore.shared.deleteArtwork(filename: filename)
                     return
                 }
                 preparedPhotoFilenames.insert(filename)
-                drafts[targetBookID]?.style = .customPhoto(filename: filename)
+                drafts[targetCardID]?.style = .customPhoto(filename: filename)
                 selectedPhotoItem = nil
             } catch {
                 if !Task.isCancelled { photoError = "Failed to save photo: \(error.localizedDescription)" }

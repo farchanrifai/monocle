@@ -12,7 +12,7 @@ struct TransactionDetailView: View {
 
     /// Live expense lookup so updates made in the edit sheet immediately reflect here
     private var expense: Expense {
-        let all = model.activities(selectedBookID: nil, allBooks: true)
+        let all = model.activities(selectedCardID: nil, allCards: true)
         return all.first { $0.id == initialExpense.id } ?? initialExpense
     }
 
@@ -20,8 +20,8 @@ struct TransactionDetailView: View {
         model.category(expense.allocations.first?.categoryID)
     }
 
-    private var book: BookProfile? {
-        model.books.first { $0.id == expense.bookID }
+    private var card: Card? {
+        model.cards.first { $0.id == expense.cardID }
     }
 
     private var primaryCategorySymbol: String {
@@ -162,17 +162,17 @@ struct TransactionDetailView: View {
             Divider().padding(.leading, 16)
 
             // Account / Card Row
-            if let book {
+            if let card {
                 detailRow(label: "Card") {
                     HStack(spacing: 8) {
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(CardPalette.color(for: book.colorIndex))
+                            .fill(CardPalette.color(for: card.colorIndex))
                             .frame(width: 22, height: 14)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                                     .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                             )
-                        Text(book.name)
+                        Text(card.name)
                             .font(.system(size: 15, weight: .medium))
                     }
                 }

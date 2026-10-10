@@ -71,12 +71,12 @@ final class BackupService {
         }
     }
 
-    func snapshot(draft: ExpenseDraft, settings: PrototypeSettings) throws -> BookBackup {
+    func snapshot(draft: ExpenseDraft, settings: PrototypeSettings) throws -> CardBackup {
         let exportedAt = Date.now
         let storedBudgets = try repository.budgets()
         let fallbackBudget = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: exportedAt)
-        let result = BookBackup(formatVersion: 3, exportedAt: exportedAt, bookID: settings.book.id, bookName: settings.book.name,
-                                bookKind: settings.book.kind.rawValue, sampleSeeded: settings.book.kind == .sample,
+        let result = CardBackup(formatVersion: 3, exportedAt: exportedAt, cardID: settings.card.id, cardName: settings.card.name,
+                                cardKind: settings.card.kind.rawValue, sampleSeeded: settings.card.kind == .demo,
                                 categories: try repository.categories(), expenses: try repository.expenses(), draft: draft, settings: settings,
                                 budgets: storedBudgets.isEmpty ? [fallbackBudget] : storedBudgets)
         try result.validate()
@@ -91,15 +91,15 @@ final class BackupService {
 
     private func makeWorkspaceSnapshot(currentDraft: ExpenseDraft?, settings: PrototypeSettings) throws -> WorkspaceBackup {
         let exportedAt = Date.now
-        let allBooks = try repository.books()
-        var items: [BookBackupItem] = []
-        for book in allBooks {
+        let allCards = try repository.cards()
+        var items: [CardBackupItem] = []
+        for card in allCards {
             let draft: ExpenseDraft
-            if let currentDraft, book.id == (currentDraft.bookID ?? settings.book.id) { draft = currentDraft }
-            else { draft = try state.loadDraft(for: book.id) }
-            items.append(BookBackupItem(book: book, categories: try repository.categories(in: book.id),
-                                        expenses: try repository.expenses(in: book.id), budgets: try repository.budgets(in: book.id), draft: draft,
-                                        bills: try repository.bills(in: book.id), billOccurrences: try repository.billOccurrences(in: book.id)))
+            if let currentDraft, card.id == (currentDraft.cardID ?? settings.card.id) { draft = currentDraft }
+            else { draft = try state.loadDraft(for: card.id) }
+            items.append(CardBackupItem(card: card, categories: try repository.categories(in: card.id),
+                                        expenses: try repository.expenses(in: card.id), budgets: try repository.budgets(in: card.id), draft: draft,
+                                        bills: try repository.bills(in: card.id), billOccurrences: try repository.billOccurrences(in: card.id)))
         }
         let prefs = try state.loadWorkspacePreferences()
         var artworks: [String: Data] = [:]
@@ -111,51 +111,51 @@ final class BackupService {
             }
         }
         let workspace = WorkspaceBackup(formatVersion: WorkspaceBackup.currentFormat, exportedAt: exportedAt, currency: prefs.reportingCurrency, minorUnitScale: 2,
-                                        books: items, preferences: prefs, settings: settings,
+                                        cards: items, preferences: prefs, settings: settings,
                                         cardArtworks: artworks.isEmpty ? nil : artworks)
         try workspace.validate()
         return workspace
     }
 
-    func startEmptyRealBook(named name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
+    func startEmptyRealCard(named name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
         try admitMutation()
-        let profile = try BookProfile.real(named: name)
+        let profile = try Card.real(named: name)
         var updated = settings
-        updated.book = profile
+        updated.card = profile
         return try withRecovery(currentDraft: currentDraft, settings: settings) {
-            try repository.startEmptyRealBook(profile)
-            try state.saveDraft(ExpenseDraft(), for: BookProfile.sample.id)
+            try repository.startEmptyRealCard(profile)
+            try state.saveDraft(ExpenseDraft(), for: Card.demo.id)
             try state.saveDraft(ExpenseDraft(), for: profile.id)
             try state.saveSettings(updated)
             var preferences = try state.loadWorkspacePreferences()
-            func remap(_ ids: [UUID]) -> [UUID] { ids.map { $0 == BookProfile.sample.id ? profile.id : $0 } }
-            preferences.visibleBookIDs = remap(preferences.visibleBookIDs)
-            preferences.bookOrder = remap(preferences.bookOrder)
-            preferences.alwaysHiddenBookIDs = remap(preferences.alwaysHiddenBookIDs)
+            func remap(_ ids: [UUID]) -> [UUID] { ids.map { $0 == Card.demo.id ? profile.id : $0 } }
+            preferences.visibleCardIDs = remap(preferences.visibleCardIDs)
+            preferences.cardOrder = remap(preferences.cardOrder)
+            preferences.alwaysHiddenCardIDs = remap(preferences.alwaysHiddenCardIDs)
             preferences.stacks = preferences.stacks.map { var value = $0; value.cardIDs = remap(value.cardIDs); return value }
-            if let value = preferences.cardCustomizations.removeValue(forKey: BookProfile.sample.id) { preferences.cardCustomizations[profile.id] = value }
-            if let value = preferences.cardInactiveCategoryIDs.removeValue(forKey: BookProfile.sample.id) { preferences.cardInactiveCategoryIDs[profile.id] = value }
+            if let value = preferences.cardCustomizations.removeValue(forKey: Card.demo.id) { preferences.cardCustomizations[profile.id] = value }
+            if let value = preferences.cardInactiveCategoryIDs.removeValue(forKey: Card.demo.id) { preferences.cardInactiveCategoryIDs[profile.id] = value }
             try state.saveWorkspacePreferences(preferences)
             return updated
         }
     }
 
-    func renameRealBook(to name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
+    func renameRealCard(to name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
         try admitMutation()
-        let profile = try settings.book.renamed(to: name)
+        let profile = try settings.card.renamed(to: name)
         var updated = settings
-        updated.book = profile
+        updated.card = profile
         return try withRecovery(currentDraft: currentDraft, settings: settings) {
-            try repository.renameRealBook(profile)
+            try repository.renameRealCard(profile)
             try state.saveSettings(updated)
             return updated
         }
     }
 
-    func clearExpenses(in bookID: UUID? = nil, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
+    func clearExpenses(in cardID: UUID? = nil, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
         try withRecovery(currentDraft: currentDraft, settings: settings) {
-            try repository.clearExpenses(in: bookID)
-            for id in try bookID.map({ [$0] }) ?? repository.books().map(\.id) {
+            try repository.clearExpenses(in: cardID)
+            for id in try cardID.map({ [$0] }) ?? repository.cards().map(\.id) {
                 try state.saveDraft(ExpenseDraft(), for: id)
             }
         }
@@ -166,18 +166,18 @@ final class BackupService {
             let resolvedName = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
             let finalName = resolvedName.isEmpty ? "My expenses" : resolvedName
             let defaultCategories = ExpenseCategory.defaults
-            let (newBookID, _) = try repository.resetToFreshWorkspace(bookName: finalName, categories: defaultCategories)
+            let (newCardID, _) = try repository.resetToFreshWorkspace(cardName: finalName, categories: defaultCategories)
             var updatedSettings = settings
-            updatedSettings.book = BookProfile(id: newBookID, name: finalName, kind: .real)
-            if let budget = try repository.budgets(in: newBookID).first {
+            updatedSettings.card = Card(id: newCardID, name: finalName, kind: .real)
+            if let budget = try repository.budgets(in: newCardID).first {
                 updatedSettings.budget = budget.overallLimit
                 updatedSettings.startDay = budget.startDay
             }
             updatedSettings.archivedCategoryIDs = []
             updatedSettings.categoryRules = []
-            let freshPreferences = WorkspacePreferences(visibleBookIDs: [newBookID], bookOrder: [newBookID],
+            let freshPreferences = WorkspacePreferences(visibleCardIDs: [newCardID], cardOrder: [newCardID],
                                                         globalCategories: defaultCategories.map { GlobalCategory(category: $0) })
-            try state.saveDraft(ExpenseDraft(), for: newBookID)
+            try state.saveDraft(ExpenseDraft(), for: newCardID)
             try state.saveSettings(updatedSettings)
             try state.saveWorkspacePreferences(freshPreferences)
             try Data("1".utf8).write(to: directory.appendingPathComponent("sample-seeded"), options: .atomic)
@@ -187,9 +187,9 @@ final class BackupService {
         // them before commit would make rollback depend on a second file mutation.
     }
 
-    func preview(data: Data) throws -> BookBackup {
-        let candidate = try BookBackup.decode(data)
-        _ = try materializedPreview(WorkspaceBackup(singleBook: candidate))
+    func preview(data: Data) throws -> CardBackup {
+        let candidate = try CardBackup.decode(data)
+        _ = try materializedPreview(WorkspaceBackup(singleCard: candidate))
         return candidate
     }
 
@@ -210,7 +210,7 @@ final class BackupService {
         let local = FileLocalStateStore(directory: temporary)
         let artwork = CardArtworkStore(directory: temporary.appendingPathComponent("artwork", isDirectory: true))
         try store.replace(with: candidate, importArtworks: false)
-        for item in candidate.books { try local.saveDraft(item.draft!, for: item.book.id) }
+        for item in candidate.cards { try local.saveDraft(item.draft!, for: item.card.id) }
         try local.saveSettings(candidate.settings)
         try local.saveWorkspacePreferences(candidate.preferences)
         for (filename, data) in candidate.cardArtworks ?? [:] { try artwork.importArtworkData(data, filename: filename) }
@@ -227,10 +227,10 @@ final class BackupService {
         }
     }
 
-    func restore(_ candidate: BookBackup, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
+    func restore(_ candidate: CardBackup, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
         try admitMutation()
         _ = try preview(data: candidate.encoded())
-        let workspace = try materializedPreview(WorkspaceBackup(singleBook: candidate))
+        let workspace = try materializedPreview(WorkspaceBackup(singleCard: candidate))
         try withRecovery(currentDraft: currentDraft, settings: settings) {
             try activate(workspace)
         }
@@ -244,7 +244,7 @@ final class BackupService {
         try fault?(.databaseReplaced)
         try artworkStore.installStagedArtworks(staged)
         try fault?(.artworksWritten)
-        for book in candidate.books { try state.saveDraft(book.draft!, for: book.book.id) }
+        for card in candidate.cards { try state.saveDraft(card.draft!, for: card.card.id) }
         try fault?(.draftWritten)
         try state.saveSettings(candidate.settings)
         try fault?(.settingsWritten)
@@ -255,11 +255,11 @@ final class BackupService {
 
     private static func readback(template: WorkspaceBackup, repository: ExpenseRepository, state: any LocalStateStore,
                                  artworkStore: CardArtworkStore) throws -> WorkspaceBackup {
-        var items: [BookBackupItem] = []
-        for book in try repository.books() {
-            items.append(BookBackupItem(book: book, categories: try repository.categories(in: book.id), expenses: try repository.expenses(in: book.id),
-                                        budgets: try repository.budgets(in: book.id), draft: try state.loadDraft(for: book.id),
-                                        bills: try repository.bills(in: book.id), billOccurrences: try repository.billOccurrences(in: book.id)))
+        var items: [CardBackupItem] = []
+        for card in try repository.cards() {
+            items.append(CardBackupItem(card: card, categories: try repository.categories(in: card.id), expenses: try repository.expenses(in: card.id),
+                                        budgets: try repository.budgets(in: card.id), draft: try state.loadDraft(for: card.id),
+                                        bills: try repository.bills(in: card.id), billOccurrences: try repository.billOccurrences(in: card.id)))
         }
         var bytes: [String: Data] = [:]
         for filename in (template.cardArtworks ?? [:]).keys {
@@ -267,7 +267,7 @@ final class BackupService {
             bytes[filename] = data
         }
         return WorkspaceBackup(formatVersion: template.formatVersion, exportedAt: template.exportedAt, currency: template.currency,
-                               minorUnitScale: template.minorUnitScale, books: items, preferences: try state.loadWorkspacePreferences(),
+                               minorUnitScale: template.minorUnitScale, cards: items, preferences: try state.loadWorkspacePreferences(),
                                settings: try state.loadSettings(), cardArtworks: bytes)
     }
 
@@ -281,7 +281,7 @@ final class BackupService {
         try repository.transaction {
             try repository.replace(with: workspace, importArtworks: false)
             try artworkStore.installStagedArtworks(staged)
-            for book in workspace.books { try state.saveDraft(book.draft!, for: book.book.id) }
+            for card in workspace.cards { try state.saveDraft(card.draft!, for: card.card.id) }
             try state.saveSettings(workspace.settings)
             try state.saveWorkspacePreferences(workspace.preferences)
             try Data("1".utf8).write(to: directory.appendingPathComponent("sample-seeded"), options: .atomic)

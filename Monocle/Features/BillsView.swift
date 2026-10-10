@@ -635,7 +635,7 @@ struct BillEditor: View {
 
             let rule = BillRule(
                 id: existingRule?.id ?? UUID(),
-                bookID: existingRule?.bookID ?? model.activeBookID,
+                cardID: existingRule?.cardID ?? model.activeCardID,
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                 amount: parsedAmount,
                 categoryID: categoryID,
@@ -660,10 +660,10 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
-    private var activeBook: BookProfile {
-        model.books.first(where: { $0.id == (model.selectedBookID ?? model.activeBookID) })
-            ?? model.books.first
-            ?? model.settings.book
+    private var activeCard: Card {
+        model.cards.first(where: { $0.id == (model.selectedCardID ?? model.activeCardID) })
+            ?? model.cards.first
+            ?? model.settings.card
     }
 
     var body: some View {
@@ -671,9 +671,9 @@ struct SettingsView: View {
             Form {
                 // MARK: 1. Active Card & Categories
                 Section {
-                    if activeBook.kind == .sample, model.books.count == 1 {
+                    if activeCard.kind == .demo, model.cards.count == 1 {
                         NavigationLink {
-                            RealBookOnboardingView(model: model)
+                            RealCardOnboardingView(model: model)
                         } label: {
                             LabeledContent {
                                 Text("Sample")
@@ -687,12 +687,12 @@ struct SettingsView: View {
                             }
                         }
                         .accessibilityIdentifier("startRealBook")
-                    } else if activeBook.kind == .real {
+                    } else if activeCard.kind == .real {
                         NavigationLink {
-                            RenameBookView(model: model, book: activeBook)
+                            RenameCardView(model: model, card: activeCard)
                         } label: {
                             LabeledContent {
-                                Text(activeBook.name)
+                                Text(activeCard.name)
                                     .foregroundStyle(.secondary)
                             } label: {
                                 Label {
@@ -705,7 +705,7 @@ struct SettingsView: View {
                         .accessibilityIdentifier("renameRealBook")
                     } else {
                         LabeledContent {
-                            Text(activeBook.name).foregroundStyle(.secondary)
+                            Text(activeCard.name).foregroundStyle(.secondary)
                         } label: {
                             Label("Card name", systemImage: "creditcard.fill")
                         }
@@ -728,10 +728,10 @@ struct SettingsView: View {
                     .accessibilityIdentifier("manageCategories")
 
                     NavigationLink {
-                        PaymentMethodsView(model: model, bookID: activeBook.id)
+                        PaymentMethodsView(model: model, cardID: activeCard.id)
                     } label: {
                         LabeledContent {
-                            Text(model.paymentMethod(activeBook.defaultPaidWithID)?.name ?? "\(model.paymentMethods.count)")
+                            Text(model.paymentMethod(activeCard.defaultPaidWithID)?.name ?? "\(model.paymentMethods.count)")
                                 .foregroundStyle(.secondary)
                         } label: {
                             Label {
@@ -744,11 +744,11 @@ struct SettingsView: View {
                     .accessibilityIdentifier("paidWithSettings")
 
                     NavigationLink {
-                        CurrencySettingsView(model: model, bookID: activeBook.id)
+                        CurrencySettingsView(model: model, cardID: activeCard.id)
                     } label: {
                         LabeledContent {
-                            Text(model.currency(of: activeBook) == model.reportingCurrency ? model.reportingCurrency
-                                 : "\(model.currency(of: activeBook)) · reports \(model.reportingCurrency)")
+                            Text(model.currency(of: activeCard) == model.reportingCurrency ? model.reportingCurrency
+                                 : "\(model.currency(of: activeCard)) · reports \(model.reportingCurrency)")
                                 .foregroundStyle(.secondary)
                         } label: {
                             Label {
@@ -889,7 +889,7 @@ struct SettingsView: View {
                             model.visualDirection = newDir
                         }
                     )) {
-                        ForEach(BookVisualDirection.allCases) { dir in
+                        ForEach(CardVisualDirection.allCases) { dir in
                             Text(dir.rawValue).tag(dir)
                         }
                     } label: {
@@ -980,9 +980,9 @@ struct SettingsView: View {
     }
 }
 
-private struct RenameBookView: View {
+private struct RenameCardView: View {
     let model: AppModel
-    let book: BookProfile
+    let card: Card
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var error: String?
@@ -992,10 +992,10 @@ private struct RenameBookView: View {
             TextField("Card name", text: $name).accessibilityIdentifier("renameBookName")
         }
         .navigationTitle("Rename card").navigationBarTitleDisplayMode(.inline)
-        .onAppear { name = book.name }
+        .onAppear { name = card.name }
         .toolbar { ToolbarItem(placement: .confirmationAction) {
             Button("Save") {
-                do { try model.renameBook(id: book.id, to: name); dismiss() }
+                do { try model.renameCard(id: card.id, to: name); dismiss() }
                 catch { self.error = error.localizedDescription }
             }
         } }
@@ -1005,7 +1005,7 @@ private struct RenameBookView: View {
     }
 }
 
-private struct RealBookOnboardingView: View {
+private struct RealCardOnboardingView: View {
     let model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var name = "My expenses"
@@ -1029,7 +1029,7 @@ private struct RealBookOnboardingView: View {
         .navigationTitle("Start real card").navigationBarTitleDisplayMode(.inline)
         .alert("Start an empty real card?", isPresented: $confirm) {
             Button("Start empty card", role: .destructive) {
-                do { try model.startEmptyRealBook(named: name); dismiss() }
+                do { try model.startEmptyRealCard(named: name); dismiss() }
                 catch { self.error = error.localizedDescription }
             }
             Button("Cancel", role: .cancel) {}

@@ -3,112 +3,112 @@ import SwiftUI
 @testable import Monocle
 
 @MainActor
-final class MultiBookTests: XCTestCase {
-    func testTwoBooksRemainStrictlyIsolated() throws {
+final class MultiCardTests: XCTestCase {
+    func testTwoCardsRemainStrictlyIsolated() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let bookA = try store.createBook(named: "Daily Expenses")
-        let bookB = try store.createBook(named: "Tokyo Vacation")
+        let cardA = try store.createCard(named: "Daily Expenses")
+        let cardB = try store.createCard(named: "Tokyo Vacation")
 
-        let catsA = try store.categories(in: bookA.id)
-        let catsB = try store.categories(in: bookB.id)
+        let catsA = try store.categories(in: cardA.id)
+        let catsB = try store.categories(in: cardB.id)
         let catA = catsA[0]
         let catB = catsB[1]
 
         let expA = Expense(id: UUID(), amount: 50_000_00, day: "2026-09-08", note: "Lunch",
                            allocations: [.init(categoryID: catA.id, amount: 50_000_00)],
-                           bookID: bookA.id)
+                           cardID: cardA.id)
         let expB = Expense(id: UUID(), amount: 120_000_00, day: "2026-09-08", note: "Train pass",
                            allocations: [.init(categoryID: catB.id, amount: 120_000_00)],
-                           bookID: bookB.id)
-        try store.save(expA, in: bookA.id)
-        try store.save(expB, in: bookB.id)
+                           cardID: cardB.id)
+        try store.save(expA, in: cardA.id)
+        try store.save(expB, in: cardB.id)
 
-        let budgetA = BudgetVersion.initial(overallLimit: 2_000_000_00, startDay: 1, bookID: bookA.id)
-        let budgetB = BudgetVersion.initial(overallLimit: 10_000_000_00, startDay: 15, bookID: bookB.id)
-        try store.save(budgetA, in: bookA.id)
-        try store.save(budgetB, in: bookB.id)
+        let budgetA = BudgetVersion.initial(overallLimit: 2_000_000_00, startDay: 1, cardID: cardA.id)
+        let budgetB = BudgetVersion.initial(overallLimit: 10_000_000_00, startDay: 15, cardID: cardB.id)
+        try store.save(budgetA, in: cardA.id)
+        try store.save(budgetB, in: cardB.id)
 
         // Verify isolation
-        let expInA = try store.expenses(in: bookA.id)
-        let expInB = try store.expenses(in: bookB.id)
+        let expInA = try store.expenses(in: cardA.id)
+        let expInB = try store.expenses(in: cardB.id)
         XCTAssertEqual(expInA.count, 1)
         XCTAssertEqual(expInA.first?.id, expA.id)
         XCTAssertEqual(expInB.count, 1)
         XCTAssertEqual(expInB.first?.id, expB.id)
 
-        let budgetsInA = try store.budgets(in: bookA.id)
-        let budgetsInB = try store.budgets(in: bookB.id)
+        let budgetsInA = try store.budgets(in: cardA.id)
+        let budgetsInB = try store.budgets(in: cardB.id)
         XCTAssertEqual(budgetsInA.first?.overallLimit, 2_000_000_00)
         XCTAssertEqual(budgetsInB.first?.overallLimit, 10_000_000_00)
     }
 
-    func testBookLifecycleRenameAndDelete() throws {
+    func testCardLifecycleRenameAndDelete() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
-        let book = try store.createBook(named: "Project Alpha")
-        XCTAssertEqual(try store.books().count, 2) // default sample book + new book
+        try store.prepareSampleCard()
+        let card = try store.createCard(named: "Project Alpha")
+        XCTAssertEqual(try store.cards().count, 2) // default sample card + new card
 
-        try store.renameBook(id: book.id, to: "Project Beta")
-        let updated = try store.books().first { $0.id == book.id }
+        try store.renameCard(id: card.id, to: "Project Beta")
+        let updated = try store.cards().first { $0.id == card.id }
         XCTAssertEqual(updated?.name, "Project Beta")
 
-        try store.deleteBook(id: book.id)
-        XCTAssertEqual(try store.books().count, 1)
-        XCTAssertFalse(try store.books().contains(where: { $0.id == book.id }))
+        try store.deleteCard(id: card.id)
+        XCTAssertEqual(try store.cards().count, 1)
+        XCTAssertFalse(try store.cards().contains(where: { $0.id == card.id }))
     }
 
     func testFormatFourWorkspaceRoundTrip() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let bookA = try store.createBook(named: "Home")
+        let cardA = try store.createCard(named: "Home")
         let catA = ExpenseCategory(id: UUID(), name: "Groceries", symbol: "cart")
-        try store.saveCategory(catA, in: bookA.id)
+        try store.saveCategory(catA, in: cardA.id)
         let expA = Expense(id: UUID(), amount: 75_000_00, day: "2026-09-08", note: "Supermarket",
-                           allocations: [.init(categoryID: catA.id, amount: 75_000_00)], bookID: bookA.id)
-        try store.save(expA, in: bookA.id)
+                           allocations: [.init(categoryID: catA.id, amount: 75_000_00)], cardID: cardA.id)
+        try store.save(expA, in: cardA.id)
 
         let items = [
-            BookBackupItem(book: bookA, categories: [catA], expenses: [expA],
-                           budgets: [BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 1, bookID: bookA.id)],
+            CardBackupItem(card: cardA, categories: [catA], expenses: [expA],
+                           budgets: [BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 1, cardID: cardA.id)],
                            draft: nil)
         ]
-        let prefs = WorkspacePreferences(visibleBookIDs: [bookA.id], bookOrder: [bookA.id], allActivitiesScope: true, visualDirection: "Instrument")
+        let prefs = WorkspacePreferences(visibleCardIDs: [cardA.id], cardOrder: [cardA.id], allActivitiesScope: true, visualDirection: "Instrument")
         let workspace = WorkspaceBackup(formatVersion: 4, exportedAt: .now, currency: "IDR", minorUnitScale: 2,
-                                        books: items, preferences: prefs, settings: PrototypeSettings())
+                                        cards: items, preferences: prefs, settings: PrototypeSettings())
         try workspace.validate()
 
         let encoded = try workspace.encoded()
         let decoded = try WorkspaceBackup.decode(encoded)
         XCTAssertEqual(decoded.formatVersion, 4)
-        XCTAssertEqual(decoded.books.count, 1)
-        XCTAssertEqual(decoded.books[0].book.name, "Home")
-        XCTAssertEqual(decoded.books[0].expenses.first?.amount, 75_000_00)
+        XCTAssertEqual(decoded.cards.count, 1)
+        XCTAssertEqual(decoded.cards[0].card.name, "Home")
+        XCTAssertEqual(decoded.cards[0].expenses.first?.amount, 75_000_00)
         XCTAssertEqual(decoded.preferences.visualDirection, "Instrument")
 
         // Restore into a fresh store
         let freshStore = try ExpenseRepository(inMemory: true)
         try freshStore.replace(with: decoded)
-        let restoredBooks = try freshStore.books()
-        XCTAssertTrue(restoredBooks.contains(where: { $0.id == bookA.id }))
-        let restoredExpenses = try freshStore.expenses(in: bookA.id)
+        let restoredCards = try freshStore.cards()
+        XCTAssertTrue(restoredCards.contains(where: { $0.id == cardA.id }))
+        let restoredExpenses = try freshStore.expenses(in: cardA.id)
         XCTAssertEqual(restoredExpenses.count, 1)
         XCTAssertEqual(restoredExpenses[0].id, expA.id)
     }
 
-    func testLegacyFormatThreeSingleBookDecodesAsWorkspace() throws {
+    func testLegacyFormatThreeSingleCardDecodesAsWorkspace() throws {
         let cat = ExpenseCategory.defaults[0]
         let exp = Expense(amount: 25_000_00, day: "2026-09-08", note: "Coffee",
                           allocations: [.init(categoryID: cat.id, amount: 25_000_00)])
         let budget = BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 1)
-        let singleBookBackup = BookBackup(categories: [cat], expenses: [exp], draft: ExpenseDraft(), settings: PrototypeSettings(), budgets: [budget])
-        let data = try singleBookBackup.encoded()
+        let singleCardBackup = CardBackup(categories: [cat], expenses: [exp], draft: ExpenseDraft(), settings: PrototypeSettings(), budgets: [budget])
+        let data = try singleCardBackup.encoded()
 
         // Decode as WorkspaceBackup (Format 5+ upgrade)
         let workspace = try WorkspaceBackup.decode(data)
         XCTAssertGreaterThanOrEqual(workspace.formatVersion, 5)
-        XCTAssertEqual(workspace.books.count, 1)
-        XCTAssertEqual(workspace.books[0].expenses.count, 1)
-        XCTAssertEqual(workspace.books[0].expenses[0].id, exp.id)
-        XCTAssertEqual(workspace.books[0].categories[0].id, cat.id)
+        XCTAssertEqual(workspace.cards.count, 1)
+        XCTAssertEqual(workspace.cards[0].expenses.count, 1)
+        XCTAssertEqual(workspace.cards[0].expenses[0].id, exp.id)
+        XCTAssertEqual(workspace.cards[0].categories[0].id, cat.id)
     }
 
     func testVisualDirectionPersistsAndDecodes() throws {
@@ -158,7 +158,7 @@ final class MultiBookTests: XCTestCase {
 
     func testAppModelAppearanceModesAndAutoSwitch() throws {
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
+        try repo.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -216,54 +216,54 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(hex, "#FF0000")
 
         // Text tone auto vs overrides
-        let lightAuto = BookCardCustomization(style: .palette(index: 2), textTone: .auto) // Acid Lime is bright
+        let lightAuto = CardCustomization(style: .palette(index: 2), textTone: .auto) // Acid Lime is bright
         XCTAssertEqual(CardPalette.resolvedTextColor(for: lightAuto), .black)
 
-        let darkAuto = BookCardCustomization(style: .palette(index: 8), textTone: .auto) // Obsidian is dark
+        let darkAuto = CardCustomization(style: .palette(index: 8), textTone: .auto) // Obsidian is dark
         XCTAssertEqual(CardPalette.resolvedTextColor(for: darkAuto), .white)
 
-        let lightManual = BookCardCustomization(style: .palette(index: 2), textTone: .light)
+        let lightManual = CardCustomization(style: .palette(index: 2), textTone: .light)
         XCTAssertEqual(CardPalette.resolvedTextColor(for: lightManual), .white)
 
-        let darkManual = BookCardCustomization(style: .palette(index: 8), textTone: .dark)
+        let darkManual = CardCustomization(style: .palette(index: 8), textTone: .dark)
         XCTAssertEqual(CardPalette.resolvedTextColor(for: darkManual), .black)
 
-        let stockSunset = BookCardCustomization(style: .stock(.sunsetHeat), textTone: .auto)
+        let stockSunset = CardCustomization(style: .stock(.sunsetHeat), textTone: .auto)
         XCTAssertEqual(CardPalette.resolvedTextColor(for: stockSunset), .white)
 
-        let stockParchment = BookCardCustomization(style: .stock(.warmParchment), textTone: .auto)
+        let stockParchment = CardCustomization(style: .stock(.warmParchment), textTone: .auto)
         XCTAssertEqual(CardPalette.resolvedTextColor(for: stockParchment), .black)
 
-        let photoCustom = BookCardCustomization(style: .customPhoto(filename: "card.jpg"), textTone: .auto)
+        let photoCustom = CardCustomization(style: .customPhoto(filename: "card.jpg"), textTone: .auto)
         XCTAssertEqual(CardPalette.resolvedTextColor(for: photoCustom), .white)
     }
 
     func testCardCustomizationPersistenceAndRoundTrip() throws {
-        let bookID = UUID()
+        let cardID = UUID()
         var prefs = WorkspacePreferences()
         XCTAssertTrue(prefs.cardCustomizations.isEmpty)
 
-        let custom = BookCardCustomization(style: .stock(.auroraBorealis), textTone: .light)
-        prefs.cardCustomizations[bookID] = custom
+        let custom = CardCustomization(style: .stock(.auroraBorealis), textTone: .light)
+        prefs.cardCustomizations[cardID] = custom
 
         let encoded = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(WorkspacePreferences.self, from: encoded)
 
-        XCTAssertEqual(decoded.cardCustomizations[bookID]?.style, .stock(.auroraBorealis))
-        XCTAssertEqual(decoded.cardCustomizations[bookID]?.textTone, .light)
+        XCTAssertEqual(decoded.cardCustomizations[cardID]?.style, .stock(.auroraBorealis))
+        XCTAssertEqual(decoded.cardCustomizations[cardID]?.textTone, .light)
 
         // Test customColor
-        prefs.cardCustomizations[bookID] = BookCardCustomization(style: .customColor(hex: "#123456"), textTone: .auto)
+        prefs.cardCustomizations[cardID] = CardCustomization(style: .customColor(hex: "#123456"), textTone: .auto)
         let enc2 = try JSONEncoder().encode(prefs)
         let dec2 = try JSONDecoder().decode(WorkspacePreferences.self, from: enc2)
-        XCTAssertEqual(dec2.cardCustomizations[bookID]?.style, .customColor(hex: "#123456"))
+        XCTAssertEqual(dec2.cardCustomizations[cardID]?.style, .customColor(hex: "#123456"))
 
         // Test customPhoto
-        prefs.cardCustomizations[bookID] = BookCardCustomization(style: .customPhoto(filename: "artwork-\(bookID).jpg"), textTone: .dark)
+        prefs.cardCustomizations[cardID] = CardCustomization(style: .customPhoto(filename: "artwork-\(cardID).jpg"), textTone: .dark)
         let enc3 = try JSONEncoder().encode(prefs)
         let dec3 = try JSONDecoder().decode(WorkspacePreferences.self, from: enc3)
-        XCTAssertEqual(dec3.cardCustomizations[bookID]?.style, .customPhoto(filename: "artwork-\(bookID).jpg"))
-        XCTAssertEqual(dec3.cardCustomizations[bookID]?.textTone, .dark)
+        XCTAssertEqual(dec3.cardCustomizations[cardID]?.style, .customPhoto(filename: "artwork-\(cardID).jpg"))
+        XCTAssertEqual(dec3.cardCustomizations[cardID]?.textTone, .dark)
     }
 
     func testCardArtworkStoreSaveLoadDelete() throws {
@@ -291,12 +291,12 @@ final class MultiBookTests: XCTestCase {
 
     func testFormatFiveWorkspaceRoundTripWithCardArtworkAndCustomizations() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let bookA = try store.createBook(named: "Trip to Paris")
+        let cardA = try store.createCard(named: "Trip to Paris")
         let catA = ExpenseCategory(id: UUID(), name: "Museums", symbol: "airplane")
-        try store.saveCategory(catA, in: bookA.id)
+        try store.saveCategory(catA, in: cardA.id)
         let expA = Expense(id: UUID(), amount: 350_000_00, day: "2026-09-08", note: "Louvre Ticket",
-                           allocations: [.init(categoryID: catA.id, amount: 350_000_00)], bookID: bookA.id)
-        try store.save(expA, in: bookA.id)
+                           allocations: [.init(categoryID: catA.id, amount: 350_000_00)], cardID: cardA.id)
+        try store.save(expA, in: cardA.id)
 
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 50, height: 50))
         let sampleImage = renderer.image { ctx in
@@ -304,20 +304,20 @@ final class MultiBookTests: XCTestCase {
             ctx.fill(CGRect(x: 0, y: 0, width: 50, height: 50))
         }
         let sampleData = sampleImage.jpegData(compressionQuality: 0.8)!
-        let photoFilename = "sample-\(bookA.id.uuidString).jpg"
+        let photoFilename = "sample-\(cardA.id.uuidString).jpg"
 
-        var prefs = WorkspacePreferences(visibleBookIDs: [bookA.id], bookOrder: [bookA.id])
-        prefs.cardCustomizations[bookA.id] = BookCardCustomization(style: .customPhoto(filename: photoFilename), textTone: .auto)
+        var prefs = WorkspacePreferences(visibleCardIDs: [cardA.id], cardOrder: [cardA.id])
+        prefs.cardCustomizations[cardA.id] = CardCustomization(style: .customPhoto(filename: photoFilename), textTone: .auto)
 
         let items = [
-            BookBackupItem(book: bookA, categories: [catA], expenses: [expA], budgets: [], draft: nil)
+            CardBackupItem(card: cardA, categories: [catA], expenses: [expA], budgets: [], draft: nil)
         ]
         let workspace = WorkspaceBackup(
             formatVersion: 5,
             exportedAt: .now,
             currency: "IDR",
             minorUnitScale: 2,
-            books: items,
+            cards: items,
             preferences: prefs,
             settings: PrototypeSettings(),
             cardArtworks: [photoFilename: sampleData]
@@ -328,8 +328,8 @@ final class MultiBookTests: XCTestCase {
         let decoded = try WorkspaceBackup.decode(encoded)
 
         XCTAssertEqual(decoded.formatVersion, 5)
-        XCTAssertEqual(decoded.books.count, 1)
-        XCTAssertEqual(decoded.preferences.cardCustomizations[bookA.id]?.style, .customPhoto(filename: photoFilename))
+        XCTAssertEqual(decoded.cards.count, 1)
+        XCTAssertEqual(decoded.preferences.cardCustomizations[cardA.id]?.style, .customPhoto(filename: photoFilename))
         XCTAssertEqual(decoded.cardArtworks?[photoFilename], sampleData)
 
         // Restore into fresh store and verify artwork import
@@ -345,11 +345,11 @@ final class MultiBookTests: XCTestCase {
 
     func testCardStacksAndAlwaysHiddenFiltering() throws {
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
-        let daily = try repo.createBook(named: "Daily")
-        let travel = try repo.createBook(named: "Tokyo Travel")
-        let shopping = try repo.createBook(named: "Shopping")
-        let oldTrip = try repo.createBook(named: "Old Bali Trip")
+        try repo.prepareSampleCard()
+        let daily = try repo.createCard(named: "Daily")
+        let travel = try repo.createCard(named: "Tokyo Travel")
+        let shopping = try repo.createCard(named: "Shopping")
+        let oldTrip = try repo.createCard(named: "Old Bali Trip")
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -358,15 +358,15 @@ final class MultiBookTests: XCTestCase {
         let expenseService = try ExpenseService(store: repo)
         let model = AppModel(expenses: expenseService, state: state)
 
-        // Add expense to each book using book-scoped categories
+        // Add expense to each card using card-scoped categories
         let catDaily = try repo.categories(in: daily.id)[0]
         let catTravel = try repo.categories(in: travel.id)[0]
         let catShopping = try repo.categories(in: shopping.id)[0]
         let catOldTrip = try repo.categories(in: oldTrip.id)[0]
-        try repo.save(Expense(id: UUID(), amount: 10_000_00, day: "2026-09-10", note: "Daily Coffee", allocations: [.init(categoryID: catDaily.id, amount: 10_000_00)], bookID: daily.id), in: daily.id)
-        try repo.save(Expense(id: UUID(), amount: 50_000_00, day: "2026-09-10", note: "Sushi", allocations: [.init(categoryID: catTravel.id, amount: 50_000_00)], bookID: travel.id), in: travel.id)
-        try repo.save(Expense(id: UUID(), amount: 30_000_00, day: "2026-09-10", note: "Souvenir", allocations: [.init(categoryID: catShopping.id, amount: 30_000_00)], bookID: shopping.id), in: shopping.id)
-        try repo.save(Expense(id: UUID(), amount: 99_000_00, day: "2026-09-10", note: "Old Resort", allocations: [.init(categoryID: catOldTrip.id, amount: 99_000_00)], bookID: oldTrip.id), in: oldTrip.id)
+        try repo.save(Expense(id: UUID(), amount: 10_000_00, day: "2026-09-10", note: "Daily Coffee", allocations: [.init(categoryID: catDaily.id, amount: 10_000_00)], cardID: daily.id), in: daily.id)
+        try repo.save(Expense(id: UUID(), amount: 50_000_00, day: "2026-09-10", note: "Sushi", allocations: [.init(categoryID: catTravel.id, amount: 50_000_00)], cardID: travel.id), in: travel.id)
+        try repo.save(Expense(id: UUID(), amount: 30_000_00, day: "2026-09-10", note: "Souvenir", allocations: [.init(categoryID: catShopping.id, amount: 30_000_00)], cardID: shopping.id), in: shopping.id)
+        try repo.save(Expense(id: UUID(), amount: 99_000_00, day: "2026-09-10", note: "Old Resort", allocations: [.init(categoryID: catOldTrip.id, amount: 99_000_00)], cardID: oldTrip.id), in: oldTrip.id)
 
         // Fixture writes bypass the command service; reload publishes their committed state.
         try model.reload()
@@ -381,7 +381,7 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(onDeck, [travel.id, shopping.id])
 
         // Activities in active stack should only contain Sushi & Souvenir (not Daily Coffee or Old Resort)
-        let stackActivities = model.activities(selectedBookID: nil, allBooks: false)
+        let stackActivities = model.activities(selectedCardID: nil, allCards: false)
         XCTAssertEqual(stackActivities.count, 2)
         XCTAssertTrue(stackActivities.contains(where: { $0.note == "Sushi" }))
         XCTAssertTrue(stackActivities.contains(where: { $0.note == "Souvenir" }))
@@ -392,22 +392,22 @@ final class MultiBookTests: XCTestCase {
         model.toggleFilterScope()
         XCTAssertEqual(model.filterScope, StackFilterScope.allCards)
         XCTAssertTrue(model.homeDeckCards.contains(where: { $0.id == oldTrip.id }))
-        let allBeforeArchive = model.activities(selectedBookID: nil, allBooks: true)
+        let allBeforeArchive = model.activities(selectedCardID: nil, allCards: true)
         XCTAssertTrue(allBeforeArchive.contains(where: { $0.note == "Old Resort" }))
 
         // 3. Mark Old Bali Trip as Always Hidden (Archive)
         model.setCardAlwaysHidden(id: oldTrip.id, isHidden: true)
-        XCTAssertTrue(model.alwaysHiddenBookIDs.contains(oldTrip.id))
-        XCTAssertFalse(model.unhiddenBooks.contains(where: { $0.id == oldTrip.id }))
+        XCTAssertTrue(model.alwaysHiddenCardIDs.contains(oldTrip.id))
+        XCTAssertFalse(model.unhiddenCards.contains(where: { $0.id == oldTrip.id }))
         XCTAssertFalse(model.homeDeckCards.contains(where: { $0.id == oldTrip.id }))
 
         // In All Activities, Old Resort MUST NEVER appear
-        let allAfterArchive = model.activities(selectedBookID: nil, allBooks: true)
+        let allAfterArchive = model.activities(selectedCardID: nil, allCards: true)
         XCTAssertFalse(allAfterArchive.contains(where: { $0.note == "Old Resort" }))
         XCTAssertTrue(allAfterArchive.contains(where: { $0.note == "Daily Coffee" }))
 
         // But when viewing that card explicitly (via top menu), it is accessible
-        let oldTripDirect = model.activities(selectedBookID: oldTrip.id, allBooks: false)
+        let oldTripDirect = model.activities(selectedCardID: oldTrip.id, allCards: false)
         XCTAssertEqual(oldTripDirect.count, 1)
         XCTAssertEqual(oldTripDirect.first?.note, "Old Resort")
 
@@ -421,31 +421,31 @@ final class MultiBookTests: XCTestCase {
         // 5. Delete stack
         model.deleteStack(id: travelStack.id)
         XCTAssertFalse(model.stacks.contains(where: { $0.id == travelStack.id }))
-        XCTAssertTrue(model.books.contains(where: { $0.id == travel.id })) // Book itself still exists!
+        XCTAssertTrue(model.cards.contains(where: { $0.id == travel.id })) // Card itself still exists!
     }
 
     func testEachCardKeepsOneStackAndStackBudgetSumsCardsOrUsesCap() throws {
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
-        let tokyo = try repo.createBook(named: "Tokyo")
-        let bali = try repo.createBook(named: "Bali")
-        try repo.save(BudgetVersion.initial(overallLimit: 20_000_000_00, startDay: 1, bookID: tokyo.id), in: tokyo.id)
-        try repo.save(BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 10, bookID: bali.id), in: bali.id)
-        var goal = BudgetVersion.initial(overallLimit: 9_000_000_00, startDay: 1, bookID: BookProfile.sample.id)
+        try repo.prepareSampleCard()
+        let tokyo = try repo.createCard(named: "Tokyo")
+        let bali = try repo.createCard(named: "Bali")
+        try repo.save(BudgetVersion.initial(overallLimit: 20_000_000_00, startDay: 1, cardID: tokyo.id), in: tokyo.id)
+        try repo.save(BudgetVersion.initial(overallLimit: 5_000_000_00, startDay: 10, cardID: bali.id), in: bali.id)
+        var goal = BudgetVersion.initial(overallLimit: 9_000_000_00, startDay: 1, cardID: Card.demo.id)
         goal.totalUntilDay = "2099-12-31"
-        try repo.save(goal, in: BookProfile.sample.id)
+        try repo.save(goal, in: Card.demo.id)
 
         // A workspace saved before the rule: Bali sits in two stacks.
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let state = FileLocalStateStore(directory: tempDir)
-        let travel = CardStack(name: "Travel", cardIDs: [tokyo.id, bali.id, BookProfile.sample.id])
+        let travel = CardStack(name: "Travel", cardIDs: [tokyo.id, bali.id, Card.demo.id])
         let beach = CardStack(name: "Beach", cardIDs: [bali.id])
         try state.saveWorkspacePreferences(WorkspacePreferences(stacks: [travel, beach], activeStackID: travel.id))
         let model = AppModel(expenses: try ExpenseService(store: repo), state: state)
         XCTAssertNil(model.startupError)
-        XCTAssertEqual(model.stacks.map(\.cardIDs), [[tokyo.id, bali.id, BookProfile.sample.id], []])
+        XCTAssertEqual(model.stacks.map(\.cardIDs), [[tokyo.id, bali.id, Card.demo.id], []])
         XCTAssertEqual(try state.loadWorkspacePreferences().stacks.map(\.cardIDs), model.stacks.map(\.cardIDs))
 
         // Sum of the cards' monthly budgets; the "Total until" goal budget doesn't count.
@@ -459,7 +459,7 @@ final class MultiBookTests: XCTestCase {
         var beachEdit = try XCTUnwrap(model.stacks.last)
         beachEdit.cardIDs = [bali.id]; beachEdit.capLimit = 3_000_000_00
         try model.updateStack(beachEdit)
-        XCTAssertEqual(model.stacks.first?.cardIDs, [tokyo.id, BookProfile.sample.id])
+        XCTAssertEqual(model.stacks.first?.cardIDs, [tokyo.id, Card.demo.id])
         XCTAssertEqual(model.stackBudgetLimit(try XCTUnwrap(model.stacks.last)), 3_000_000_00)
         XCTAssertNil(CardStack(name: "Empty").budgetLimit(cardLimits: []))
     }
@@ -479,7 +479,7 @@ final class MultiBookTests: XCTestCase {
 
         // App: save a goal, then go back to monthly from the same start.
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
+        try repo.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -500,12 +500,12 @@ final class MultiBookTests: XCTestCase {
 
     func testPaidWithLabelsDefaultsFormFieldsAndBreakdown() throws {
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
+        try repo.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
-        let cardID = model.activeBookID
+        let cardID = model.activeCardID
 
         // Labels: names are unique ignoring case.
         let bca = try model.savePaymentMethod(PaymentMethod(name: "  BCA debit ", kind: .bank))
@@ -515,8 +515,8 @@ final class MultiBookTests: XCTestCase {
 
         // The card default pre-fills a new expense, which saves with it.
         try model.setDefaultPaidWith(bca.id, for: cardID)
-        XCTAssertEqual(model.books.first { $0.id == cardID }?.defaultPaidWithID, bca.id)
-        model.draft = ExpenseDraft(); model.draft.bookID = cardID
+        XCTAssertEqual(model.cards.first { $0.id == cardID }?.defaultPaidWithID, bca.id)
+        model.draft = ExpenseDraft(); model.draft.cardID = cardID
         model.prefillDraftDefaults()
         XCTAssertEqual(model.draft.paidWithID, bca.id)
         model.draft.amount = "28000"; model.draft.categoryID = model.activeCategories.first?.id
@@ -528,7 +528,7 @@ final class MultiBookTests: XCTestCase {
         XCTAssertThrowsError(try model.deletePaymentMethod(id: bca.id)) { XCTAssertEqual($0 as? PaymentMethodError, .inUse(1)) }
         try model.setDefaultPaidWith(cash.id, for: cardID)
         try model.deletePaymentMethod(id: cash.id)
-        XCTAssertNil(model.books.first { $0.id == cardID }?.defaultPaidWithID)
+        XCTAssertNil(model.cards.first { $0.id == cardID }?.defaultPaidWithID)
         XCTAssertEqual(model.paymentMethods.map(\.name), ["BCA debit"])
 
         // A label that vanished while a draft was open is dropped instead of saved dangling.
@@ -552,9 +552,9 @@ final class MultiBookTests: XCTestCase {
 
     func testStackCardReorderingAndFrontCard() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let b1 = try store.createBook(named: "Card 1")
-        let b2 = try store.createBook(named: "Card 2")
-        let b3 = try store.createBook(named: "Card 3")
+        let b1 = try store.createCard(named: "Card 1")
+        let b2 = try store.createCard(named: "Card 2")
+        let b3 = try store.createCard(named: "Card 3")
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -580,11 +580,11 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(model.cardsInCurrentStack.first?.id, b3.id)
     }
 
-    func testMoveBookToFrontAndReorderCards() throws {
+    func testMoveCardToFrontAndReorderCards() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let b1 = try store.createBook(named: "Card 1")
-        let b2 = try store.createBook(named: "Card 2")
-        let b3 = try store.createBook(named: "Card 3")
+        let b1 = try store.createCard(named: "Card 1")
+        let b2 = try store.createCard(named: "Card 2")
+        let b3 = try store.createCard(named: "Card 3")
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -598,9 +598,9 @@ final class MultiBookTests: XCTestCase {
         model.filterScope = .activeStack
 
         // In active stack: move b3 to front
-        model.moveBookToFront(b3.id)
+        model.moveCardToFront(b3.id)
         XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b3.id, b1.id, b2.id])
-        XCTAssertEqual(model.visibleBooks.first?.id, b3.id)
+        XCTAssertEqual(model.visibleCards.first?.id, b3.id)
 
         // In active stack: reorder cards
         model.reorderCardsInCurrentStack(fromOffsets: IndexSet(integer: 2), toOffset: 0)
@@ -608,13 +608,13 @@ final class MultiBookTests: XCTestCase {
 
         // In allCards mode: move b1 to front
         model.filterScope = .allCards
-        model.moveBookToFront(b1.id)
-        XCTAssertEqual(model.orderedBooks.first?.id, b1.id)
+        model.moveCardToFront(b1.id)
+        XCTAssertEqual(model.orderedCards.first?.id, b1.id)
     }
 
     func testPreferredEntryModePersistenceAndOpenEntry() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let book = try store.createBook(named: "Main Card")
+        let card = try store.createCard(named: "Main Card")
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -625,7 +625,7 @@ final class MultiBookTests: XCTestCase {
 
         // Default should be keypad
         XCTAssertEqual(model.preferredEntryMode, .keypad)
-        model.openEntry(for: book.id)
+        model.openEntry(for: card.id)
         XCTAssertEqual(model.draft.mode, .keypad)
         XCTAssertFalse(model.draft.editing)
 
@@ -634,19 +634,19 @@ final class MultiBookTests: XCTestCase {
         XCTAssertEqual(model.preferredEntryMode, .text)
 
         // Reopen entry
-        model.openEntry(for: book.id)
+        model.openEntry(for: card.id)
         XCTAssertEqual(model.draft.mode, .text)
 
         // Verify persistence across new AppModel instance
         let newModel = AppModel(expenses: expenseService, state: state)
         XCTAssertEqual(newModel.preferredEntryMode, .text)
-        newModel.openEntry(for: book.id)
+        newModel.openEntry(for: card.id)
         XCTAssertEqual(newModel.draft.mode, .text)
     }
 
     func testGlobalCategoryCatalogInitialization() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -660,7 +660,7 @@ final class MultiBookTests: XCTestCase {
 
     func testCategoryMetadataUpdatePropagatesToAllActiveCards() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -668,8 +668,8 @@ final class MultiBookTests: XCTestCase {
         let service = try ExpenseService(store: store)
         let model = AppModel(expenses: service, state: state)
 
-        let bookA = try model.createBook(named: "Card A")
-        let bookB = try model.createBook(named: "Card B")
+        let cardA = try model.createCard(named: "Card A")
+        let cardB = try model.createCard(named: "Card B")
 
         guard let foodCat = model.globalCategories.first(where: { $0.name == "Food & Drink" }) else {
             XCTFail("Missing Food & Drink category")
@@ -680,10 +680,10 @@ final class MultiBookTests: XCTestCase {
         var updated = foodCat
         updated.name = "Dining Out"
         updated.symbol = "fork.knife"
-        try model.saveGlobalCategory(updated, activeBookIDs: Set([bookA.id, bookB.id]))
+        try model.saveGlobalCategory(updated, activeCardIDs: Set([cardA.id, cardB.id]))
 
-        let catsA = try store.categories(in: bookA.id)
-        let catsB = try store.categories(in: bookB.id)
+        let catsA = try store.categories(in: cardA.id)
+        let catsB = try store.categories(in: cardB.id)
 
         XCTAssertTrue(catsA.contains(where: { $0.id == foodCat.id && $0.name == "Dining Out" && $0.symbol == "fork.knife" }))
         XCTAssertTrue(catsB.contains(where: { $0.id == foodCat.id && $0.name == "Dining Out" && $0.symbol == "fork.knife" }))
@@ -691,7 +691,7 @@ final class MultiBookTests: XCTestCase {
 
     func testBidirectionalActivation() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -699,8 +699,8 @@ final class MultiBookTests: XCTestCase {
         let service = try ExpenseService(store: store)
         let model = AppModel(expenses: service, state: state)
 
-        let bookA = try model.createBook(named: "Personal")
-        let bookB = try model.createBook(named: "Work")
+        let cardA = try model.createCard(named: "Personal")
+        let cardB = try model.createCard(named: "Work")
 
         guard let firstCat = model.globalCategories.first else {
             XCTFail("No global categories")
@@ -708,25 +708,25 @@ final class MultiBookTests: XCTestCase {
         }
 
         // Both active initially
-        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookA.id))
-        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookB.id))
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: cardA.id))
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: cardB.id))
 
         // Deactivate on Work card
-        try model.setCategory(firstCat.id, active: false, for: bookB.id)
+        try model.setCategory(firstCat.id, active: false, for: cardB.id)
 
-        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookA.id))
-        XCTAssertFalse(model.isCategoryActive(firstCat.id, on: bookB.id))
-        XCTAssertFalse(model.activeCategoryIDs(for: bookB.id).contains(firstCat.id))
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: cardA.id))
+        XCTAssertFalse(model.isCategoryActive(firstCat.id, on: cardB.id))
+        XCTAssertFalse(model.activeCategoryIDs(for: cardB.id).contains(firstCat.id))
 
         // Activate back on Work card
-        try model.setCategory(firstCat.id, active: true, for: bookB.id)
-        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: bookB.id))
-        XCTAssertTrue(model.activeCategoryIDs(for: bookB.id).contains(firstCat.id))
+        try model.setCategory(firstCat.id, active: true, for: cardB.id)
+        XCTAssertTrue(model.isCategoryActive(firstCat.id, on: cardB.id))
+        XCTAssertTrue(model.activeCategoryIDs(for: cardB.id).contains(firstCat.id))
     }
 
     func testCreateCardWithSelectedCategories() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -737,7 +737,7 @@ final class MultiBookTests: XCTestCase {
         let selected = Array(model.globalCategories.prefix(2))
         let selectedIDs = Set(selected.map(\.id))
 
-        let newCard = try model.createBook(named: "Minimal Card", selectedCategoryIDs: selectedIDs)
+        let newCard = try model.createCard(named: "Minimal Card", selectedCategoryIDs: selectedIDs)
         let activeIDs = model.activeCategoryIDs(for: newCard.id)
 
         XCTAssertEqual(activeIDs.count, 2)
@@ -746,7 +746,7 @@ final class MultiBookTests: XCTestCase {
 
     func testCreateCategoryWithCardAssignment() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -754,11 +754,11 @@ final class MultiBookTests: XCTestCase {
         let service = try ExpenseService(store: store)
         let model = AppModel(expenses: service, state: state)
 
-        let card1 = try model.createBook(named: "Card 1")
-        let card2 = try model.createBook(named: "Card 2")
+        let card1 = try model.createCard(named: "Card 1")
+        let card2 = try model.createCard(named: "Card 2")
 
         let customCat = GlobalCategory(name: "Gaming", symbol: "gamecontroller", defaultActiveForNewCards: false)
-        try model.saveGlobalCategory(customCat, activeBookIDs: Set([card1.id]))
+        try model.saveGlobalCategory(customCat, activeCardIDs: Set([card1.id]))
 
         XCTAssertTrue(model.isCategoryActive(customCat.id, on: card1.id))
         XCTAssertFalse(model.isCategoryActive(customCat.id, on: card2.id))
@@ -771,7 +771,7 @@ final class MultiBookTests: XCTestCase {
 
     func testClearActiveCardExpensesPreservesCategoriesAndCard() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -781,13 +781,13 @@ final class MultiBookTests: XCTestCase {
         let backups = BackupService(directory: tempDir, repository: store, state: state, expenses: service)
         model.backups = backups
 
-        let book = try model.createBook(named: "Trip Card")
-        XCTAssertTrue(model.selectBook(book.id))
+        let card = try model.createCard(named: "Trip Card")
+        XCTAssertTrue(model.selectCard(card.id))
 
         let categories = model.categories
         let exp = Expense(id: UUID(), amount: 45_000_00, day: Day.string(.now), note: "Taxi",
                           allocations: [.init(categoryID: categories[0].id, amount: 45_000_00)],
-                          bookID: book.id)
+                          cardID: card.id)
         try model.save(exp)
         XCTAssertEqual(model.expenses.count, 1)
 
@@ -800,8 +800,8 @@ final class MultiBookTests: XCTestCase {
 
     func testSelectingCardsSwapsAndPreservesPerCardDrafts() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
-        let second = try store.createBook(named: "Travel")
+        try store.prepareSampleCard()
+        let second = try store.createCard(named: "Travel")
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -812,19 +812,19 @@ final class MultiBookTests: XCTestCase {
         let service = try ExpenseService(store: store)
         let model = AppModel(expenses: service, state: state)
         model.draft.note = "Coffee"
-        model.draft.bookID = BookProfile.sample.id
+        model.draft.cardID = Card.demo.id
 
-        XCTAssertTrue(model.selectBook(second.id))
+        XCTAssertTrue(model.selectCard(second.id))
         XCTAssertEqual(model.draft.note, "Train")
-        XCTAssertEqual(try state.loadDraft(for: BookProfile.sample.id).note, "Coffee")
+        XCTAssertEqual(try state.loadDraft(for: Card.demo.id).note, "Coffee")
 
-        XCTAssertTrue(model.selectBook(BookProfile.sample.id))
+        XCTAssertTrue(model.selectCard(Card.demo.id))
         XCTAssertEqual(model.draft.note, "Coffee")
     }
 
     func testClearAllTransactionsAcrossMultipleCards() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -834,15 +834,15 @@ final class MultiBookTests: XCTestCase {
         let backups = BackupService(directory: tempDir, repository: store, state: state, expenses: service)
         model.backups = backups
 
-        let card1 = try model.createBook(named: "Card A")
-        let card2 = try model.createBook(named: "Card B")
+        let card1 = try model.createCard(named: "Card A")
+        let card2 = try model.createCard(named: "Card B")
 
         let exp1 = Expense(id: UUID(), amount: 30_000_00, day: Day.string(.now), note: "Card1 Exp",
                            allocations: [.init(categoryID: model.categories[0].id, amount: 30_000_00)],
-                           bookID: card1.id)
+                           cardID: card1.id)
         let exp2 = Expense(id: UUID(), amount: 50_000_00, day: Day.string(.now), note: "Card2 Exp",
                            allocations: [.init(categoryID: model.categories[0].id, amount: 50_000_00)],
-                           bookID: card2.id)
+                           cardID: card2.id)
         try store.save(exp1, in: card1.id)
         try store.save(exp2, in: card2.id)
 
@@ -850,12 +850,12 @@ final class MultiBookTests: XCTestCase {
 
         XCTAssertEqual(try store.expenses(in: card1.id).count, 0)
         XCTAssertEqual(try store.expenses(in: card2.id).count, 0)
-        XCTAssertEqual(try store.books().count, 3) // Sample book + Card A + Card B
+        XCTAssertEqual(try store.cards().count, 3) // Sample card + Card A + Card B
     }
 
     func testResetAllDataCreatesFreshRealCardAndSafetyBackup() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -865,15 +865,15 @@ final class MultiBookTests: XCTestCase {
         let backups = BackupService(directory: tempDir, repository: store, state: state, expenses: service)
         model.backups = backups
 
-        _ = try model.createBook(named: "Extra Card 1")
-        _ = try model.createBook(named: "Extra Card 2")
-        XCTAssertEqual(model.books.count, 3)
+        _ = try model.createCard(named: "Extra Card 1")
+        _ = try model.createCard(named: "Extra Card 2")
+        XCTAssertEqual(model.cards.count, 3)
 
         try model.resetAllData(cardName: "Personal Wallet")
 
-        XCTAssertEqual(model.books.count, 1)
-        XCTAssertEqual(model.books.first?.name, "Personal Wallet")
-        XCTAssertEqual(model.books.first?.kind, .real)
+        XCTAssertEqual(model.cards.count, 1)
+        XCTAssertEqual(model.cards.first?.name, "Personal Wallet")
+        XCTAssertEqual(model.cards.first?.kind, .real)
         XCTAssertEqual(model.expenses.count, 0)
         XCTAssertEqual(model.bills.count, 0)
         XCTAssertEqual(model.categories.count, ExpenseCategory.defaults.count)
@@ -882,60 +882,60 @@ final class MultiBookTests: XCTestCase {
         let safetyData = try Data(contentsOf: backups.safetyURL)
         let decodedWorkspace = try? WorkspaceBackup.decode(safetyData)
         XCTAssertNotNil(decodedWorkspace)
-        XCTAssertEqual(decodedWorkspace?.books.count, 3)
+        XCTAssertEqual(decodedWorkspace?.cards.count, 3)
     }
 
     func testDailyLedgerStressKeepsHundredsOfWritesIsolatedAcrossCards() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let books = try (1...3).map { try store.createBook(named: "Stress Card \($0)") }
+        let cards = try (1...3).map { try store.createCard(named: "Stress Card \($0)") }
         var expectedTotals: [UUID: Int64] = [:]
 
-        for (bookIndex, book) in books.enumerated() {
-            let category = try XCTUnwrap(store.categories(in: book.id).first)
+        for (cardIndex, card) in cards.enumerated() {
+            let category = try XCTUnwrap(store.categories(in: card.id).first)
             var total: Int64 = 0
             var ids: [UUID] = []
             for entryIndex in 0..<250 {
                 let id = UUID()
-                let amount = Int64((bookIndex + 1) * 10_000 + entryIndex)
+                let amount = Int64((cardIndex + 1) * 10_000 + entryIndex)
                 try store.save(
                     Expense(id: id, amount: amount, day: "2026-09-19", note: "Entry \(entryIndex)",
-                            allocations: [.init(categoryID: category.id, amount: amount)], bookID: book.id),
-                    in: book.id
+                            allocations: [.init(categoryID: category.id, amount: amount)], cardID: card.id),
+                    in: card.id
                 )
                 ids.append(id)
                 total += amount
             }
 
             for entryIndex in stride(from: 0, to: 250, by: 25) {
-                let amount = Int64((bookIndex + 1) * 10_000 + entryIndex + 500)
+                let amount = Int64((cardIndex + 1) * 10_000 + entryIndex + 500)
                 try store.save(
                     Expense(id: ids[entryIndex], amount: amount, day: "2026-09-19", note: "Updated \(entryIndex)",
-                            allocations: [.init(categoryID: category.id, amount: amount)], bookID: book.id),
-                    in: book.id
+                            allocations: [.init(categoryID: category.id, amount: amount)], cardID: card.id),
+                    in: card.id
                 )
                 total += 500
             }
 
             for entryIndex in stride(from: 0, to: 250, by: 50) {
                 try store.delete(ids[entryIndex])
-                total -= Int64((bookIndex + 1) * 10_000 + entryIndex + 500)
+                total -= Int64((cardIndex + 1) * 10_000 + entryIndex + 500)
             }
-            expectedTotals[book.id] = total
+            expectedTotals[card.id] = total
         }
 
         let service = try ExpenseService(store: store)
         for index in 0..<150 {
-            let book = books[index % books.count]
-            try service.selectBook(book.id)
-            XCTAssertEqual(service.activeBookID, book.id)
+            let card = cards[index % cards.count]
+            try service.selectCard(card.id)
+            XCTAssertEqual(service.activeCardID, card.id)
             XCTAssertEqual(service.expenses.count, 245)
         }
 
-        for book in books {
-            let expenses = try store.expenses(in: book.id)
+        for card in cards {
+            let expenses = try store.expenses(in: card.id)
             XCTAssertEqual(expenses.count, 245)
-            XCTAssertEqual(expenses.reduce(Int64(0)) { $0 + $1.amount }, try XCTUnwrap(expectedTotals[book.id]))
-            XCTAssertTrue(expenses.allSatisfy { $0.bookID == book.id })
+            XCTAssertEqual(expenses.reduce(Int64(0)) { $0 + $1.amount }, try XCTUnwrap(expectedTotals[card.id]))
+            XCTAssertTrue(expenses.allSatisfy { $0.cardID == card.id })
             XCTAssertEqual(Set(expenses.map(\.id)).count, expenses.count)
         }
     }

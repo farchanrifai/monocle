@@ -8,7 +8,7 @@ final class IntentTests: XCTestCase {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
+        try repo.prepareSampleCard()
         let state = FileLocalStateStore(directory: tempDir)
         let service = try ExpenseService(store: repo)
         let model = AppModel(expenses: service, state: state)
@@ -63,7 +63,7 @@ final class IntentTests: XCTestCase {
         prefs.shortcutInputOrder = [.card, .card]
         let invalid = try decoder.decode(WorkspacePreferences.self, from: encoder.encode(prefs))
         XCTAssertEqual(invalid.shortcutInputOrder, [.card, .card], "Preserve malformed evidence instead of rewriting it")
-        XCTAssertThrowsError(try invalid.validate(books: [], categoriesByBook: [:]))
+        XCTAssertThrowsError(try invalid.validate(cards: [], categoriesByCard: [:]))
     }
 
     func testAppModelShortcutOrderCustomization() throws {
@@ -78,13 +78,13 @@ final class IntentTests: XCTestCase {
         XCTAssertEqual(model.shortcutInputOrder, newOrder)
 
         // Verify activeCategories(for:) filters properly
-        let books = try store.books()
-        guard let firstBook = books.first else {
+        let cards = try store.cards()
+        guard let firstCard = cards.first else {
             XCTFail("Expected at least one book")
             return
         }
 
-        let cats = model.activeCategories(for: firstBook.id)
+        let cats = model.activeCategories(for: firstCard.id)
         XCTAssertFalse(cats.isEmpty)
     }
 
@@ -109,11 +109,11 @@ final class IntentTests: XCTestCase {
         AppEnvironment.shared.model = model
         AppEnvironment.shared.expenses = service
 
-        let books = try store.books()
-        let book = books[0]
-        let cardEntity = CardEntity(book)
+        let cards = try store.cards()
+        let card = cards[0]
+        let cardEntity = CardEntity(card)
 
-        let activeCats = model.activeCategories(for: book.id)
+        let activeCats = model.activeCategories(for: card.id)
         let categoryEntity = ExpenseCategoryEntity(activeCats[0])
 
         var intent = AddExpenseIntent()
@@ -127,22 +127,22 @@ final class IntentTests: XCTestCase {
         XCTAssertNotNil(result)
 
         // Verify saved expense
-        let expenses = try store.expenses(in: book.id)
+        let expenses = try store.expenses(in: card.id)
         XCTAssertEqual(expenses.count, 1)
         let saved = expenses[0]
         XCTAssertEqual(saved.amount, 55_000_00)
         XCTAssertEqual(saved.note, "Iced Latte")
         XCTAssertEqual(saved.allocations.first?.categoryID.uuidString, categoryEntity.id)
-        XCTAssertEqual(saved.bookID, book.id)
+        XCTAssertEqual(saved.cardID, card.id)
     }
 
     func testAddExpenseIntentRevalidatesCategoryAfterCardResolution() async throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
-        let sampleCategories = try store.categories(in: BookProfile.sample.id)
+        try store.prepareSampleCard()
+        let sampleCategories = try store.categories(in: Card.demo.id)
         let allowed = try XCTUnwrap(sampleCategories.first)
         let invalid = try XCTUnwrap(sampleCategories.dropFirst().first)
-        let second = try store.createBook(named: "Only Food", initialCategories: [GlobalCategory(category: allowed)])
+        let second = try store.createCard(named: "Only Food", initialCategories: [GlobalCategory(category: allowed)])
         let service = try ExpenseService(store: store)
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

@@ -690,7 +690,7 @@ final class MonocleUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
-        // Create second book so stack has multiple cards
+        // Create second card so stack has multiple cards
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Cards & Stacks"].tap()
@@ -707,7 +707,7 @@ final class MonocleUITests: XCTestCase {
         }
         app.buttons["saveCardCustomization"].tap()
 
-        // Close newly focused book detail sheet if open
+        // Close newly focused card detail sheet if open
         if app.buttons["homeLogo"].waitForExistence(timeout: 3) {
             app.buttons["homeLogo"].tap()
         }
@@ -723,7 +723,7 @@ final class MonocleUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
 
-        // Verify carousel previews exist for multiple books
+        // Verify carousel previews exist for multiple cards
         let previews = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'customizer-preview-'"))
         XCTAssertTrue(previews.element(boundBy: 0).waitForExistence(timeout: 5))
         XCTAssertTrue(previews.element(boundBy: 1).waitForExistence(timeout: 5))
@@ -828,13 +828,13 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
-    func testCreateNewBookDirectlyInCustomizationPanel() throws {
+    func testCreateNewCardDirectlyInCustomizationPanel() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
-        // 1. Tap Create new book in options menu
+        // 1. Tap Create new card in options menu
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 10))
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Cards & Stacks"].tap()
@@ -846,7 +846,7 @@ final class MonocleUITests: XCTestCase {
         // 2. Verify we are directly in the customization panel
         XCTAssertTrue(app.staticTexts["New Card"].waitForExistence(timeout: 5))
 
-        // Capture screenshot of direct new book customizer entry
+        // Capture screenshot of direct new card customizer entry
         let directEntryShot = app.screenshot()
         add(XCTAttachment(screenshot: directEntryShot))
 
@@ -875,12 +875,12 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Investments"].waitForExistence(timeout: 5))
 
-        let newBookStackShot = app.screenshot()
-        add(XCTAttachment(screenshot: newBookStackShot))
+        let newCardStackShot = app.screenshot()
+        add(XCTAttachment(screenshot: newCardStackShot))
     }
 
     @MainActor
-    func testCardCustomizerPlaceholderCardAddsNewBook() throws {
+    func testCardCustomizerPlaceholderCardAddsNewCard() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
@@ -908,7 +908,7 @@ final class MonocleUITests: XCTestCase {
         let centeredShot = app.screenshot()
         add(XCTAttachment(screenshot: centeredShot))
 
-        // Tap the createNewCardButton or placeholder card to create new draft book
+        // Tap the createNewCardButton or placeholder card to create new draft card
         let createNewCardButton = app.buttons["createNewCardButton"]
         if createNewCardButton.waitForExistence(timeout: 3) {
             createNewCardButton.tap()
@@ -916,14 +916,14 @@ final class MonocleUITests: XCTestCase {
             placeholderCard.tap()
         }
 
-        // 4. Verify inline text field for the new draft book appears
+        // 4. Verify inline text field for the new draft card appears
         let inlineTextField = app.textFields["cardNameInlineTextField"]
         XCTAssertTrue(inlineTextField.waitForExistence(timeout: 5))
 
         // 5. Test discard/cancel draft: tap Cancel in navigation bar
         app.buttons["Cancel"].tap()
 
-        // 6. Verify back on home screen and no extra book was added
+        // 6. Verify back on home screen and no extra card was added
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
     }
 

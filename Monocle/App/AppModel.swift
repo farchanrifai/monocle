@@ -9,14 +9,14 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 }
 
 enum CustomizerTarget: Identifiable, Equatable {
-    case existing(BookProfile)
-    case newBook
+    case existing(Card)
+    case newCard
 
     var id: String {
         switch self {
-        case .existing(let book):
-            return book.id.uuidString
-        case .newBook:
+        case .existing(let card):
+            return card.id.uuidString
+        case .newCard:
             return "new-book"
         }
     }
@@ -44,7 +44,7 @@ final class AppModel {
     var dataRevision: UInt64 { expenseService?.committedRevision ?? 0 }
     var billOccurrences: [BillOccurrence] { expenseService?.billOccurrences ?? [] }
     var activeCategories: [ExpenseCategory] {
-        let currentInactive = workspacePreferences.cardInactiveCategoryIDs[activeBookID] ?? []
+        let currentInactive = workspacePreferences.cardInactiveCategoryIDs[activeCardID] ?? []
         return categories.filter { !settings.archivedCategoryIDs.contains($0.id) && !currentInactive.contains($0.id) }
     }
     var globalCategories: [GlobalCategory] {
@@ -100,17 +100,17 @@ final class AppModel {
     let expenseService: ExpenseService?
     private let state: (any LocalStateStore)?
 
-    var books: [BookProfile] { expenseService?.books ?? [settings.book] }
-    var activeBookID: UUID { expenseService?.activeBookID ?? settings.book.id }
-    var selectedBookID: UUID?
+    var cards: [Card] { expenseService?.cards ?? [settings.card] }
+    var activeCardID: UUID { expenseService?.activeCardID ?? settings.card.id }
+    var selectedCardID: UUID?
     var workspacePreferences = WorkspacePreferences()
-    var hiddenBookIDs: Set<UUID> = []
-    var alwaysHiddenBookIDs: Set<UUID> = []
+    var hiddenCardIDs: Set<UUID> = []
+    var alwaysHiddenCardIDs: Set<UUID> = []
     var customizerTarget: CustomizerTarget? = nil
-    var customizingBook: BookProfile? {
+    var customizingCard: Card? {
         get {
-            if case .existing(let book) = customizerTarget {
-                return book
+            if case .existing(let card) = customizerTarget {
+                return card
             }
             return nil
         }
@@ -147,7 +147,7 @@ final class AppModel {
         }
     }
 
-    var visualDirection: BookVisualDirection {
+    var visualDirection: CardVisualDirection {
         get { workspacePreferences.direction }
         set {
             guard workspacePreferences.direction != newValue else { return }
@@ -157,7 +157,7 @@ final class AppModel {
         }
     }
 
-    func effectiveDirection(for systemScheme: ColorScheme) -> BookVisualDirection {
+    func effectiveDirection(for systemScheme: ColorScheme) -> CardVisualDirection {
         if autoAppearance {
             return systemScheme == .dark ? .instrument : .light
         } else {
@@ -203,46 +203,46 @@ final class AppModel {
         return stacks.first
     }
 
-    var orderedBooks: [BookProfile] {
-        let current = books
-        var result: [BookProfile] = []
-        for id in workspacePreferences.bookOrder {
-            if let book = current.first(where: { $0.id == id }) {
-                result.append(book)
+    var orderedCards: [Card] {
+        let current = cards
+        var result: [Card] = []
+        for id in workspacePreferences.cardOrder {
+            if let card = current.first(where: { $0.id == id }) {
+                result.append(card)
             }
         }
-        for book in current where !result.contains(where: { $0.id == book.id }) {
-            result.append(book)
+        for card in current where !result.contains(where: { $0.id == card.id }) {
+            result.append(card)
         }
         return result
     }
 
-    var unhiddenBooks: [BookProfile] {
-        orderedBooks.filter { !alwaysHiddenBookIDs.contains($0.id) }
+    var unhiddenCards: [Card] {
+        orderedCards.filter { !alwaysHiddenCardIDs.contains($0.id) }
     }
 
-    var cardsInCurrentStack: [BookProfile] {
-        guard let stack = currentStack else { return unhiddenBooks }
-        let current = books
-        var result: [BookProfile] = []
+    var cardsInCurrentStack: [Card] {
+        guard let stack = currentStack else { return unhiddenCards }
+        let current = cards
+        var result: [Card] = []
         for id in stack.cardIDs {
-            if !alwaysHiddenBookIDs.contains(id), let book = current.first(where: { $0.id == id }) {
-                result.append(book)
+            if !alwaysHiddenCardIDs.contains(id), let card = current.first(where: { $0.id == id }) {
+                result.append(card)
             }
         }
         return result
     }
 
-    var homeDeckCards: [BookProfile] {
+    var homeDeckCards: [Card] {
         switch filterScope {
         case .activeStack:
             return cardsInCurrentStack
         case .allCards:
-            return unhiddenBooks
+            return unhiddenCards
         }
     }
 
-    var visibleBooks: [BookProfile] {
+    var visibleCards: [Card] {
         homeDeckCards
     }
 
@@ -261,7 +261,7 @@ final class AppModel {
     }
     /// In the active card's currency, like its budget.
     var spent: Int64 {
-        guard let card = books.first(where: { $0.id == activeBookID }) else { return Money.sum(cycleExpenses.map(\.amount)) }
+        guard let card = cards.first(where: { $0.id == activeCardID }) else { return Money.sum(cycleExpenses.map(\.amount)) }
         return Money.sum(cycleExpenses.map { cardAmount($0, in: card) })
     }
     var remaining: Int64 { activeBudget.overallLimit - spent }
@@ -276,13 +276,13 @@ final class AppModel {
         do {
             let prefs = try state.loadWorkspacePreferences()
             var categoryMap: [UUID: [ExpenseCategory]] = [:]
-            for book in expenses.books { categoryMap[book.id] = try expenses.categories(for: book.id) }
-            try prefs.validate(books: expenses.books, categoriesByBook: categoryMap)
-            let settingsBooks = expenses.books.map { BookBackupItem(book: $0, categories: categoryMap[$0.id] ?? [], expenses: [], budgets: []) }
-            try self.settings.validate(books: settingsBooks, globalCategories: prefs.globalCategories, allowLegacySampleProfile: true)
-            if let stored = expenses.books.first(where: { $0.id == settings.book.id }) { self.settings.book = stored }
-            else if settings.book == .sample, let active = expenses.books.first(where: { $0.id == expenses.activeBookID }) { self.settings.book = active }
-            if self.settings.book != settings.book { try state.saveSettings(self.settings) }
+            for card in expenses.cards { categoryMap[card.id] = try expenses.categories(for: card.id) }
+            try prefs.validate(cards: expenses.cards, categoriesByCard: categoryMap)
+            let settingsCards = expenses.cards.map { CardBackupItem(card: $0, categories: categoryMap[$0.id] ?? [], expenses: [], budgets: []) }
+            try self.settings.validate(cards: settingsCards, globalCategories: prefs.globalCategories, allowLegacySampleProfile: true)
+            if let stored = expenses.cards.first(where: { $0.id == settings.card.id }) { self.settings.card = stored }
+            else if settings.card == .demo, let active = expenses.cards.first(where: { $0.id == expenses.activeCardID }) { self.settings.card = active }
+            if self.settings.card != settings.card { try state.saveSettings(self.settings) }
             publishPreferences(prefs)
             try ensureGlobalCategories()
             try ensureDefaultStack()
@@ -306,9 +306,9 @@ final class AppModel {
 
     func ensureDefaultStack() throws {
         var proposed = workspacePreferences
-        if proposed.bookOrder.isEmpty { proposed.bookOrder = books.map(\.id) }
+        if proposed.cardOrder.isEmpty { proposed.cardOrder = cards.map(\.id) }
         if proposed.stacks.isEmpty {
-            let initial = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: orderedBooks.map(\.id).filter { !alwaysHiddenBookIDs.contains($0) })
+            let initial = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: orderedCards.map(\.id).filter { !alwaysHiddenCardIDs.contains($0) })
             proposed.stacks = [initial]; proposed.activeStackID = initial.id
         } else if !proposed.stacks.contains(where: { $0.id == proposed.activeStackID }) { proposed.activeStackID = proposed.stacks.first?.id }
         if proposed != workspacePreferences { try commitPresentationPreferences(proposed) }
@@ -326,9 +326,9 @@ final class AppModel {
         guard startupError == nil, expenseService?.isBlocked != true else { throw BackupError.recoveryRequired }
         var proposed = proposed
         proposed.keepEachCardInOneStack()
-        var categoriesByBook: [UUID: [ExpenseCategory]] = [:]
-        for book in books { categoriesByBook[book.id] = try expenseService?.categories(for: book.id) }
-        try proposed.validate(books: books, categoriesByBook: categoriesByBook)
+        var categoriesByCard: [UUID: [ExpenseCategory]] = [:]
+        for card in cards { categoriesByCard[card.id] = try expenseService?.categories(for: card.id) }
+        try proposed.validate(cards: cards, categoriesByCard: categoriesByCard)
         try requireState().saveWorkspacePreferences(proposed)
         publishPreferences(proposed); syncWidgetSnapshot()
     }
@@ -338,8 +338,8 @@ final class AppModel {
         var catalog: [GlobalCategory] = []
         var seenNames = Set<String>()
         var seenIDs = Set<UUID>()
-        for book in books {
-            for cat in try expenseService.categories(for: book.id) {
+        for card in cards {
+            for cat in try expenseService.categories(for: card.id) {
                 let name = cat.name.trimmingCharacters(in: .whitespacesAndNewlines)
                     .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
                 guard seenNames.insert(name).inserted else { continue }
@@ -351,34 +351,34 @@ final class AppModel {
         let mapping = try expenseService.categoryMigrationMapping(to: catalog)
         var preferences = workspacePreferences
         preferences.globalCategories = catalog
-        for (bookID, ids) in preferences.cardInactiveCategoryIDs {
-            preferences.cardInactiveCategoryIDs[bookID] = ids.map { mapping[bookID]?[$0] ?? $0 }
+        for (cardID, ids) in preferences.cardInactiveCategoryIDs {
+            preferences.cardInactiveCategoryIDs[cardID] = ids.map { mapping[cardID]?[$0] ?? $0 }
         }
         var updatedSettings = settings
-        let settingsMap = mapping[settings.book.id] ?? [:]
+        let settingsMap = mapping[settings.card.id] ?? [:]
         updatedSettings.archivedCategoryIDs = Set(settings.archivedCategoryIDs.map { settingsMap[$0] ?? $0 })
         updatedSettings.categoryRules = settings.categoryRules.map { rule in
             var value = rule; value.categoryID = settingsMap[rule.categoryID] ?? rule.categoryID; return value
         }
         var drafts: [UUID: ExpenseDraft] = [:]
-        for book in books {
-            var value = book.id == (draft.bookID ?? settings.book.id) ? draft : try requireState().loadDraft(for: book.id)
-            value.bookID = book.id
-            if let categoryID = value.categoryID { value.categoryID = mapping[book.id]?[categoryID] ?? categoryID }
+        for card in cards {
+            var value = card.id == (draft.cardID ?? settings.card.id) ? draft : try requireState().loadDraft(for: card.id)
+            value.cardID = card.id
+            if let categoryID = value.categoryID { value.categoryID = mapping[card.id]?[categoryID] ?? categoryID }
             value.splitAllocations = value.splitAllocations.map { allocation in
-                var result = allocation; result.categoryID = mapping[book.id]?[allocation.categoryID] ?? allocation.categoryID; return result
+                var result = allocation; result.categoryID = mapping[card.id]?[allocation.categoryID] ?? allocation.categoryID; return result
             }
-            drafts[book.id] = value
+            drafts[card.id] = value
         }
         try performWorkspaceCommand {
             try expenseService.unifyCategoriesToGlobalCatalog(catalog)
-            for (bookID, value) in drafts { try requireState().saveDraft(value, for: bookID) }
+            for (cardID, value) in drafts { try requireState().saveDraft(value, for: cardID) }
             try requireState().saveSettings(updatedSettings)
             try requireState().saveWorkspacePreferences(preferences)
         }
         settings = updatedSettings
         expenseService.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
-        if let value = drafts[draft.bookID ?? settings.book.id] { draft = value }
+        if let value = drafts[draft.cardID ?? settings.card.id] { draft = value }
         publishPreferences(preferences)
     }
 
@@ -394,7 +394,7 @@ final class AppModel {
                 let oldSettings = try local.loadSettings()
                 let oldPreferences = try local.loadWorkspacePreferences()
                 var oldDrafts: [UUID: ExpenseDraft] = [:]
-                for book in books { oldDrafts[book.id] = try local.loadDraft(for: book.id) }
+                for card in cards { oldDrafts[card.id] = try local.loadDraft(for: card.id) }
                 do { try expenseService.performTransaction(operation) }
                 catch {
                     let originalError = error
@@ -420,8 +420,8 @@ final class AppModel {
         Money.reportingCurrency = preferences.reportingCurrency
         workspacePreferences = preferences
         durablePreferences = preferences
-        hiddenBookIDs = Set(preferences.visibleBookIDs.isEmpty ? [] : books.map(\.id).filter { !preferences.visibleBookIDs.contains($0) })
-        alwaysHiddenBookIDs = Set(preferences.alwaysHiddenBookIDs)
+        hiddenCardIDs = Set(preferences.visibleCardIDs.isEmpty ? [] : cards.map(\.id).filter { !preferences.visibleCardIDs.contains($0) })
+        alwaysHiddenCardIDs = Set(preferences.alwaysHiddenCardIDs)
         memoizedActivities = nil
     }
 
@@ -447,7 +447,7 @@ final class AppModel {
     }
     func title(_ expense: Expense) -> String { expense.note.isEmpty ? category(expense.allocations.first?.categoryID)?.name ?? "Expense" : expense.note }
     func spent(in category: ExpenseCategory) -> Int64 {
-        let card = books.first { $0.id == activeBookID }
+        let card = cards.first { $0.id == activeCardID }
         return Money.sum(cycleExpenses.compactMap { expense -> Int64? in
             guard let part = expense.allocations.first(where: { $0.categoryID == category.id }) else { return nil }
             guard let card, currency(of: card) != reportingCurrency else { return part.amount }
@@ -461,7 +461,7 @@ final class AppModel {
                 return draft != originalDraft
             }
             let saved = expenses.first(where: { $0.id == draft.id })
-                ?? books.lazy.compactMap { self.expenses(for: $0.id).first(where: { $0.id == self.draft.id }) }.first
+                ?? cards.lazy.compactMap { self.expenses(for: $0.id).first(where: { $0.id == self.draft.id }) }.first
             guard let saved else { return false }
             return (try? draft.expense()) != saved
         }
@@ -475,14 +475,14 @@ final class AppModel {
         }
     }
 
-    func openEntry(for bookID: UUID? = nil, categoryID: UUID? = nil) {
+    func openEntry(for cardID: UUID? = nil, categoryID: UUID? = nil) {
         originalDraft = nil
-        let targetBookID = bookID ?? selectedBookID ?? activeBookID
-        if targetBookID != activeBookID || draft.bookID != targetBookID {
-            guard selectBook(targetBookID) else { return }
+        let targetCardID = cardID ?? selectedCardID ?? activeCardID
+        if targetCardID != activeCardID || draft.cardID != targetCardID {
+            guard selectCard(targetCardID) else { return }
         }
-        draft.bookID = targetBookID
-        if let categoryID, let cat = activeCategories(for: targetBookID).first(where: { $0.id == categoryID }) {
+        draft.cardID = targetCardID
+        if let categoryID, let cat = activeCategories(for: targetCardID).first(where: { $0.id == categoryID }) {
             draft.categoryID = cat.id
         }
         if !draft.editing {
@@ -493,8 +493,8 @@ final class AppModel {
     func edit(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = false; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense)
-        if draft.bookID == nil {
-            draft.bookID = expense.bookID ?? activeBookID
+        if draft.cardID == nil {
+            draft.cardID = expense.cardID ?? activeCardID
         }
         originalDraft = draft
         showEntry = true
@@ -502,8 +502,8 @@ final class AppModel {
     func persistDraft() {
         guard startupError == nil else { return }
         do {
-            if let bookID = draft.bookID {
-                try requireState().saveDraft(draft, for: bookID)
+            if let cardID = draft.cardID {
+                try requireState().saveDraft(draft, for: cardID)
             } else {
                 try requireState().saveDraft(draft)
             }
@@ -512,10 +512,10 @@ final class AppModel {
     @discardableResult
     func discardDraft() -> Bool {
         originalDraft = nil
-        var cleared = ExpenseDraft(); cleared.bookID = draft.bookID ?? activeBookID
+        var cleared = ExpenseDraft(); cleared.cardID = draft.cardID ?? activeCardID
         do {
-            if let bookID = draft.bookID {
-                try requireState().saveDraft(cleared, for: bookID)
+            if let cardID = draft.cardID {
+                try requireState().saveDraft(cleared, for: cardID)
             } else {
                 try requireState().saveDraft(cleared)
             }
@@ -533,40 +533,40 @@ final class AppModel {
         selectedTab = 0
         showEntry = false
         showSettings = false
-        if !visibleBooks.contains(where: { $0.id == id }) {
+        if !visibleCards.contains(where: { $0.id == id }) {
             if let stack = stacks.first(where: { $0.cardIDs.contains(id) }) {
                 setActiveStack(id: stack.id)
             } else {
                 filterScope = .allCards
             }
         }
-        selectBook(id)
+        selectCard(id)
     }
 
     func openStackInHome(id: UUID) {
         selectedTab = 0
         showEntry = false
         showSettings = false
-        selectedBookID = nil
+        selectedCardID = nil
         setActiveStack(id: id)
     }
 
     @discardableResult
-    func selectBook(_ id: UUID) -> Bool {
-        guard let expenseService, books.contains(where: { $0.id == id }) else {
+    func selectCard(_ id: UUID) -> Bool {
+        guard let expenseService, cards.contains(where: { $0.id == id }) else {
             error = "The selected card is no longer available."
             return false
         }
         do {
-            if draft.bookID != id {
-                try requireState().saveDraft(draft, for: draft.bookID ?? activeBookID)
+            if draft.cardID != id {
+                try requireState().saveDraft(draft, for: draft.cardID ?? activeCardID)
             }
             let targetDraft = try requireState().loadDraft(for: id)
-            try expenseService.selectBook(id)
-            selectedBookID = id
-            if draft.bookID != id {
+            try expenseService.selectCard(id)
+            selectedCardID = id
+            if draft.cardID != id {
                 draft = targetDraft
-                draft.bookID = id
+                draft.cardID = id
                 originalDraft = nil
             }
             invalidateExpenseCaches()
@@ -577,16 +577,16 @@ final class AppModel {
         }
     }
 
-    func createBook(named name: String, selectedCategoryIDs: Set<UUID>? = nil) throws -> BookProfile {
+    func createCard(named name: String, selectedCategoryIDs: Set<UUID>? = nil) throws -> Card {
         guard let expenseService else { throw EntryError.corruptStore }
         let initialCategories = globalCategories.filter { selectedCategoryIDs?.contains($0.id) ?? $0.defaultActiveForNewCards }
-        var created: BookProfile?
+        var created: Card?
         var proposed = workspacePreferences
         try performWorkspaceCommand {
-            let book = try expenseService.createBook(named: name, initialCategories: initialCategories)
-            created = book
-            proposed.bookOrder.append(book.id)
-            if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(book.id) }
+            let card = try expenseService.createCard(named: name, initialCategories: initialCategories)
+            created = card
+            proposed.cardOrder.append(card.id)
+            if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(card.id) }
             try requireState().saveWorkspacePreferences(proposed)
         }
         guard let created else { throw EntryError.corruptStore }
@@ -594,52 +594,52 @@ final class AppModel {
         return created
     }
 
-    func renameBook(id: UUID, to name: String) throws {
+    func renameCard(id: UUID, to name: String) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        guard let existing = books.first(where: { $0.id == id }) else { throw BackupError.invalid }
+        guard let existing = cards.first(where: { $0.id == id }) else { throw BackupError.invalid }
         var renamed = existing
         renamed.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         try renamed.validate()
         var proposed = settings
-        if proposed.book.id == id { proposed.book = renamed }
+        if proposed.card.id == id { proposed.card = renamed }
         try performWorkspaceCommand {
-            try expenseService.renameBook(id: id, to: name)
+            try expenseService.renameCard(id: id, to: name)
             try requireState().saveSettings(proposed)
         }
         settings = proposed; invalidateExpenseCaches(); showToast("Card renamed")
     }
 
-    func deleteBook(id: UUID) throws {
+    func deleteCard(id: UUID) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         var proposed = workspacePreferences
         var updatedSettings = settings
-        let remainingBooks = books.filter { $0.id != id }
-        guard !remainingBooks.isEmpty else { throw BackupError.invalid }
-        let ownsDeletedDraft = (draft.bookID ?? settings.book.id) == id
-        let replacementDraftID = activeBookID == id ? remainingBooks[0].id : activeBookID
+        let remainingCards = cards.filter { $0.id != id }
+        guard !remainingCards.isEmpty else { throw BackupError.invalid }
+        let ownsDeletedDraft = (draft.cardID ?? settings.card.id) == id
+        let replacementDraftID = activeCardID == id ? remainingCards[0].id : activeCardID
         let replacementDraft = ownsDeletedDraft ? try requireState().loadDraft(for: replacementDraftID) : nil
-        if updatedSettings.book.id == id, let replacement = remainingBooks.first {
-            updatedSettings.book = replacement
+        if updatedSettings.card.id == id, let replacement = remainingCards.first {
+            updatedSettings.card = replacement
             if let budget = BudgetHistory.active(on: .now, budgets: try expenseService.budgets(for: replacement.id)) {
                 updatedSettings.budget = budget.overallLimit; updatedSettings.startDay = budget.startDay
             }
         }
         let oldCustom = proposed.cardCustomizations.removeValue(forKey: id)
         proposed.cardInactiveCategoryIDs.removeValue(forKey: id)
-        proposed.bookOrder.removeAll { $0 == id }
-        proposed.visibleBookIDs.removeAll { $0 == id }
-        proposed.alwaysHiddenBookIDs.removeAll { $0 == id }
+        proposed.cardOrder.removeAll { $0 == id }
+        proposed.visibleCardIDs.removeAll { $0 == id }
+        proposed.alwaysHiddenCardIDs.removeAll { $0 == id }
         for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == id } }
         try performWorkspaceCommand {
-            try expenseService.deleteBook(id: id)
+            try expenseService.deleteCard(id: id)
             try requireState().saveSettings(updatedSettings)
             try requireState().saveWorkspacePreferences(proposed)
         }
         settings = updatedSettings
         expenseService.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
         publishPreferences(proposed)
-        if selectedBookID == id { selectedBookID = nil }
-        if var replacementDraft { replacementDraft.bookID = activeBookID; draft = replacementDraft; originalDraft = nil }
+        if selectedCardID == id { selectedCardID = nil }
+        if var replacementDraft { replacementDraft.cardID = activeCardID; draft = replacementDraft; originalDraft = nil }
         if let oldCustom, case .customPhoto(let filename) = oldCustom.style,
            !proposed.cardCustomizations.values.contains(where: { $0.style == oldCustom.style }) {
             CardArtworkStore.shared.deleteArtwork(filename: filename)
@@ -647,43 +647,43 @@ final class AppModel {
         invalidateExpenseCaches(); showToast("Card deleted")
     }
 
-    func applyCardCustomizations(names: [UUID: String], customizations: [UUID: BookCardCustomization],
-                                 newBookIDs: Set<UUID>, selections: [UUID: Set<UUID>]) throws {
+    func applyCardCustomizations(names: [UUID: String], customizations: [UUID: CardCustomization],
+                                 newCardIDs: Set<UUID>, selections: [UUID: Set<UUID>]) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         var proposed = workspacePreferences
         var updatedSettings = settings
         var lastCreated: UUID?
         try performWorkspaceCommand {
-            for placeholder in newBookIDs.sorted(by: { $0.uuidString < $1.uuidString }) {
+            for placeholder in newCardIDs.sorted(by: { $0.uuidString < $1.uuidString }) {
                 let raw = names[placeholder]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let selected = selections[placeholder]
                 let initial = globalCategories.filter { selected?.contains($0.id) ?? $0.defaultActiveForNewCards }
-                let book = try expenseService.createBook(named: raw.isEmpty ? "New Card" : String(raw.prefix(40)), initialCategories: initial)
-                lastCreated = book.id
-                proposed.bookOrder.append(book.id)
-                if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(book.id) }
-                proposed.cardCustomizations[book.id] = customizations[placeholder]
+                let card = try expenseService.createCard(named: raw.isEmpty ? "New Card" : String(raw.prefix(40)), initialCategories: initial)
+                lastCreated = card.id
+                proposed.cardOrder.append(card.id)
+                if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(card.id) }
+                proposed.cardCustomizations[card.id] = customizations[placeholder]
             }
-            for book in books where !newBookIDs.contains(book.id) {
-                if let name = names[book.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty, name != book.name {
-                    var renamed = book
+            for card in cards where !newCardIDs.contains(card.id) {
+                if let name = names[card.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty, name != card.name {
+                    var renamed = card
                     renamed.name = String(name.prefix(40))
                     try renamed.validate()
-                    try expenseService.renameBook(id: book.id, to: renamed.name)
-                    if updatedSettings.book.id == book.id { updatedSettings.book = renamed }
+                    try expenseService.renameCard(id: card.id, to: renamed.name)
+                    if updatedSettings.card.id == card.id { updatedSettings.card = renamed }
                 }
-                if let customization = customizations[book.id] { proposed.cardCustomizations[book.id] = customization }
-                if let selection = selections[book.id] {
+                if let customization = customizations[card.id] { proposed.cardCustomizations[card.id] = customization }
+                if let selection = selections[card.id] {
                     for category in globalCategories {
-                        var inactive = proposed.cardInactiveCategoryIDs[book.id] ?? []
+                        var inactive = proposed.cardInactiveCategoryIDs[card.id] ?? []
                         if selection.contains(category.id) {
-                            try expenseService.activateCategory(category, in: book.id)
+                            try expenseService.activateCategory(category, in: card.id)
                             inactive.removeAll { $0 == category.id }
                         } else {
-                            try expenseService.deactivateCategory(category.id, in: book.id)
+                            try expenseService.deactivateCategory(category.id, in: card.id)
                             if !inactive.contains(category.id) { inactive.append(category.id) }
                         }
-                        proposed.cardInactiveCategoryIDs[book.id] = inactive
+                        proposed.cardInactiveCategoryIDs[card.id] = inactive
                     }
                 }
             }
@@ -692,7 +692,7 @@ final class AppModel {
         }
         settings = updatedSettings
         publishPreferences(proposed); invalidateExpenseCaches()
-        if let lastCreated { selectBook(lastCreated) }
+        if let lastCreated { selectCard(lastCreated) }
         showToast("Cards saved")
     }
 
@@ -700,32 +700,32 @@ final class AppModel {
         do { try action() } catch { self.error = error.localizedDescription }
     }
 
-    func customization(for bookID: UUID) -> BookCardCustomization {
-        if let custom = workspacePreferences.cardCustomizations[bookID] {
+    func customization(for cardID: UUID) -> CardCustomization {
+        if let custom = workspacePreferences.cardCustomizations[cardID] {
             return custom
         }
-        let colorIdx = books.first { $0.id == bookID }?.colorIndex ?? 0
-        return BookCardCustomization.defaultFor(colorIndex: colorIdx)
+        let colorIdx = cards.first { $0.id == cardID }?.colorIndex ?? 0
+        return CardCustomization.defaultFor(colorIndex: colorIdx)
     }
 
-    func updateCustomization(_ customization: BookCardCustomization, for bookID: UUID) {
+    func updateCustomization(_ customization: CardCustomization, for cardID: UUID) {
         var proposed = workspacePreferences
-        proposed.cardCustomizations[bookID] = customization
+        proposed.cardCustomizations[cardID] = customization
         do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
-    func setBookHidden(id: UUID, isHidden: Bool) {
-        var hidden = hiddenBookIDs
+    func setCardHidden(id: UUID, isHidden: Bool) {
+        var hidden = hiddenCardIDs
         if isHidden { hidden.insert(id) } else { hidden.remove(id) }
         var proposed = workspacePreferences
-        proposed.visibleBookIDs = books.map(\.id).filter { !hidden.contains($0) }
+        proposed.visibleCardIDs = cards.map(\.id).filter { !hidden.contains($0) }
         do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     func setCardAlwaysHidden(id: UUID, isHidden: Bool) {
         var proposed = workspacePreferences
-        var hidden = Set(proposed.alwaysHiddenBookIDs)
-        var ordinary = hiddenBookIDs
+        var hidden = Set(proposed.alwaysHiddenCardIDs)
+        var ordinary = hiddenCardIDs
         if isHidden {
             hidden.insert(id); ordinary.insert(id)
             for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == id } }
@@ -733,11 +733,11 @@ final class AppModel {
             hidden.remove(id); ordinary.remove(id)
             if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }), !proposed.stacks[index].cardIDs.contains(id) { proposed.stacks[index].cardIDs.append(id) }
         }
-        proposed.alwaysHiddenBookIDs = Array(hidden)
-        proposed.visibleBookIDs = books.map(\.id).filter { !ordinary.contains($0) }
+        proposed.alwaysHiddenCardIDs = Array(hidden)
+        proposed.visibleCardIDs = cards.map(\.id).filter { !ordinary.contains($0) }
         do {
             try commitPresentationPreferences(proposed)
-            if isHidden, selectedBookID == id { selectedBookID = nil }
+            if isHidden, selectedCardID == id { selectedCardID = nil }
             showToast(isHidden ? "Card hidden" : "Card unhidden")
         } catch { self.error = error.localizedDescription }
     }
@@ -745,11 +745,11 @@ final class AppModel {
     func saveStackConfiguration(_ stacks: [CardStack], activeStackID: UUID?, alwaysHiddenIDs: Set<UUID>) throws {
         var proposed = workspacePreferences
         proposed.stacks = stacks; proposed.activeStackID = activeStackID
-        proposed.alwaysHiddenBookIDs = Array(alwaysHiddenIDs)
-        proposed.visibleBookIDs = books.map(\.id).filter { !alwaysHiddenIDs.contains($0) }
+        proposed.alwaysHiddenCardIDs = Array(alwaysHiddenIDs)
+        proposed.visibleCardIDs = cards.map(\.id).filter { !alwaysHiddenIDs.contains($0) }
         proposed.filterScope = .activeStack
         try commitPresentationPreferences(proposed)
-        if let selectedBookID, alwaysHiddenIDs.contains(selectedBookID) { self.selectedBookID = nil }
+        if let selectedCardID, alwaysHiddenIDs.contains(selectedCardID) { self.selectedCardID = nil }
     }
 
     func toggleFilterScope() {
@@ -812,16 +812,16 @@ final class AppModel {
         catch { self.error = error.localizedDescription }
     }
 
-    func moveBookToFront(_ bookID: UUID) {
+    func moveCardToFront(_ cardID: UUID) {
         var proposed = workspacePreferences
         if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
-            var cardIDs = stacks[idx].cardIDs.filter { $0 != bookID }
-            cardIDs.insert(bookID, at: 0)
+            var cardIDs = stacks[idx].cardIDs.filter { $0 != cardID }
+            cardIDs.insert(cardID, at: 0)
             proposed.stacks[idx].cardIDs = cardIDs
         } else {
-            var currentOrder = orderedBooks.map(\.id).filter { $0 != bookID }
-            currentOrder.insert(bookID, at: 0)
-            proposed.bookOrder = currentOrder
+            var currentOrder = orderedCards.map(\.id).filter { $0 != cardID }
+            currentOrder.insert(cardID, at: 0)
+            proposed.cardOrder = currentOrder
         }
         do { try commitPresentationPreferences(proposed); showToast("Moved to front") }
         catch { self.error = error.localizedDescription }
@@ -834,28 +834,28 @@ final class AppModel {
             var proposed = workspacePreferences; proposed.stacks[idx].cardIDs = cardIDs
             do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
         } else {
-            reorderBooks(fromOffsets: fromOffsets, toOffset: toOffset)
+            reorderCards(fromOffsets: fromOffsets, toOffset: toOffset)
         }
     }
 
-    func reorderBooks(fromOffsets: IndexSet, toOffset: Int) {
-        var currentOrder = orderedBooks.map(\.id)
+    func reorderCards(fromOffsets: IndexSet, toOffset: Int) {
+        var currentOrder = orderedCards.map(\.id)
         currentOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)
-        var proposed = workspacePreferences; proposed.bookOrder = currentOrder
+        var proposed = workspacePreferences; proposed.cardOrder = currentOrder
         do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
     }
 
     func persistWorkspacePreferences() {
         guard startupError == nil else { return }
         workspacePreferences.keepEachCardInOneStack()
-        workspacePreferences.visibleBookIDs = books.map(\.id).filter { !hiddenBookIDs.contains($0) }
-        workspacePreferences.alwaysHiddenBookIDs = Array(alwaysHiddenBookIDs)
+        workspacePreferences.visibleCardIDs = cards.map(\.id).filter { !hiddenCardIDs.contains($0) }
+        workspacePreferences.alwaysHiddenCardIDs = Array(alwaysHiddenCardIDs)
         do {
             try requireState().saveWorkspacePreferences(workspacePreferences)
             let changedScope = durablePreferences.stacks != workspacePreferences.stacks ||
                 durablePreferences.activeStackID != workspacePreferences.activeStackID ||
-                durablePreferences.visibleBookIDs != workspacePreferences.visibleBookIDs ||
-                durablePreferences.alwaysHiddenBookIDs != workspacePreferences.alwaysHiddenBookIDs ||
+                durablePreferences.visibleCardIDs != workspacePreferences.visibleCardIDs ||
+                durablePreferences.alwaysHiddenCardIDs != workspacePreferences.alwaysHiddenCardIDs ||
                 durablePreferences.filterScopeRaw != workspacePreferences.filterScopeRaw
             durablePreferences = workspacePreferences
             if changedScope { memoizedActivities = nil; syncWidgetSnapshot() }
@@ -903,57 +903,57 @@ final class AppModel {
 
     func syncWidgetSnapshot() {
         guard startupError == nil, expenseService?.projectionRefreshError == nil else { return }
-        guard let activeBook = books.first(where: { $0.id == activeBookID }) ?? books.first else { return }
+        guard let activeCard = cards.first(where: { $0.id == activeCardID }) ?? cards.first else { return }
         var stack = currentStack
-        stack?.cardIDs.removeAll { alwaysHiddenBookIDs.contains($0) }
+        stack?.cardIDs.removeAll { alwaysHiddenCardIDs.contains($0) }
         let stackExp: [Expense] = {
             if let stack {
-                return books.filter { stack.cardIDs.contains($0.id) && !alwaysHiddenBookIDs.contains($0.id) }.flatMap { expenses(for: $0.id) }
+                return cards.filter { stack.cardIDs.contains($0.id) && !alwaysHiddenCardIDs.contains($0.id) }.flatMap { expenses(for: $0.id) }
             }
             return expenses
         }()
         WidgetSnapshotUpdater.update(
-            activeBook: activeBook,
+            activeCard: activeCard,
             activeStack: stack,
-            allBooks: books,
+            allCards: cards,
             expenses: expenses,
             stackExpenses: stackExp,
             categories: categories,
-            captureCategories: activeCategories(for: activeBookID),
+            captureCategories: activeCategories(for: activeCardID),
             budget: widgetBudget,
             cycle: cycle,
             revision: expenseService?.committedRevision
         )
     }
 
-    func expenses(for bookID: UUID) -> [Expense] {
-        if bookID == activeBookID {
+    func expenses(for cardID: UUID) -> [Expense] {
+        if cardID == activeCardID {
             return expenses
         }
-        if let cached = expensesCache[bookID] {
+        if let cached = expensesCache[cardID] {
             return cached
         }
-        let result = (try? expenseService?.expenses(for: bookID)) ?? []
-        expensesCache[bookID] = result
+        let result = (try? expenseService?.expenses(for: cardID)) ?? []
+        expensesCache[cardID] = result
         return result
     }
 
     /// All-time total in the card's currency.
-    func spent(for bookID: UUID) -> Int64 {
-        if let cached = spentCache[bookID] {
+    func spent(for cardID: UUID) -> Int64 {
+        if let cached = spentCache[cardID] {
             return cached
         }
-        let card = books.first { $0.id == bookID }
-        let total = Money.sum(expenses(for: bookID).map { expense in card.map { cardAmount(expense, in: $0) } ?? expense.amount })
-        spentCache[bookID] = total
+        let card = cards.first { $0.id == cardID }
+        let total = Money.sum(expenses(for: cardID).map { expense in card.map { cardAmount(expense, in: $0) } ?? expense.amount })
+        spentCache[cardID] = total
         return total
     }
 
     /// Sum of the stack's cards' current monthly budgets, or the stack's cap. "Total until" budgets don't count.
     func stackBudgetLimit(_ stack: CardStack) -> Int64? {
-        let cards = stack.cardIDs.compactMap { id in books.first { $0.id == id } }.filter { !alwaysHiddenBookIDs.contains($0.id) }
-        let limits = cards.compactMap { book -> Int64? in
-            guard let budgets = try? expenseService?.budgets(for: book.id),
+        let cards = stack.cardIDs.compactMap { id in cards.first { $0.id == id } }.filter { !alwaysHiddenCardIDs.contains($0.id) }
+        let limits = cards.compactMap { card -> Int64? in
+            guard let budgets = try? expenseService?.budgets(for: card.id),
                   let active = BudgetHistory.active(on: .now, budgets: budgets), active.totalUntilDay == nil else { return nil }
             return active.overallLimit
         }
@@ -970,18 +970,18 @@ final class AppModel {
     var spendingCurrencySuggestion: (cardID: UUID, code: String)?
 
     /// A card's budget and totals currency.
-    func currency(of card: BookProfile) -> String { card.currency ?? reportingCurrency }
-    func currency(ofCard id: UUID) -> String { books.first { $0.id == id }.map(currency(of:)) ?? reportingCurrency }
-    var activeCardCurrency: String { currency(ofCard: activeBookID) }
+    func currency(of card: Card) -> String { card.currency ?? reportingCurrency }
+    func currency(ofCard id: UUID) -> String { cards.first { $0.id == id }.map(currency(of:)) ?? reportingCurrency }
+    var activeCardCurrency: String { currency(ofCard: activeCardID) }
     /// The secondary "≈" line: the card's spending currency, else the reporting currency, if either differs.
-    func secondaryCurrency(of card: BookProfile) -> String? {
+    func secondaryCurrency(of card: Card) -> String? {
         let code = card.spendingCurrency ?? reportingCurrency
         return code == currency(of: card) ? nil : code
     }
 
     /// An expense's amount in the card's currency: the paid amount if paid in it, else converted from the reporting
     /// amount at that day's rate. Display only; never saved.
-    func cardAmount(_ expense: Expense, in card: BookProfile) -> Int64 {
+    func cardAmount(_ expense: Expense, in card: Card) -> Int64 {
         let code = currency(of: card)
         if code == reportingCurrency { return expense.amount }
         if expense.originalCurrency == code, let original = expense.originalAmount { return original }
@@ -998,11 +998,11 @@ final class AppModel {
 
     /// Fetches rates that card totals and "≈" lines need, then refreshes the views that use them.
     func prefetchCardRates() async {
-        guard books.contains(where: { currency(of: $0) != reportingCurrency || ($0.spendingCurrency.map { $0 != reportingCurrency } ?? false) })
+        guard cards.contains(where: { currency(of: $0) != reportingCurrency || ($0.spendingCurrency.map { $0 != reportingCurrency } ?? false) })
         else { return } // nothing to fetch: no network request for single-currency users
         let today = Day.string(.now)
         var pairs = Set<String>()
-        for card in books {
+        for card in cards {
             let code = currency(of: card)
             for other in [code, card.spendingCurrency ?? reportingCurrency] where other != reportingCurrency { pairs.insert(other) }
             if code != reportingCurrency, let first = expenses(for: card.id).map(\.day).min() {
@@ -1030,16 +1030,16 @@ final class AppModel {
     }
 
     /// Sets a card's budget currency and spending currency. Changing the budget currency converts its budgets at today's rate.
-    func setCardCurrencies(budget: String?, spending: String?, for bookID: UUID) async throws {
+    func setCardCurrencies(budget: String?, spending: String?, for cardID: UUID) async throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        guard var card = books.first(where: { $0.id == bookID }) else { throw BackupError.invalid }
+        guard var card = cards.first(where: { $0.id == cardID }) else { throw BackupError.invalid }
         let budget = budget == reportingCurrency ? nil : budget
         let spending = spending == (budget ?? reportingCurrency) ? nil : spending
         let old = currency(of: card), new = budget ?? reportingCurrency
         var converted: [BudgetVersion] = []
         if old != new {
             let rate = try await rates.rate(from: old, to: new, on: Day.string(.now))
-            converted = try expenseService.budgets(for: bookID).map { version in
+            converted = try expenseService.budgets(for: cardID).map { version in
                 var value = version
                 value.overallLimit = try Money.convert(version.overallLimit, rate: rate, to: new)
                 value.categoryLimits = try version.categoryLimits.map { .init(categoryID: $0.categoryID, limit: try Money.convert($0.limit, rate: rate, to: new)) }
@@ -1049,10 +1049,10 @@ final class AppModel {
         card.currency = budget; card.spendingCurrency = spending
         try performWorkspaceCommand {
             try expenseService.updateCard(card)
-            for version in converted { try expenseService.save(version, in: bookID) }
+            for version in converted { try expenseService.save(version, in: cardID) }
         }
-        if settings.book.id == bookID {
-            var proposed = settings; proposed.book = card
+        if settings.card.id == cardID {
+            var proposed = settings; proposed.card = card
             try requireState().saveSettings(proposed); settings = proposed
         }
         invalidateExpenseCaches()
@@ -1061,12 +1061,12 @@ final class AppModel {
 
     var spendingCurrencyQuestion: String {
         guard let suggestion = spendingCurrencySuggestion else { return "" }
-        let name = books.first { $0.id == suggestion.cardID }?.name ?? "this card"
+        let name = cards.first { $0.id == suggestion.cardID }?.name ?? "this card"
         return "Use \(suggestion.code) as \(name)'s spending currency?"
     }
 
     func acceptSpendingCurrencySuggestion() async {
-        guard let suggestion = spendingCurrencySuggestion, let card = books.first(where: { $0.id == suggestion.cardID }) else { return }
+        guard let suggestion = spendingCurrencySuggestion, let card = cards.first(where: { $0.id == suggestion.cardID }) else { return }
         spendingCurrencySuggestion = nil
         do { try await setCardCurrencies(budget: card.currency, spending: suggestion.code, for: card.id) }
         catch { self.error = error.localizedDescription }
@@ -1074,7 +1074,7 @@ final class AppModel {
 
     /// Suggest a spending currency after the first expense on a card paid in a currency the card doesn't use yet.
     func suggestSpendingCurrency(after expense: Expense) {
-        guard let code = expense.originalCurrency, let id = expense.bookID, let card = books.first(where: { $0.id == id }),
+        guard let code = expense.originalCurrency, let id = expense.cardID, let card = cards.first(where: { $0.id == id }),
               card.spendingCurrency == nil, currency(of: card) != code,
               expenses(for: id).filter({ $0.originalCurrency == code }).count == 1 else { return }
         spendingCurrencySuggestion = (id, code)
@@ -1089,7 +1089,7 @@ final class AppModel {
         guard new != old, Money.isCurrencyCode(new) else { return }
         let today = Day.string(.now)
         var byCard: [UUID: [Expense]] = [:]
-        for card in books { byCard[card.id] = try expenseService.expenses(for: card.id) }
+        for card in cards { byCard[card.id] = try expenseService.expenses(for: card.id) }
         let all = byCard.values.flatMap { $0 }
         // One request per currency pair, covering the whole history.
         var spans: [String: (String, String)] = [:]
@@ -1129,7 +1129,7 @@ final class AppModel {
         let todayRate = try rate(old, on: today)
         var budgets: [UUID: [BudgetVersion]] = [:]
         var bills: [UUID: [BillRule]] = [:]
-        for card in books where card.currency == nil || card.currency == old {
+        for card in cards where card.currency == nil || card.currency == old {
             budgets[card.id] = try expenseService.budgets(for: card.id).map { version in
                 var value = version
                 value.overallLimit = try Money.convert(version.overallLimit, rate: todayRate, to: new)
@@ -1137,7 +1137,7 @@ final class AppModel {
                 return value
             }
         }
-        for card in books {
+        for card in cards {
             bills[card.id] = try expenseService.bills(for: card.id).map { bill in
                 var value = bill; value.amount = try Money.convert(bill.amount, rate: todayRate, to: new); return value
             }
@@ -1148,7 +1148,7 @@ final class AppModel {
             var value = stack; value.capLimit = try stack.capLimit.map { try Money.convert($0, rate: todayRate, to: new) }; return value
         }
         // A card that named the new currency explicitly now just follows the reporting currency.
-        let cards = books.map { card -> BookProfile in
+        let cards = cards.map { card -> Card in
             var value = card
             if value.currency == new { value.currency = nil }
             if value.spendingCurrency == new { value.spendingCurrency = nil }
@@ -1164,7 +1164,7 @@ final class AppModel {
         publishPreferences(proposed)
         var proposedSettings = settings
         proposedSettings.budget = activeBudget.overallLimit
-        if let card = books.first(where: { $0.id == settings.book.id }) { proposedSettings.book = card }
+        if let card = cards.first(where: { $0.id == settings.card.id }) { proposedSettings.card = card }
         try requireState().saveSettings(proposedSettings); settings = proposedSettings
         invalidateExpenseCaches()
         await prefetchCardRates()
@@ -1217,9 +1217,9 @@ final class AppModel {
         guard let expenseService else { throw EntryError.corruptStore }
         let used = expenseService.expenseCount(paidWith: id)
         guard used == 0 else { throw PaymentMethodError.inUse(used) }
-        for var book in books where book.defaultPaidWithID == id {
-            book.defaultPaidWithID = nil
-            try expenseService.updateCard(book)
+        for var card in cards where card.defaultPaidWithID == id {
+            card.defaultPaidWithID = nil
+            try expenseService.updateCard(card)
         }
         var proposed = workspacePreferences
         proposed.paymentMethods.removeAll { $0.id == id }
@@ -1227,14 +1227,14 @@ final class AppModel {
         if draft.paidWithID == id { draft.paidWithID = nil }
     }
 
-    func setDefaultPaidWith(_ id: UUID?, for bookID: UUID) throws {
+    func setDefaultPaidWith(_ id: UUID?, for cardID: UUID) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        guard var book = books.first(where: { $0.id == bookID }) else { throw BackupError.invalid }
+        guard var card = cards.first(where: { $0.id == cardID }) else { throw BackupError.invalid }
         guard id == nil || paymentMethod(id) != nil else { throw BackupError.invalid }
-        book.defaultPaidWithID = id
-        try expenseService.updateCard(book)
-        if settings.book.id == bookID {
-            var proposed = settings; proposed.book = book
+        card.defaultPaidWithID = id
+        try expenseService.updateCard(card)
+        if settings.card.id == cardID {
+            var proposed = settings; proposed.card = card
             try requireState().saveSettings(proposed); settings = proposed
         }
         invalidateExpenseCaches()
@@ -1243,8 +1243,8 @@ final class AppModel {
     /// A new expense starts with its card's default Paid with and spending currency.
     func prefillDraftDefaults() {
         guard !draft.editing else { return }
-        let bookID = draft.bookID ?? selectedBookID ?? activeBookID
-        guard let card = books.first(where: { $0.id == bookID }) else { return }
+        let cardID = draft.cardID ?? selectedCardID ?? activeCardID
+        guard let card = cards.first(where: { $0.id == cardID }) else { return }
         if draft.paidWithID == nil { draft.paidWithID = card.defaultPaidWithID }
         if draft.currency == nil, !draft.hasContent {
             let code = card.spendingCurrency ?? card.currency
@@ -1253,37 +1253,37 @@ final class AppModel {
     }
 
     /// Cards a scope covers; stacks keep their own card order.
-    func books(in scope: AnalyticsFilterScope) -> [BookProfile] {
+    func cards(in scope: AnalyticsFilterScope) -> [Card] {
         switch scope {
-        case .card(let id, _): return books.filter { $0.id == id }
+        case .card(let id, _): return cards.filter { $0.id == id }
         case .stack(let id, _):
             let ids = stacks.first(where: { $0.id == id })?.cardIDs ?? []
-            return ids.compactMap { id in books.first { $0.id == id } }.filter { !alwaysHiddenBookIDs.contains($0.id) }
-        case .allCards: return unhiddenBooks
+            return ids.compactMap { id in cards.first { $0.id == id } }.filter { !alwaysHiddenCardIDs.contains($0.id) }
+        case .allCards: return unhiddenCards
         }
     }
 
     /// Categories a new expense on this card may use: not archived, not deactivated for the card.
-    func activeCategories(in bookID: UUID) throws -> [ExpenseCategory] {
+    func activeCategories(in cardID: UUID) throws -> [ExpenseCategory] {
         guard let expenseService else { throw EntryError.corruptStore }
-        let inactive = workspacePreferences.cardInactiveCategoryIDs[bookID] ?? []
-        return try expenseService.categories(for: bookID).filter { !settings.archivedCategoryIDs.contains($0.id) && !inactive.contains($0.id) }
+        let inactive = workspacePreferences.cardInactiveCategoryIDs[cardID] ?? []
+        return try expenseService.categories(for: cardID).filter { !settings.archivedCategoryIDs.contains($0.id) && !inactive.contains($0.id) }
     }
 
     func reportingData(for scope: AnalyticsFilterScope) -> AnalyticsReportingData {
-        let selected = books(in: scope)
+        let selected = cards(in: scope)
         var data = AnalyticsReportingData()
-        data.books = selected
+        data.cards = selected
         do {
             guard let expenseService else { throw EntryError.corruptStore }
             var seen = Set<UUID>()
-            for book in selected {
-                let values = try expenseService.expenses(for: book.id)
-                data.expensesByBook[book.id] = values
+            for card in selected {
+                let values = try expenseService.expenses(for: card.id)
+                data.expensesByCard[card.id] = values
                 data.expenses.append(contentsOf: values)
-                data.categories += try expenseService.categories(for: book.id).filter { seen.insert($0.id).inserted }
-                data.bills += try expenseService.bills(for: book.id)
-                data.billOccurrences += try expenseService.billOccurrences(for: book.id)
+                data.categories += try expenseService.categories(for: card.id).filter { seen.insert($0.id).inserted }
+                data.bills += try expenseService.bills(for: card.id)
+                data.billOccurrences += try expenseService.billOccurrences(for: card.id)
             }
             if case .card(let id, _) = scope { data.budgets = try expenseService.budgets(for: id) }
             if case .stack(let id, _) = scope, let stack = stacks.first(where: { $0.id == id }), let limit = stackBudgetLimit(stack) {
@@ -1296,8 +1296,8 @@ final class AppModel {
 
     func allExpenses() -> [Expense] {
         var result: [Expense] = []
-        for book in books {
-            result.append(contentsOf: expenses(for: book.id))
+        for card in cards {
+            result.append(contentsOf: expenses(for: card.id))
         }
         return result
     }
@@ -1309,26 +1309,26 @@ final class AppModel {
         return expenseByIDCache?[id]
     }
 
-    func allExpensesByBook() -> [UUID: [Expense]] {
+    func allExpensesByCard() -> [UUID: [Expense]] {
         var map: [UUID: [Expense]] = [:]
-        for book in books {
-            map[book.id] = expenses(for: book.id)
+        for card in cards {
+            map[card.id] = expenses(for: card.id)
         }
         return map
     }
 
-    func activities(selectedBookID: UUID?, allBooks: Bool) -> [Expense] {
-        if let selectedBookID {
-            return expenses(for: selectedBookID)
+    func activities(selectedCardID: UUID?, allCards: Bool) -> [Expense] {
+        if let selectedCardID {
+            return expenses(for: selectedCardID)
         }
-        let key = "\(allBooks)-\(filterScope.rawValue)-\(activeStackID?.uuidString ?? "nil")-\(unhiddenBooks.count)-\(homeDeckCards.count)"
+        let key = "\(allCards)-\(filterScope.rawValue)-\(activeStackID?.uuidString ?? "nil")-\(unhiddenCards.count)-\(homeDeckCards.count)"
         if memoizedActivitiesKey == key, let cached = memoizedActivities {
             return cached
         }
 
         var all: [Expense] = []
-        let targetBooks = allBooks ? unhiddenBooks : homeDeckCards
-        for b in targetBooks {
+        let targetCards = allCards ? unhiddenCards : homeDeckCards
+        for b in targetCards {
             all.append(contentsOf: expenses(for: b.id))
         }
         let sorted = all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
@@ -1337,27 +1337,27 @@ final class AppModel {
         return sorted
     }
 
-    func startEmptyRealBook(named name: String) throws {
+    func startEmptyRealCard(named name: String) throws {
         guard let backups else { throw BackupError.unsupported }
-        let settings = try recoveryCommand { try backups.startEmptyRealBook(named: name, currentDraft: draft, settings: settings) }
+        let settings = try recoveryCommand { try backups.startEmptyRealCard(named: name, currentDraft: draft, settings: settings) }
         self.settings = settings
-        draft = ExpenseDraft(); draft.bookID = settings.book.id
+        draft = ExpenseDraft(); draft.cardID = settings.card.id
         undoExpense = nil; pendingEntry = nil
         invalidateExpenseCaches()
         showToast("Your card is ready")
     }
-    func renameRealBook(to name: String) throws {
+    func renameRealCard(to name: String) throws {
         guard let backups else { throw BackupError.unsupported }
-        try recoveryCommand { settings = try backups.renameRealBook(to: name, currentDraft: draft, settings: settings) }
+        try recoveryCommand { settings = try backups.renameRealCard(to: name, currentDraft: draft, settings: settings) }
         invalidateExpenseCaches()
         showToast("Card renamed")
     }
 
     func clearActiveCardExpenses() throws {
         guard let backups else { throw BackupError.unsupported }
-        let targetID = selectedBookID ?? activeBookID
+        let targetID = selectedCardID ?? activeCardID
         try recoveryCommand { try backups.clearExpenses(in: targetID, currentDraft: draft, settings: settings) }
-        draft = ExpenseDraft(); draft.bookID = activeBookID
+        draft = ExpenseDraft(); draft.cardID = activeCardID
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
         try reload()
@@ -1368,7 +1368,7 @@ final class AppModel {
         guard let backups else { throw BackupError.unsupported }
         try recoveryCommand { try backups.clearExpenses(in: nil, currentDraft: draft, settings: settings) }
         chat.clear()
-        draft = ExpenseDraft(); draft.bookID = activeBookID
+        draft = ExpenseDraft(); draft.cardID = activeCardID
         originalDraft = nil
         undoExpense = nil; pendingEntry = nil
         try reload()
@@ -1382,13 +1382,13 @@ final class AppModel {
         self.settings = newSettings
         publishPreferences(try requireState().loadWorkspacePreferences())
         expenseService?.configure(categoryRules: newSettings.categoryRules, archivedCategoryIDs: newSettings.archivedCategoryIDs)
-        self.draft = ExpenseDraft(); self.draft.bookID = newSettings.book.id
+        self.draft = ExpenseDraft(); self.draft.cardID = newSettings.card.id
         self.originalDraft = nil
         self.undoExpense = nil; pendingEntry = nil
-        self.hiddenBookIDs = []
-        self.alwaysHiddenBookIDs = []
+        self.hiddenCardIDs = []
+        self.alwaysHiddenCardIDs = []
         self.customizerTarget = nil
-        self.selectedBookID = newSettings.book.id
+        self.selectedCardID = newSettings.card.id
         try reload()
         showToast("App reset to clean state")
     }
@@ -1403,25 +1403,25 @@ final class AppModel {
 
     func showToast(_ text: String) { toast = text; toastID = UUID() }
 
-    func importExpenses(_ batch: [Expense], to bookID: UUID) throws {
-        try expenseService?.saveExpenses(batch, in: bookID)
+    func importExpenses(_ batch: [Expense], to cardID: UUID) throws {
+        try expenseService?.saveExpenses(batch, in: cardID)
         invalidateExpenseCaches()
         showToast("Imported \(batch.count) \(batch.count == 1 ? "expense" : "expenses")")
     }
 
     func csvExportText(
-        for bookID: UUID?,
+        for cardID: UUID?,
         dateRange: CSVDateRangeScope,
         customStartDate: Date = .now,
         customEndDate: Date = .now
     ) -> String {
         let calendar = Day.calendar
         var targetExpenses: [Expense]
-        if let bookID {
-            targetExpenses = expenses(for: bookID)
+        if let cardID {
+            targetExpenses = expenses(for: cardID)
         } else {
             var all: [Expense] = []
-            for b in books {
+            for b in cards {
                 all.append(contentsOf: expenses(for: b.id))
             }
             targetExpenses = all
@@ -1452,26 +1452,26 @@ final class AppModel {
 
         targetExpenses.sort { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
         let rawCategories: [ExpenseCategory]
-        if let bookID {
-            rawCategories = (try? expenseService?.categories(for: bookID)) ?? categories
+        if let cardID {
+            rawCategories = (try? expenseService?.categories(for: cardID)) ?? categories
         } else {
-            rawCategories = books.flatMap { (try? expenseService?.categories(for: $0.id)) ?? [] }
+            rawCategories = cards.flatMap { (try? expenseService?.categories(for: $0.id)) ?? [] }
         }
         var seenCategoryIDs = Set<UUID>()
         let allCats = rawCategories.filter { seenCategoryIDs.insert($0.id).inserted }
-        return CSVExportGenerator.generate(expenses: targetExpenses, categories: allCats, books: books, paymentMethods: paymentMethods)
+        return CSVExportGenerator.generate(expenses: targetExpenses, categories: allCats, cards: cards, paymentMethods: paymentMethods)
     }
 
     @discardableResult
     func saveDraft() -> Bool {
         do {
             var expense = try draft.expense()
-            let targetID = draft.bookID ?? selectedBookID ?? activeBookID
-            expense.bookID = targetID
+            let targetID = draft.cardID ?? selectedCardID ?? activeCardID
+            expense.cardID = targetID
             try save(expense)
             let editing = draft.editing
             originalDraft = nil
-            var cleared = ExpenseDraft(); cleared.bookID = targetID
+            var cleared = ExpenseDraft(); cleared.cardID = targetID
             draft = cleared
             // The expense is already durable. Cleanup failure must never invite a second save.
             do { try requireState().saveDraft(cleared, for: targetID) }
@@ -1499,7 +1499,7 @@ final class AppModel {
     func delete(_ expense: Expense) {
         do {
             guard let expenseService else { throw EntryError.corruptStore }
-            let owner = expense.bookID ?? activeBookID
+            let owner = expense.cardID ?? activeCardID
             let linked = try expenseService.billOccurrences(for: owner).filter { $0.expenseID == expense.id }
             try expenseService.delete(expense.id, in: owner)
             undoOccurrences = linked
@@ -1515,21 +1515,21 @@ final class AppModel {
     func restore(_ expense: Expense, occurrences: [BillOccurrence]) {
         do {
             guard let expenseService else { throw EntryError.corruptStore }
-            try expenseService.restoreExpense(expense, occurrences: occurrences, in: expense.bookID ?? activeBookID)
+            try expenseService.restoreExpense(expense, occurrences: occurrences, in: expense.cardID ?? activeCardID)
             if undoExpense?.id == expense.id { undoExpense = nil; undoOccurrences = [] }
             invalidateExpenseCaches(); showToast("Expense restored")
         }
         catch { self.error = error.localizedDescription }
     }
-    func saveBill(_ bill: BillRule, in bookID: UUID? = nil) throws {
+    func saveBill(_ bill: BillRule, in cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.saveBill(bill, in: bookID)
+        try expenseService.saveBill(bill, in: cardID)
         invalidateExpenseCaches()
         showToast("Bill saved")
     }
-    func deleteBill(_ id: UUID, in bookID: UUID? = nil) throws {
+    func deleteBill(_ id: UUID, in cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.deleteBill(id, in: bookID)
+        try expenseService.deleteBill(id, in: cardID)
         invalidateExpenseCaches()
         showToast("Bill deleted")
     }
@@ -1539,7 +1539,7 @@ final class AppModel {
         customDate: Date? = nil,
         customAmount: Int64? = nil,
         customNote: String? = nil,
-        in bookID: UUID? = nil
+        in cardID: UUID? = nil
     ) throws -> Expense {
         guard let expenseService else { throw EntryError.corruptStore }
         let expense = try expenseService.confirmBillOccurrence(
@@ -1547,20 +1547,20 @@ final class AppModel {
             customDate: customDate,
             customAmount: customAmount,
             customNote: customNote,
-            in: bookID
+            in: cardID
         )
         invalidateExpenseCaches()
         showToast("Bill added")
         return expense
     }
-    func skipBillOccurrence(_ occurrenceID: UUID, in bookID: UUID? = nil) throws {
+    func skipBillOccurrence(_ occurrenceID: UUID, in cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
-        try expenseService.skipBillOccurrence(occurrenceID, in: bookID)
+        try expenseService.skipBillOccurrence(occurrenceID, in: cardID)
         showToast("Bill skipped")
     }
-    func reconcileBills(asOf date: Date = .now, in bookID: UUID? = nil) {
+    func reconcileBills(asOf date: Date = .now, in cardID: UUID? = nil) {
         guard let expenseService else { return }
-        do { try expenseService.reconcileBills(asOf: date, in: bookID) }
+        do { try expenseService.reconcileBills(asOf: date, in: cardID) }
         catch { self.error = error.localizedDescription }
         invalidateExpenseCaches()
     }
@@ -1571,9 +1571,9 @@ final class AppModel {
     }
 
     private func recordInSpendingSession(_ expense: Expense) {
-        guard SpendingSessionManager.shared.isSessionActive, let bookID = expense.bookID else { return }
-        let cat = activeCategories(for: bookID).first(where: { $0.id == expense.allocations.first?.categoryID })
-        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol, bookID: bookID)
+        guard SpendingSessionManager.shared.isSessionActive, let cardID = expense.cardID else { return }
+        let cat = activeCategories(for: cardID).first(where: { $0.id == expense.allocations.first?.categoryID })
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol, cardID: cardID)
     }
 
     /// Opens an unsaved chat proposal in the entry sheet so the user can adjust it before saving.
@@ -1585,7 +1585,7 @@ final class AppModel {
             // ponytail: an unfinished draft takes the repeat path (dated today) after its discard prompt.
             if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
             draft = ExpenseDraft(expense: expense); draft.editing = false
-            draft.bookID = expense.bookID ?? activeBookID
+            draft.cardID = expense.cardID ?? activeCardID
             showEntry = true
         }
     }
@@ -1594,54 +1594,54 @@ final class AppModel {
         if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense); draft.id = UUID(); draft.editing = false
         draft.createdAt = .now; draft.date = .now; draft.source = "repeat"
-        draft.bookID = expense.bookID ?? activeBookID
+        draft.cardID = expense.cardID ?? activeCardID
         showEntry = true
     }
     func saveCategory(_ category: ExpenseCategory) throws {
         let validated = try category.validated(against: categories)
-        try saveGlobalCategory(GlobalCategory(category: validated, defaultActiveForNewCards: true), activeBookIDs: activeBookIDs(for: validated.id).union([activeBookID]))
+        try saveGlobalCategory(GlobalCategory(category: validated, defaultActiveForNewCards: true), activeCardIDs: activeCardIDs(for: validated.id).union([activeCardID]))
     }
 
-    func isCategoryActive(_ categoryID: UUID, on bookID: UUID) -> Bool {
-        if let inactive = workspacePreferences.cardInactiveCategoryIDs[bookID], inactive.contains(categoryID) {
+    func isCategoryActive(_ categoryID: UUID, on cardID: UUID) -> Bool {
+        if let inactive = workspacePreferences.cardInactiveCategoryIDs[cardID], inactive.contains(categoryID) {
             return false
         }
-        let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
-        return bookCategories.contains(where: { $0.id == categoryID })
+        let cardCategories = (try? expenseService?.categories(for: cardID)) ?? []
+        return cardCategories.contains(where: { $0.id == categoryID })
     }
 
-    func activeBookIDs(for categoryID: UUID) -> Set<UUID> {
-        Set(books.map(\.id).filter { isCategoryActive(categoryID, on: $0) })
+    func activeCardIDs(for categoryID: UUID) -> Set<UUID> {
+        Set(cards.map(\.id).filter { isCategoryActive(categoryID, on: $0) })
     }
 
-    func activeCategoryIDs(for bookID: UUID) -> Set<UUID> {
-        let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[bookID] ?? [])
-        let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
-        return Set(bookCategories.map(\.id).filter { !inactive.contains($0) })
+    func activeCategoryIDs(for cardID: UUID) -> Set<UUID> {
+        let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[cardID] ?? [])
+        let cardCategories = (try? expenseService?.categories(for: cardID)) ?? []
+        return Set(cardCategories.map(\.id).filter { !inactive.contains($0) })
     }
 
-    func activeCategories(for bookID: UUID) -> [ExpenseCategory] {
-        let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[bookID] ?? [])
-        let bookCategories = (try? expenseService?.categories(for: bookID)) ?? []
-        return bookCategories.filter { !inactive.contains($0.id) && !settings.archivedCategoryIDs.contains($0.id) }
+    func activeCategories(for cardID: UUID) -> [ExpenseCategory] {
+        let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[cardID] ?? [])
+        let cardCategories = (try? expenseService?.categories(for: cardID)) ?? []
+        return cardCategories.filter { !inactive.contains($0.id) && !settings.archivedCategoryIDs.contains($0.id) }
     }
 
-    func setCategory(_ categoryID: UUID, active: Bool, for bookID: UUID) throws {
+    func setCategory(_ categoryID: UUID, active: Bool, for cardID: UUID) throws {
         guard let expenseService, let global = globalCategories.first(where: { $0.id == categoryID }) else { throw EntryError.missingCategory }
         var proposed = workspacePreferences
-        var inactive = proposed.cardInactiveCategoryIDs[bookID] ?? []
+        var inactive = proposed.cardInactiveCategoryIDs[cardID] ?? []
         if active { inactive.removeAll { $0 == categoryID } }
         else if !inactive.contains(categoryID) { inactive.append(categoryID) }
-        proposed.cardInactiveCategoryIDs[bookID] = inactive
+        proposed.cardInactiveCategoryIDs[cardID] = inactive
         try performWorkspaceCommand {
-            if active { try expenseService.activateCategory(global, in: bookID) }
-            else { try expenseService.deactivateCategory(categoryID, in: bookID) }
+            if active { try expenseService.activateCategory(global, in: cardID) }
+            else { try expenseService.deactivateCategory(categoryID, in: cardID) }
             try requireState().saveWorkspacePreferences(proposed)
         }
         publishPreferences(proposed); invalidateExpenseCaches()
     }
 
-    func saveGlobalCategory(_ category: GlobalCategory, activeBookIDs: Set<UUID>) throws {
+    func saveGlobalCategory(_ category: GlobalCategory, activeCardIDs: Set<UUID>) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         let validated = try category.validated(against: globalCategories)
         var proposed = workspacePreferences
@@ -1649,16 +1649,16 @@ final class AppModel {
         proposed.globalCategories.append(validated)
         try performWorkspaceCommand {
             try expenseService.updateGlobalCategoryMetadata(id: validated.id, name: validated.name, symbol: validated.symbol)
-            for book in books {
-                var inactive = proposed.cardInactiveCategoryIDs[book.id] ?? []
-                if activeBookIDs.contains(book.id) {
-                    try expenseService.activateCategory(validated, in: book.id)
+            for card in cards {
+                var inactive = proposed.cardInactiveCategoryIDs[card.id] ?? []
+                if activeCardIDs.contains(card.id) {
+                    try expenseService.activateCategory(validated, in: card.id)
                     inactive.removeAll { $0 == validated.id }
                 } else {
-                    try expenseService.deactivateCategory(validated.id, in: book.id)
+                    try expenseService.deactivateCategory(validated.id, in: card.id)
                     if !inactive.contains(validated.id) { inactive.append(validated.id) }
                 }
-                proposed.cardInactiveCategoryIDs[book.id] = inactive
+                proposed.cardInactiveCategoryIDs[card.id] = inactive
             }
             try requireState().saveWorkspacePreferences(proposed)
         }
@@ -1669,18 +1669,18 @@ final class AppModel {
         guard let expenseService else { throw EntryError.corruptStore }
         guard undoExpense?.allocations.contains(where: { $0.categoryID == category.id }) != true,
               !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
-        for book in books {
-            let savedDraft = book.id == draft.bookID ? draft : try requireState().loadDraft(for: book.id)
+        for card in cards {
+            let savedDraft = card.id == draft.cardID ? draft : try requireState().loadDraft(for: card.id)
             guard savedDraft.categoryID != category.id, !savedDraft.splitAllocations.contains(where: { $0.categoryID == category.id }),
-                  !(try expenseService.expenses(for: book.id)).contains(where: { $0.allocations.contains(where: { $0.categoryID == category.id }) }),
-                  !(try expenseService.bills(for: book.id)).contains(where: { $0.categoryID == category.id }),
-                  !(try expenseService.budgets(for: book.id)).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == category.id }) }) else { throw CategoryError.inUse }
+                  !(try expenseService.expenses(for: card.id)).contains(where: { $0.allocations.contains(where: { $0.categoryID == category.id }) }),
+                  !(try expenseService.bills(for: card.id)).contains(where: { $0.categoryID == category.id }),
+                  !(try expenseService.budgets(for: card.id)).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == category.id }) }) else { throw CategoryError.inUse }
         }
         var proposed = workspacePreferences
         proposed.globalCategories.removeAll { $0.id == category.id }
-        for book in books { proposed.cardInactiveCategoryIDs[book.id]?.removeAll { $0 == category.id } }
+        for card in cards { proposed.cardInactiveCategoryIDs[card.id]?.removeAll { $0 == category.id } }
         try performWorkspaceCommand {
-            for book in books { try expenseService.deactivateCategory(category.id, in: book.id) }
+            for card in cards { try expenseService.deactivateCategory(category.id, in: card.id) }
             try requireState().saveWorkspacePreferences(proposed)
         }
         publishPreferences(proposed); invalidateExpenseCaches()
@@ -1737,8 +1737,8 @@ final class AppModel {
         try deleteGlobalCategory(global)
     }
 
-    func restoreBackup(_ backup: BookBackup) throws {
-        try restoreWorkspaceBackup(WorkspaceBackup(singleBook: backup))
+    func restoreBackup(_ backup: CardBackup) throws {
+        try restoreWorkspaceBackup(WorkspaceBackup(singleCard: backup))
     }
 
     func restoreWorkspaceBackup(_ source: WorkspaceBackup) throws {
@@ -1747,19 +1747,19 @@ final class AppModel {
         do {
             try backups.restoreWorkspace(backup, currentDraft: draft, settings: settings)
             chat.clear()
-            let restoredBookID = expenseService?.activeBookID ?? backup.books[0].book.id
-            if let active = backup.books.first(where: { $0.book.id == restoredBookID }) {
+            let restoredCardID = expenseService?.activeCardID ?? backup.cards[0].card.id
+            if let active = backup.cards.first(where: { $0.card.id == restoredCardID }) {
                 draft = active.draft ?? ExpenseDraft()
             }
-            draft.bookID = restoredBookID
-            selectedBookID = restoredBookID
+            draft.cardID = restoredCardID
+            selectedCardID = restoredCardID
             settings = backup.settings
             appLock.applyPersistedConfiguration(settings.appLockTimeout, requireAuthentication: true)
             publishPreferences(backup.preferences)
             workspacePreferences = backup.preferences
-            hiddenBookIDs = backup.preferences.visibleBookIDs.isEmpty
+            hiddenCardIDs = backup.preferences.visibleCardIDs.isEmpty
                 ? []
-                : Set(books.map(\.id).filter { !backup.preferences.visibleBookIDs.contains($0) })
+                : Set(cards.map(\.id).filter { !backup.preferences.visibleCardIDs.contains($0) })
             expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             undoExpense = nil; pendingEntry = nil; toast = nil
             invalidateExpenseCaches()

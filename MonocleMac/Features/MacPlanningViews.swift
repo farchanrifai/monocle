@@ -5,7 +5,7 @@ struct MacBudgetsView: View {
     @Bindable var state: MacAppState
     @State private var editing = false
     private var model: AppModel { state.model }
-    private var categories: [ExpenseCategory] { model.activeCategories(for: model.activeBookID) }
+    private var categories: [ExpenseCategory] { model.activeCategories(for: model.activeCardID) }
     private var usedPercent: Int {
         let ratio = Double(model.spent) / Double(max(Int64(1), model.activeBudget.overallLimit))
         return Int((ratio * 100).rounded())
@@ -203,9 +203,9 @@ private struct BillEditor: View {
     private func save() {
         do {
             guard let categoryID else { throw BillError.missingCategory }
-            let value = BillRule(id: original?.id ?? UUID(), bookID: original?.bookID ?? model.activeBookID, name: name, amount: try Money.parse(amount), categoryID: categoryID, recurrence: recurrence, recordingMode: mode, hasReminder: reminder, reminderLeadDays: leadDays, createdAt: original?.createdAt ?? .now, isActive: active)
+            let value = BillRule(id: original?.id ?? UUID(), cardID: original?.cardID ?? model.activeCardID, name: name, amount: try Money.parse(amount), categoryID: categoryID, recurrence: recurrence, recordingMode: mode, hasReminder: reminder, reminderLeadDays: leadDays, createdAt: original?.createdAt ?? .now, isActive: active)
             try value.validate(categories: model.activeCategories)
-            try model.saveBill(value, in: value.bookID)
+            try model.saveBill(value, in: value.cardID)
             close()
         } catch { self.error = error.localizedDescription }
     }
@@ -235,8 +235,8 @@ struct MacAnalyticsView: View {
             ?? (customStart, customEnd, Day.string(customStart), Day.string(customEnd))
     }
     private func cardExpenses(from start: String, to end: String) -> [(card: String, expense: Expense)] {
-        model.books(in: state.analyticsScope).flatMap { book in // hidden cards stay out unless picked directly
-            model.expenses(for: book.id).filter { $0.day >= start && $0.day <= end }.map { (book.name, $0) }
+        model.cards(in: state.analyticsScope).flatMap { card in // hidden cards stay out unless picked directly
+            model.expenses(for: card.id).filter { $0.day >= start && $0.day <= end }.map { (card.name, $0) }
         }
     }
     private func grouped(_ pairs: [(String, Int64)]) -> [(String, Int64)] {
@@ -407,7 +407,7 @@ struct MacAnalyticsView: View {
                 }
             }
             Section("Cards") {
-                ForEach(model.unhiddenBooks) { book in Button { pick(.card(id: book.id, name: book.name)) } label: { Label(book.name, systemImage: "creditcard") } }
+                ForEach(model.unhiddenCards) { card in Button { pick(.card(id: card.id, name: card.name)) } label: { Label(card.name, systemImage: "creditcard") } }
             }
         } label: {
             HStack(spacing: 6) {

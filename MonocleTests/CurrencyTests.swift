@@ -49,7 +49,7 @@ final class CurrencyTests: XCTestCase {
 
     private func makeModel() throws -> (AppModel, ExpenseRepository, URL) {
         let repo = try ExpenseRepository(inMemory: true)
-        try repo.prepareSampleBook()
+        try repo.prepareSampleCard()
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: dir))
@@ -61,11 +61,11 @@ final class CurrencyTests: XCTestCase {
     func testCardCurrencyTotalsSpendingPromptAndBudgetConversion() async throws {
         let (model, _, dir) = try makeModel()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let cardID = model.activeBookID
+        let cardID = model.activeCardID
         try model.saveBudget(overallLimit: 2_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
 
         // Paid ¥1,000 at Rp100 on a rupiah card: the row shows yen, the card Rp100,000, and the app offers JPY.
-        model.draft = ExpenseDraft(); model.draft.bookID = cardID
+        model.draft = ExpenseDraft(); model.draft.cardID = cardID
         model.draft.currency = "JPY"; model.draft.amount = "1000"; model.draft.categoryID = model.activeCategories.first?.id
         await model.refreshDraftRate()
         XCTAssertEqual(model.draft.rateSource, .fetched)
@@ -77,8 +77,8 @@ final class CurrencyTests: XCTestCase {
         XCTAssertEqual(model.spendingCurrencySuggestion?.code, "JPY")
 
         await model.acceptSpendingCurrencySuggestion()
-        XCTAssertEqual(model.books.first { $0.id == cardID }?.spendingCurrency, "JPY")
-        model.draft = ExpenseDraft(); model.draft.bookID = cardID
+        XCTAssertEqual(model.cards.first { $0.id == cardID }?.spendingCurrency, "JPY")
+        model.draft = ExpenseDraft(); model.draft.cardID = cardID
         model.prefillDraftDefaults()
         XCTAssertEqual(model.draft.currency, "JPY")
 
@@ -87,20 +87,20 @@ final class CurrencyTests: XCTestCase {
         XCTAssertEqual(model.activeCardCurrency, "JPY")
         XCTAssertEqual(model.activeBudget.overallLimit, 2_000_000) // Rp2,000,000 → ¥20,000
         XCTAssertEqual(model.spent, 100_000) // the ¥1,000 actually paid
-        XCTAssertNil(model.books.first { $0.id == cardID }?.spendingCurrency) // same as budget currency
+        XCTAssertNil(model.cards.first { $0.id == cardID }?.spendingCurrency) // same as budget currency
     }
 
     func testReportingCurrencyChangeReconvertsHistoryKeepsManualRatesAndConvertsBudgets() async throws {
         let (model, repo, dir) = try makeModel()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let cardID = model.activeBookID
+        let cardID = model.activeCardID
         let category = try XCTUnwrap(model.activeCategories.first?.id)
         try model.saveBudget(overallLimit: 5_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
         let stack = try model.createStack(name: "Everyday", cardIDs: [cardID])
         var capped = stack; capped.capLimit = 3_000_000_00; try model.updateStack(capped)
         // Rp50,000 paid in rupiah, and ¥1,000 typed at a manual Rp120.
-        let rupiah = Expense(amount: 5_000_000, day: "2026-10-01", note: "Lunch", allocations: [.init(categoryID: category, amount: 5_000_000)], bookID: cardID)
-        let yen = Expense(amount: 12_000_000, day: "2026-10-02", note: "Ramen", allocations: [.init(categoryID: category, amount: 12_000_000)], bookID: cardID,
+        let rupiah = Expense(amount: 5_000_000, day: "2026-10-01", note: "Lunch", allocations: [.init(categoryID: category, amount: 5_000_000)], cardID: cardID)
+        let yen = Expense(amount: 12_000_000, day: "2026-10-02", note: "Ramen", allocations: [.init(categoryID: category, amount: 12_000_000)], cardID: cardID,
                           originalAmount: 100_000, originalCurrency: "JPY", rate: "120", rateSource: .manual)
         try model.save(rupiah); try model.save(yen)
 

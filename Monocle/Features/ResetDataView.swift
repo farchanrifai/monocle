@@ -11,8 +11,8 @@ struct ResetDataView: View {
     @State private var message: String?
 
     private var activeCardName: String {
-        let activeID = model.selectedBookID ?? model.activeBookID
-        return model.books.first(where: { $0.id == activeID })?.name ?? model.settings.book.name
+        let activeID = model.selectedCardID ?? model.activeCardID
+        return model.cards.first(where: { $0.id == activeID })?.name ?? model.settings.card.name
     }
 
     var body: some View {
@@ -53,7 +53,7 @@ struct ResetDataView: View {
                 }
                 .accessibilityIdentifier("clearActiveCardButton")
 
-                if model.books.count > 1 {
+                if model.cards.count > 1 {
                     Button(role: .destructive) {
                         confirmClearAll = true
                     } label: {
@@ -61,7 +61,7 @@ struct ResetDataView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Clear expenses on all cards")
                                     .foregroundStyle(.red)
-                                Text("Across all \(model.books.count) cards")
+                                Text("Across all \(model.cards.count) cards")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

@@ -13,7 +13,7 @@ struct BillReminder: Equatable, Sendable {
     let fireDate: Date
     let billRuleID: UUID
     let occurrenceID: UUID
-    let bookID: UUID
+    let cardID: UUID
 }
 
 @MainActor
@@ -53,7 +53,7 @@ private final class SystemBillNotificationClient: BillNotificationClient {
         content.sound = .default
         content.userInfo = ["billRuleID": reminder.billRuleID.uuidString,
                             "occurrenceID": reminder.occurrenceID.uuidString,
-                            "bookID": reminder.bookID.uuidString]
+                            "bookID": reminder.cardID.uuidString]
         var components = Day.calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.fireDate)
         components.calendar = Day.calendar
         components.timeZone = .current
@@ -136,7 +136,7 @@ final class BillNotificationService {
         let byID = Dictionary(rules.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return occurrences.compactMap { occurrence in
             guard occurrence.status == .pending, let rule = byID[occurrence.billRuleID],
-                  rule.bookID == occurrence.bookID, rule.hasReminder, rule.isActive,
+                  rule.cardID == occurrence.cardID, rule.hasReminder, rule.isActive,
                   let due = Day.date(occurrence.dueDay),
                   let leadDate = Day.calendar.date(byAdding: .day, value: -rule.reminderLeadDays, to: due),
                   let fireDate = Day.calendar.date(bySettingHour: 9, minute: 0, second: 0, of: leadDate),
@@ -144,7 +144,7 @@ final class BillNotificationService {
             return BillReminder(identifier: Self.prefix + occurrence.id.uuidString,
                 title: "Bill Due: \(rule.name)",
                 body: "\(Money.format(rule.amount)) is due on \(Day.title(occurrence.dueDay)).",
-                fireDate: fireDate, billRuleID: rule.id, occurrenceID: occurrence.id, bookID: rule.bookID)
+                fireDate: fireDate, billRuleID: rule.id, occurrenceID: occurrence.id, cardID: rule.cardID)
         }.sorted { $0.fireDate == $1.fireDate ? $0.identifier < $1.identifier : $0.fireDate < $1.fireDate }
     }
 }

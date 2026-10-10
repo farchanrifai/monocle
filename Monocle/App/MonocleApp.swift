@@ -22,7 +22,7 @@ struct RootView: View {
             } else {
                 TabView(selection: $model.selectedTab) {
                     Tab("Home", systemImage: "house", value: 0) {
-                        BookHomeView(model: model)
+                        CardHomeView(model: model)
                             .toolbar(.hidden, for: .tabBar)
                     }
                     Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
@@ -73,12 +73,12 @@ struct RootView: View {
             if host == "entry" {
                 let catIDStr = queryItems.first(where: { $0.name == "category" })?.value
                 let catID = catIDStr.flatMap(UUID.init)
-                let bookIDStr = queryItems.first(where: { $0.name == "book" || $0.name == "card" })?.value
-                let bookID = bookIDStr.flatMap(UUID.init)
-                model.openEntry(for: bookID, categoryID: catID)
+                let cardIDStr = queryItems.first(where: { $0.name == "book" || $0.name == "card" })?.value
+                let cardID = cardIDStr.flatMap(UUID.init)
+                model.openEntry(for: cardID, categoryID: catID)
             } else if host == "card" || host == "book" {
                 let cardIDStr = queryItems.first(where: { $0.name == "id" })?.value
-                let cardID = cardIDStr.flatMap(UUID.init) ?? model.activeBookID
+                let cardID = cardIDStr.flatMap(UUID.init) ?? model.activeCardID
                 model.openCardInHome(id: cardID)
             } else if host == "stack" {
                 let stackIDStr = queryItems.first(where: { $0.name == "id" })?.value

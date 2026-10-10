@@ -3,9 +3,9 @@ import Foundation
 enum WidgetSnapshotUpdater {
     @discardableResult
     static func update(
-        activeBook: BookProfile,
+        activeCard: Card,
         activeStack: CardStack? = nil,
-        allBooks: [BookProfile] = [],
+        allCards: [Card] = [],
         expenses: [Expense],
         stackExpenses: [Expense] = [],
         categories: [ExpenseCategory],
@@ -40,7 +40,7 @@ enum WidgetSnapshotUpdater {
 
         let stackSummary: WidgetStackSummary? = {
             guard let activeStack else { return nil }
-            let cardNames = allBooks.filter { activeStack.cardIDs.contains($0.id) }.map(\.name)
+            let cardNames = allCards.filter { activeStack.cardIDs.contains($0.id) }.map(\.name)
             let total = Money.sum(stackExpenses.map(\.amount))
             return WidgetStackSummary(
                 id: activeStack.id,
@@ -62,7 +62,7 @@ enum WidgetSnapshotUpdater {
             let title = (!note.isEmpty) ? note : (cat?.name ?? "Expense")
             return WidgetTransactionItem(
                 id: exp.id,
-                bookID: exp.bookID,
+                cardID: exp.cardID,
                 title: title,
                 amount: exp.amount,
                 categoryName: cat?.name ?? "General",
@@ -80,7 +80,7 @@ enum WidgetSnapshotUpdater {
             updatedAt: .now,
             reportingDay: todayStr,
             revision: revision,
-            activeBook: WidgetBookSummary(id: activeBook.id, name: activeBook.name),
+            activeCard: WidgetCardSummary(id: activeCard.id, name: activeCard.name),
             activeStack: stackSummary,
             cycleBudget: budgetSummary,
             todaySpending: WidgetTodaySummary(

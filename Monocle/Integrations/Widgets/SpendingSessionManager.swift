@@ -42,7 +42,7 @@ public final class SpendingSessionManager {
 
     public private(set) var isSessionActive: Bool = false
     public private(set) var sessionName: String = ""
-    public private(set) var sessionBookID: UUID? = nil
+    public private(set) var sessionCardID: UUID? = nil
     public private(set) var sessionBudgetLimit: Int64? = nil
     public private(set) var sessionSpent: Int64 = 0
     public private(set) var sessionItemCount: Int = 0
@@ -63,7 +63,7 @@ public final class SpendingSessionManager {
                 self.currentActivity = existing
                 self.isSessionActive = true
                 self.sessionName = existing.attributes.sessionName
-                self.sessionBookID = existing.attributes.bookID
+                self.sessionCardID = existing.attributes.cardID
                 self.sessionStartTime = existing.attributes.startTime
                 self.sessionSpent = existing.state.currentSpent
                 self.sessionItemCount = existing.state.itemCount
@@ -74,7 +74,7 @@ public final class SpendingSessionManager {
         }
     }
 
-    public func startSession(name: String, bookName: String, bookID: UUID? = nil, budgetLimit: Int64? = nil) {
+    public func startSession(name: String, cardName: String, cardID: UUID? = nil, budgetLimit: Int64? = nil) {
         if isSessionActive {
             endSession()
         }
@@ -82,7 +82,7 @@ public final class SpendingSessionManager {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalName = trimmedName.isEmpty ? "Spending Session" : trimmedName
         self.sessionName = finalName
-        self.sessionBookID = bookID
+        self.sessionCardID = cardID
         self.sessionBudgetLimit = budgetLimit
         self.sessionSpent = 0
         self.sessionItemCount = 0
@@ -98,7 +98,7 @@ public final class SpendingSessionManager {
             return
         }
 
-        let attributes = SpendingActivityAttributes(sessionName: finalName, bookName: bookName, startTime: start, bookID: bookID)
+        let attributes = SpendingActivityAttributes(sessionName: finalName, cardName: cardName, startTime: start, cardID: cardID)
         let state = SpendingActivityAttributes.ContentState(
             currentSpent: 0,
             itemCount: 0,
@@ -116,8 +116,8 @@ public final class SpendingSessionManager {
         }
     }
 
-    public func recordExpense(amount: Int64, note: String?, categorySymbol: String?, bookID: UUID? = nil) {
-        guard isSessionActive, amount > 0, sessionBookID == nil || bookID == sessionBookID else { return }
+    public func recordExpense(amount: Int64, note: String?, categorySymbol: String?, cardID: UUID? = nil) {
+        guard isSessionActive, amount > 0, sessionCardID == nil || cardID == sessionCardID else { return }
         let nextSpent = sessionSpent.addingReportingOverflow(amount)
         guard !nextSpent.overflow else { activityError = "The session total exceeds the supported amount range."; return }
         sessionSpent = nextSpent.partialValue
@@ -152,6 +152,6 @@ public final class SpendingSessionManager {
         currentActivity = nil
         Task { await activity?.end(state) }
         sessionStartTime = nil
-        sessionBookID = nil
+        sessionCardID = nil
     }
 }

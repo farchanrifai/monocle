@@ -33,12 +33,12 @@ struct BackupView: View {
             } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. Older JSON backups remain supported.") }
             if let candidate {
                 Section("Review replacement") {
-                    LabeledContent("Cards", value: String(candidate.books.count))
+                    LabeledContent("Cards", value: String(candidate.cards.count))
                     LabeledContent("Exported", value: candidate.exportedAt.formatted(date: .abbreviated, time: .shortened))
-                    LabeledContent("Expenses", value: String(candidate.books.reduce(0) { $0 + $1.expenses.count }))
-                    LabeledContent("Categories", value: String(candidate.books.reduce(0) { $0 + $1.categories.count }))
-                    LabeledContent("Budget versions", value: String(candidate.books.reduce(0) { $0 + $1.budgets.count }))
-                    LabeledContent("Total", value: Money.format(Money.sum(candidate.books.flatMap(\.expenses).map(\.amount))))
+                    LabeledContent("Expenses", value: String(candidate.cards.reduce(0) { $0 + $1.expenses.count }))
+                    LabeledContent("Categories", value: String(candidate.cards.reduce(0) { $0 + $1.categories.count }))
+                    LabeledContent("Budget versions", value: String(candidate.cards.reduce(0) { $0 + $1.budgets.count }))
+                    LabeledContent("Total", value: Money.format(Money.sum(candidate.cards.flatMap(\.expenses).map(\.amount))))
                     LabeledContent("Current expenses replaced", value: String(model.allExpenses().count))
                     Button("Replace all app data", role: .destructive) { confirm = true }
                         .accessibilityIdentifier("restoreBackup")
@@ -50,7 +50,7 @@ struct BackupView: View {
                     do {
                         guard let backups = model.backups else { throw BackupError.unsupported }
                         let data = try Data(contentsOf: backups.safetyURL)
-                        guard (try? BookBackup.decode(data)) != nil || (try? WorkspaceBackup.decode(data)) != nil else {
+                        guard (try? CardBackup.decode(data)) != nil || (try? WorkspaceBackup.decode(data)) != nil else {
                             throw BackupError.invalid
                         }
                         document = BackupDocument(data: data); exporting = true

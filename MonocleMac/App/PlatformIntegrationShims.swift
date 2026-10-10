@@ -7,7 +7,7 @@ final class SpendingSessionManager {
 
     private(set) var isSessionActive = false
     private(set) var sessionName = ""
-    private(set) var sessionBookID: UUID?
+    private(set) var sessionCardID: UUID?
     private(set) var sessionBudgetLimit: Int64?
     private(set) var sessionSpent: Int64 = 0
     private(set) var sessionItemCount = 0
@@ -17,9 +17,9 @@ final class SpendingSessionManager {
 
     private init() {}
 
-    func startSession(name: String, bookName: String, bookID: UUID? = nil, budgetLimit: Int64? = nil) {
+    func startSession(name: String, cardName: String, cardID: UUID? = nil, budgetLimit: Int64? = nil) {
         sessionName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Spending Session" : name
-        sessionBookID = bookID
+        sessionCardID = cardID
         sessionBudgetLimit = budgetLimit
         sessionSpent = 0
         sessionItemCount = 0
@@ -29,8 +29,8 @@ final class SpendingSessionManager {
         isSessionActive = true
     }
 
-    func recordExpense(amount: Int64, note: String?, categorySymbol: String?, bookID: UUID? = nil) {
-        guard isSessionActive, amount > 0, sessionBookID == nil || sessionBookID == bookID else { return }
+    func recordExpense(amount: Int64, note: String?, categorySymbol: String?, cardID: UUID? = nil) {
+        guard isSessionActive, amount > 0, sessionCardID == nil || sessionCardID == cardID else { return }
         let next = sessionSpent.addingReportingOverflow(amount)
         guard !next.overflow else { return }
         sessionSpent = next.partialValue
@@ -41,16 +41,16 @@ final class SpendingSessionManager {
 
     func endSession() {
         isSessionActive = false
-        sessionBookID = nil
+        sessionCardID = nil
         sessionStartTime = nil
     }
 }
 
 enum WidgetSnapshotUpdater {
     static func update(
-        activeBook: BookProfile,
+        activeCard: Card,
         activeStack: CardStack? = nil,
-        allBooks: [BookProfile] = [],
+        allCards: [Card] = [],
         expenses: [Expense],
         stackExpenses: [Expense] = [],
         categories: [ExpenseCategory],

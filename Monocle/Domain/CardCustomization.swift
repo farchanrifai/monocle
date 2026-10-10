@@ -108,7 +108,7 @@ public enum CardBackgroundStyle: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-public struct BookCardCustomization: Codable, Equatable, Hashable, Sendable {
+public struct CardCustomization: Codable, Equatable, Hashable, Sendable {
     public var style: CardBackgroundStyle
     public var textTone: CardTextTone
 
@@ -202,7 +202,7 @@ public enum CardPalette {
         return luminance < 0.55
     }
 
-    public static func resolvedTextColor(for customization: BookCardCustomization) -> Color {
+    public static func resolvedTextColor(for customization: CardCustomization) -> Color {
         switch customization.textTone {
         case .light:
             return .white

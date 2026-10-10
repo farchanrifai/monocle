@@ -34,7 +34,7 @@ struct CSVInterchangeView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTab: Int
-    @State private var exportScope: ExportScope = .activeBook
+    @State private var exportScope: ExportScope = .activeCard
     @State private var exportDateRange: CSVDateRangeScope = .allTime
     @State private var customStartDate: Date = Day.calendar.date(byAdding: .day, value: -30, to: .now) ?? .now
     @State private var customEndDate: Date = .now
@@ -47,7 +47,7 @@ struct CSVInterchangeView: View {
     @State private var importedRawRows: [[String]] = []
     @State private var detectedDelimiter: Character = ","
     @State private var columnMapping = CSVColumnMapping()
-    @State private var targetBookID: UUID
+    @State private var targetCardID: UUID
     @State private var defaultCategoryID: UUID?
     @State private var skipDuplicates = true
     @State private var processedRows: [CSVImportRow] = []
@@ -59,8 +59,8 @@ struct CSVInterchangeView: View {
     @State private var processingTask: Task<Void, Never>?
 
     enum ExportScope: String, CaseIterable, Identifiable {
-        case activeBook = "Current card"
-        case allBooks = "All cards"
+        case activeCard = "Current card"
+        case allCards = "All cards"
         var id: String { rawValue }
     }
 
@@ -69,11 +69,11 @@ struct CSVInterchangeView: View {
         self.initialTab = initialTab
         self.showsDismissButton = showsDismissButton
         _selectedTab = State(initialValue: initialTab)
-        _targetBookID = State(initialValue: model.activeBookID)
+        _targetCardID = State(initialValue: model.activeCardID)
     }
 
-    private var targetBookCategories: [ExpenseCategory] {
-        model.activeCategories(for: targetBookID)
+    private var targetCardCategories: [ExpenseCategory] {
+        model.activeCategories(for: targetCardID)
     }
 
     var body: some View {
@@ -129,13 +129,13 @@ struct CSVInterchangeView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 let count = processedRows.filter { $0.isSelectedForImport && $0.parsedExpense != nil }.count
-                let bookName = model.books.first { $0.id == targetBookID }?.name ?? "selected card"
-                Text("Are you sure you want to import \(count) expenses into \(bookName)?")
+                let cardName = model.cards.first { $0.id == targetCardID }?.name ?? "selected card"
+                Text("Are you sure you want to import \(count) expenses into \(cardName)?")
             }
             .onDisappear { cancelProcessing() }
             .onAppear {
                 if defaultCategoryID == nil {
-                    defaultCategoryID = targetBookCategories.first?.id
+                    defaultCategoryID = targetCardCategories.first?.id
                 }
             }
     }
@@ -167,7 +167,7 @@ struct CSVInterchangeView: View {
 
             let exportExpenses = currentExportExpenses()
             let totalSpent = Money.sum(exportExpenses.map(\.amount))
-            let csvContent = model.csvExportText(for: exportScope == .activeBook ? model.activeBookID : nil,
+            let csvContent = model.csvExportText(for: exportScope == .activeCard ? model.activeCardID : nil,
                 dateRange: exportDateRange, customStartDate: customStartDate, customEndDate: customEndDate)
 
             Section("Summary") {
@@ -210,11 +210,11 @@ struct CSVInterchangeView: View {
 
     private func currentExportExpenses() -> [Expense] {
         let rawList: [Expense]
-        if exportScope == .activeBook {
-            rawList = model.expenses(for: model.activeBookID)
+        if exportScope == .activeCard {
+            rawList = model.expenses(for: model.activeCardID)
         } else {
             var all: [Expense] = []
-            for b in model.books {
+            for b in model.cards {
                 all.append(contentsOf: model.expenses(for: b.id))
             }
             rawList = all
@@ -297,12 +297,12 @@ struct CSVInterchangeView: View {
 
             if !importedRawRows.isEmpty {
                 Section("Target Card & Category") {
-                    Picker("Destination Card", selection: $targetBookID) {
-                        ForEach(model.books) { book in
-                            Text(book.name).tag(book.id)
+                    Picker("Destination Card", selection: $targetCardID) {
+                        ForEach(model.cards) { card in
+                            Text(card.name).tag(card.id)
                         }
                     }
-                    .onChange(of: targetBookID) { _, _ in
+                    .onChange(of: targetCardID) { _, _ in
                         reprocessImportRows()
                     }
                     .accessibilityIdentifier("importDestinationBookPicker")
@@ -312,7 +312,7 @@ struct CSVInterchangeView: View {
                             get: { chosenCat },
                             set: { defaultCategoryID = $0; reprocessImportRows() }
                         )) {
-                            ForEach(targetBookCategories) { cat in
+                            ForEach(targetCardCategories) { cat in
                                 Label(cat.name, systemImage: cat.symbol).tag(cat.id)
                             }
                         }
@@ -549,13 +549,13 @@ struct CSVInterchangeView: View {
         processingTask?.cancel()
         processingGeneration = UUID()
         let generation = processingGeneration
-        let categories = targetBookCategories
+        let categories = targetCardCategories
         if !categories.contains(where: { $0.id == defaultCategoryID }) { defaultCategoryID = categories.first?.id }
         processedRows = []
         guard !importedRawRows.isEmpty, let defaultCat = defaultCategoryID else { isProcessing = false; return }
         let rows = importedRawRows
         let mapping = columnMapping
-        let destination = targetBookID
+        let destination = targetCardID
         let existing = model.expenses(for: destination)
         let skip = skipDuplicates
         let methods = model.paymentMethods
@@ -563,7 +563,7 @@ struct CSVInterchangeView: View {
         processingTask = Task { @MainActor in
             let worker = Task.detached(priority: .userInitiated) {
                 var parsed = CSVImportParser.processRows(rawRows: rows, hasHeader: true, mapping: mapping,
-                    targetBookID: destination, categories: categories, defaultCategoryID: defaultCat, existingExpenses: existing,
+                    targetCardID: destination, categories: categories, defaultCategoryID: defaultCat, existingExpenses: existing,
                     paymentMethods: methods)
                 for index in parsed.indices where parsed[index].isDuplicate { parsed[index].isSelectedForImport = !skip }
                 try Task.checkCancellation()
@@ -588,7 +588,7 @@ struct CSVInterchangeView: View {
         guard !isProcessing, !toImport.isEmpty else { return }
 
         do {
-            try model.importExpenses(toImport, to: targetBookID)
+            try model.importExpenses(toImport, to: targetCardID)
             dismiss()
         } catch {
             importErrorMessage = "Failed to import: \(error.localizedDescription)"

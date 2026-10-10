@@ -59,9 +59,9 @@ struct ChatTranscript: View {
         case .proposal(let expense, let state):
             ExpenseProposalCard(
                 expense: expense,
-                category: expense.bookID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.allocations.first?.categoryID },
+                category: expense.cardID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.allocations.first?.categoryID },
                 splitLabel: expense.allocations.count > 1 ? categoryName(expense) : nil,
-                cardName: model.books.first { $0.id == expense.bookID }?.name ?? "",
+                cardName: model.cards.first { $0.id == expense.cardID }?.name ?? "",
                 state: state,
                 onSave: { session.resolveProposal(row.id, expense, as: .saved, model: model) },
                 onDiscard: { session.resolveProposal(row.id, expense, as: .discarded, model: model) },
@@ -70,7 +70,7 @@ struct ChatTranscript: View {
             ExpenseChangeCard(
                 change: change,
                 categoryName: categoryName,
-                cardName: model.books.first { $0.id == change.original.bookID }?.name ?? "",
+                cardName: model.cards.first { $0.id == change.original.cardID }?.name ?? "",
                 state: state,
                 onApply: { session.resolveChange(row.id, change, as: .saved, model: model) },
                 onKeep: { session.resolveChange(row.id, change, as: .discarded, model: model) },
@@ -78,8 +78,8 @@ struct ChatTranscript: View {
         case .bill(let bill, let state):
             BillProposalCard(
                 bill: bill,
-                categoryName: (try? model.expenseService?.categories(for: bill.bookID))??.first { $0.id == bill.categoryID }?.name ?? "",
-                cardName: model.books.first { $0.id == bill.bookID }?.name ?? "",
+                categoryName: (try? model.expenseService?.categories(for: bill.cardID))??.first { $0.id == bill.categoryID }?.name ?? "",
+                cardName: model.cards.first { $0.id == bill.cardID }?.name ?? "",
                 state: state,
                 onSave: { session.resolveBill(row.id, bill, as: .saved, model: model) },
                 onDiscard: { session.resolveBill(row.id, bill, as: .discarded, model: model) })
@@ -95,7 +95,7 @@ struct ChatTranscript: View {
     }
 
     private func categoryName(_ expense: Expense) -> String {
-        let categories = expense.bookID.flatMap { id in try? model.expenseService?.categories(for: id) } ?? []
+        let categories = expense.cardID.flatMap { id in try? model.expenseService?.categories(for: id) } ?? []
         let name = { (a: Allocation) in categories.first { $0.id == a.categoryID }?.name ?? "Unknown" }
         if expense.allocations.count == 1 { return name(expense.allocations[0]) }
         return expense.allocations.map { "\(name($0)) \(Money.format($0.amount))" }.joined(separator: " · ")
@@ -156,7 +156,7 @@ struct ChatScopeMenuItems: View {
             }
         }
         Section("Cards") {
-            ForEach(model.unhiddenBooks) { card in
+            ForEach(model.unhiddenCards) { card in
                 scopeButton(.card(id: card.id, name: card.name), label: card.name, icon: "creditcard")
             }
         }
@@ -190,7 +190,7 @@ struct ChatMentionList: View {
 
     static func targets(_ model: AppModel, matching query: String) -> [Target] {
         let all = model.stacks.map { Target(scope: .stack(id: $0.id, name: $0.name), name: $0.name, icon: $0.icon) }
-            + model.unhiddenBooks.map { Target(scope: .card(id: $0.id, name: $0.name), name: $0.name, icon: "creditcard") }
+            + model.unhiddenCards.map { Target(scope: .card(id: $0.id, name: $0.name), name: $0.name, icon: "creditcard") }
             + [Target(scope: .allCards, name: "All Cards", icon: "rectangle.stack")]
         return Array((query.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(query) }).prefix(6))
     }

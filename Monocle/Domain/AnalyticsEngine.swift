@@ -14,8 +14,8 @@ enum AnalyticsTimeHorizon: String, CaseIterable, Identifiable, Sendable {
 }
 
 enum AnalyticsScope: String, CaseIterable, Identifiable, Sendable {
-    case activeBook = "Current card"
-    case allBooks = "All cards"
+    case activeCard = "Current card"
+    case allCards = "All cards"
 
     var id: String { rawValue }
 }
@@ -130,10 +130,10 @@ struct ComparativePeriodPoint: Identifiable, Equatable, Sendable {
     let previousDate: Date?
 }
 
-struct BookSpendPoint: Identifiable, Equatable, Sendable {
-    var id: UUID { bookID }
-    let bookID: UUID
-    let bookName: String
+struct CardSpendPoint: Identifiable, Equatable, Sendable {
+    var id: UUID { cardID }
+    let cardID: UUID
+    let cardName: String
     let colorIndex: Int
     let amount: Int64
     let percentage: Double
@@ -452,34 +452,34 @@ enum AnalyticsEngine {
         return points.sorted { $0.amount > $1.amount }
     }
 
-    /// Computes cross-book spending distribution.
-    static func calculateBookDistribution(
-        expensesByBook: [UUID: [Expense]],
-        books: [BookProfile]
-    ) -> [BookSpendPoint] {
-        guard (try? Money.checkedSum(expensesByBook.values.flatMap { $0.map(\.amount) })) != nil else { return [] }
-        var bookTotals: [UUID: (amount: Int64, count: Int)] = [:]
+    /// Computes cross-card spending distribution.
+    static func calculateCardDistribution(
+        expensesByCard: [UUID: [Expense]],
+        cards: [Card]
+    ) -> [CardSpendPoint] {
+        guard (try? Money.checkedSum(expensesByCard.values.flatMap { $0.map(\.amount) })) != nil else { return [] }
+        var cardTotals: [UUID: (amount: Int64, count: Int)] = [:]
         var grandTotal: Int64 = 0
 
-        for (bID, exps) in expensesByBook {
+        for (bID, exps) in expensesByCard {
             let sum = exps.reduce(0) { $0 + $1.amount }
-            bookTotals[bID] = (sum, exps.count)
+            cardTotals[bID] = (sum, exps.count)
             grandTotal += sum
         }
 
         guard grandTotal > 0 else { return [] }
-        let bookMap = Dictionary(uniqueKeysWithValues: books.map { ($0.id, $0) })
+        let cardMap = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
 
-        var points: [BookSpendPoint] = []
-        for (bID, data) in bookTotals where data.0 > 0 {
-            let book = bookMap[bID]
-            let name = book?.name ?? "Card"
-            let colorIdx = book?.colorIndex ?? 0
+        var points: [CardSpendPoint] = []
+        for (bID, data) in cardTotals where data.0 > 0 {
+            let card = cardMap[bID]
+            let name = card?.name ?? "Card"
+            let colorIdx = card?.colorIndex ?? 0
             let pct = Double(data.0) / Double(grandTotal)
 
-            points.append(BookSpendPoint(
-                bookID: bID,
-                bookName: name,
+            points.append(CardSpendPoint(
+                cardID: bID,
+                cardName: name,
                 colorIndex: colorIdx,
                 amount: data.0,
                 percentage: pct,
@@ -573,8 +573,8 @@ struct AnalyticsReportingData {
     var expenses: [Expense] = []
     var categories: [ExpenseCategory] = []
     var budgets: [BudgetVersion] = []
-    var books: [BookProfile] = []
-    var expensesByBook: [UUID: [Expense]] = [:]
+    var cards: [Card] = []
+    var expensesByCard: [UUID: [Expense]] = [:]
     var bills: [BillRule] = []
     var billOccurrences: [BillOccurrence] = []
     var errorMessage: String? = nil
@@ -587,7 +587,7 @@ struct AnalyticsReport {
     let period: BudgetPeriod?
     let dailyPoints: [DailySpendPoint]
     let categoryPoints: [CategorySpendPoint]
-    let bookPoints: [BookSpendPoint]
+    let cardPoints: [CardSpendPoint]
     let monthPoints: [ComparativePeriodPoint]
     let metrics: AnalyticsMetrics
     let errorMessage: String?
@@ -602,9 +602,9 @@ struct AnalyticsReport {
         let daily = error == nil ? AnalyticsEngine.calculateDailySpendPoints(expenses: filtered, startDate: range.startDate, endDate: range.endDate, overallBudgetLimit: budget?.overallLimit, calendar: calendar, now: now) : []
         let limits = Dictionary((budget?.categoryLimits ?? []).map { ($0.categoryID, $0.limit) }) { first, _ in first }
         let category = error == nil ? AnalyticsEngine.calculateCategoryDistribution(expenses: filtered, categories: data.categories, budgetLimits: limits) : []
-        let books = error == nil ? AnalyticsEngine.calculateBookDistribution(expensesByBook: data.expensesByBook.mapValues { AnalyticsEngine.filterExpenses($0, startDay: range.startDay, endDay: range.endDay) }, books: data.books) : []
+        let cards = error == nil ? AnalyticsEngine.calculateCardDistribution(expensesByCard: data.expensesByCard.mapValues { AnalyticsEngine.filterExpenses($0, startDay: range.startDay, endDay: range.endDay) }, cards: data.cards) : []
         let months = error == nil ? AnalyticsEngine.calculateMonthOverMonthComparison(expenses: data.expenses, calendar: calendar, now: now) : []
         let metrics = AnalyticsEngine.calculateMetrics(dailyPoints: daily, categoryPoints: category, startDate: range.startDate, endDate: range.endDate, overallBudgetLimit: budget?.overallLimit, calendar: calendar, now: now)
-        return .init(data: data, range: range, period: period, dailyPoints: daily, categoryPoints: category, bookPoints: books, monthPoints: months, metrics: metrics, errorMessage: error)
+        return .init(data: data, range: range, period: period, dailyPoints: daily, categoryPoints: category, cardPoints: cards, monthPoints: months, metrics: metrics, errorMessage: error)
     }
 }

@@ -63,7 +63,7 @@ enum BillOccurrenceStatus: String, Codable, CaseIterable, Sendable {
 
 struct BillRule: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
-    var bookID: UUID
+    var cardID: UUID
     var name: String
     var amount: Int64
     var categoryID: UUID
@@ -79,7 +79,7 @@ struct BillRule: Identifiable, Codable, Equatable, Sendable {
 
     init(
         id: UUID = UUID(),
-        bookID: UUID,
+        cardID: UUID,
         name: String,
         amount: Int64,
         categoryID: UUID,
@@ -93,7 +93,7 @@ struct BillRule: Identifiable, Codable, Equatable, Sendable {
         scheduleRevision: Int = 0
     ) {
         self.id = id
-        self.bookID = bookID
+        self.cardID = cardID
         self.name = name
         self.amount = amount
         self.categoryID = categoryID
@@ -108,14 +108,14 @@ struct BillRule: Identifiable, Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, bookID, name, amount, categoryID, recurrence, recordingMode, hasReminder
+        case id, cardID = "bookID", name, amount, categoryID, recurrence, recordingMode, hasReminder
         case reminderLeadDays, createdAt, isActive, scheduleEffectiveDay, scheduleRevision
     }
 
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decode(UUID.self, forKey: .id)
-        bookID = try values.decode(UUID.self, forKey: .bookID)
+        cardID = try values.decode(UUID.self, forKey: .cardID)
         name = try values.decode(String.self, forKey: .name)
         amount = try values.decode(Int64.self, forKey: .amount)
         categoryID = try values.decode(UUID.self, forKey: .categoryID)
@@ -152,17 +152,19 @@ struct BillRule: Identifiable, Codable, Equatable, Sendable {
 struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
     var id: UUID
     var billRuleID: UUID
-    var bookID: UUID
+    var cardID: UUID
     var dueDay: String // YYYY-MM-DD
     var status: BillOccurrenceStatus
     var expenseID: UUID?
     var createdAt: Date
     var updatedAt: Date
+    // Stored keys keep their pre-rename names so existing backups, drafts and settings still load.
+    private enum CodingKeys: String, CodingKey { case id, billRuleID, cardID = "bookID", dueDay, status, expenseID, createdAt, updatedAt }
 
     init(
         id: UUID = UUID(),
         billRuleID: UUID,
-        bookID: UUID,
+        cardID: UUID,
         dueDay: String,
         status: BillOccurrenceStatus = .pending,
         expenseID: UUID? = nil,
@@ -171,7 +173,7 @@ struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
     ) {
         self.id = id
         self.billRuleID = billRuleID
-        self.bookID = bookID
+        self.cardID = cardID
         self.dueDay = dueDay
         self.status = status
         self.expenseID = expenseID
@@ -179,17 +181,17 @@ struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
         self.updatedAt = updatedAt
     }
 
-    func validate(rules: [BillRule], expenses: [Expense], bookID: UUID? = nil) throws {
-        let owner = bookID ?? self.bookID
-        guard self.bookID == owner, Day.date(dueDay) != nil,
+    func validate(rules: [BillRule], expenses: [Expense], cardID: UUID? = nil) throws {
+        let owner = cardID ?? self.cardID
+        guard self.cardID == owner, Day.date(dueDay) != nil,
               createdAt.timeIntervalSince1970.isFinite, updatedAt.timeIntervalSince1970.isFinite,
-              rules.contains(where: { $0.id == billRuleID && $0.bookID == owner }) else {
+              rules.contains(where: { $0.id == billRuleID && $0.cardID == owner }) else {
             throw EntryError.corruptStore
         }
         switch status {
         case .recorded:
             guard let expenseID,
-                  expenses.contains(where: { $0.id == expenseID && ($0.bookID == nil || $0.bookID == owner) }) else {
+                  expenses.contains(where: { $0.id == expenseID && ($0.cardID == nil || $0.cardID == owner) }) else {
                 throw EntryError.corruptStore
             }
         case .pending, .skipped:
@@ -197,12 +199,12 @@ struct BillOccurrence: Identifiable, Codable, Equatable, Sendable {
         }
     }
 
-    static func validate(_ occurrences: [BillOccurrence], rules: [BillRule], expenses: [Expense], bookID: UUID) throws {
+    static func validate(_ occurrences: [BillOccurrence], rules: [BillRule], expenses: [Expense], cardID: UUID) throws {
         guard Set(occurrences.map(\.id)).count == occurrences.count else { throw EntryError.corruptStore }
         var dueKeys = Set<String>()
         var linkedExpenses = Set<UUID>()
         for occurrence in occurrences {
-            try occurrence.validate(rules: rules, expenses: expenses, bookID: bookID)
+            try occurrence.validate(rules: rules, expenses: expenses, cardID: cardID)
             guard dueKeys.insert("\(occurrence.billRuleID.uuidString)/\(occurrence.dueDay)").inserted else {
                 throw EntryError.corruptStore
             }

@@ -6,20 +6,24 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public var revision: UInt64?
     public var unavailableReason: String?
     public var updatedAt: Date
-    public var activeBook: WidgetBookSummary
+    public var activeCard: WidgetCardSummary
     public var activeStack: WidgetStackSummary?
     public var cycleBudget: WidgetBudgetSummary?
     public var todaySpending: WidgetTodaySummary
     public var quickCategories: [WidgetCategoryItem]
     /// The reporting currency's symbol; older snapshots have none and mean rupiah.
     public var currencySymbol: String? = nil
+    // Stored keys keep their pre-rename names so existing backups, drafts and settings still load.
+    private enum CodingKeys: String, CodingKey {
+        case reportingDay, revision, unavailableReason, updatedAt, activeCard = "activeBook", activeStack, cycleBudget, todaySpending, quickCategories, currencySymbol
+    }
 
     public init(
         updatedAt: Date = .now,
         reportingDay: String? = nil,
         revision: UInt64? = nil,
         unavailableReason: String? = nil,
-        activeBook: WidgetBookSummary,
+        activeCard: WidgetCardSummary,
         activeStack: WidgetStackSummary? = nil,
         cycleBudget: WidgetBudgetSummary?,
         todaySpending: WidgetTodaySummary,
@@ -29,7 +33,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
         self.revision = revision
         self.unavailableReason = unavailableReason
         self.updatedAt = updatedAt
-        self.activeBook = activeBook
+        self.activeCard = activeCard
         self.activeStack = activeStack
         self.cycleBudget = cycleBudget
         self.todaySpending = todaySpending
@@ -37,7 +41,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     }
 
     public static func unavailable(_ reason: String) -> WidgetSnapshot {
-        WidgetSnapshot(activeBook: WidgetBookSummary(id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!, name: "Open Monocle"),
+        WidgetSnapshot(activeCard: WidgetCardSummary(id: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!, name: "Open Monocle"),
                        cycleBudget: nil, todaySpending: WidgetTodaySummary(totalSpent: 0, transactionCount: 0, recentTransactions: []),
                        quickCategories: []).withUnavailableReason(reason)
     }
@@ -48,7 +52,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
 
     public static let sample = WidgetSnapshot(
         updatedAt: .now,
-        activeBook: WidgetBookSummary(id: UUID(), name: "Daily", tintColorHex: "E63946"),
+        activeCard: WidgetCardSummary(id: UUID(), name: "Daily", tintColorHex: "E63946"),
         activeStack: WidgetStackSummary(
             id: UUID(),
             name: "Personal",
@@ -100,7 +104,7 @@ public struct WidgetSnapshot: Codable, Sendable, Equatable {
     )
 }
 
-public struct WidgetBookSummary: Codable, Sendable, Equatable {
+public struct WidgetCardSummary: Codable, Sendable, Equatable {
     public var id: UUID
     public var name: String
     public var tintColorHex: String?
@@ -173,17 +177,18 @@ public struct WidgetBudgetSummary: Codable, Sendable, Equatable {
 
 public struct WidgetTransactionItem: Codable, Sendable, Equatable, Identifiable {
     public var id: UUID
-    public var bookID: UUID?
+    public var cardID: UUID?
     public var title: String
     public var amount: Int64
     public var categoryName: String
     public var categorySymbol: String
     public var day: String
     public var timeFormatted: String
+    private enum CodingKeys: String, CodingKey { case id, cardID = "bookID", title, amount, categoryName, categorySymbol, day, timeFormatted }
 
     public init(
         id: UUID,
-        bookID: UUID? = nil,
+        cardID: UUID? = nil,
         title: String,
         amount: Int64,
         categoryName: String,
@@ -192,7 +197,7 @@ public struct WidgetTransactionItem: Codable, Sendable, Equatable, Identifiable 
         timeFormatted: String
     ) {
         self.id = id
-        self.bookID = bookID
+        self.cardID = cardID
         self.title = title
         self.amount = amount
         self.categoryName = categoryName
@@ -259,14 +264,14 @@ public struct SpendingActivityAttributes: ActivityAttributes {
     }
 
     public var sessionName: String
-    public var bookName: String
+    public var cardName: String
     public var startTime: Date
-    public var bookID: UUID?
+    public var cardID: UUID?
 
-    public init(sessionName: String, bookName: String, startTime: Date = .now, bookID: UUID? = nil) {
+    public init(sessionName: String, cardName: String, startTime: Date = .now, cardID: UUID? = nil) {
         self.sessionName = sessionName
-        self.bookName = bookName
+        self.cardName = cardName
         self.startTime = startTime
-        self.bookID = bookID
+        self.cardID = cardID
     }
 }

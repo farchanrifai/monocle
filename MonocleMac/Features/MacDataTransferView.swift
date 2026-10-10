@@ -12,7 +12,7 @@ struct MacDataTransferView: View {
     @State private var headers: [String] = []
     @State private var mapping = CSVColumnMapping()
     @State private var hasHeader = true
-    @State private var targetBookID: UUID?
+    @State private var targetCardID: UUID?
     @State private var defaultCategoryID: UUID?
     @State private var importRows: [CSVImportRow] = []
 
@@ -31,7 +31,7 @@ struct MacDataTransferView: View {
             Spacer(minLength: 0)
             HStack { Spacer(); Button("Close", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction) }
         }.padding(24).frame(minWidth: 620, minHeight: 420)
-        .onAppear { targetBookID = model.activeBookID; defaultCategoryID = model.activeCategories.first?.id }
+        .onAppear { targetCardID = model.activeCardID; defaultCategoryID = model.activeCategories.first?.id }
     }
 
     private var title: String {
@@ -51,7 +51,7 @@ struct MacDataTransferView: View {
             Button("Choose CSV…", action: chooseCSV).buttonStyle(.borderedProminent)
         } else {
             HStack {
-                Picker("Card", selection: $targetBookID) { ForEach(model.books) { Text($0.name).tag(Optional($0.id)) } }
+                Picker("Card", selection: $targetCardID) { ForEach(model.cards) { Text($0.name).tag(Optional($0.id)) } }
                 Picker("Default category", selection: $defaultCategoryID) { ForEach(model.activeCategories) { Text($0.name).tag(Optional($0.id)) } }
                 Toggle("Header row", isOn: $hasHeader)
             }
@@ -61,7 +61,7 @@ struct MacDataTransferView: View {
                 mappingPicker("Note", selection: $mapping.noteIndex)
                 mappingPicker("Category", selection: $mapping.categoryIndex)
             }
-            Button("Review Rows", action: reviewCSV).disabled(!mapping.isValid || targetBookID == nil || defaultCategoryID == nil)
+            Button("Review Rows", action: reviewCSV).disabled(!mapping.isValid || targetCardID == nil || defaultCategoryID == nil)
             if !importRows.isEmpty {
                 let summary = CSVImportParser.summarize(rows: importRows)
                 Text("\(summary.validRows) valid • \(summary.duplicateRows) duplicates • \(summary.errorRows) errors • \(Money.format(summary.totalSpending ?? 0))")
@@ -94,10 +94,10 @@ struct MacDataTransferView: View {
 
     @ViewBuilder private var restoreView: some View {
         if let candidate {
-            let expenses = candidate.books.reduce(0) { $0 + $1.expenses.count }
+            let expenses = candidate.cards.reduce(0) { $0 + $1.expenses.count }
             Label("Validated Monocle backup", systemImage: "checkmark.shield.fill").foregroundStyle(.green)
             LabeledContent("Exported", value: candidate.exportedAt.formatted())
-            LabeledContent("Cards", value: "\(candidate.books.count)")
+            LabeledContent("Cards", value: "\(candidate.cards.count)")
             LabeledContent("Expenses", value: "\(expenses)")
             Text("Restoring replaces the current Mac workspace after Monocle creates its safety backup.").foregroundStyle(.secondary)
             Button("Restore Workspace", role: .destructive, action: restore).buttonStyle(.borderedProminent)
@@ -120,16 +120,16 @@ struct MacDataTransferView: View {
     }
 
     private func reviewCSV() {
-        guard let targetBookID, let defaultCategoryID else { return }
-        importRows = CSVImportParser.processRows(rawRows: rawRows, hasHeader: hasHeader, mapping: mapping, targetBookID: targetBookID,
-                                                 categories: model.activeCategories(for: targetBookID), defaultCategoryID: defaultCategoryID,
-                                                 existingExpenses: model.expenses(for: targetBookID), paymentMethods: model.paymentMethods)
+        guard let targetCardID, let defaultCategoryID else { return }
+        importRows = CSVImportParser.processRows(rawRows: rawRows, hasHeader: hasHeader, mapping: mapping, targetCardID: targetCardID,
+                                                 categories: model.activeCategories(for: targetCardID), defaultCategoryID: defaultCategoryID,
+                                                 existingExpenses: model.expenses(for: targetCardID), paymentMethods: model.paymentMethods)
     }
 
     private func importCSV() {
-        guard let targetBookID else { return }
+        guard let targetCardID else { return }
         let expenses = importRows.filter(\.isSelectedForImport).compactMap(\.parsedExpense)
-        do { try model.importExpenses(expenses, to: targetBookID); message = "Imported \(expenses.count) expenses." }
+        do { try model.importExpenses(expenses, to: targetCardID); message = "Imported \(expenses.count) expenses." }
         catch { message = error.localizedDescription }
     }
 

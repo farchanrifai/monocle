@@ -9,17 +9,17 @@ enum CategoryManagerTab: String, CaseIterable, Identifiable {
 struct CategoryManager: View {
     let model: AppModel
     @State private var selectedTab: CategoryManagerTab = .all
-    @State private var selectedBookID: UUID?
+    @State private var selectedCardID: UUID?
     @State private var editingGlobalCategory: GlobalCategory?
     @State private var isCreatingCategory = false
     @State private var deletingGlobalCategory: GlobalCategory?
     @State private var error: String?
 
-    private var activeBookID: UUID {
-        if let selected = selectedBookID, model.books.contains(where: { $0.id == selected }) {
+    private var activeCardID: UUID {
+        if let selected = selectedCardID, model.cards.contains(where: { $0.id == selected }) {
             return selected
         }
-        return model.activeBookID
+        return model.activeCardID
     }
 
     var body: some View {
@@ -136,18 +136,18 @@ struct CategoryManager: View {
     }
 
     private func cardScopeLabel(for category: GlobalCategory) -> some View {
-        let activeBookIDs = model.activeBookIDs(for: category.id)
-        let totalCount = model.books.count
-        if totalCount > 0 && activeBookIDs.count == totalCount {
+        let activeCardIDs = model.activeCardIDs(for: category.id)
+        let totalCount = model.cards.count
+        if totalCount > 0 && activeCardIDs.count == totalCount {
             return Text("Active on all cards (\(totalCount))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        } else if activeBookIDs.isEmpty {
+        } else if activeCardIDs.isEmpty {
             return Text("Inactive")
                 .font(.caption)
                 .foregroundStyle(MC.red.opacity(0.8))
         } else {
-            let cardNames = model.books.filter { activeBookIDs.contains($0.id) }.map(\.name).joined(separator: ", ")
+            let cardNames = model.cards.filter { activeCardIDs.contains($0.id) }.map(\.name).joined(separator: ", ")
             return Text("Active on: \(cardNames)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -159,11 +159,11 @@ struct CategoryManager: View {
         List {
             Section {
                 Picker("Card", selection: Binding(
-                    get: { activeBookID },
-                    set: { selectedBookID = $0 }
+                    get: { activeCardID },
+                    set: { selectedCardID = $0 }
                 )) {
-                    ForEach(model.books) { book in
-                        Text(book.name).tag(book.id)
+                    ForEach(model.cards) { card in
+                        Text(card.name).tag(card.id)
                     }
                 }
                 .pickerStyle(.menu)
@@ -172,7 +172,7 @@ struct CategoryManager: View {
             }
 
             Section {
-                let currentID = activeBookID
+                let currentID = activeCardID
                 let activeCount = model.globalCategories.filter { model.isCategoryActive($0.id, on: currentID) }.count
 
                 HStack {
@@ -233,7 +233,7 @@ struct NewGlobalCategorySheet: View {
     @State private var name: String = ""
     @State private var symbol: String = "circle.grid.2x2"
     @State private var activateOnAllCards: Bool = true
-    @State private var selectedBookIDs: Set<UUID> = []
+    @State private var selectedCardIDs: Set<UUID> = []
     @State private var defaultForNewCards: Bool = true
     @State private var error: String?
 
@@ -269,17 +269,17 @@ struct NewGlobalCategorySheet: View {
                     Toggle("Activate on all cards", isOn: $activateOnAllCards)
                         .onChange(of: activateOnAllCards) { _, all in
                             if all {
-                                selectedBookIDs = Set(model.books.map(\.id))
+                                selectedCardIDs = Set(model.cards.map(\.id))
                             }
                         }
 
                     if !activateOnAllCards {
-                        ForEach(model.books) { book in
-                            Toggle(book.name, isOn: Binding(
-                                get: { selectedBookIDs.contains(book.id) },
+                        ForEach(model.cards) { card in
+                            Toggle(card.name, isOn: Binding(
+                                get: { selectedCardIDs.contains(card.id) },
                                 set: { isOn in
-                                    if isOn { selectedBookIDs.insert(book.id) }
-                                    else { selectedBookIDs.remove(book.id) }
+                                    if isOn { selectedCardIDs.insert(card.id) }
+                                    else { selectedCardIDs.remove(card.id) }
                                 }
                             ))
                         }
@@ -311,8 +311,8 @@ struct NewGlobalCategorySheet: View {
                                 symbol: symbol,
                                 defaultActiveForNewCards: defaultForNewCards
                             )
-                            let targets = activateOnAllCards ? Set(model.books.map(\.id)) : selectedBookIDs
-                            try model.saveGlobalCategory(newCategory, activeBookIDs: targets)
+                            let targets = activateOnAllCards ? Set(model.cards.map(\.id)) : selectedCardIDs
+                            try model.saveGlobalCategory(newCategory, activeCardIDs: targets)
                             dismiss()
                         } catch {
                             self.error = error.localizedDescription
@@ -322,7 +322,7 @@ struct NewGlobalCategorySheet: View {
                 }
             }
             .onAppear {
-                selectedBookIDs = Set(model.books.map(\.id))
+                selectedCardIDs = Set(model.cards.map(\.id))
             }
             .sensoryFeedback(.selection, trigger: symbol)
         }
@@ -336,7 +336,7 @@ struct GlobalCategoryEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var symbol: String
-    @State private var selectedBookIDs: Set<UUID>
+    @State private var selectedCardIDs: Set<UUID>
     @State private var defaultForNewCards: Bool
     @State private var error: String?
     @State private var discard = false
@@ -346,7 +346,7 @@ struct GlobalCategoryEditor: View {
         name != category.name ||
         symbol != category.symbol ||
         defaultForNewCards != category.defaultActiveForNewCards ||
-        selectedBookIDs != model.activeBookIDs(for: category.id)
+        selectedCardIDs != model.activeCardIDs(for: category.id)
     }
 
     init(model: AppModel, category: GlobalCategory) {
@@ -355,7 +355,7 @@ struct GlobalCategoryEditor: View {
         _name = State(initialValue: category.name)
         _symbol = State(initialValue: category.symbol)
         _defaultForNewCards = State(initialValue: category.defaultActiveForNewCards)
-        _selectedBookIDs = State(initialValue: model.activeBookIDs(for: category.id))
+        _selectedCardIDs = State(initialValue: model.activeCardIDs(for: category.id))
     }
 
     var body: some View {
@@ -388,26 +388,26 @@ struct GlobalCategoryEditor: View {
 
                 Section {
                     HStack {
-                        Text("\(selectedBookIDs.count) of \(model.books.count) cards selected")
+                        Text("\(selectedCardIDs.count) of \(model.cards.count) cards selected")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button(selectedBookIDs.count == model.books.count ? "Deselect All" : "Select All") {
-                            if selectedBookIDs.count == model.books.count {
-                                selectedBookIDs.removeAll()
+                        Button(selectedCardIDs.count == model.cards.count ? "Deselect All" : "Select All") {
+                            if selectedCardIDs.count == model.cards.count {
+                                selectedCardIDs.removeAll()
                             } else {
-                                selectedBookIDs = Set(model.books.map(\.id))
+                                selectedCardIDs = Set(model.cards.map(\.id))
                             }
                         }
                         .font(.caption.weight(.semibold))
                     }
 
-                    ForEach(model.books) { book in
-                        Toggle(book.name, isOn: Binding(
-                            get: { selectedBookIDs.contains(book.id) },
+                    ForEach(model.cards) { card in
+                        Toggle(card.name, isOn: Binding(
+                            get: { selectedCardIDs.contains(card.id) },
                             set: { isOn in
-                                if isOn { selectedBookIDs.insert(book.id) }
-                                else { selectedBookIDs.remove(book.id) }
+                                if isOn { selectedCardIDs.insert(card.id) }
+                                else { selectedCardIDs.remove(card.id) }
                             }
                         ))
                     }
@@ -450,7 +450,7 @@ struct GlobalCategoryEditor: View {
                                 symbol: symbol,
                                 defaultActiveForNewCards: defaultForNewCards
                             )
-                            try model.saveGlobalCategory(updated, activeBookIDs: selectedBookIDs)
+                            try model.saveGlobalCategory(updated, activeCardIDs: selectedCardIDs)
                             dismiss()
                         } catch {
                             self.error = error.localizedDescription

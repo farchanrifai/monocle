@@ -29,7 +29,7 @@ final class AppleChatTests: XCTestCase {
     }
 
     func testDoneClaimsBesideAPendingCardAreDropped() {
-        let card: [ChatAgent.Output] = [.proposal(Expense(amount: 28_000_00, day: "2026-10-10", note: "Kopi", allocations: [], bookID: UUID()))]
+        let card: [ChatAgent.Output] = [.proposal(Expense(amount: 28_000_00, day: "2026-10-10", note: "Kopi", allocations: [], cardID: UUID()))]
         XCTAssertTrue(AppleChatAgent.claimsDone("Your coffee has been updated to Rp30.000.", beside: card))
         XCTAssertTrue(AppleChatAgent.claimsDone("Kopi sudah ditambahkan.", beside: card))
         XCTAssertFalse(AppleChatAgent.claimsDone("Check the card to add it.", beside: card))
@@ -42,7 +42,7 @@ final class AppleChatTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let repo = try ExpenseRepository(inMemory: true)
-        let daily = try repo.createBook(named: "Daily")
+        let daily = try repo.createCard(named: "Daily")
         let categories = try repo.categories(in: daily.id)
         let food = try XCTUnwrap(categories.first { $0.name == "Food & Drink" })
         let transport = try XCTUnwrap(categories.first { $0.name == "Transport" })
@@ -52,13 +52,13 @@ final class AppleChatTests: XCTestCase {
             let minor = Int64(rupiah) * 100
             let day = Day.string(Day.calendar.date(byAdding: .day, value: -daysAgo, to: now)!)
             try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)],
-                                  bookID: daily.id), in: daily.id)
+                                  cardID: daily.id), in: daily.id)
         }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: directory))
         try model.reload()
         let scope = AnalyticsFilterScope.card(id: daily.id, name: daily.name)
 
-        var budget = BudgetVersion.initial(overallLimit: 3_000_000_00, startDay: 1, date: now, bookID: daily.id)
+        var budget = BudgetVersion.initial(overallLimit: 3_000_000_00, startDay: 1, date: now, cardID: daily.id)
         budget.categoryLimits = [CategoryBudget(categoryID: food.id, limit: 50_000_00)]
         try repo.save(budget, in: daily.id)
         try model.reload()
@@ -155,10 +155,10 @@ final class ChatChartRenderTests: XCTestCase {
 final class DemoWorkspaceTests: XCTestCase {
     func testDemoWorkspacePassesBackupValidationAndIsLarge() throws {
         let demo = try DemoWorkspace.make().normalized()
-        XCTAssertEqual(demo.books.count, 5)
+        XCTAssertEqual(demo.cards.count, 5)
         XCTAssertEqual(demo.preferences.stacks.map(\.name), ["Everyday", "Travel", "Work"])
-        XCTAssertGreaterThan(demo.books.reduce(0) { $0 + $1.expenses.count }, 1500)
-        XCTAssertEqual(DemoWorkspace.make(now: .distantPast).books[0].expenses.count,
-                       DemoWorkspace.make(now: .distantPast).books[0].expenses.count, "Deterministic")
+        XCTAssertGreaterThan(demo.cards.reduce(0) { $0 + $1.expenses.count }, 1500)
+        XCTAssertEqual(DemoWorkspace.make(now: .distantPast).cards[0].expenses.count,
+                       DemoWorkspace.make(now: .distantPast).cards[0].expenses.count, "Deterministic")
     }
 }

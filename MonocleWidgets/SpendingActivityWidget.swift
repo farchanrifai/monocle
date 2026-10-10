@@ -19,7 +19,7 @@ struct SpendingActivityWidget: Widget {
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         HStack(spacing: 4) {
-                            Text(context.attributes.bookName)
+                            Text(context.attributes.cardName)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                             Text("·")
@@ -169,7 +169,7 @@ private struct LockScreenLiveActivityView: View {
                             .lineLimit(1)
                     }
                 } else {
-                    Text("Adding to \(context.attributes.bookName)")
+                    Text("Adding to \(context.attributes.cardName)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

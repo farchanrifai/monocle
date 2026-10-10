@@ -143,7 +143,7 @@ struct TodaySpendingWidgetEntryView: View {
                     Spacer()
                 } else {
                     ForEach(today.recentTransactions.prefix(3)) { item in
-                        Link(destination: URL(string: item.bookID != nil ? "monocle://card?id=\(item.bookID!.uuidString)" : "monocle://home")!) {
+                        Link(destination: URL(string: item.cardID != nil ? "monocle://card?id=\(item.cardID!.uuidString)" : "monocle://home")!) {
                             HStack(spacing: 8) {
                                 Image(systemName: item.categorySymbol)
                                     .font(.caption)

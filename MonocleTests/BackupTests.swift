@@ -3,16 +3,16 @@ import XCTest
 
 @MainActor
 final class BackupTests: XCTestCase {
-    private func fixture() -> BookBackup {
+    private func fixture() -> CardBackup {
         let categories = ExpenseCategory.defaults
         var draft = ExpenseDraft(); draft.note = "unfinished"
         var settings = PrototypeSettings(); settings.appLockTimeout = .fiveMinutes
         let budget = BudgetVersion(id: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!, effectiveDay: "2026-09-01", overallLimit: 450_000_000, startDay: 1, categoryLimits: [.init(categoryID: categories[0].id, limit: 100_000_000)])
-        return BookBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings, budgets: [budget])
+        return CardBackup(categories: categories, expenses: [Expense(amount: 10000, day: "2026-09-08", note: "Split", allocations: [.init(categoryID: categories[0].id, amount: 4000), .init(categoryID: categories[1].id, amount: 6000)])], draft: draft, settings: settings, budgets: [budget])
     }
     func testRoundTripPreservesIDsSplitsDraftAndSettings() throws {
         let original = fixture()
-        let decoded = try BookBackup.decode(original.encoded())
+        let decoded = try CardBackup.decode(original.encoded())
         XCTAssertEqual(decoded.expenses, original.expenses)
         XCTAssertEqual(decoded.draft, original.draft)
         XCTAssertEqual(decoded.categories, original.categories)
@@ -43,7 +43,7 @@ final class BackupTests: XCTestCase {
         XCTAssertThrowsError(try bad.validate())
         bad = fixture(); bad.draft.categoryID = UUID()
         XCTAssertThrowsError(try bad.validate())
-        XCTAssertThrowsError(try BookBackup.decode(Data("broken".utf8)))
+        XCTAssertThrowsError(try CardBackup.decode(Data("broken".utf8)))
     }
     func testFormatTwoBackupWithoutBudgetHistoryGetsAnInitialBudgetOnRestore() throws {
         var legacy = fixture()
@@ -51,7 +51,7 @@ final class BackupTests: XCTestCase {
         legacy.budgets = []
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: legacy.encoded()) as? [String: Any])
         object.removeValue(forKey: "budgets")
-        let decoded = try BookBackup.decode(JSONSerialization.data(withJSONObject: object))
+        let decoded = try CardBackup.decode(JSONSerialization.data(withJSONObject: object))
         XCTAssertTrue(decoded.budgets.isEmpty)
         try withStore { repository, state, service, directory in
             let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
@@ -77,20 +77,20 @@ final class BackupTests: XCTestCase {
             }
         }
     }
-    func testStartupRecoversInterruptedRestoreAndEmptyBookDoesNotReseed() throws {
+    func testStartupRecoversInterruptedRestoreAndEmptyCardDoesNotReseed() throws {
         try withStore { repository, state, service, directory in
             var original = fixture(); original.expenses = []
             try original.encoded().write(to: directory.appendingPathComponent("restore-journal.json"))
             try repository.replace(with: fixture())
             try BackupService.recoverIfNeeded(directory: directory, repository: repository, state: state)
-            try SampleBookSeeder.seedIfNeeded(repository: repository, directory: directory)
+            try SampleCardSeeder.seedIfNeeded(repository: repository, directory: directory)
             XCTAssertTrue(try repository.expenses().isEmpty)
             XCTAssertEqual(try state.loadDraft(), original.draft)
             try service.reload()
             XCTAssertTrue(service.expenses.isEmpty)
         }
     }
-    func testRejectedCandidateLeavesExistingBookUntouched() throws {
+    func testRejectedCandidateLeavesExistingCardUntouched() throws {
         try withStore { repository, state, service, directory in
             let original = fixture(); try repository.replace(with: original); try service.reload()
             var invalid = original; invalid.categories = []
@@ -111,7 +111,7 @@ final class BackupTests: XCTestCase {
             XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("restore-journal.json").path))
         }
     }
-    func testStartingEmptyRealBookKeepsCategoriesAndCreatesRecoverableSafetyBackup() throws {
+    func testStartingEmptyRealCardKeepsCategoriesAndCreatesRecoverableSafetyBackup() throws {
         try withStore { repository, state, service, directory in
             let original = fixture()
             try repository.replace(with: original)
@@ -119,50 +119,50 @@ final class BackupTests: XCTestCase {
             var preferences = WorkspacePreferences()
             preferences.allActivitiesScope = true
             try state.saveWorkspacePreferences(preferences)
-            let bill = BillRule(bookID: BookProfile.sample.id, name: "Internet", amount: 10000,
+            let bill = BillRule(cardID: Card.demo.id, name: "Internet", amount: 10000,
                                 categoryID: original.categories[0].id, recurrence: .monthly(day: 1))
             try repository.saveBill(bill)
             try service.reload()
 
             let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
-            let settings = try backup.startEmptyRealBook(named: "Farchan's expenses", currentDraft: original.draft, settings: original.settings)
+            let settings = try backup.startEmptyRealCard(named: "Farchan's expenses", currentDraft: original.draft, settings: original.settings)
 
-            XCTAssertEqual(settings.book.name, "Farchan's expenses")
-            XCTAssertEqual(settings.book.kind, .real)
+            XCTAssertEqual(settings.card.name, "Farchan's expenses")
+            XCTAssertEqual(settings.card.kind, .real)
             XCTAssertTrue(try repository.expenses().isEmpty)
             XCTAssertEqual(try repository.categories(), original.categories.sorted { $0.id.uuidString < $1.id.uuidString })
             XCTAssertFalse(try state.loadDraft().hasContent)
             let safety = try WorkspaceBackup.decode(Data(contentsOf: backup.safetyURL))
-            XCTAssertEqual(safety.books.first?.expenses, original.expenses)
-            XCTAssertEqual(safety.books.first?.bills, [bill])
+            XCTAssertEqual(safety.cards.first?.expenses, original.expenses)
+            XCTAssertEqual(safety.cards.first?.bills, [bill])
             XCTAssertTrue(safety.preferences.allActivitiesScope)
             let realBackup = try backup.snapshot(draft: ExpenseDraft(), settings: settings)
             XCTAssertEqual(realBackup.formatVersion, 3)
-            XCTAssertEqual(realBackup.bookKind, BookKind.real.rawValue)
+            XCTAssertEqual(realBackup.cardKind, CardKind.real.rawValue)
             try realBackup.validate()
             let preview = try backup.preview(data: realBackup.encoded())
-            XCTAssertEqual(preview.bookID, realBackup.bookID)
+            XCTAssertEqual(preview.cardID, realBackup.cardID)
             XCTAssertEqual(preview.settings, realBackup.settings)
             XCTAssertEqual(preview.categories, realBackup.categories)
         }
     }
 
-    func testRealBookRenamePreservesExportAndRecords() throws {
+    func testRealCardRenamePreservesExportAndRecords() throws {
         try withStore { repository, state, service, directory in
             let original = fixture()
             try repository.replace(with: original)
             var settings = original.settings
-            settings.book = try BookProfile.real(named: "Before")
-            try repository.startEmptyRealBook(settings.book)
+            settings.card = try Card.real(named: "Before")
+            try repository.startEmptyRealCard(settings.card)
             let expense = Expense(amount: 10000, day: "2026-09-08", note: "Coffee", allocations: [.init(categoryID: original.categories[0].id, amount: 10000)])
             try repository.save(expense); try state.saveSettings(settings); try service.reload()
 
             let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
-            let renamed = try backup.renameRealBook(to: "After", currentDraft: ExpenseDraft(), settings: settings)
-            XCTAssertEqual(renamed.book.id, settings.book.id)
-            XCTAssertEqual(renamed.book.name, "After")
+            let renamed = try backup.renameRealCard(to: "After", currentDraft: ExpenseDraft(), settings: settings)
+            XCTAssertEqual(renamed.card.id, settings.card.id)
+            XCTAssertEqual(renamed.card.name, "After")
             XCTAssertEqual(try repository.expenses(), [expense])
-            XCTAssertEqual(try backup.snapshot(draft: ExpenseDraft(), settings: renamed).bookName, "After")
+            XCTAssertEqual(try backup.snapshot(draft: ExpenseDraft(), settings: renamed).cardName, "After")
         }
     }
     func testRecoveryAfterClosingAndReopeningDiskStore() throws {
@@ -198,7 +198,7 @@ final class BackupTests: XCTestCase {
             for store in repository.container.persistentStoreCoordinator.persistentStores { try? repository.container.persistentStoreCoordinator.remove(store) }
             try? FileManager.default.removeItem(at: directory)
         }
-        try repository.prepareSampleBook()
+        try repository.prepareSampleCard()
         let state = FileLocalStateStore(directory: directory)
         let service = try ExpenseService(store: repository)
         try run(repository, state, service, directory)
@@ -206,43 +206,43 @@ final class BackupTests: XCTestCase {
 }
 
 extension BackupTests {
-    func testWorkspaceRestoresEveryBooksDraft() throws {
+    func testWorkspaceRestoresEveryCardsDraft() throws {
         try withStore { repository, state, service, directory in
-            let second = try repository.createBook(named: "Second")
+            let second = try repository.createCard(named: "Second")
             try service.reload()
-            var firstDraft = ExpenseDraft(); firstDraft.note = "first draft"; firstDraft.bookID = BookProfile.sample.id
-            var secondDraft = ExpenseDraft(); secondDraft.note = "second draft"; secondDraft.bookID = second.id
-            try state.saveDraft(firstDraft, for: BookProfile.sample.id)
+            var firstDraft = ExpenseDraft(); firstDraft.note = "first draft"; firstDraft.cardID = Card.demo.id
+            var secondDraft = ExpenseDraft(); secondDraft.note = "second draft"; secondDraft.cardID = second.id
+            try state.saveDraft(firstDraft, for: Card.demo.id)
             try state.saveDraft(secondDraft, for: second.id)
             let backups = BackupService(directory: directory, repository: repository, state: state, expenses: service)
             let snapshot = try backups.workspaceSnapshot(currentDraft: secondDraft, settings: PrototypeSettings())
             try state.saveDraft(ExpenseDraft(), for: second.id)
             try backups.restoreWorkspace(snapshot, currentDraft: firstDraft, settings: PrototypeSettings())
             XCTAssertEqual(try state.loadDraft(for: second.id).note, "second draft")
-            XCTAssertEqual(try state.loadDraft(for: BookProfile.sample.id).note, "first draft")
+            XCTAssertEqual(try state.loadDraft(for: Card.demo.id).note, "first draft")
         }
     }
 
     func testWorkspaceRejectsArtworkTraversalAndOrphanOccurrences() throws {
-        var workspace = WorkspaceBackup(singleBook: fixture())
+        var workspace = WorkspaceBackup(singleCard: fixture())
         workspace.cardArtworks = ["../settings.json": Data("bad".utf8)]
         XCTAssertThrowsError(try workspace.validate())
         workspace.cardArtworks = nil
-        workspace.books[0].billOccurrences = [BillOccurrence(billRuleID: UUID(), bookID: workspace.books[0].book.id, dueDay: "2026-09-01")]
+        workspace.cards[0].billOccurrences = [BillOccurrence(billRuleID: UUID(), cardID: workspace.cards[0].card.id, dueDay: "2026-09-01")]
         XCTAssertThrowsError(try workspace.validate())
     }
 
-    func testWorkspaceRejectsCrossBookRecords() throws {
-        var workspace = WorkspaceBackup(singleBook: fixture())
-        workspace.books[0].expenses[0].bookID = UUID()
+    func testWorkspaceRejectsCrossCardRecords() throws {
+        var workspace = WorkspaceBackup(singleCard: fixture())
+        workspace.cards[0].expenses[0].cardID = UUID()
         XCTAssertThrowsError(try workspace.validate())
 
-        workspace = WorkspaceBackup(singleBook: fixture())
-        workspace.books[0].draft?.bookID = UUID()
+        workspace = WorkspaceBackup(singleCard: fixture())
+        workspace.cards[0].draft?.cardID = UUID()
         XCTAssertThrowsError(try workspace.validate())
 
-        workspace = WorkspaceBackup(singleBook: fixture())
-        workspace.books[0].budgets[0].bookID = UUID()
+        workspace = WorkspaceBackup(singleCard: fixture())
+        workspace.cards[0].budgets[0].cardID = UUID()
         XCTAssertThrowsError(try workspace.validate())
     }
 }

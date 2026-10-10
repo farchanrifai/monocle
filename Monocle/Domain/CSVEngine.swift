@@ -195,7 +195,7 @@ enum CSVExportGenerator {
     static func generate(
         expenses: [Expense],
         categories: [ExpenseCategory],
-        books: [BookProfile] = [],
+        cards: [Card] = [],
         paymentMethods: [PaymentMethod] = []
     ) -> String {
         let headers = ["Date", "Time", "Card", "Category", "Amount", "Note", "Source", "Splits", "Paid with", "Currency", "Original amount", "Rate"]
@@ -204,7 +204,7 @@ enum CSVExportGenerator {
         lines.append(headers.map { CSVTokenizer.escape($0) }.joined(separator: ","))
 
         let categoryMap = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.name) })
-        let bookMap = Dictionary(uniqueKeysWithValues: books.map { ($0.id, $0.name) })
+        let cardMap = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0.name) })
 
         let timeFormatter = DateFormatter()
         timeFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -213,7 +213,7 @@ enum CSVExportGenerator {
         for expense in expenses {
             let dateStr = expense.day
             let timeStr = timeFormatter.string(from: expense.createdAt)
-            let bookName = expense.bookID.flatMap { bookMap[$0] } ?? "Default"
+            let cardName = expense.cardID.flatMap { cardMap[$0] } ?? "Default"
 
             let categoryStr: String
             if expense.allocations.count == 1, let first = expense.allocations.first {
@@ -238,7 +238,7 @@ enum CSVExportGenerator {
             let splits = String(data: splitData, encoding: .utf8) ?? ""
             let paidWith = expense.paidWithID.flatMap { paidWithMap[$0] } ?? ""
             let original = expense.originalAmount.map(Money.exactDigits) ?? ""
-            let row = [dateStr, timeStr, bookName, categoryStr, amountStr, noteStr, sourceStr, splits, paidWith,
+            let row = [dateStr, timeStr, cardName, categoryStr, amountStr, noteStr, sourceStr, splits, paidWith,
                        expense.originalCurrency ?? "", original, expense.rate ?? ""]
             lines.append(row.map { CSVTokenizer.escape($0) }.joined(separator: ","))
         }
@@ -441,12 +441,12 @@ enum CSVImportParser {
         }
     }
 
-    /// Parses raw table rows into CSVImportRow items using the specified mapping and target book context.
+    /// Parses raw table rows into CSVImportRow items using the specified mapping and target card context.
     static func processRows(
         rawRows: [[String]],
         hasHeader: Bool,
         mapping: CSVColumnMapping,
-        targetBookID: UUID,
+        targetCardID: UUID,
         categories: [ExpenseCategory],
         defaultCategoryID: UUID,
         existingExpenses: [Expense],
@@ -547,7 +547,7 @@ enum CSVImportParser {
                 allocations: allocations,
                 source: "csv_import",
                 createdAt: dateParsed.date,
-                bookID: targetBookID,
+                cardID: targetCardID,
                 paidWithID: paidWithID
             )
             // Amount stays the reporting amount; a foreign original comes along only when currency, amount and rate are all valid.

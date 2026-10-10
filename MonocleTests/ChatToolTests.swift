@@ -5,16 +5,16 @@ import XCTest
 final class ChatToolTests: XCTestCase {
     private var model: AppModel!
     private var repo: ExpenseRepository!
-    private var daily: BookProfile!
-    private var travel: BookProfile!
+    private var daily: Card!
+    private var travel: Card!
     private var trip: CardStack!
     private var tempDir: URL!
     private let now = Day.date("2026-09-15")!
 
     override func setUp() async throws {
         repo = try ExpenseRepository(inMemory: true)
-        daily = try repo.createBook(named: "Daily")
-        travel = try repo.createBook(named: "Tokyo Travel")
+        daily = try repo.createCard(named: "Daily")
+        travel = try repo.createCard(named: "Tokyo Travel")
         let food = try category("Food & Drink", in: daily)
         let transport = try category("Transport", in: travel)
         let travelFood = try category("Food & Drink", in: travel)
@@ -45,7 +45,7 @@ final class ChatToolTests: XCTestCase {
         let expense = try XCTUnwrap(outcome.proposal)
         XCTAssertEqual(expense.amount, 2_800_000)
         XCTAssertEqual(expense.allocations.map(\.amount), [2_800_000])
-        XCTAssertEqual(expense.bookID, travel.id, "Active card is outside the Trip stack, so the stack's first card is the target")
+        XCTAssertEqual(expense.cardID, travel.id, "Active card is outside the Trip stack, so the stack's first card is the target")
         XCTAssertEqual(expense.source, "chat")
         XCTAssertEqual(expense.note, "Kopi")
         XCTAssertEqual(expense.day, "2026-09-15")
@@ -70,7 +70,7 @@ final class ChatToolTests: XCTestCase {
 
     func testProposeHonorsNamedCardAndDay() throws {
         let outcome = run("propose_expense", ["amount": 100000, "category": "Transport", "card": "tokyo travel", "day": "2026-09-14"])
-        XCTAssertEqual(outcome.proposal?.bookID, travel.id)
+        XCTAssertEqual(outcome.proposal?.cardID, travel.id)
         XCTAssertEqual(outcome.proposal?.day, "2026-09-14")
     }
 
@@ -158,7 +158,7 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(json(run("get_budget_status", ["card": "Tokyo Travel"]))["has_budget"] as? Bool, false)
 
         let food = try category("Food & Drink", in: daily)
-        var budget = BudgetVersion.initial(overallLimit: 100_000_00, startDay: 1, date: now, bookID: daily.id)
+        var budget = BudgetVersion.initial(overallLimit: 100_000_00, startDay: 1, date: now, cardID: daily.id)
         budget.categoryLimits = [CategoryBudget(categoryID: food.id, limit: 50_000_00)]
         try repo.save(budget, in: daily.id)
         try model.reload()
@@ -221,7 +221,7 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(bill.recurrence, .monthly(day: 15), "now is 2026-09-15")
         XCTAssertEqual(bill.recordingMode, .pending)
         XCTAssertTrue(bill.hasReminder)
-        XCTAssertEqual(bill.bookID, daily.id)
+        XCTAssertEqual(bill.cardID, daily.id)
         XCTAssertTrue(try repo.bills(in: daily.id).isEmpty, "Proposals never write")
 
         let weekly = run("propose_bill", ["name": "Laundry", "amount": 50000, "category": "Home", "frequency": "weekly",
@@ -278,7 +278,7 @@ final class ChatToolTests: XCTestCase {
     func testEditRefusesAmountOrCategoryChangeOnSplitButAllowsNote() throws {
         let food = try category("Food & Drink", in: daily), shopping = try category("Shopping", in: daily)
         let split = Expense(amount: 10_000_00, day: "2026-09-12", note: "Market",
-                            allocations: [.init(categoryID: food.id, amount: 6_000_00), .init(categoryID: shopping.id, amount: 4_000_00)], bookID: daily.id)
+                            allocations: [.init(categoryID: food.id, amount: 6_000_00), .init(categoryID: shopping.id, amount: 4_000_00)], cardID: daily.id)
         try model.save(split)
         XCTAssertTrue(run("propose_edit", ["id": split.id.uuidString, "amount": 12000]).isError)
         XCTAssertEqual(run("propose_edit", ["id": split.id.uuidString, "note": "Pasar"]).change?.updated?.allocations, split.allocations)
@@ -341,12 +341,12 @@ final class ChatToolTests: XCTestCase {
 
     private func rupiah(_ amount: Any?) -> Int64? { ((amount as? [String: Any])?["rupiah"] as? NSNumber)?.int64Value }
 
-    private func category(_ name: String, in book: BookProfile) throws -> ExpenseCategory {
-        try XCTUnwrap(try repo.categories(in: book.id).first { $0.name == name })
+    private func category(_ name: String, in card: Card) throws -> ExpenseCategory {
+        try XCTUnwrap(try repo.categories(in: card.id).first { $0.name == name })
     }
 
-    private func save(_ rupiah: Int64, _ day: String, _ note: String, _ category: ExpenseCategory, _ book: BookProfile) throws {
+    private func save(_ rupiah: Int64, _ day: String, _ note: String, _ category: ExpenseCategory, _ card: Card) throws {
         let minor = rupiah * 100
-        try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)], bookID: book.id), in: book.id)
+        try repo.save(Expense(amount: minor, day: day, note: note, allocations: [.init(categoryID: category.id, amount: minor)], cardID: card.id), in: card.id)
     }
 }

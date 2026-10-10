@@ -5,7 +5,7 @@ import XCTest
 final class FoundationTests: XCTestCase {
     func testSharedTextCommandUpdatesPresentationAndRetriesByIdentity() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
         let model = AppModel(expenses: service, state: TestState())
         let id = UUID()
@@ -174,7 +174,7 @@ final class FoundationTests: XCTestCase {
 
     func testEditingExpenseUntouchedDoesNotRequireDiscardConfirmation() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
         let model = AppModel(expenses: service, state: TestState())
 
@@ -183,7 +183,7 @@ final class FoundationTests: XCTestCase {
             day: "2026-08-15",
             note: "Historical expense",
             allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 50_000_00)],
-            bookID: BookProfile.sample.id
+            cardID: Card.demo.id
         )
         try service.save(oldExpense)
 
@@ -204,13 +204,13 @@ final class FoundationTests: XCTestCase {
         XCTAssertFalse(model.draftNeedsConfirmation)
     }
 
-    func testCrossBookExpenseEditingUntouchedDoesNotRequireDiscardConfirmation() throws {
+    func testCrossCardExpenseEditingUntouchedDoesNotRequireDiscardConfirmation() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let book1 = try store.createBook(named: "Card 1")
-        let book2 = try store.createBook(named: "Card 2")
-        let cats2 = try store.categories(in: book2.id)
+        let card1 = try store.createCard(named: "Card 1")
+        let card2 = try store.createCard(named: "Card 2")
+        let cats2 = try store.categories(in: card2.id)
         let service = try ExpenseService(store: store)
-        try service.selectBook(book1.id)
+        try service.selectCard(card1.id)
         let model = AppModel(expenses: service, state: TestState())
 
         let card2Expense = Expense(
@@ -218,9 +218,9 @@ final class FoundationTests: XCTestCase {
             day: "2026-07-20",
             note: "Card 2 coffee",
             allocations: [.init(categoryID: cats2[0].id, amount: 75_000_00)],
-            bookID: book2.id
+            cardID: card2.id
         )
-        try service.save(card2Expense, in: book2.id)
+        try service.save(card2Expense, in: card2.id)
 
         // Edit expense from card 2 while card 1 is active
         model.edit(card2Expense)
@@ -248,30 +248,30 @@ private final class TestExpenseStore: ExpenseStore {
     var occurrenceValues: [BillOccurrence] = []
     var failWrites = false
     var failReads = false
-    func books() throws -> [BookProfile] { [BookProfile.sample] }
-    func createBook(named name: String) throws -> BookProfile { BookProfile(name: name) }
-    func renameBook(id: UUID, to name: String) throws {}
-    func deleteBook(id: UUID) throws {}
+    func cards() throws -> [Card] { [Card.demo] }
+    func createCard(named name: String) throws -> Card { Card(name: name) }
+    func renameCard(id: UUID, to name: String) throws {}
+    func deleteCard(id: UUID) throws {}
 
-    func categories(in bookID: UUID) throws -> [ExpenseCategory] { try categories() }
-    func expenses(in bookID: UUID) throws -> [Expense] { try expenses() }
-    func budgets(in bookID: UUID) throws -> [BudgetVersion] { try budgets() }
-    func bills(in bookID: UUID) throws -> [BillRule] { try bills() }
-    func billOccurrences(in bookID: UUID) throws -> [BillOccurrence] { try billOccurrences() }
-    func save(_ expense: Expense, in bookID: UUID) throws { try save(expense) }
-    func save(_ budget: BudgetVersion, in bookID: UUID) throws { try save(budget) }
-    func saveBill(_ bill: BillRule, in bookID: UUID) throws { try saveBill(bill) }
-    func deleteBill(_ id: UUID, in bookID: UUID) throws { try deleteBill(id) }
-    func saveOccurrence(_ occurrence: BillOccurrence, in bookID: UUID) throws { try saveOccurrence(occurrence) }
-    func deleteOccurrence(_ id: UUID, in bookID: UUID) throws { try deleteOccurrence(id) }
-    func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws { try saveCategory(category) }
-    func deleteCategory(_ id: UUID, in bookID: UUID) throws { try deleteCategory(id) }
-    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile { BookProfile(name: name) }
+    func categories(in cardID: UUID) throws -> [ExpenseCategory] { try categories() }
+    func expenses(in cardID: UUID) throws -> [Expense] { try expenses() }
+    func budgets(in cardID: UUID) throws -> [BudgetVersion] { try budgets() }
+    func bills(in cardID: UUID) throws -> [BillRule] { try bills() }
+    func billOccurrences(in cardID: UUID) throws -> [BillOccurrence] { try billOccurrences() }
+    func save(_ expense: Expense, in cardID: UUID) throws { try save(expense) }
+    func save(_ budget: BudgetVersion, in cardID: UUID) throws { try save(budget) }
+    func saveBill(_ bill: BillRule, in cardID: UUID) throws { try saveBill(bill) }
+    func deleteBill(_ id: UUID, in cardID: UUID) throws { try deleteBill(id) }
+    func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws { try saveOccurrence(occurrence) }
+    func deleteOccurrence(_ id: UUID, in cardID: UUID) throws { try deleteOccurrence(id) }
+    func saveCategory(_ category: ExpenseCategory, in cardID: UUID) throws { try saveCategory(category) }
+    func deleteCategory(_ id: UUID, in cardID: UUID) throws { try deleteCategory(id) }
+    func createCard(named name: String, initialCategories: [GlobalCategory]?) throws -> Card { Card(name: name) }
     func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {}
-    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
-    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
+    func activateCategory(_ category: GlobalCategory, in cardID: UUID) throws {}
+    func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws {}
     func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {}
-    func clearExpenses(in bookID: UUID?) throws { values.removeAll() }
+    func clearExpenses(in cardID: UUID?) throws { values.removeAll() }
 
     func categories() throws -> [ExpenseCategory] {
         if failReads { throw EntryError.corruptStore }
@@ -338,8 +338,8 @@ private final class TestState: LocalStateStore {
     func saveDraft(_ draft: ExpenseDraft) throws { if failWrites { throw EntryError.corruptStore } }
     func saveSettings(_ settings: PrototypeSettings) throws { if failWrites { throw EntryError.corruptStore }; savedSettings = settings }
 
-    func loadDraft(for bookID: UUID) throws -> ExpenseDraft { try loadDraft() }
-    func saveDraft(_ draft: ExpenseDraft, for bookID: UUID) throws { try saveDraft(draft) }
+    func loadDraft(for cardID: UUID) throws -> ExpenseDraft { try loadDraft() }
+    func saveDraft(_ draft: ExpenseDraft, for cardID: UUID) throws { try saveDraft(draft) }
     func loadWorkspacePreferences() throws -> WorkspacePreferences { WorkspacePreferences() }
     func saveWorkspacePreferences(_ preferences: WorkspacePreferences) throws { if failWrites { throw EntryError.corruptStore } }
 }
@@ -400,8 +400,8 @@ extension FoundationTests {
 
     func testStructuredShortcutSupportsExplicitCardSelection() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
-        let secondCard = try store.createBook(named: "Travel Card")
+        try store.prepareSampleCard()
+        let secondCard = try store.createCard(named: "Travel Card")
         let service = try ExpenseService(store: store)
 
         let secondCardCats = try store.categories(in: secondCard.id)
@@ -410,26 +410,26 @@ extension FoundationTests {
 
         // Record targeting the second card explicitly
         let exp1 = try service.record(amountInRupiah: 45_000, categoryID: targetCatID, note: "Dinner abroad", in: secondCard.id)
-        XCTAssertEqual(exp1.bookID, secondCard.id)
+        XCTAssertEqual(exp1.cardID, secondCard.id)
         XCTAssertEqual(exp1.amount, 4_500_000)
 
-        // Record with nil card targets default active book
+        // Record with nil card targets default active card
         let defaultCatID = ExpenseCategory.defaults[0].id
         let exp2 = try service.record(amountInRupiah: 20_000, categoryID: defaultCatID, note: "Coffee", in: nil)
-        XCTAssertEqual(exp2.bookID, service.activeBookID)
+        XCTAssertEqual(exp2.cardID, service.activeCardID)
         XCTAssertEqual(exp2.amount, 2_000_000)
 
         let card2Expenses = try store.expenses(in: secondCard.id)
         XCTAssertEqual(card2Expenses.count, 1)
         XCTAssertEqual(card2Expenses.first?.note, "Dinner abroad")
 
-        let defaultExpenses = try store.expenses(in: service.activeBookID)
+        let defaultExpenses = try store.expenses(in: service.activeCardID)
         XCTAssertTrue(defaultExpenses.contains(where: { $0.id == exp2.id }))
     }
 
     func testSpendingSessionManagerLifecycle() {
         let manager = SpendingSessionManager.shared
-        manager.startSession(name: "Test Grocery", bookName: "Personal", budgetLimit: 500_000_00)
+        manager.startSession(name: "Test Grocery", cardName: "Personal", budgetLimit: 500_000_00)
         XCTAssertTrue(manager.isSessionActive)
         XCTAssertEqual(manager.sessionName, "Test Grocery")
         XCTAssertEqual(manager.sessionBudgetLimit, 500_000_00)

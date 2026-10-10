@@ -23,8 +23,8 @@ enum AppLockTimeout: String, Codable, CaseIterable, Identifiable {
 }
 
 struct PrototypeSettings: Codable, Equatable {
-    /// The profile binds this otherwise single-book state file to the Core Data book and backup contract.
-    var book = BookProfile.sample
+    /// The profile binds this otherwise single-card state file to the Core Data card and backup contract.
+    var card = Card.demo
     var budget: Int64 = 450_000_000
     var startDay = 1
     var billAutomatic = false
@@ -35,11 +35,11 @@ struct PrototypeSettings: Codable, Equatable {
     var archivedCategoryIDs: Set<UUID> = []
     var categoryRules: [CategoryRule] = []
 
-    private enum CodingKeys: String, CodingKey { case book, budget, startDay, billAutomatic, billReminder, appLockTimeout, archivedCategoryIDs, categoryRules }
+    private enum CodingKeys: String, CodingKey { case card = "book", budget, startDay, billAutomatic, billReminder, appLockTimeout, archivedCategoryIDs, categoryRules }
     init() {}
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        book = try values.decodeIfPresent(BookProfile.self, forKey: .book) ?? .sample
+        card = try values.decodeIfPresent(Card.self, forKey: .card) ?? .demo
         budget = try values.decodeIfPresent(Int64.self, forKey: .budget) ?? 450_000_000
         startDay = try values.decodeIfPresent(Int.self, forKey: .startDay) ?? 1
         billAutomatic = try values.decodeIfPresent(Bool.self, forKey: .billAutomatic) ?? false
@@ -50,7 +50,7 @@ struct PrototypeSettings: Codable, Equatable {
     }
     func encode(to encoder: any Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
-        try values.encode(book, forKey: .book)
+        try values.encode(card, forKey: .card)
         try values.encode(budget, forKey: .budget); try values.encode(startDay, forKey: .startDay)
         try values.encode(billAutomatic, forKey: .billAutomatic); try values.encode(billReminder, forKey: .billReminder)
         try values.encodeIfPresent(appLockTimeout, forKey: .appLockTimeout); try values.encode(archivedCategoryIDs, forKey: .archivedCategoryIDs)
@@ -62,8 +62,8 @@ struct PrototypeSettings: Codable, Equatable {
 protocol LocalStateStore {
     func loadDraft() throws -> ExpenseDraft
     func saveDraft(_ draft: ExpenseDraft) throws
-    func loadDraft(for bookID: UUID) throws -> ExpenseDraft
-    func saveDraft(_ draft: ExpenseDraft, for bookID: UUID) throws
+    func loadDraft(for cardID: UUID) throws -> ExpenseDraft
+    func saveDraft(_ draft: ExpenseDraft, for cardID: UUID) throws
     func loadSettings() throws -> PrototypeSettings
     func saveSettings(_ settings: PrototypeSettings) throws
     func loadWorkspacePreferences() throws -> WorkspacePreferences
@@ -75,26 +75,26 @@ protocol LocalStateStore {
 final class FileLocalStateStore: LocalStateStore {
     private let directory: URL
     init(directory: URL) { self.directory = directory }
-    func loadDraft() throws -> ExpenseDraft { try loadDraft(for: BookProfile.sample.id) }
-    func saveDraft(_ draft: ExpenseDraft) throws { try saveDraft(draft, for: draft.bookID ?? BookProfile.sample.id) }
+    func loadDraft() throws -> ExpenseDraft { try loadDraft(for: Card.demo.id) }
+    func saveDraft(_ draft: ExpenseDraft) throws { try saveDraft(draft, for: draft.cardID ?? Card.demo.id) }
 
-    func loadDraft(for bookID: UUID) throws -> ExpenseDraft {
-        if let draft: ExpenseDraft = try read("draft-\(bookID.uuidString).json") {
+    func loadDraft(for cardID: UUID) throws -> ExpenseDraft {
+        if let draft: ExpenseDraft = try read("draft-\(cardID.uuidString).json") {
             return draft
         }
-        if bookID == BookProfile.sample.id, let legacy: ExpenseDraft = try read("draft.json") {
+        if cardID == Card.demo.id, let legacy: ExpenseDraft = try read("draft.json") {
             return legacy
         }
         return ExpenseDraft()
     }
 
-    func saveDraft(_ draft: ExpenseDraft, for bookID: UUID) throws {
+    func saveDraft(_ draft: ExpenseDraft, for cardID: UUID) throws {
         var draft = draft
-        draft.bookID = bookID
-        try write(draft, name: "draft-\(bookID.uuidString).json")
-        if bookID == BookProfile.sample.id {
+        draft.cardID = cardID
+        try write(draft, name: "draft-\(cardID.uuidString).json")
+        if cardID == Card.demo.id {
             var legacy = draft
-            legacy.bookID = nil
+            legacy.cardID = nil
             try write(legacy, name: "draft.json")
         }
     }

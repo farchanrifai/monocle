@@ -37,10 +37,10 @@ struct MacExpenseForm: View {
                 }
                 GridRow {
                     label("Card")
-                    PopUpPicker(title: "Card", options: model.books.map { .init(id: $0.id, name: $0.name, symbol: "creditcard.fill") },
-                                selection: Binding(get: { model.draft.bookID ?? model.activeBookID }, set: { id in
+                    PopUpPicker(title: "Card", options: model.cards.map { .init(id: $0.id, name: $0.name, symbol: "creditcard.fill") },
+                                selection: Binding(get: { model.draft.cardID ?? model.activeCardID }, set: { id in
                                     guard let id else { return }
-                                    _ = model.selectBook(id); model.draft.bookID = id
+                                    _ = model.selectCard(id); model.draft.cardID = id
                                     if !model.draft.editing {
                                         model.draft.paidWithID = nil
                                         if model.draft.amount.isEmpty { model.draft.currency = nil }
@@ -147,7 +147,7 @@ struct MacExpenseForm: View {
 
     private var currencyChoices: [String] {
         var seen = Set<String>()
-        let cards = model.books.flatMap { [$0.currency, $0.spendingCurrency].compactMap { $0 } }
+        let cards = model.cards.flatMap { [$0.currency, $0.spendingCurrency].compactMap { $0 } }
         return ([model.reportingCurrency] + cards + Money.commonCurrencies).filter { seen.insert($0).inserted }
     }
 

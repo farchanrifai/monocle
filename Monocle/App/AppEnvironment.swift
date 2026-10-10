@@ -17,21 +17,21 @@ final class AppEnvironment {
             let draft = try state.loadDraft()
             var settings = try state.loadSettings()
             let preferences = try state.loadWorkspacePreferences()
-            let books = try repository.books()
-            var categoriesByBook: [UUID: [ExpenseCategory]] = [:]
-            for book in books { categoriesByBook[book.id] = try repository.categories(in: book.id) }
-            try preferences.validate(books: books, categoriesByBook: categoriesByBook)
-            let settingsBooks: [BookBackupItem] = books.isEmpty
-                ? [BookBackupItem(book: .sample, categories: Self.initialCategories(directory: directory), expenses: [], budgets: [])]
-                : books.map { BookBackupItem(book: $0, categories: categoriesByBook[$0.id] ?? [], expenses: [], budgets: []) }
-            try settings.validate(books: settingsBooks, globalCategories: preferences.globalCategories, allowLegacySampleProfile: true)
+            let cards = try repository.cards()
+            var categoriesByCard: [UUID: [ExpenseCategory]] = [:]
+            for card in cards { categoriesByCard[card.id] = try repository.categories(in: card.id) }
+            try preferences.validate(cards: cards, categoriesByCard: categoriesByCard)
+            let settingsCards: [CardBackupItem] = cards.isEmpty
+                ? [CardBackupItem(card: .demo, categories: Self.initialCategories(directory: directory), expenses: [], budgets: [])]
+                : cards.map { CardBackupItem(card: $0, categories: categoriesByCard[$0.id] ?? [], expenses: [], budgets: []) }
+            try settings.validate(cards: settingsCards, globalCategories: preferences.globalCategories, allowLegacySampleProfile: true)
             let originalSettings = settings
-            if let stored = books.first(where: { $0.id == settings.book.id }) { settings.book = stored }
-            else if settings.book == .sample, let stored = books.first { settings.book = stored }
+            if let stored = cards.first(where: { $0.id == settings.card.id }) { settings.card = stored }
+            else if settings.card == .demo, let stored = cards.first { settings.card = stored }
             if settings != originalSettings { try state.saveSettings(settings) }
-            try repository.prepareSampleBook(categories: Self.initialCategories(directory: directory))
+            try repository.prepareSampleCard(categories: Self.initialCategories(directory: directory))
             try repository.prepareInitialBudget(settings: settings)
-            try SampleBookSeeder.seedIfNeeded(repository: repository, directory: directory)
+            try SampleCardSeeder.seedIfNeeded(repository: repository, directory: directory)
             #if DEBUG
             // UI runs get isolated stores; reset chat opt-in too, since Keychain and defaults outlive a run.
             if directory.lastPathComponent.hasPrefix("monocle-ui-test-") {
@@ -41,10 +41,10 @@ final class AppEnvironment {
             }
             if directory.lastPathComponent.hasPrefix("monocle-ui-test-"),
                ProcessInfo.processInfo.environment["MONOCLE_TEST_THREE_CARDS"] == "1",
-               try repository.books().count == 1 {
+               try repository.cards().count == 1 {
                 try repository.transaction {
-                    _ = try repository.createBook(named: "UI card two")
-                    _ = try repository.createBook(named: "UI card three")
+                    _ = try repository.createCard(named: "UI card two")
+                    _ = try repository.createCard(named: "UI card three")
                 }
             }
             #endif

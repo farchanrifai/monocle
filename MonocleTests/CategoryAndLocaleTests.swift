@@ -20,7 +20,7 @@ final class CategoryAndLocaleTests: XCTestCase {
     @MainActor
     func testCategoryEditsKeepHistoryAndDeleteGuardsAtStoreBoundary() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
         var category = ExpenseCategory(id: UUID(), name: "Pets", symbol: "pawprint")
         try service.saveCategory(category)
@@ -40,7 +40,7 @@ final class CategoryAndLocaleTests: XCTestCase {
     @MainActor
     func testDuplicateAndInvalidCategoryDoesNotMutateStore() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let before = try store.categories()
         XCTAssertThrowsError(try store.saveCategory(.init(id: UUID(), name: "  food & drink  ", symbol: "bag")))
         XCTAssertThrowsError(try store.saveCategory(.init(id: UUID(), name: " ", symbol: "bag")))

@@ -71,7 +71,7 @@ final class MonocleTests: XCTestCase {
         var expense = Expense(amount: 2_800_000, day: "2026-09-07", note: "Coffee", allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
         do {
             let store = try ExpenseRepository(url: url)
-            try store.prepareSampleBook()
+            try store.prepareSampleCard()
             try store.save(expense)
             try store.save(expense)
             XCTAssertEqual(try store.expenses().count, 1)
@@ -88,7 +88,7 @@ final class MonocleTests: XCTestCase {
         XCTAssertEqual(try reopened.expenses(), [expense])
         try reopened.delete(expense.id)
         XCTAssertTrue(try reopened.expenses().isEmpty)
-        try reopened.prepareSampleBook()
+        try reopened.prepareSampleCard()
         XCTAssertTrue(try reopened.expenses().isEmpty, "An empty book must not trigger reseeding")
         for persistentStore in reopened.container.persistentStoreCoordinator.persistentStores {
             try reopened.container.persistentStoreCoordinator.remove(persistentStore)
@@ -101,7 +101,7 @@ final class MonocleTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("Test.sqlite")
         let store = try ExpenseRepository(url: url)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let budget = BudgetVersion(effectiveDay: "2026-09-01", overallLimit: 450_000_000, startDay: 1)
         try store.save(budget)
         var updated = budget; updated.overallLimit = 500_000_000
@@ -128,15 +128,15 @@ final class MonocleTests: XCTestCase {
         let oldContainer = NSPersistentContainer(name: "MonocleV1", managedObjectModel: oldModel)
         try oldContainer.persistentStoreCoordinator.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil, at: url, options: nil)
         let context = oldContainer.viewContext
-        let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
-        book.setValue(BookProfile.sample.id, forKey: "id"); book.setValue(BookProfile.sample.name, forKey: "name")
+        let card = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+        card.setValue(Card.demo.id, forKey: "id"); card.setValue(Card.demo.name, forKey: "name")
         let category = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
         category.setValue(ExpenseCategory.defaults[0].id, forKey: "id"); category.setValue("Food & Drink", forKey: "name")
-        category.setValue("cup.and.saucer", forKey: "symbol"); category.setValue(book, forKey: "book")
+        category.setValue("cup.and.saucer", forKey: "symbol"); category.setValue(card, forKey: "book")
         let expense = NSEntityDescription.insertNewObject(forEntityName: "ExpenseRecord", into: context)
         expense.setValue(UUID(), forKey: "id"); expense.setValue(Int64(2_800_000), forKey: "amount")
         expense.setValue("2026-09-08", forKey: "day"); expense.setValue("Coffee", forKey: "note")
-        expense.setValue("manual", forKey: "source"); expense.setValue(Date.now, forKey: "createdAt"); expense.setValue(book, forKey: "book")
+        expense.setValue("manual", forKey: "source"); expense.setValue(Date.now, forKey: "createdAt"); expense.setValue(card, forKey: "book")
         let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
         allocation.setValue(Int64(2_800_000), forKey: "amount"); allocation.setValue(category, forKey: "category"); allocation.setValue(expense, forKey: "expense")
         try context.save()

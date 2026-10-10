@@ -5,31 +5,31 @@ import Observation
 @MainActor
 protocol ExpenseStore {
     func transaction(_ operation: () throws -> Void) throws
-    func books() throws -> [BookProfile]
-    func createBook(named name: String) throws -> BookProfile
-    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile
-    func renameBook(id: UUID, to name: String) throws
-    func updateCard(_ profile: BookProfile) throws
-    func deleteBook(id: UUID) throws
+    func cards() throws -> [Card]
+    func createCard(named name: String) throws -> Card
+    func createCard(named name: String, initialCategories: [GlobalCategory]?) throws -> Card
+    func renameCard(id: UUID, to name: String) throws
+    func updateCard(_ profile: Card) throws
+    func deleteCard(id: UUID) throws
 
-    func categories(in bookID: UUID) throws -> [ExpenseCategory]
-    func expenses(in bookID: UUID) throws -> [Expense]
-    func expenses(in bookID: UUID, from startDay: String, to endDay: String, limit: Int, offset: Int) throws -> [Expense]
-    func budgets(in bookID: UUID) throws -> [BudgetVersion]
-    func bills(in bookID: UUID) throws -> [BillRule]
-    func billOccurrences(in bookID: UUID) throws -> [BillOccurrence]
-    func saveExpenses(_ batch: [Expense], in bookID: UUID) throws
-    func save(_ expense: Expense, in bookID: UUID) throws
-    func save(_ budget: BudgetVersion, in bookID: UUID) throws
-    func saveBill(_ bill: BillRule, in bookID: UUID) throws
-    func deleteBill(_ id: UUID, in bookID: UUID) throws
-    func saveOccurrence(_ occurrence: BillOccurrence, in bookID: UUID) throws
-    func deleteOccurrence(_ id: UUID, in bookID: UUID) throws
-    func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws
-    func deleteCategory(_ id: UUID, in bookID: UUID) throws
+    func categories(in cardID: UUID) throws -> [ExpenseCategory]
+    func expenses(in cardID: UUID) throws -> [Expense]
+    func expenses(in cardID: UUID, from startDay: String, to endDay: String, limit: Int, offset: Int) throws -> [Expense]
+    func budgets(in cardID: UUID) throws -> [BudgetVersion]
+    func bills(in cardID: UUID) throws -> [BillRule]
+    func billOccurrences(in cardID: UUID) throws -> [BillOccurrence]
+    func saveExpenses(_ batch: [Expense], in cardID: UUID) throws
+    func save(_ expense: Expense, in cardID: UUID) throws
+    func save(_ budget: BudgetVersion, in cardID: UUID) throws
+    func saveBill(_ bill: BillRule, in cardID: UUID) throws
+    func deleteBill(_ id: UUID, in cardID: UUID) throws
+    func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws
+    func deleteOccurrence(_ id: UUID, in cardID: UUID) throws
+    func saveCategory(_ category: ExpenseCategory, in cardID: UUID) throws
+    func deleteCategory(_ id: UUID, in cardID: UUID) throws
     func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws
-    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws
-    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws
+    func activateCategory(_ category: GlobalCategory, in cardID: UUID) throws
+    func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws
     func categoryMigrationMapping(to catalog: [GlobalCategory]) throws -> [UUID: [UUID: UUID]]
     func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws
 
@@ -45,38 +45,38 @@ protocol ExpenseStore {
     func saveOccurrence(_ occurrence: BillOccurrence) throws
     func deleteOccurrence(_ id: UUID) throws
     func delete(_ id: UUID) throws
-    func delete(_ id: UUID, in bookID: UUID) throws
-    func delete(_ id: UUID, in bookID: UUID, at date: Date) throws
+    func delete(_ id: UUID, in cardID: UUID) throws
+    func delete(_ id: UUID, in cardID: UUID, at date: Date) throws
     func saveCategory(_ category: ExpenseCategory) throws
     func deleteCategory(_ id: UUID) throws
-    func clearExpenses(in bookID: UUID?) throws
+    func clearExpenses(in cardID: UUID?) throws
 }
 
 extension ExpenseStore {
-    func createBook(named name: String) throws -> BookProfile {
-        try createBook(named: name, initialCategories: nil)
+    func createCard(named name: String) throws -> Card {
+        try createCard(named: name, initialCategories: nil)
     }
-    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile {
-        try createBook(named: name)
+    func createCard(named name: String, initialCategories: [GlobalCategory]?) throws -> Card {
+        try createCard(named: name)
     }
     func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {}
-    func updateCard(_ profile: BookProfile) throws {}
-    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {}
-    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {}
-    func expenses(in bookID: UUID, from startDay: String, to endDay: String, limit: Int, offset: Int) throws -> [Expense] {
+    func updateCard(_ profile: Card) throws {}
+    func activateCategory(_ category: GlobalCategory, in cardID: UUID) throws {}
+    func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws {}
+    func expenses(in cardID: UUID, from startDay: String, to endDay: String, limit: Int, offset: Int) throws -> [Expense] {
         guard Day.date(startDay) != nil, Day.date(endDay) != nil, startDay < endDay,
               (1...1_000).contains(limit), offset >= 0 else { throw EntryError.invalidDate }
-        return Array(try expenses(in: bookID).filter { $0.day >= startDay && $0.day < endDay }.dropFirst(offset).prefix(limit))
+        return Array(try expenses(in: cardID).filter { $0.day >= startDay && $0.day < endDay }.dropFirst(offset).prefix(limit))
     }
-    func saveExpenses(_ batch: [Expense], in bookID: UUID) throws {
-        for expense in batch { try save(expense, in: bookID) }
+    func saveExpenses(_ batch: [Expense], in cardID: UUID) throws {
+        for expense in batch { try save(expense, in: cardID) }
     }
     func categoryMigrationMapping(to catalog: [GlobalCategory]) throws -> [UUID: [UUID: UUID]] { [:] }
     func unifyCategoriesToGlobalCatalog(_ catalog: [GlobalCategory]) throws {}
-    func clearExpenses(in bookID: UUID?) throws {}
-    func delete(_ id: UUID, in bookID: UUID, at date: Date) throws { try delete(id, in: bookID) }
-    func delete(_ id: UUID, in bookID: UUID) throws {
-        guard try expenses(in: bookID).contains(where: { $0.id == id }) else { throw EntryError.corruptStore }
+    func clearExpenses(in cardID: UUID?) throws {}
+    func delete(_ id: UUID, in cardID: UUID, at date: Date) throws { try delete(id, in: cardID) }
+    func delete(_ id: UUID, in cardID: UUID) throws {
+        guard try expenses(in: cardID).contains(where: { $0.id == id }) else { throw EntryError.corruptStore }
         try delete(id)
     }
 }
@@ -87,8 +87,8 @@ final class ExpenseService {
     var isBlocked = false
     private let store: any ExpenseStore
     let notifications: BillNotificationService
-    private(set) var books: [BookProfile] = []
-    private(set) var activeBookID: UUID = BookProfile.sample.id
+    private(set) var cards: [Card] = []
+    private(set) var activeCardID: UUID = Card.demo.id
     private(set) var expenses: [Expense] = []
     private(set) var categories: [ExpenseCategory] = []
     private(set) var budgets: [BudgetVersion] = []
@@ -106,7 +106,7 @@ final class ExpenseService {
     private var workspaceOccurrences: [UUID: [BillOccurrence]] = [:]
     private var stagedSnapshot: Snapshot?
 
-    private struct BookState {
+    private struct CardState {
         let categories: [ExpenseCategory]
         let expenses: [Expense]
         let budgets: [BudgetVersion]
@@ -114,9 +114,9 @@ final class ExpenseService {
         let occurrences: [BillOccurrence]
     }
     private struct Snapshot {
-        let books: [BookProfile]
+        let cards: [Card]
         let activeID: UUID
-        let states: [UUID: BookState]
+        let states: [UUID: CardState]
     }
 
     init(store: any ExpenseStore, notifications: BillNotificationService = .shared) throws {
@@ -126,25 +126,25 @@ final class ExpenseService {
     }
 
     private func snapshot(preferredID: UUID) throws -> Snapshot {
-        let storedBooks = try store.books()
-        guard Set(storedBooks.map(\.id)).count == storedBooks.count,
-              let targetID = storedBooks.first(where: { $0.id == preferredID })?.id ?? storedBooks.first?.id else {
+        let storedCards = try store.cards()
+        guard Set(storedCards.map(\.id)).count == storedCards.count,
+              let targetID = storedCards.first(where: { $0.id == preferredID })?.id ?? storedCards.first?.id else {
             throw EntryError.corruptStore
         }
-        var states: [UUID: BookState] = [:]
+        var states: [UUID: CardState] = [:]
         var total: Int64 = 0
-        for book in storedBooks {
-            let categories = try store.categories(in: book.id)
-            let expenses = try store.expenses(in: book.id)
-            let budgets = try store.budgets(in: book.id)
-            let bills = try store.bills(in: book.id)
-            let occurrences = try store.billOccurrences(in: book.id)
+        for card in storedCards {
+            let categories = try store.categories(in: card.id)
+            let expenses = try store.expenses(in: card.id)
+            let budgets = try store.budgets(in: card.id)
+            let bills = try store.bills(in: card.id)
+            let occurrences = try store.billOccurrences(in: card.id)
             for bill in bills { try bill.validate(categories: categories) }
-            try BillOccurrence.validate(occurrences, rules: bills, expenses: expenses, bookID: book.id)
+            try BillOccurrence.validate(occurrences, rules: bills, expenses: expenses, cardID: card.id)
             total = try Money.checkedSum([total, Money.checkedSum(expenses.map(\.amount))])
-            states[book.id] = BookState(categories: categories, expenses: expenses, budgets: budgets, bills: bills, occurrences: occurrences)
+            states[card.id] = CardState(categories: categories, expenses: expenses, budgets: budgets, bills: bills, occurrences: occurrences)
         }
-        return Snapshot(books: storedBooks, activeID: targetID, states: states)
+        return Snapshot(cards: storedCards, activeID: targetID, states: states)
     }
 
     private func publish(_ snapshot: Snapshot, requestAuthorization: Bool = false) {
@@ -152,8 +152,8 @@ final class ExpenseService {
         workspaceExpenses = snapshot.states.mapValues(\.expenses)
         workspaceBills = snapshot.states.mapValues(\.bills)
         workspaceOccurrences = snapshot.states.mapValues(\.occurrences)
-        books = snapshot.books
-        activeBookID = snapshot.activeID
+        cards = snapshot.cards
+        activeCardID = snapshot.activeID
         categories = active.categories
         expenses = active.expenses
         budgets = active.budgets
@@ -167,13 +167,13 @@ final class ExpenseService {
 
     func reload() throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let current = try snapshot(preferredID: activeBookID)
+        let current = try snapshot(preferredID: activeCardID)
         stagedSnapshot = nil
         publish(current)
     }
 
     /// Read/validate a committed candidate without publishing it while a recovery journal remains.
-    func stageCommittedState() throws { stagedSnapshot = try snapshot(preferredID: activeBookID) }
+    func stageCommittedState() throws { stagedSnapshot = try snapshot(preferredID: activeCardID) }
 
     /// A command has already committed when this runs. Refresh errors are separate observable state.
     private func didCommit(requestAuthorization: Bool = false, refreshSnapshot: Bool = true) {
@@ -183,7 +183,7 @@ final class ExpenseService {
             self.stagedSnapshot = nil
             publish(stagedSnapshot, requestAuthorization: pendingAuthorization)
         } else if refreshSnapshot {
-            do { publish(try snapshot(preferredID: activeBookID), requestAuthorization: pendingAuthorization) }
+            do { publish(try snapshot(preferredID: activeCardID), requestAuthorization: pendingAuthorization) }
             catch { projectionRefreshError = error.localizedDescription }
         } else {
             notifications.reconcile(rules: workspaceBills.values.flatMap { $0 },
@@ -214,20 +214,20 @@ final class ExpenseService {
     /// Recovery coordinators publish after their journal/files have also completed.
     func publishCommittedState() { didCommit() }
 
-    func selectBook(_ id: UUID) throws {
-        guard books.contains(where: { $0.id == id }) else { return }
+    func selectCard(_ id: UUID) throws {
+        guard cards.contains(where: { $0.id == id }) else { return }
         publish(try snapshot(preferredID: id))
     }
 
-    func createBook(named name: String, initialCategories: [GlobalCategory]? = nil) throws -> BookProfile {
+    func createCard(named name: String, initialCategories: [GlobalCategory]? = nil) throws -> Card {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let book = try store.createBook(named: name, initialCategories: initialCategories)
+        let card = try store.createCard(named: name, initialCategories: initialCategories)
         if transactionDepth == 0 {
-            books.append(book)
-            workspaceExpenses[book.id] = []
+            cards.append(card)
+            workspaceExpenses[card.id] = []
         }
         didCommit()
-        return book
+        return card
     }
 
     func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {
@@ -236,15 +236,15 @@ final class ExpenseService {
         didCommit()
     }
 
-    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {
+    func activateCategory(_ category: GlobalCategory, in cardID: UUID) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        try store.activateCategory(category, in: bookID)
+        try store.activateCategory(category, in: cardID)
         didCommit()
     }
 
-    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {
+    func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        try store.deactivateCategory(categoryID, in: bookID)
+        try store.deactivateCategory(categoryID, in: cardID)
         didCommit()
     }
 
@@ -258,14 +258,14 @@ final class ExpenseService {
         didCommit()
     }
 
-    func renameBook(id: UUID, to name: String) throws {
+    func renameCard(id: UUID, to name: String) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        try store.renameBook(id: id, to: name)
+        try store.renameCard(id: id, to: name)
         didCommit()
     }
 
     /// Saves a card's currency and Paid with defaults; its name and look have their own commands.
-    func updateCard(_ profile: BookProfile) throws {
+    func updateCard(_ profile: Card) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         try profile.validate()
         try store.updateCard(profile)
@@ -277,26 +277,26 @@ final class ExpenseService {
         workspaceExpenses.values.reduce(0) { $0 + $1.filter { $0.paidWithID == id }.count }
     }
 
-    func deleteBook(id: UUID) throws {
+    func deleteCard(id: UUID) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        try store.deleteBook(id: id)
+        try store.deleteCard(id: id)
         didCommit()
     }
 
-    func expenses(for bookID: UUID) throws -> [Expense] { try store.expenses(in: bookID) }
-    func expenses(for bookID: UUID, from startDay: String, to endDay: String, limit: Int = 200, offset: Int = 0) throws -> [Expense] {
-        try store.expenses(in: bookID, from: startDay, to: endDay, limit: limit, offset: offset)
+    func expenses(for cardID: UUID) throws -> [Expense] { try store.expenses(in: cardID) }
+    func expenses(for cardID: UUID, from startDay: String, to endDay: String, limit: Int = 200, offset: Int = 0) throws -> [Expense] {
+        try store.expenses(in: cardID, from: startDay, to: endDay, limit: limit, offset: offset)
     }
-    func categories(for bookID: UUID) throws -> [ExpenseCategory] { try store.categories(in: bookID) }
-    func budgets(for bookID: UUID) throws -> [BudgetVersion] { try store.budgets(in: bookID) }
-    func bills(for bookID: UUID) throws -> [BillRule] { try store.bills(in: bookID) }
-    func billOccurrences(for bookID: UUID) throws -> [BillOccurrence] { try store.billOccurrences(in: bookID) }
+    func categories(for cardID: UUID) throws -> [ExpenseCategory] { try store.categories(in: cardID) }
+    func budgets(for cardID: UUID) throws -> [BudgetVersion] { try store.budgets(in: cardID) }
+    func bills(for cardID: UUID) throws -> [BillRule] { try store.bills(in: cardID) }
+    func billOccurrences(for cardID: UUID) throws -> [BillOccurrence] { try store.billOccurrences(in: cardID) }
 
-    func saveBill(_ bill: BillRule, in bookID: UUID? = nil, asOf date: Date = .now) throws {
+    func saveBill(_ bill: BillRule, in cardID: UUID? = nil, asOf date: Date = .now) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? bill.bookID
+        let targetID = cardID ?? bill.cardID
         var bill = bill
-        bill.bookID = targetID
+        bill.cardID = targetID
         let cats = try store.categories(in: targetID)
         let prior = try store.bills(in: targetID).first { $0.id == bill.id }
         let existing = try store.billOccurrences(in: targetID)
@@ -336,16 +336,16 @@ final class ExpenseService {
         }
     }
 
-    func deleteBill(_ id: UUID, in bookID: UUID? = nil) throws {
+    func deleteBill(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        try store.deleteBill(id, in: bookID ?? activeBookID)
+        try store.deleteBill(id, in: cardID ?? activeCardID)
         didCommit()
     }
 
     /// Nil scope reconciles every card, independent of selection, in one workspace commit.
-    func reconcileBills(asOf date: Date = .now, in bookID: UUID? = nil) throws {
+    func reconcileBills(asOf date: Date = .now, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targets = try bookID.map { [$0] } ?? store.books().map(\.id)
+        let targets = try cardID.map { [$0] } ?? store.cards().map(\.id)
         var results: [(UUID, ReconciliationResult)] = []
         for targetID in targets {
             let currentBills = try store.bills(in: targetID)
@@ -357,7 +357,7 @@ final class ExpenseService {
         }
         if results.isEmpty {
             // Existing/restored reminders are rebuilt even when no ledger rows change.
-            publish(try snapshot(preferredID: activeBookID))
+            publish(try snapshot(preferredID: activeCardID))
             return
         }
         try performTransaction {
@@ -372,9 +372,9 @@ final class ExpenseService {
     @discardableResult
     func confirmBillOccurrence(_ occurrenceID: UUID, customDate: Date? = nil,
                                customAmount: Int64? = nil, customNote: String? = nil,
-                               in bookID: UUID? = nil) throws -> Expense {
+                               in cardID: UUID? = nil) throws -> Expense {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? activeBookID
+        let targetID = cardID ?? activeCardID
         guard var occurrence = try store.billOccurrences(in: targetID).first(where: { $0.id == occurrenceID }) else {
             throw BillError.occurrenceNotFound
         }
@@ -386,7 +386,7 @@ final class ExpenseService {
         let amount = customAmount ?? rule.amount
         let expense = Expense(id: UUID(), amount: amount, day: Day.string(expenseDate), note: customNote ?? rule.name,
             allocations: [.init(categoryID: rule.categoryID, amount: amount)], source: "bill-confirmed",
-            createdAt: expenseDate, bookID: targetID)
+            createdAt: expenseDate, cardID: targetID)
         occurrence.status = .recorded
         occurrence.expenseID = expense.id
         occurrence.updatedAt = .now
@@ -397,9 +397,9 @@ final class ExpenseService {
         return expense
     }
 
-    func skipBillOccurrence(_ occurrenceID: UUID, in bookID: UUID? = nil) throws {
+    func skipBillOccurrence(_ occurrenceID: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? activeBookID
+        let targetID = cardID ?? activeCardID
         guard var occurrence = try store.billOccurrences(in: targetID).first(where: { $0.id == occurrenceID }) else {
             throw BillError.occurrenceNotFound
         }
@@ -415,12 +415,12 @@ final class ExpenseService {
         self.archivedCategoryIDs = archivedCategoryIDs
     }
 
-    func save(_ expense: Expense, in bookID: UUID? = nil) throws {
+    func save(_ expense: Expense, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? expense.bookID ?? activeBookID
+        let targetID = cardID ?? expense.cardID ?? activeCardID
         var expense = expense
-        expense.bookID = targetID
-        let cats = transactionDepth == 0 && targetID == activeBookID ? categories : try store.categories(in: targetID)
+        expense.cardID = targetID
+        let cats = transactionDepth == 0 && targetID == activeCardID ? categories : try store.categories(in: targetID)
         try expense.validate(categories: cats)
         try validateAdmission(replacing: [expense], in: targetID)
         try store.save(expense, in: targetID)
@@ -428,7 +428,7 @@ final class ExpenseService {
             workspaceExpenses[targetID, default: []].removeAll { $0.id == expense.id }
             workspaceExpenses[targetID, default: []].append(expense)
         }
-        if transactionDepth == 0, targetID == activeBookID {
+        if transactionDepth == 0, targetID == activeCardID {
             expenses.removeAll { $0.id == expense.id }
             expenses.append(expense)
             expenses.sort { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
@@ -436,26 +436,26 @@ final class ExpenseService {
         didCommit(refreshSnapshot: false)
     }
 
-    private func validateAdmission(replacing batch: [Expense], in bookID: UUID) throws {
+    private func validateAdmission(replacing batch: [Expense], in cardID: UUID) throws {
         guard Set(batch.map(\.id)).count == batch.count else { throw EntryError.corruptStore }
         let replacingIDs = Set(batch.map(\.id))
         var total: Int64 = 0
         for (owner, stored) in workspaceExpenses {
             let amounts = stored.filter {
-                !(owner == bookID && replacingIDs.contains($0.id))
+                !(owner == cardID && replacingIDs.contains($0.id))
             }.map(\.amount)
             total = try Money.checkedSum([total, Money.checkedSum(amounts)])
         }
         _ = try Money.checkedSum([total, Money.checkedSum(batch.map(\.amount))])
     }
 
-    func saveExpenses(_ batch: [Expense], in bookID: UUID? = nil) throws {
+    func saveExpenses(_ batch: [Expense], in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? activeBookID
+        let targetID = cardID ?? activeCardID
         let cats = try store.categories(in: targetID)
         let normalized = try batch.map { expense -> Expense in
             var value = expense
-            value.bookID = targetID
+            value.cardID = targetID
             try value.validate(categories: cats)
             return value
         }
@@ -465,14 +465,14 @@ final class ExpenseService {
         }
     }
 
-    func save(_ budget: BudgetVersion, in bookID: UUID? = nil) throws {
+    func save(_ budget: BudgetVersion, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? budget.bookID ?? activeBookID
+        let targetID = cardID ?? budget.cardID ?? activeCardID
         var budget = budget
-        budget.bookID = targetID
+        budget.cardID = targetID
         try budget.validate(categories: try store.categories(in: targetID))
         try store.save(budget, in: targetID)
-        if transactionDepth == 0, targetID == activeBookID {
+        if transactionDepth == 0, targetID == activeCardID {
             budgets.removeAll { $0.id == budget.id || $0.effectiveDay == budget.effectiveDay }
             budgets.append(budget)
             budgets.sort { $0.effectiveDay < $1.effectiveDay }
@@ -480,17 +480,17 @@ final class ExpenseService {
         didCommit()
     }
 
-    func saveCategory(_ category: ExpenseCategory, in bookID: UUID? = nil) throws {
+    func saveCategory(_ category: ExpenseCategory, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? activeBookID
+        let targetID = cardID ?? activeCardID
         let category = try category.validated(against: store.categories(in: targetID))
         try store.saveCategory(category, in: targetID)
         didCommit()
     }
 
-    func deleteCategory(_ id: UUID, in bookID: UUID? = nil) throws {
+    func deleteCategory(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? activeBookID
+        let targetID = cardID ?? activeCardID
         guard try !store.expenses(in: targetID).contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }),
               try !store.bills(in: targetID).contains(where: { $0.categoryID == id }),
               try !store.budgets(in: targetID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == id }) }) else {
@@ -501,37 +501,37 @@ final class ExpenseService {
     }
 
     @discardableResult
-    func record(text: String, date: Date = .now, id: UUID = UUID(), in bookID: UUID? = nil) throws -> Expense {
-        let targetID = bookID ?? activeBookID
-        let cats = targetID == activeBookID ? categories : try store.categories(in: targetID)
+    func record(text: String, date: Date = .now, id: UUID = UUID(), in cardID: UUID? = nil) throws -> Expense {
+        let targetID = cardID ?? activeCardID
+        let cats = targetID == activeCardID ? categories : try store.categories(in: targetID)
         let parsed = try ExpenseParser.parse(text, categories: cats.filter { !archivedCategoryIDs.contains($0.id) }, rules: categoryRules)
         guard let categoryID = parsed.categoryID else { throw EntryError.missingCategory }
         let expense = Expense(id: id, amount: parsed.amount, day: Day.string(date), note: parsed.note,
-            allocations: [.init(categoryID: categoryID, amount: parsed.amount)], source: "shortcut-text", createdAt: date, bookID: targetID)
+            allocations: [.init(categoryID: categoryID, amount: parsed.amount)], source: "shortcut-text", createdAt: date, cardID: targetID)
         try save(expense, in: targetID)
         return expense
     }
 
     @discardableResult
     func record(amountInRupiah: Int64, categoryID: UUID, note: String? = nil, date: Date = .now,
-                id: UUID = UUID(), source: String = "shortcut", in bookID: UUID? = nil) throws -> Expense {
-        let targetID = bookID ?? activeBookID
+                id: UUID = UUID(), source: String = "shortcut", in cardID: UUID? = nil) throws -> Expense {
+        let targetID = cardID ?? activeCardID
         guard amountInRupiah > 0 else { throw EntryError.invalidAmount }
         let multiplication = amountInRupiah.multipliedReportingOverflow(by: 100)
         guard !multiplication.overflow, multiplication.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
-        let cats = targetID == activeBookID ? categories : try store.categories(in: targetID)
+        let cats = targetID == activeCardID ? categories : try store.categories(in: targetID)
         guard cats.contains(where: { $0.id == categoryID }), !archivedCategoryIDs.contains(categoryID) else { throw EntryError.missingCategory }
         let expense = Expense(id: id, amount: multiplication.partialValue, day: Day.string(date),
             note: note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
             allocations: [.init(categoryID: categoryID, amount: multiplication.partialValue)],
-            source: source, createdAt: date, bookID: targetID)
+            source: source, createdAt: date, cardID: targetID)
         try save(expense, in: targetID)
         return expense
     }
 
-    func delete(_ id: UUID, in bookID: UUID? = nil) throws {
+    func delete(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
-        let targetID = bookID ?? activeBookID
+        let targetID = cardID ?? activeCardID
         // Capture the complete affected occurrence state before the commit, so failures still mean no deletion.
         var resultingOccurrences = try store.billOccurrences(in: targetID)
         let deletedAt = Date.now
@@ -544,7 +544,7 @@ final class ExpenseService {
         if transactionDepth == 0 {
             workspaceExpenses[targetID]?.removeAll { $0.id == id }
             workspaceOccurrences[targetID] = resultingOccurrences
-            if targetID == activeBookID {
+            if targetID == activeCardID {
                 expenses.removeAll { $0.id == id }
                 billOccurrences = resultingOccurrences
             }
@@ -552,12 +552,12 @@ final class ExpenseService {
         didCommit(refreshSnapshot: false)
     }
 
-    func restoreExpense(_ expense: Expense, occurrences: [BillOccurrence], in bookID: UUID? = nil) throws {
-        let owner = bookID ?? expense.bookID ?? activeBookID
+    func restoreExpense(_ expense: Expense, occurrences: [BillOccurrence], in cardID: UUID? = nil) throws {
+        let owner = cardID ?? expense.cardID ?? activeCardID
         try performTransaction {
             try save(expense, in: owner)
             for occurrence in occurrences {
-                guard occurrence.expenseID == expense.id, occurrence.bookID == owner else { throw EntryError.corruptStore }
+                guard occurrence.expenseID == expense.id, occurrence.cardID == owner else { throw EntryError.corruptStore }
                 try store.saveOccurrence(occurrence, in: owner)
             }
         }

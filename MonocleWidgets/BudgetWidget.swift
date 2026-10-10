@@ -61,7 +61,7 @@ struct BudgetWidgetEntryView: View {
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(WMC.red)
                 Spacer()
-                Text(entry.snapshot.activeBook.name)
+                Text(entry.snapshot.activeCard.name)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -92,7 +92,7 @@ struct BudgetWidgetEntryView: View {
                     .foregroundStyle(WMC.red)
             }
         }
-        .widgetURL(URL(string: "monocle://card?id=\(entry.snapshot.activeBook.id.uuidString)"))
+        .widgetURL(URL(string: "monocle://card?id=\(entry.snapshot.activeCard.id.uuidString)"))
     }
 
     private var mediumView: some View {
@@ -103,7 +103,7 @@ struct BudgetWidgetEntryView: View {
                     Text("monocle.")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(WMC.red)
-                    Text("· \(entry.snapshot.activeBook.name)")
+                    Text("· \(entry.snapshot.activeCard.name)")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
@@ -162,7 +162,7 @@ struct BudgetWidgetEntryView: View {
             }
             .frame(maxWidth: 130)
         }
-        .widgetURL(URL(string: "monocle://card?id=\(entry.snapshot.activeBook.id.uuidString)"))
+        .widgetURL(URL(string: "monocle://card?id=\(entry.snapshot.activeCard.id.uuidString)"))
     }
 
     private var circularView: some View {
@@ -180,7 +180,7 @@ struct BudgetWidgetEntryView: View {
             HStack(spacing: 4) {
                 Text("monocle.")
                     .font(.caption2.weight(.bold))
-                Text("· \(entry.snapshot.activeBook.name)")
+                Text("· \(entry.snapshot.activeCard.name)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

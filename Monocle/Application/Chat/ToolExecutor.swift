@@ -127,10 +127,10 @@ struct ToolExecutor {
         guard input.amount > 0, input.amount <= Money.maximum / 100 else {
             throw ToolError(message: "Amount must be whole rupiah above 0, for example 28000.")
         }
-        let book = try input.card.map { try card(named: $0) } ?? targetCard()
+        let card = try input.card.map { try card(named: $0) } ?? targetCard()
         let day = input.day ?? Day.string(now)
         guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
-        let categories = try model.activeCategories(in: book.id)
+        let categories = try model.activeCategories(in: card.id)
         let minor = input.amount * 100
         guard let allocations = try allocations(total: minor, category: input.category, split: input.split, in: categories) else {
             throw ToolError(message: "Give a category, or a split of two or more categories.")
@@ -143,16 +143,16 @@ struct ToolExecutor {
                 throw ToolError(message: "Paid with must be one of: \(model.paymentMethods.map(\.name).joined(separator: ", ")). Omit it if unsure.")
             }
             paidWithID = method.id
-        } else { paidWithID = book.defaultPaidWithID }
-        let expense = Expense(amount: minor, day: day, note: note, allocations: allocations, source: "chat", bookID: book.id, paidWithID: paidWithID)
+        } else { paidWithID = card.defaultPaidWithID }
+        let expense = Expense(amount: minor, day: day, note: note, allocations: allocations, source: "chat", cardID: card.id, paidWithID: paidWithID)
         try expense.validate(categories: categories)
-        let result = ProposalResult(status: "shown_to_user", card: book.name, category: try summary(of: expense, in: book).category,
+        let result = ProposalResult(status: "shown_to_user", card: card.name, category: try summary(of: expense, in: card).category,
                                     amount: Amount(minor), day: day, note: note)
         return Outcome(json: try Self.encode(result), proposal: expense)
     }
 
     private func proposeEdit(_ input: EditInput) throws -> Outcome {
-        let (original, book) = try savedExpense(input.id)
+        let (original, card) = try savedExpense(input.id)
         var updated = original
         if let amount = input.amount {
             guard amount > 0, amount <= Money.maximum / 100 else {
@@ -160,7 +160,7 @@ struct ToolExecutor {
             }
             updated.amount = amount * 100
         }
-        let categories = try model.activeCategories(in: book.id)
+        let categories = try model.activeCategories(in: card.id)
         if let allocations = try allocations(total: updated.amount, category: input.category, split: input.split, in: categories) {
             updated.allocations = allocations
         } else if input.amount != nil {
@@ -177,15 +177,15 @@ struct ToolExecutor {
         guard updated != original else { throw ToolError(message: "Nothing to change. Give a new amount, category, note or day.") }
         // Same catalog the store validates against, so a kept archived category still passes.
         guard let service = model.expenseService else { throw EntryError.corruptStore }
-        try updated.validate(categories: try service.categories(for: book.id))
-        let result = ChangeResult(status: "shown_to_user", card: book.name,
-                                  before: try summary(of: original, in: book), after: try summary(of: updated, in: book))
+        try updated.validate(categories: try service.categories(for: card.id))
+        let result = ChangeResult(status: "shown_to_user", card: card.name,
+                                  before: try summary(of: original, in: card), after: try summary(of: updated, in: card))
         return Outcome(json: try Self.encode(result), change: ExpenseChange(original: original, updated: updated))
     }
 
     private func proposeDelete(_ input: DeleteInput) throws -> Outcome {
-        let (expense, book) = try savedExpense(input.id)
-        let result = ChangeResult(status: "shown_to_user", card: book.name, before: try summary(of: expense, in: book))
+        let (expense, card) = try savedExpense(input.id)
+        let result = ChangeResult(status: "shown_to_user", card: card.name, before: try summary(of: expense, in: card))
         return Outcome(json: try Self.encode(result), change: ExpenseChange(original: expense, updated: nil))
     }
 
@@ -212,8 +212,8 @@ struct ToolExecutor {
         guard input.amount > 0, input.amount <= Money.maximum / 100 else {
             throw ToolError(message: "Amount must be whole rupiah above 0, for example 186000.")
         }
-        let book = try input.card.map { try card(named: $0) } ?? targetCard()
-        let categories = try model.activeCategories(in: book.id)
+        let card = try input.card.map { try card(named: $0) } ?? targetCard()
+        let categories = try model.activeCategories(in: card.id)
         let category = try category(named: input.category, in: categories)
         let today = Day.calendar.dateComponents([.day, .weekday, .month], from: now)
         // Missing day/weekday/month default to today's, so "netflix 186rb monthly" starts from today's date.
@@ -222,13 +222,13 @@ struct ToolExecutor {
         case .weekly: .weekly(weekday: input.weekday ?? today.weekday ?? 1)
         case .yearly: .yearly(month: input.month ?? today.month ?? 1, day: input.day ?? today.day ?? 1)
         }
-        let rule = BillRule(bookID: book.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: input.amount * 100,
+        let rule = BillRule(cardID: card.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: input.amount * 100,
                             categoryID: category.id, recurrence: recurrence,
                             recordingMode: input.record == .automatic ? .automatic : .pending, hasReminder: input.reminder ?? true)
         do { try rule.validate(categories: categories) } catch {
             throw ToolError(message: "Bill rejected: name 1-40 characters, day 1-31, weekday 1-7 (1 = Sunday), month 1-12.")
         }
-        let result = BillResult(status: "shown_to_user", card: book.name, name: rule.name, amount: Amount(rule.amount),
+        let result = BillResult(status: "shown_to_user", card: card.name, name: rule.name, amount: Amount(rule.amount),
                                 schedule: recurrence.title, category: category.name, record: rule.recordingMode.title, reminder: rule.hasReminder)
         return Outcome(json: try Self.encode(result), bill: rule)
     }
@@ -237,28 +237,28 @@ struct ToolExecutor {
         let target = try resolveScope(input.scope)
         guard let service = model.expenseService else { throw EntryError.corruptStore }
         var rows: [BillRow] = []
-        for book in model.books(in: target) {
-            let names = Dictionary(try service.categories(for: book.id).map { ($0.id, $0.name) }) { first, _ in first }
-            rows += try service.bills(for: book.id).map {
+        for card in model.cards(in: target) {
+            let names = Dictionary(try service.categories(for: card.id).map { ($0.id, $0.name) }) { first, _ in first }
+            rows += try service.bills(for: card.id).map {
                 BillRow(name: $0.name, amount: Amount($0.amount), schedule: $0.recurrence.title,
-                        category: names[$0.categoryID] ?? "Unknown", card: book.name, paused: !$0.isActive)
+                        category: names[$0.categoryID] ?? "Unknown", card: card.name, paused: !$0.isActive)
             }
         }
         return Outcome(json: try Self.encode(BillList(scope: Self.label(target), bills: rows)))
     }
 
-    private func savedExpense(_ id: String) throws -> (Expense, BookProfile) {
+    private func savedExpense(_ id: String) throws -> (Expense, Card) {
         if let uuid = UUID(uuidString: id) {
-            for book in model.books {
-                if let expense = model.expenses(for: book.id).first(where: { $0.id == uuid }) { return (expense, book) }
+            for card in model.cards {
+                if let expense = model.expenses(for: card.id).first(where: { $0.id == uuid }) { return (expense, card) }
             }
         }
         throw ToolError(message: "No expense with id \(id). Find it with query_expenses first.")
     }
 
-    private func summary(of expense: Expense, in book: BookProfile) throws -> ExpenseSummary {
+    private func summary(of expense: Expense, in card: Card) throws -> ExpenseSummary {
         guard let service = model.expenseService else { throw EntryError.corruptStore }
-        let names = Dictionary(try service.categories(for: book.id).map { ($0.id, $0.name) }) { first, _ in first }
+        let names = Dictionary(try service.categories(for: card.id).map { ($0.id, $0.name) }) { first, _ in first }
         return ExpenseSummary(amount: Amount(expense.amount), category: expense.allocations.compactMap { names[$0.categoryID] }.joined(separator: ", "),
                               day: expense.day, note: expense.note)
     }
@@ -277,11 +277,11 @@ struct ToolExecutor {
 
         var matches: [(expense: Expense, amount: Int64, categories: String, card: String)] = []
         var categoryFound = wanted == nil
-        for book in model.books(in: target) {
+        for card in model.cards(in: target) {
             guard let service = model.expenseService else { throw EntryError.corruptStore }
-            let names = Dictionary(try service.categories(for: book.id).map { ($0.id, $0.name) }) { first, _ in first }
+            let names = Dictionary(try service.categories(for: card.id).map { ($0.id, $0.name) }) { first, _ in first }
             // Date-bounded read (audit F26); refuse rather than return a silently truncated total.
-            let rows = try service.expenses(for: book.id, from: start, to: Day.string(after), limit: fetchCap)
+            let rows = try service.expenses(for: card.id, from: start, to: Day.string(after), limit: fetchCap)
             guard rows.count < fetchCap else { throw ToolError(message: "Too many expenses in this range. Use a shorter period.") }
             for expense in rows {
                 var allocations = expense.allocations
@@ -292,7 +292,7 @@ struct ToolExecutor {
                 if let text, !Self.key(expense.note).contains(text) { continue }
                 let amount = try Money.checkedSum(allocations.map(\.amount))
                 let label = allocations.compactMap { names[$0.categoryID] }.joined(separator: ", ")
-                matches.append((expense, amount, label, book.name))
+                matches.append((expense, amount, label, card.name))
             }
         }
         if !categoryFound, let name = input.category {
@@ -317,7 +317,7 @@ struct ToolExecutor {
         case .category:
             groups = report.categoryPoints.map { Group(name: $0.categoryName, amount: Amount($0.amount), share: Self.percent($0.percentage), count: $0.transactionCount) }
         case .card:
-            groups = report.bookPoints.map { Group(name: $0.bookName, amount: Amount($0.amount), share: Self.percent($0.percentage), count: $0.transactionCount) }
+            groups = report.cardPoints.map { Group(name: $0.cardName, amount: Amount($0.amount), share: Self.percent($0.percentage), count: $0.transactionCount) }
         case .day:
             groups = report.dailyPoints.filter { $0.amount > 0 }.map { Group(name: $0.day, amount: Amount($0.amount), share: nil, count: $0.transactionCount) }
         }
@@ -327,7 +327,7 @@ struct ToolExecutor {
         let title = "\(input.period.horizon.rawValue) · \(target.title)"
         let chart: ChatChart = switch input.groupBy ?? .category {
         case .category: ChatChart(categories: report.categoryPoints, title: title)
-        case .card: ChatChart(style: .bars, title: title, items: report.bookPoints.map { .init(label: $0.bookName, value: $0.amount) })
+        case .card: ChatChart(style: .bars, title: title, items: report.cardPoints.map { .init(label: $0.cardName, value: $0.amount) })
         case .day: ChatChart(style: .trend, title: title, items: report.dailyPoints.filter { !$0.isFuture }.map { .init(label: $0.day, value: $0.amount) })
         }
         return Outcome(json: try Self.encode(result), chart: report.metrics.totalSpend > 0 ? chart : nil)
@@ -362,21 +362,21 @@ struct ToolExecutor {
     }
 
     private func budgetStatus(_ input: BudgetInput) throws -> Outcome {
-        let book = try input.card.map { try card(named: $0) } ?? targetCard()
+        let card = try input.card.map { try card(named: $0) } ?? targetCard()
         guard let service = model.expenseService else { throw EntryError.corruptStore }
-        let budgets = try service.budgets(for: book.id)
+        let budgets = try service.budgets(for: card.id)
         guard let period = BudgetHistory.period(containing: now, budgets: budgets) else {
-            return Outcome(json: try Self.encode(BudgetResult(card: book.name, hasBudget: false)))
+            return Outcome(json: try Self.encode(BudgetResult(card: card.name, hasBudget: false)))
         }
-        let report = try report(.thisCycle, scope: .card(id: book.id, name: book.name))
+        let report = try report(.thisCycle, scope: .card(id: card.id, name: card.name))
         let spent = report.metrics.totalSpend
         let lastDay = Day.calendar.date(byAdding: .day, value: -1, to: period.cycle.end) ?? period.cycle.start
-        var result = BudgetResult(card: book.name, hasBudget: true,
+        var result = BudgetResult(card: card.name, hasBudget: true,
                                   cycleStart: Day.string(period.cycle.start), cycleEnd: Day.string(lastDay),
                                   limit: Amount(period.budget.overallLimit), spent: Amount(spent),
                                   remaining: Amount(period.budget.overallLimit - spent))
         let spentByCategory = Dictionary(report.categoryPoints.map { ($0.categoryID, $0.amount) }) { $0 + $1 }
-        let names = Dictionary(try service.categories(for: book.id).map { ($0.id, $0.name) }) { first, _ in first }
+        let names = Dictionary(try service.categories(for: card.id).map { ($0.id, $0.name) }) { first, _ in first }
         result.categories = period.budget.categoryLimits.map { limit in
             let used = spentByCategory[limit.categoryID] ?? 0
             return CategoryBudgetStatus(category: names[limit.categoryID] ?? "Unknown", limit: Amount(limit.limit),
@@ -384,13 +384,13 @@ struct ToolExecutor {
         }
         let items = [ChatChart.Item(label: "Overall", value: spent, reference: period.budget.overallLimit)]
             + period.budget.categoryLimits.map { .init(label: names[$0.categoryID] ?? "Unknown", value: spentByCategory[$0.categoryID] ?? 0, reference: $0.limit) }
-        return Outcome(json: try Self.encode(result), chart: ChatChart(style: .budget, title: "Budget this cycle · \(book.name)", items: items))
+        return Outcome(json: try Self.encode(result), chart: ChatChart(style: .budget, title: "Budget this cycle · \(card.name)", items: items))
     }
 
     private func cardList() -> CardList {
-        let cards = model.unhiddenBooks
+        let cards = model.unhiddenCards
         let stacks = model.stacks.map { stack in
-            StackInfo(name: stack.name, cards: model.books(in: .stack(id: stack.id, name: stack.name)).map(\.name))
+            StackInfo(name: stack.name, cards: model.cards(in: .stack(id: stack.id, name: stack.name)).map(\.name))
         }
         return CardList(scope: Self.label(scope), defaultCard: try? targetCard().name, cards: cards.map(\.name), stacks: stacks)
     }
@@ -408,27 +408,27 @@ struct ToolExecutor {
             key = Self.key(String(key.dropFirst(prefix.count)))
         }
         let stack = kinds.contains("stack") ? model.stacks.first { Self.key($0.name) == key } : nil
-        let book = kinds.contains("card") ? model.unhiddenBooks.first { Self.key($0.name) == key } : nil
-        switch (stack, book) {
+        let card = kinds.contains("card") ? model.unhiddenCards.first { Self.key($0.name) == key } : nil
+        switch (stack, card) {
         case (let stack?, nil): return .stack(id: stack.id, name: stack.name)
-        case (nil, let book?): return .card(id: book.id, name: book.name)
+        case (nil, let card?): return .card(id: card.id, name: card.name)
         case (_?, _?): throw ToolError(message: "\"\(name)\" is both a stack and a card. Use \"stack:\(name)\" or \"card:\(name)\".")
         case (nil, nil):
-            let valid = ["all_cards"] + model.stacks.map { "stack:\($0.name)" } + model.unhiddenBooks.map { "card:\($0.name)" }
+            let valid = ["all_cards"] + model.stacks.map { "stack:\($0.name)" } + model.unhiddenCards.map { "card:\($0.name)" }
             throw ToolError(message: "No stack or card named \"\(name)\". Valid scopes: \(valid.joined(separator: ", ")).")
         }
     }
 
-    private func card(named name: String) throws -> BookProfile {
-        if let book = model.unhiddenBooks.first(where: { Self.key($0.name) == Self.key(name) }) { return book }
-        throw ToolError(message: "No card named \"\(name)\". Cards: \(model.unhiddenBooks.map(\.name).joined(separator: ", ")).")
+    private func card(named name: String) throws -> Card {
+        if let card = model.unhiddenCards.first(where: { Self.key($0.name) == Self.key(name) }) { return card }
+        throw ToolError(message: "No card named \"\(name)\". Cards: \(model.unhiddenCards.map(\.name).joined(separator: ", ")).")
     }
 
     /// Open or active card when it is in scope, else the scope's first card (CHAT_SPEC §2).
-    func targetCard() throws -> BookProfile {
-        let inScope = model.books(in: scope)
-        let preferred = model.selectedBookID ?? model.activeBookID
-        if let book = inScope.first(where: { $0.id == preferred }) ?? inScope.first { return book }
+    func targetCard() throws -> Card {
+        let inScope = model.cards(in: scope)
+        let preferred = model.selectedCardID ?? model.activeCardID
+        if let card = inScope.first(where: { $0.id == preferred }) ?? inScope.first { return card }
         throw ToolError(message: "There are no cards in \(Self.label(scope)). Ask which card to use.")
     }
 
@@ -440,7 +440,7 @@ struct ToolExecutor {
     private func scopeCategoryNames(_ target: AnalyticsFilterScope) throws -> [String] {
         guard let service = model.expenseService else { throw EntryError.corruptStore }
         var seen = Set<String>()
-        return try model.books(in: target).flatMap { try service.categories(for: $0.id) }.map(\.name).filter { seen.insert(Self.key($0)).inserted }
+        return try model.cards(in: target).flatMap { try service.categories(for: $0.id) }.map(\.name).filter { seen.insert(Self.key($0)).inserted }
     }
 
     private func dayRange(_ input: QueryInput, scope target: AnalyticsFilterScope) throws -> (String, String) {

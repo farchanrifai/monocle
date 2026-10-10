@@ -6,9 +6,9 @@ final class BackendSessionTests: XCTestCase {
     func testQueuedUpdateAndEndKeepTheirOriginalActivityDuringReplacement() async {
         let client = FakeSessionActivities()
         let manager = SpendingSessionManager(activityClient: client)
-        manager.startSession(name: "A", bookName: "Card")
+        manager.startSession(name: "A", cardName: "Card")
         manager.recordExpense(amount: 100, note: nil, categorySymbol: nil)
-        manager.startSession(name: "B", bookName: "Card")
+        manager.startSession(name: "B", cardName: "Card")
         for _ in 0..<20 { await Task.yield() }
         XCTAssertEqual(client.handles.count, 2)
         XCTAssertEqual(client.handles[0].updates.map(\.currentSpent), [100])
@@ -26,7 +26,7 @@ final class BackendSessionTests: XCTestCase {
         let client = FakeSessionActivities()
         client.isEnabled = false
         let manager = SpendingSessionManager(activityClient: client)
-        manager.startSession(name: "A", bookName: "Card")
+        manager.startSession(name: "A", cardName: "Card")
         XCTAssertTrue(manager.isSessionActive)
         XCTAssertNotNil(manager.activityError)
         XCTAssertTrue(client.handles.isEmpty)

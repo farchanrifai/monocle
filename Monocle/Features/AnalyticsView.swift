@@ -27,7 +27,7 @@ private struct AnalyticsReportView: View {
     @State private var selectedCategoryID: UUID? = nil
     @State private var selectedChartAngle: Int64? = nil
 
-    private var direction: BookVisualDirection { model.effectiveDirection(for: colorScheme) }
+    private var direction: CardVisualDirection { model.effectiveDirection(for: colorScheme) }
 
     private var paper: Color {
         switch direction {
@@ -82,7 +82,7 @@ private struct AnalyticsReportView: View {
                             dailyRhythmCard
                             monthOverMonthCard
                             categoryBreakdownCard
-                            if !selectedScope.isCard && bookPoints.count > 1 { crossBookBreakdownCard }
+                            if !selectedScope.isCard && cardPoints.count > 1 { crossCardBreakdownCard }
                             if !paidWithTotals.isEmpty { paidWithBreakdownCard }
                         }
                     }
@@ -103,7 +103,7 @@ private struct AnalyticsReportView: View {
             .onChange(of: model.activeStackID) { _, _ in
                 syncScopeWithHomeContext()
             }
-            .onChange(of: model.selectedBookID) { _, _ in
+            .onChange(of: model.selectedCardID) { _, _ in
                 syncScopeWithHomeContext()
             }
         }
@@ -183,7 +183,7 @@ private struct AnalyticsReportView: View {
     }
 
     private func syncScopeWithHomeContext() {
-        if let cardID = model.selectedBookID, let card = model.books.first(where: { $0.id == cardID }) {
+        if let cardID = model.selectedCardID, let card = model.cards.first(where: { $0.id == cardID }) {
             selectedScope = .card(id: card.id, name: card.name)
         } else if model.filterScope == .activeStack, let stack = model.currentStack {
             selectedScope = .stack(id: stack.id, name: stack.name)
@@ -198,7 +198,7 @@ private struct AnalyticsReportView: View {
     private var budgetLimit: Int64? { selectedHorizon == .thisCycle ? report.period?.budget.overallLimit : nil }
     private var dailyPoints: [DailySpendPoint] { report.dailyPoints }
     private var categoryPoints: [CategorySpendPoint] { report.categoryPoints }
-    private var bookPoints: [BookSpendPoint] { report.bookPoints }
+    private var cardPoints: [CardSpendPoint] { report.cardPoints }
     private var momPoints: [ComparativePeriodPoint] { report.monthPoints }
     private var metrics: AnalyticsMetrics { report.metrics }
 
@@ -260,7 +260,7 @@ private struct AnalyticsReportView: View {
             }
 
             Section("Cards") {
-                ForEach(model.unhiddenBooks) { card in
+                ForEach(model.unhiddenCards) { card in
                     Button {
                         selectedScope = .card(id: card.id, name: card.name)
                     } label: {
@@ -914,7 +914,7 @@ private struct AnalyticsReportView: View {
         .background(MC.surface, in: RoundedRectangle(cornerRadius: 20))
     }
 
-    // MARK: - Chart 5: Cross-Book Breakdown
+    // MARK: - Chart 5: Cross-Card Breakdown
 
     private var paidWithTotals: [(name: String, amount: Int64)] {
         AnalyticsEngine.paidWithTotals(AnalyticsEngine.filterExpenses(report.data.expenses, startDay: currentRange.startDay, endDay: currentRange.endDay),
@@ -945,7 +945,7 @@ private struct AnalyticsReportView: View {
         .accessibilityIdentifier("paidWithBreakdown")
     }
 
-    private var crossBookBreakdownCard: some View {
+    private var crossCardBreakdownCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Spending by Card")
@@ -955,18 +955,18 @@ private struct AnalyticsReportView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if bookPoints.isEmpty {
+            if cardPoints.isEmpty {
                 emptyChartPlaceholder(message: "No card spending found")
             } else {
-                Chart(bookPoints) { bp in
+                Chart(cardPoints) { bp in
                     BarMark(
                         x: .value("Spend", bp.amount),
-                        y: .value("Card", bp.bookName)
+                        y: .value("Card", bp.cardName)
                     )
                     .foregroundStyle(CardPalette.color(for: bp.colorIndex))
                     .cornerRadius(4)
                 }
-                .chartYScale(domain: bookPoints.map(\.bookName).reversed())
+                .chartYScale(domain: cardPoints.map(\.cardName).reversed())
                 .chartXAxis {
                     AxisMarks { value in
                         if let intVal = value.as(Int64.self) {
@@ -977,16 +977,16 @@ private struct AnalyticsReportView: View {
                         }
                     }
                 }
-                .frame(height: CGFloat(max(100, bookPoints.count * 44)))
+                .frame(height: CGFloat(max(100, cardPoints.count * 44)))
                 .accessibilityIdentifier("crossBookChart")
 
                 VStack(spacing: 8) {
-                    ForEach(bookPoints) { bp in
+                    ForEach(cardPoints) { bp in
                         HStack(spacing: 10) {
                             Circle()
                                 .fill(CardPalette.color(for: bp.colorIndex))
                                 .frame(width: 10, height: 10)
-                            Text(bp.bookName)
+                            Text(bp.cardName)
                                 .font(.subheadline)
                             Spacer()
                             Text(Money.format(bp.amount))

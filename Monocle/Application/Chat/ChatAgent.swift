@@ -120,12 +120,12 @@ final class ChatAgent: ChatBackend {
         let model = executor.model
         let card = try? executor.targetCard()
         let categories = card.flatMap { try? model.activeCategories(in: $0.id) }?.map(\.name) ?? []
-        let books = model.books(in: executor.scope).map(\.name)
+        let cards = model.cards(in: executor.scope).map(\.name)
         let scope = executor.scope.isAllCards ? "All cards" : "\(executor.scope.subtitle): \(executor.scope.title)"
         return """
         <app_context>
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
-        Scope: \(scope) (cards: \(books.joined(separator: ", "))).
+        Scope: \(scope) (cards: \(cards.joined(separator: ", "))).
         New expenses go to card: \(card?.name ?? "none — ask the user").
         \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")</app_context>
         """

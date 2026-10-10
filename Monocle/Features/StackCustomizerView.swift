@@ -32,7 +32,7 @@ struct StackCustomizerView: View {
 
         var initialStacks = model.stacks
         if initialStacks.isEmpty {
-            let initialIDs = model.orderedBooks.map(\.id).filter { !model.alwaysHiddenBookIDs.contains($0) }
+            let initialIDs = model.orderedCards.map(\.id).filter { !model.alwaysHiddenCardIDs.contains($0) }
             let def = CardStack(id: UUID(), name: "Daily", icon: "rectangle.stack", cardIDs: initialIDs)
             initialStacks = [def]
         }
@@ -49,7 +49,7 @@ struct StackCustomizerView: View {
 
         _workingStacks = State(initialValue: initialStacks)
         _currentStackID = State(initialValue: activeID)
-        _alwaysHiddenIDs = State(initialValue: model.alwaysHiddenBookIDs)
+        _alwaysHiddenIDs = State(initialValue: model.alwaysHiddenCardIDs)
 
         if let curr = initialStacks.first(where: { $0.id == activeID }) {
             _editingName = State(initialValue: curr.name)
@@ -65,24 +65,24 @@ struct StackCustomizerView: View {
         workingStacks.first(where: { $0.id == currentStackID }) ?? workingStacks.first!
     }
 
-    private func cardColor(for book: BookProfile) -> Color {
-        let custom = model.customization(for: book.id)
+    private func cardColor(for card: Card) -> Color {
+        let custom = model.customization(for: card.id)
         switch custom.style {
         case .palette(let index):
             return CardPalette.color(for: index)
         case .customColor(let hex):
             return CardPalette.color(fromHex: hex)
         default:
-            return CardPalette.color(for: book.colorIndex)
+            return CardPalette.color(for: card.colorIndex)
         }
     }
 
-    private func miniCardLayers(for assignedCards: [BookProfile]) -> [MiniCardLayer] {
+    private func miniCardLayers(for assignedCards: [Card]) -> [MiniCardLayer] {
         let topCards = Array(assignedCards.prefix(3))
         var layers: [MiniCardLayer] = []
-        for (idx, book) in topCards.enumerated() {
-            let color = cardColor(for: book)
-            layers.append(MiniCardLayer(id: book.id, index: idx, color: color))
+        for (idx, card) in topCards.enumerated() {
+            let color = cardColor(for: card)
+            layers.append(MiniCardLayer(id: card.id, index: idx, color: color))
         }
         return layers.reversed()
     }
@@ -201,12 +201,12 @@ struct StackCustomizerView: View {
         }
     }
 
-    private func assignedCards(for stack: CardStack) -> [BookProfile] {
-        var result: [BookProfile] = []
-        let books = model.books
+    private func assignedCards(for stack: CardStack) -> [Card] {
+        var result: [Card] = []
+        let cards = model.cards
         for id in stack.cardIDs {
-            if !alwaysHiddenIDs.contains(id), let book = books.first(where: { $0.id == id }) {
-                result.append(book)
+            if !alwaysHiddenIDs.contains(id), let card = cards.first(where: { $0.id == id }) {
+                result.append(card)
             }
         }
         return result
@@ -353,7 +353,7 @@ struct StackCustomizerView: View {
     // MARK: - Cards in Stack Section
     private var cardsInStackSection: some View {
         let currentAssigned = assignedCards(for: activeStack)
-        let unassignedCards = model.books.filter { !alwaysHiddenIDs.contains($0.id) && !activeStack.cardIDs.contains($0.id) }
+        let unassignedCards = model.cards.filter { !alwaysHiddenIDs.contains($0.id) && !activeStack.cardIDs.contains($0.id) }
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -378,8 +378,8 @@ struct StackCustomizerView: View {
                     .padding(.vertical, 8)
             } else {
                 VStack(spacing: 8) {
-                    ForEach(Array(currentAssigned.enumerated()), id: \.element.id) { index, book in
-                        let cardCol = cardColor(for: book)
+                    ForEach(Array(currentAssigned.enumerated()), id: \.element.id) { index, card in
+                        let cardCol = cardColor(for: card)
 
                         HStack(spacing: 10) {
                             // Rank / Front badge
@@ -408,11 +408,11 @@ struct StackCustomizerView: View {
                                 )
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(book.name)
+                                Text(card.name)
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
-                                Text(Money.format(model.spent(for: book.id)))
+                                Text(Money.format(model.spent(for: card.id)))
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
@@ -431,8 +431,8 @@ struct StackCustomizerView: View {
                                         .background(Circle().fill(Color.primary.opacity(0.06)))
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("Move \(book.name) to top")
-                                .accessibilityIdentifier("moveToTop-\(book.name)")
+                                .accessibilityLabel("Move \(card.name) to top")
+                                .accessibilityIdentifier("moveToTop-\(card.name)")
                             }
 
                             // Up Button
@@ -447,8 +447,8 @@ struct StackCustomizerView: View {
                             }
                             .disabled(index == 0)
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Move \(book.name) up")
-                            .accessibilityIdentifier("moveUp-\(book.name)")
+                            .accessibilityLabel("Move \(card.name) up")
+                            .accessibilityIdentifier("moveUp-\(card.name)")
 
                             // Down Button
                             Button {
@@ -462,12 +462,12 @@ struct StackCustomizerView: View {
                             }
                             .disabled(index >= currentAssigned.count - 1)
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Move \(book.name) down")
-                            .accessibilityIdentifier("moveDown-\(book.name)")
+                            .accessibilityLabel("Move \(card.name) down")
+                            .accessibilityIdentifier("moveDown-\(card.name)")
 
                             // Remove Button
                             Button {
-                                removeCard(book.id)
+                                removeCard(card.id)
                             } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .font(.system(size: 18))
@@ -475,8 +475,8 @@ struct StackCustomizerView: View {
                                     .frame(width: 28, height: 28)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Remove \(book.name) from stack")
-                            .accessibilityIdentifier("removeCard-\(book.name)")
+                            .accessibilityLabel("Remove \(card.name) from stack")
+                            .accessibilityIdentifier("removeCard-\(card.name)")
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -493,7 +493,7 @@ struct StackCustomizerView: View {
                                 }
                             }
                             Button(role: .destructive) {
-                                removeCard(book.id)
+                                removeCard(card.id)
                             } label: {
                                 Label("Remove from Stack", systemImage: "minus.circle")
                             }
@@ -511,8 +511,8 @@ struct StackCustomizerView: View {
                         .textCase(.uppercase)
                         .padding(.top, 6)
 
-                    ForEach(unassignedCards) { book in
-                        let cardCol = cardColor(for: book)
+                    ForEach(unassignedCards) { card in
+                        let cardCol = cardColor(for: card)
 
                         HStack(spacing: 12) {
                             RoundedRectangle(cornerRadius: 8)
@@ -524,11 +524,11 @@ struct StackCustomizerView: View {
                                 )
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(book.name)
+                                Text(card.name)
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(.primary)
                                     .lineLimit(1)
-                                Text(otherStackName(for: book.id).map { "In \($0)" } ?? "Not in a Stack")
+                                Text(otherStackName(for: card.id).map { "In \($0)" } ?? "Not in a Stack")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -536,11 +536,11 @@ struct StackCustomizerView: View {
                             Spacer(minLength: 4)
 
                             Button {
-                                addCard(book.id)
+                                addCard(card.id)
                             } label: {
                                 HStack(spacing: 4) {
-                                    Image(systemName: otherStackName(for: book.id) == nil ? "plus.circle.fill" : "arrow.right.circle.fill")
-                                    Text(otherStackName(for: book.id) == nil ? "Add" : "Move")
+                                    Image(systemName: otherStackName(for: card.id) == nil ? "plus.circle.fill" : "arrow.right.circle.fill")
+                                    Text(otherStackName(for: card.id) == nil ? "Add" : "Move")
                                 }
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(MC.red)
@@ -549,8 +549,8 @@ struct StackCustomizerView: View {
                                 .background(Capsule().fill(MC.red.opacity(0.10)))
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Add \(book.name) to stack")
-                            .accessibilityIdentifier("addCard-\(book.name)")
+                            .accessibilityLabel("Add \(card.name) to stack")
+                            .accessibilityIdentifier("addCard-\(card.name)")
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -579,9 +579,9 @@ struct StackCustomizerView: View {
             }
 
             VStack(spacing: 8) {
-                ForEach(model.books) { book in
-                    let isAlwaysHidden = alwaysHiddenIDs.contains(book.id)
-                    let cardCol = cardColor(for: book)
+                ForEach(model.cards) { card in
+                    let isAlwaysHidden = alwaysHiddenIDs.contains(card.id)
+                    let cardCol = cardColor(for: card)
 
                     HStack(spacing: 12) {
                         RoundedRectangle(cornerRadius: 8)
@@ -595,7 +595,7 @@ struct StackCustomizerView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Text(book.name)
+                                Text(card.name)
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(isAlwaysHidden ? .secondary : .primary)
                                 if isAlwaysHidden {
@@ -607,7 +607,7 @@ struct StackCustomizerView: View {
                                         .background(Capsule().fill(MC.red.opacity(0.12)))
                                 }
                             }
-                            Text(Money.format(model.spent(for: book.id)))
+                            Text(Money.format(model.spent(for: card.id)))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
@@ -615,14 +615,14 @@ struct StackCustomizerView: View {
                         Spacer()
 
                         Toggle("Always Hidden", isOn: Binding(
-                            get: { alwaysHiddenIDs.contains(book.id) },
+                            get: { alwaysHiddenIDs.contains(card.id) },
                             set: { shouldHide in
-                                toggleAlwaysHidden(for: book.id, isHidden: shouldHide)
+                                toggleAlwaysHidden(for: card.id, isHidden: shouldHide)
                             }
                         ))
                         .labelsHidden()
                         .tint(MC.red)
-                        .accessibilityIdentifier("alwaysHiddenToggle-\(book.name)")
+                        .accessibilityIdentifier("alwaysHiddenToggle-\(card.name)")
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
@@ -700,30 +700,30 @@ struct StackCustomizerView: View {
         }
     }
 
-    private func removeCard(_ bookID: UUID) {
+    private func removeCard(_ cardID: UUID) {
         guard let sIdx = currentStackIndex else { return }
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         withAnimation(.snappy(duration: 0.22)) {
-            workingStacks[sIdx].cardIDs.removeAll { $0 == bookID }
+            workingStacks[sIdx].cardIDs.removeAll { $0 == cardID }
         }
     }
 
-    private func addCard(_ bookID: UUID) {
+    private func addCard(_ cardID: UUID) {
         guard let sIdx = currentStackIndex else { return }
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         withAnimation(.snappy(duration: 0.22)) {
             // A card belongs to one stack, so adding it here moves it out of any other.
-            for index in workingStacks.indices where index != sIdx { workingStacks[index].cardIDs.removeAll { $0 == bookID } }
-            if !workingStacks[sIdx].cardIDs.contains(bookID) {
-                workingStacks[sIdx].cardIDs.append(bookID)
+            for index in workingStacks.indices where index != sIdx { workingStacks[index].cardIDs.removeAll { $0 == cardID } }
+            if !workingStacks[sIdx].cardIDs.contains(cardID) {
+                workingStacks[sIdx].cardIDs.append(cardID)
             }
         }
     }
 
-    private func otherStackName(for bookID: UUID) -> String? {
-        workingStacks.first { $0.id != currentStackID && $0.cardIDs.contains(bookID) }?.name
+    private func otherStackName(for cardID: UUID) -> String? {
+        workingStacks.first { $0.id != currentStackID && $0.cardIDs.contains(cardID) }?.name
     }
 
     // MARK: - Stack Budget Section
@@ -769,16 +769,16 @@ struct StackCustomizerView: View {
         .padding(.horizontal, 20)
     }
 
-    private func toggleAlwaysHidden(for bookID: UUID, isHidden: Bool) {
+    private func toggleAlwaysHidden(for cardID: UUID, isHidden: Bool) {
         if isHidden {
-            alwaysHiddenIDs.insert(bookID)
+            alwaysHiddenIDs.insert(cardID)
             for i in workingStacks.indices {
-                workingStacks[i].cardIDs.removeAll { $0 == bookID }
+                workingStacks[i].cardIDs.removeAll { $0 == cardID }
             }
         } else {
-            alwaysHiddenIDs.remove(bookID)
-            if let idx = currentStackIndex, !workingStacks[idx].cardIDs.contains(bookID) {
-                workingStacks[idx].cardIDs.append(bookID)
+            alwaysHiddenIDs.remove(cardID)
+            if let idx = currentStackIndex, !workingStacks[idx].cardIDs.contains(cardID) {
+                workingStacks[idx].cardIDs.append(cardID)
             }
         }
     }

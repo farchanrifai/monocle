@@ -15,20 +15,20 @@ final class GoldenFormatTests: XCTestCase {
         workspace.preferences.paymentMethods = [method]
         workspace.preferences.hiddenEntryFields = [.currency]
         workspace.preferences.stacks[0].capLimit = 900_000_000
-        workspace.books[0].book.spendingCurrency = "JPY"
-        workspace.books[0].book.defaultPaidWithID = method.id
-        workspace.books[0].expenses[0].paidWithID = method.id
-        let amount = workspace.books[0].expenses[0].amount
-        workspace.books[0].expenses[0].originalAmount = amount / 100
-        workspace.books[0].expenses[0].originalCurrency = "JPY"
-        workspace.books[0].expenses[0].rate = "100"
-        workspace.books[0].expenses[0].rateSource = .fetched
-        workspace.books[1].budgets[0].totalUntilDay = "2027-03-31"
-        if let match = workspace.books.first(where: { $0.book.id == workspace.settings.book.id }) { workspace.settings.book = match.book }
-        for index in workspace.books.indices {
-            var draft = ExpenseDraft(); draft.id = workspace.books[index].book.id; draft.bookID = workspace.books[index].book.id
+        workspace.cards[0].card.spendingCurrency = "JPY"
+        workspace.cards[0].card.defaultPaidWithID = method.id
+        workspace.cards[0].expenses[0].paidWithID = method.id
+        let amount = workspace.cards[0].expenses[0].amount
+        workspace.cards[0].expenses[0].originalAmount = amount / 100
+        workspace.cards[0].expenses[0].originalCurrency = "JPY"
+        workspace.cards[0].expenses[0].rate = "100"
+        workspace.cards[0].expenses[0].rateSource = .fetched
+        workspace.cards[1].budgets[0].totalUntilDay = "2027-03-31"
+        if let match = workspace.cards.first(where: { $0.card.id == workspace.settings.card.id }) { workspace.settings.card = match.card }
+        for index in workspace.cards.indices {
+            var draft = ExpenseDraft(); draft.id = workspace.cards[index].card.id; draft.cardID = workspace.cards[index].card.id
             draft.date = date; draft.createdAt = date; draft.note = "Draft \(index)"; draft.paidWithID = method.id
-            workspace.books[index].draft = draft
+            workspace.cards[index].draft = draft
         }
         return workspace
     }
@@ -54,11 +54,11 @@ final class GoldenFormatTests: XCTestCase {
         try check("settings.json", { try encoder.encode(richWorkspace().settings) }) {
             try encoder.encode(JSONDecoder().decode(PrototypeSettings.self, from: $0))
         }
-        try check("draft.json", { try encoder.encode(richWorkspace().books[0].draft) }) {
+        try check("draft.json", { try encoder.encode(richWorkspace().cards[0].draft) }) {
             try encoder.encode(JSONDecoder().decode(ExpenseDraft.self, from: $0))
         }
         var widget = WidgetSnapshot.sample
-        widget.updatedAt = date; widget.activeBook.id = UUID(uuidString: "B0000000-0000-0000-0000-000000000001")!
+        widget.updatedAt = date; widget.activeCard.id = UUID(uuidString: "B0000000-0000-0000-0000-000000000001")!
         try check("widget.json", { try encoder.encode(widget) }) {
             try encoder.encode(JSONDecoder().decode(WidgetSnapshot.self, from: $0))
         }

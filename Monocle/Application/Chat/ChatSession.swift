@@ -182,7 +182,7 @@ extension ChatSession {
             switch state {
             case .saved:
                 // The card was built from a snapshot; refuse if the expense changed since, rather than overwrite it.
-                guard let bookID = original.bookID, model.expenses(for: bookID).contains(where: { $0 == original }) else {
+                guard let cardID = original.cardID, model.expenses(for: cardID).contains(where: { $0 == original }) else {
                     throw ToolExecutor.ToolError(message: "That expense changed or was deleted since. Ask again to see it as it is now.")
                 }
                 if let updated = change.updated { try model.save(updated) } else { try delete(original, model: model) }
@@ -209,7 +209,7 @@ extension ChatSession {
         let label = "\"\(bill.name)\" \(Money.format(bill.amount)) \(bill.recurrence.title.lowercased())"
         switch state {
         case .saved:
-            do { try model.saveBill(bill, in: bill.bookID) } catch {
+            do { try model.saveBill(bill, in: bill.cardID) } catch {
                 rows.append(ChatRow(kind: .error(error.localizedDescription)))
                 return
             }

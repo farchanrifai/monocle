@@ -91,7 +91,7 @@ struct CardSpringModifier: ViewModifier {
 }
 
 struct CardAccessibilityModifier: ViewModifier {
-    let book: BookProfile
+    let card: Card
     let expenseCount: Int
     let isSelected: Bool
     let expanded: Bool
@@ -100,8 +100,8 @@ struct CardAccessibilityModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .accessibilityElement(children: isSelected ? .contain : .combine)
-            .accessibilityLabel(isSelected ? book.name + " selected card" : "Open \(book.name), \(expenseCount) expenses")
-            .accessibilityIdentifier("stack-book-\(book.id)")
+            .accessibilityLabel(isSelected ? card.name + " selected card" : "Open \(card.name), \(expenseCount) expenses")
+            .accessibilityIdentifier("stack-book-\(card.id)")
             .accessibilityAddTraits(.isButton)
             .accessibilityHidden(expanded && !isSelected)
             .accessibilityAction {
@@ -115,12 +115,12 @@ struct CardAccessibilityModifier: ViewModifier {
 
 struct CardGesturesModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let book: BookProfile
+    let card: Card
     let index: Int
     let isSelected: Bool
     let expanded: Bool
     let detailScroll: CGFloat
-    let displayedBooksCount: Int
+    let displayedCardsCount: Int
     let onFlip: () -> Void
     let onCustomize: () -> Void
     let onMoveToFront: () -> Void
@@ -138,7 +138,7 @@ struct CardGesturesModifier: ViewModifier {
                 DragGesture(minimumDistance: 7)
                     .onChanged { value in
                         guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                        onDragCardIDChanged(book.id)
+                        onDragCardIDChanged(card.id)
                         let amount = value.translation.height > 0
                             ? pow(value.translation.height, 0.92) * 0.95 : value.translation.height * 0.72
                         onDragAmountChanged(amount)
@@ -154,7 +154,7 @@ struct CardGesturesModifier: ViewModifier {
                     .onChanged { value in
                         if value.translation.width > 12 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
                             onSwipeOffsetChanged(min(70, value.translation.width))
-                            onSwipingCardIDChanged(book.id)
+                            onSwipingCardIDChanged(card.id)
                         }
                     }
                     .onEnded { value in
@@ -170,7 +170,7 @@ struct CardGesturesModifier: ViewModifier {
             )
             .contextMenu {
                 if !expanded {
-                    if displayedBooksCount > 1 && index > 0 {
+                    if displayedCardsCount > 1 && index > 0 {
                         Button {
                             onMoveToFront()
                         } label: {
@@ -264,8 +264,8 @@ struct WalletStackLayout: Layout {
     }
 }
 
-/// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-book persistence.
-struct BookHomeView: View {
+/// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-card persistence.
+struct CardHomeView: View {
     @Bindable var model: AppModel
     var showsBottomBar: Bool = false
 
@@ -291,7 +291,7 @@ struct BookHomeView: View {
     @State private var detailScroll: CGFloat = 0
     @State private var scrollOverscroll: CGFloat = 0
 
-    @State private var displayedBooks: [BookProfile] = []
+    @State private var displayedCards: [Card] = []
     @State private var displayedFilterScope: StackFilterScope? = nil
     @State private var displayedStackID: UUID? = nil
     @State private var currentStackKey: String = ""
@@ -305,10 +305,10 @@ struct BookHomeView: View {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
     }
 
-    private var visible: [BookProfile] { model.visibleBooks }
-    private var current: BookProfile? { model.books.first { $0.id == selectedID } }
+    private var visible: [Card] { model.visibleCards }
+    private var current: Card? { model.cards.first { $0.id == selectedID } }
 
-    private var direction: BookVisualDirection { model.effectiveDirection(for: colorScheme) }
+    private var direction: CardVisualDirection { model.effectiveDirection(for: colorScheme) }
     private var paper: Color {
         switch direction {
         case .light:
@@ -413,7 +413,7 @@ struct BookHomeView: View {
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
-                    let targetID = selectedID ?? displayedBooks.first?.id ?? model.activeBookID
+                    let targetID = selectedID ?? displayedCards.first?.id ?? model.activeCardID
                     model.openEntry(for: targetID)
                 } label: {
                     Label("Add Expense", systemImage: "plus")
@@ -439,21 +439,21 @@ struct BookHomeView: View {
         }
         .sheet(item: $model.customizerTarget) { target in
             switch target {
-            case .existing(let book):
+            case .existing(let card):
                 CardCustomizerView(
                     model: model,
-                    initialBook: book,
-                    books: visible.isEmpty ? model.unhiddenBooks : visible,
-                    isCreatingNewBook: false
+                    initialCard: card,
+                    cards: visible.isEmpty ? model.unhiddenCards : visible,
+                    isCreatingNewCard: false
                 ) {
                     model.customizerTarget = nil
                 }
-            case .newBook:
+            case .newCard:
                 CardCustomizerView(
                     model: model,
-                    initialBook: visible.first ?? model.unhiddenBooks.first,
-                    books: visible.isEmpty ? model.unhiddenBooks : visible,
-                    isCreatingNewBook: true
+                    initialCard: visible.first ?? model.unhiddenCards.first,
+                    cards: visible.isEmpty ? model.unhiddenCards : visible,
+                    isCreatingNewCard: true
                 ) {
                     model.customizerTarget = nil
                 }
@@ -498,8 +498,8 @@ struct BookHomeView: View {
             )
         }
         .onAppear {
-            if displayedBooks.isEmpty {
-                displayedBooks = model.visibleBooks
+            if displayedCards.isEmpty {
+                displayedCards = model.visibleCards
             }
             if displayedFilterScope == nil {
                 displayedFilterScope = model.filterScope
@@ -513,7 +513,7 @@ struct BookHomeView: View {
             if targetStackKey.isEmpty {
                 targetStackKey = stackKey
             }
-            if let active = model.selectedBookID, displayedBooks.contains(where: { $0.id == active }) {
+            if let active = model.selectedCardID, displayedCards.contains(where: { $0.id == active }) {
                 selectedID = active
                 expanded = true
             }
@@ -523,18 +523,18 @@ struct BookHomeView: View {
                 performStackTransition(to: newKey)
             }
         }
-        .onChange(of: model.visibleBooks) { _, newVisible in
+        .onChange(of: model.visibleCards) { _, newVisible in
             withAnimation(settle) {
-                displayedBooks = newVisible
+                displayedCards = newVisible
             }
-            if let target = model.selectedBookID, let book = newVisible.first(where: { $0.id == target }), !expanded {
-                openCard(book)
+            if let target = model.selectedCardID, let card = newVisible.first(where: { $0.id == target }), !expanded {
+                openCard(card)
             }
         }
-        .onChange(of: model.selectedBookID) { _, newID in
-            if let newID, let book = displayedBooks.first(where: { $0.id == newID }) {
+        .onChange(of: model.selectedCardID) { _, newID in
+            if let newID, let card = displayedCards.first(where: { $0.id == newID }) {
                 if selectedID != newID || !expanded {
-                    openCard(book)
+                    openCard(card)
                 }
             } else if newID == nil && expanded {
                 closeCard()
@@ -562,7 +562,7 @@ struct BookHomeView: View {
             .accessibilityIdentifier("homeLogo")
 
             Spacer()
-            if model.selectedBookID == nil {
+            if model.selectedCardID == nil {
                 filterMenu
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             }
@@ -577,7 +577,7 @@ struct BookHomeView: View {
         let cardWidth = width - 40
         let cardHeight = cardWidth * 0.63
         let step = cardWidth * 0.152
-        let restingHeight = CGFloat(max(0, displayedBooks.count - 1)) * step + cardHeight
+        let restingHeight = CGFloat(max(0, displayedCards.count - 1)) * step + cardHeight
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -586,9 +586,9 @@ struct BookHomeView: View {
                 }
 
                 stackView(width: cardWidth, height: cardHeight, step: step)
-                    .frame(height: restingHeight + stackExpansion(displayedBooks), alignment: .top)
+                    .frame(height: restingHeight + stackExpansion(displayedCards), alignment: .top)
 
-                if displayedBooks.isEmpty {
+                if displayedCards.isEmpty {
                     ContentUnavailableView {
                         Label("Your stack is empty", systemImage: "rectangle.stack")
                     } description: {
@@ -604,7 +604,7 @@ struct BookHomeView: View {
                     .blur(radius: expanded && !reduceMotion ? 10 : 0)
                 }
 
-                activitySection(bookID: nil)
+                activitySection(cardID: nil)
                     .padding(.bottom, 96)
                     .offset(y: expanded && !reduceMotion ? height : 0)
                     .opacity(expanded ? 0.0 : 1.0)
@@ -626,7 +626,7 @@ struct BookHomeView: View {
         }
     }
 
-    private func stackExpansion(_ group: [BookProfile]) -> CGFloat {
+    private func stackExpansion(_ group: [Card]) -> CGFloat {
         let isDraggedGroup = group.contains(where: { $0.id == draggedCardID })
         guard isDraggedGroup || (draggedCardID == nil && scrollOverscroll > 0) else { return 0 }
         let disp = isDraggedGroup ? dragAmount : (pow(scrollOverscroll, 0.88) * 0.45)
@@ -635,19 +635,19 @@ struct BookHomeView: View {
     }
 
     private func stackView(width: CGFloat, height: CGFloat, step: CGFloat) -> some View {
-        let isDragged = displayedBooks.contains(where: { $0.id == draggedCardID })
-        let activeIdx = isDragged ? (displayedBooks.firstIndex(where: { $0.id == draggedCardID }) ?? displayedBooks.count) : (draggedCardID == nil && scrollOverscroll > 0 ? -1 : displayedBooks.count)
+        let isDragged = displayedCards.contains(where: { $0.id == draggedCardID })
+        let activeIdx = isDragged ? (displayedCards.firstIndex(where: { $0.id == draggedCardID }) ?? displayedCards.count) : (draggedCardID == nil && scrollOverscroll > 0 ? -1 : displayedCards.count)
         let effectiveDisp = isDragged ? dragAmount : ((draggedCardID == nil && scrollOverscroll > 0) ? (pow(scrollOverscroll, 0.88) * 0.45) : 0)
 
         return WalletStackLayout(step: step, cardHeight: height, activeIndex: activeIdx, displacement: effectiveDisp) {
-            ForEach(displayedBooks) { book in
+            ForEach(displayedCards) { card in
                 Color.clear.frame(width: width, height: height)
-                    .anchorPreference(key: CardFrames.self, value: .bounds) { [book.id.uuidString: $0] }
+                    .anchorPreference(key: CardFrames.self, value: .bounds) { [card.id.uuidString: $0] }
             }
         }
     }
 
-    private func detail(_ book: BookProfile, width: CGFloat) -> some View {
+    private func detail(_ card: Card, width: CGFloat) -> some View {
         let heroWidth = width - 32
         let heroHeight = heroWidth * 0.63
         let progress = min(max(dismissAmount / 280, 0), 1)
@@ -659,7 +659,7 @@ struct BookHomeView: View {
                     .anchorPreference(key: CardFrames.self, value: .bounds) { ["detail": $0] }
                     .allowsHitTesting(false)
 
-                activitySection(bookID: book.id)
+                activitySection(cardID: card.id)
                     .padding(.top, 16)
                     .padding(.bottom, 130)
                     .opacity(expanded ? 1 - progress : 0)
@@ -680,18 +680,18 @@ struct BookHomeView: View {
     // One persistent artwork view per card. Both screens supply its coordinate anchor.
     // Dismissal smoothly follows finger travel and returns with release velocity.
     private func cardPlane(frames: [String: Anchor<CGRect>], geometry: GeometryProxy) -> some View {
-        ForEach(Array(displayedBooks.enumerated()), id: \.element.id) { index, book in
-            if let anchor = frames[book.id.uuidString] {
+        ForEach(Array(displayedCards.enumerated()), id: \.element.id) { index, card in
+            if let anchor = frames[card.id.uuidString] {
                 let homeFrame = geometry[anchor]
-                let isSelected = selectedID == book.id
-                let selectedIndex = displayedBooks.firstIndex { $0.id == selectedID } ?? displayedBooks.count
+                let isSelected = selectedID == card.id
+                let selectedIndex = displayedCards.firstIndex { $0.id == selectedID } ?? displayedCards.count
                 let below = index > selectedIndex
                 let detailFrame = frames["detail"].map { geometry[$0] } ?? homeFrame
                 let target = isSelected && expanded ? detailFrame : homeFrame
 
                 cardPlaneItem(
                     index: index,
-                    book: book,
+                    card: card,
                     target: target,
                     homeFrame: homeFrame,
                     detailFrame: detailFrame,
@@ -707,7 +707,7 @@ struct BookHomeView: View {
     @ViewBuilder
     private func cardPlaneItem(
         index: Int,
-        book: BookProfile,
+        card: Card,
         target: CGRect,
         homeFrame: CGRect,
         detailFrame: CGRect,
@@ -718,12 +718,12 @@ struct BookHomeView: View {
     ) -> some View {
         let otherOffset: CGFloat = expanded && !isSelected && below && !reduceMotion
             ? geometryHeight - homeFrame.minY + CGFloat(index - selectedIndex) * 54 : 0
-        let horizontalOffset: CGFloat = (swipingCardID == book.id) ? swipeOffset : 0
+        let horizontalOffset: CGFloat = (swipingCardID == card.id) ? swipeOffset : 0
 
         let posX = target.midX + horizontalOffset + (isSelected && expanded && !reduceMotion ? dismissX : 0)
         let posY = target.midY + otherOffset + (isSelected && expanded && !reduceMotion ? dismissAmount : 0)
 
-        cardInteractiveView(book: book, index: index, target: target, isSelected: isSelected)
+        cardInteractiveView(card: card, index: index, target: target, isSelected: isSelected)
             .shadow(
                 color: isSelected && expanded
                     ? Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16)
@@ -751,51 +751,51 @@ struct BookHomeView: View {
 
     @ViewBuilder
     private func cardInteractiveView(
-        book: BookProfile,
+        card: Card,
         index: Int,
         target: CGRect,
         isSelected: Bool
     ) -> some View {
         CardPresentationView(
-            book: book,
+            card: card,
             index: index,
             isCurrent: isSelected,
-            isFlipped: flippedCardID == book.id,
+            isFlipped: flippedCardID == card.id,
             expanded: expanded,
             dismissAmount: dismissAmount,
             scrollOverscroll: scrollOverscroll,
             amountFont: amountFont,
             model: model,
-            onFlip: { toggleFlip(for: book.id) },
+            onFlip: { toggleFlip(for: card.id) },
             onOpenAnalytics: { model.showAnalytics = true },
-            onCustomize: { openCustomizer(for: book) }
+            onCustomize: { openCustomizer(for: card) }
         )
         .frame(width: target.width, height: target.height)
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .modifier(CardAccessibilityModifier(
-                book: book,
-                expenseCount: model.expenses(for: book.id).count,
+                card: card,
+                expenseCount: model.expenses(for: card.id).count,
                 isSelected: isSelected,
                 expanded: expanded,
-                onOpen: { openCard(book) }
+                onOpen: { openCard(card) }
             ))
             .modifier(CardGesturesModifier(
-                book: book,
+                card: card,
                 index: index,
                 isSelected: isSelected,
                 expanded: expanded,
                 detailScroll: detailScroll,
-                displayedBooksCount: displayedBooks.count,
+                displayedCardsCount: displayedCards.count,
                 onFlip: {
-                    if selectedID != book.id { openCard(book) }
-                    toggleFlip(for: book.id)
+                    if selectedID != card.id { openCard(card) }
+                    toggleFlip(for: card.id)
                 },
-                onCustomize: { openCustomizer(for: book) },
+                onCustomize: { openCustomizer(for: card) },
                 onMoveToFront: {
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                        model.moveBookToFront(book.id)
+                        model.moveCardToFront(card.id)
                     }
                 },
                 onDragAmountChanged: { val in dragAmount = val },
@@ -803,7 +803,7 @@ struct BookHomeView: View {
                 onDragEnded: { val in
                     if abs(val.translation.height) > abs(val.translation.width) &&
                         (val.translation.height < -55 || val.predictedEndTranslation.height < -110) {
-                        openCard(book)
+                        openCard(card)
                     }
                     withAnimation(reduceMotion ? nil : settle, completionCriteria: .removed) {
                         dragAmount = 0
@@ -835,15 +835,15 @@ struct BookHomeView: View {
         }
     }
 
-    private func openCard(_ book: BookProfile) {
+    private func openCard(_ card: Card) {
         let haptic = UIImpactFeedbackGenerator(style: .medium)
         haptic.impactOccurred()
         dismissAmount = 0
         dismissX = 0
         detailScroll = 0
         releaseVelocity = 0
-        guard model.selectBook(book.id) else { return }
-        selectedID = book.id
+        guard model.selectCard(card.id) else { return }
+        selectedID = card.id
         withAnimation(reduceMotion ? .easeOut(duration: 0.15) : opening) {
             expanded = true
         }
@@ -858,7 +858,7 @@ struct BookHomeView: View {
         let closingID = selectedID
         withAnimation(reduceMotion ? .easeOut(duration: 0.15) : settle, completionCriteria: .removed) {
             expanded = false
-            model.selectedBookID = nil
+            model.selectedCardID = nil
         } completion: {
             guard !expanded, selectedID == closingID else { return }
             selectedID = nil
@@ -875,7 +875,7 @@ struct BookHomeView: View {
 
         if reduceMotion {
             withAnimation(.easeInOut(duration: 0.14)) {
-                displayedBooks = model.visibleBooks
+                displayedCards = model.visibleCards
                 displayedFilterScope = model.filterScope
                 displayedStackID = model.activeStackID
                 currentStackKey = targetKey
@@ -884,7 +884,7 @@ struct BookHomeView: View {
         }
 
         withAnimation(settle) {
-            displayedBooks = model.visibleBooks
+            displayedCards = model.visibleCards
             displayedFilterScope = model.filterScope
             displayedStackID = model.activeStackID
             currentStackKey = targetKey
@@ -894,7 +894,7 @@ struct BookHomeView: View {
 // MARK: - Isolated 3D Card Presentation
 struct CardPresentationView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let book: BookProfile
+    let card: Card
     let index: Int
     let isCurrent: Bool
     let isFlipped: Bool
@@ -951,7 +951,7 @@ struct CardPresentationView: View {
             if isCurrent {
                 CardBackTelemetryView(
                     model: model,
-                    book: book,
+                    card: card,
                     index: index,
                     onFlipBack: onFlip,
                     onOpenAnalytics: onOpenAnalytics,
@@ -993,14 +993,14 @@ struct CardPresentationView: View {
     }
 
     private func cardFrontView(tiltShiftX: CGFloat, tiltShiftY: CGFloat) -> some View {
-        let bookExpenses = model.expenses(for: book.id)
-        let total = model.spent(for: book.id)
-        let customization = model.customization(for: book.id)
+        let cardExpenses = model.expenses(for: card.id)
+        let total = model.spent(for: card.id)
+        let customization = model.customization(for: card.id)
         let textStyle = CardPalette.resolvedTextColor(for: customization)
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                Text(book.name)
+                Text(card.name)
                     .font(.system(size: 16, weight: .semibold))
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -1030,17 +1030,17 @@ struct CardPresentationView: View {
 
             Spacer(minLength: 0)
 
-            Text(Money.format(total, code: model.currency(of: book)))
+            Text(Money.format(total, code: model.currency(of: card)))
                 .font(amountFont)
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
-            if let other = model.secondaryCurrency(of: book),
-               let approx = model.approximate(total, from: model.currency(of: book), to: other) {
+            if let other = model.secondaryCurrency(of: card),
+               let approx = model.approximate(total, from: model.currency(of: card), to: other) {
                 Text("≈ \(Money.format(approx, code: other))")
                     .font(.caption.monospacedDigit())
                     .opacity(0.8)
             }
-            Text("\(bookExpenses.count) EXPENSES")
+            Text("\(cardExpenses.count) EXPENSES")
                 .font(.system(size: 11, weight: .medium).monospaced())
         }
         .padding(16)
@@ -1048,7 +1048,7 @@ struct CardPresentationView: View {
         .foregroundStyle(textStyle)
         .background(
             ZStack {
-                cardBackground(for: customization, book: book)
+                cardBackground(for: customization, card: card)
                 specularSheen(shiftX: tiltShiftX, shiftY: tiltShiftY)
             }
         )
@@ -1074,7 +1074,7 @@ struct CardPresentationView: View {
     }
 
     @ViewBuilder
-    private func cardBackground(for customization: BookCardCustomization, book: BookProfile) -> some View {
+    private func cardBackground(for customization: CardCustomization, card: Card) -> some View {
         switch customization.style {
         case .palette(let index):
             CardPalette.color(for: index)
@@ -1088,31 +1088,31 @@ struct CardPresentationView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                CardPalette.color(for: book.colorIndex)
+                CardPalette.color(for: card.colorIndex)
             }
         }
     }
 }
 
-    private func activitySection(bookID: UUID?) -> some View {
+    private func activitySection(cardID: UUID?) -> some View {
         let activeScope = displayedFilterScope ?? model.filterScope
         let isAllCards = activeScope == .allCards
         let activeStack = model.stacks.first { $0.id == (displayedStackID ?? model.activeStackID) } ?? model.currentStack
-        let activities = model.activities(selectedBookID: bookID, allBooks: isAllCards)
+        let activities = model.activities(selectedCardID: cardID, allCards: isAllCards)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
-                Text(bookID != nil ? "Latest Expenses" : (isAllCards ? "All Expenses" : "Recent Expenses"))
+                Text(cardID != nil ? "Latest Expenses" : (isAllCards ? "All Expenses" : "Recent Expenses"))
                     .font(.system(size: 15, weight: .semibold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
 
                 Spacer()
 
-                if bookID == nil {
+                if cardID == nil {
                     HStack(spacing: 4) {
                         Image(systemName: isAllCards ? "rectangle.stack" : (activeStack?.icon ?? "square.stack.3d.up.fill"))
                             .font(.system(size: 10, weight: .bold))
-                        Text(isAllCards ? "All cards · \(model.unhiddenBooks.count)" : "\(activeStack?.name ?? "Stack") · \(activeStack?.cardIDs.count ?? 0)")
+                        Text(isAllCards ? "All cards · \(model.unhiddenCards.count)" : "\(activeStack?.name ?? "Stack") · \(activeStack?.cardIDs.count ?? 0)")
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(isAllCards ? Color.secondary : MC.red)
@@ -1128,13 +1128,13 @@ struct CardPresentationView: View {
 
             if activities.isEmpty {
                 VStack(spacing: 10) {
-                    Image(systemName: bookID != nil ? "tray" : "text.book.closed")
+                    Image(systemName: cardID != nil ? "tray" : "text.book.closed")
                         .font(.system(size: 26))
                         .foregroundStyle(ink.opacity(0.35))
-                    Text(bookID != nil ? "No Expenses Yet" : "Nothing Added Yet")
+                    Text(cardID != nil ? "No Expenses Yet" : "Nothing Added Yet")
                         .font(.system(size: 14.5, weight: .semibold))
                         .foregroundStyle(ink)
-                    Text(bookID != nil ? "Expenses you add to this card appear here." : "Tap the add button below to add your first expense.")
+                    Text(cardID != nil ? "Expenses you add to this card appear here." : "Tap the add button below to add your first expense.")
                         .font(.system(size: 12.5))
                         .foregroundStyle(ink.opacity(0.6))
                         .multilineTextAlignment(.center)
@@ -1146,7 +1146,7 @@ struct CardPresentationView: View {
             } else {
                 List {
                     ForEach(activities) { row in
-                        activityRow(row, showBookLabel: bookID == nil, isPlatter: true)
+                        activityRow(row, showCardLabel: cardID == nil, isPlatter: true)
                             .listRowInsets(EdgeInsets())
                             .listRowSeparator(.hidden)
                             .listRowBackground(MC.surface)
@@ -1167,7 +1167,7 @@ struct CardPresentationView: View {
 
     private let activityRowHeight: CGFloat = 56
 
-    private func activityRow(_ expense: Expense, showBookLabel: Bool, isPlatter: Bool = false) -> some View {
+    private func activityRow(_ expense: Expense, showCardLabel: Bool, isPlatter: Bool = false) -> some View {
         Button {
             selectedExpenseForDetail = expense
         } label: {
@@ -1177,7 +1177,7 @@ struct CardPresentationView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(ink)
                         .lineLimit(1)
-                    Text(showBookLabel && expense.bookID != nil ? "\(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? "")" : expense.day)
+                    Text(showCardLabel && expense.cardID != nil ? "\(expense.day) · \(model.cards.first(where: { $0.id == expense.cardID })?.name ?? "")" : expense.day)
                         .font(.system(size: 11.5, weight: .regular))
                         .foregroundStyle(ink.opacity(0.55))
                         .lineLimit(1)
@@ -1216,8 +1216,8 @@ struct CardPresentationView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(showBookLabel && expense.bookID != nil
-            ? "\(model.title(expense)), \(expense.day) · \(model.books.first(where: { $0.id == expense.bookID })?.name ?? ""), \(Money.format(expense.amount))"
+        .accessibilityLabel(showCardLabel && expense.cardID != nil
+            ? "\(model.title(expense)), \(expense.day) · \(model.cards.first(where: { $0.id == expense.cardID })?.name ?? ""), \(Money.format(expense.amount))"
             : "\(model.title(expense)), \(expense.day), \(Money.format(expense.amount))")
         .accessibilityIdentifier("expense-\(expense.note)")
         .contextMenu {
@@ -1294,15 +1294,15 @@ struct CardPresentationView: View {
             // Cards & Stacks
             Menu {
                 Button {
-                    openCustomizerForNewBook()
+                    openCustomizerForNewCard()
                 } label: {
                     Label("New Card", systemImage: "plus.rectangle.on.rectangle")
                 }
                 .accessibilityIdentifier("menuNewBook")
 
-                if let targetBook = current ?? visible.first ?? model.books.first {
+                if let targetCard = current ?? visible.first ?? model.cards.first {
                     Button {
-                        openCustomizer(for: targetBook)
+                        openCustomizer(for: targetCard)
                     } label: {
                         Label("Customize Card", systemImage: "paintbrush")
                     }
@@ -1397,52 +1397,52 @@ struct CardPresentationView: View {
         .accessibilityIdentifier("bookOptionsMenu")
     }
 
-    private func toggleFlip(for bookID: UUID) {
+    private func toggleFlip(for cardID: UUID) {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
         withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.42, dampingFraction: 0.80)) {
-            if flippedCardID == bookID {
+            if flippedCardID == cardID {
                 flippedCardID = nil
             } else {
-                flippedCardID = bookID
+                flippedCardID = cardID
             }
         }
     }
 
-    private func openCustomizer(for book: BookProfile) {
-        model.customizerTarget = .existing(book)
+    private func openCustomizer(for card: Card) {
+        model.customizerTarget = .existing(card)
     }
 
-    private func openCustomizerForNewBook() {
-        model.customizerTarget = .newBook
+    private func openCustomizerForNewCard() {
+        model.customizerTarget = .newCard
     }
 
     private var manageStackSheet: some View {
         NavigationStack {
             List {
                 Section("Visible cards · drag to reorder") {
-                    ForEach(model.orderedBooks) { book in
-                        Toggle(book.name, isOn: Binding(
-                            get: { !model.hiddenBookIDs.contains(book.id) },
+                    ForEach(model.orderedCards) { card in
+                        Toggle(card.name, isOn: Binding(
+                            get: { !model.hiddenCardIDs.contains(card.id) },
                             set: { isVisible in
-                                model.setBookHidden(id: book.id, isHidden: !isVisible)
+                                model.setCardHidden(id: card.id, isHidden: !isVisible)
                             }
                         ))
                     }
                     .onMove { from, to in
-                        model.reorderBooks(fromOffsets: from, toOffset: to)
+                        model.reorderCards(fromOffsets: from, toOffset: to)
                     }
                 }
 
                 Section {
                     Button("Show every card") {
-                        model.hiddenBookIDs = []
+                        model.hiddenCardIDs = []
                         model.persistWorkspacePreferences()
                     }
                     Button("Create new card") {
                         managing = false
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            openCustomizerForNewBook()
+                            openCustomizerForNewCard()
                         }
                     }
                 }
@@ -1541,16 +1541,16 @@ struct CardPresentationView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Start") {
-                        let activeBook = model.books.first(where: { $0.id == model.activeBookID }) ?? model.books.first
-                        let bookName = activeBook?.name ?? "Daily"
+                        let activeCard = model.cards.first(where: { $0.id == model.activeCardID }) ?? model.cards.first
+                        let cardName = activeCard?.name ?? "Daily"
                         var limit: Int64? = nil
                         if let parsed = try? Money.parse(model.sessionSheetBudget) {
                             limit = parsed
                         }
                         model.sessionManager.startSession(
                             name: model.sessionSheetName,
-                            bookName: bookName,
-                            bookID: activeBook?.id,
+                            cardName: cardName,
+                            cardID: activeCard?.id,
                             budgetLimit: limit
                         )
                         if let error = model.sessionManager.activityError { model.error = error }

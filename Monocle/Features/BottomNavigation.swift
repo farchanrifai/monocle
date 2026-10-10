@@ -6,7 +6,7 @@ struct BottomNavigation: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isDetail: Bool {
-        model.selectedBookID != nil
+        model.selectedCardID != nil
     }
 
     var body: some View {
@@ -83,7 +83,7 @@ struct BottomNavigation: View {
 
     private var addButton: some View {
         Button {
-            let targetID = model.selectedBookID ?? model.activeBookID
+            let targetID = model.selectedCardID ?? model.activeCardID
             model.openEntry(for: targetID)
         } label: {
             HStack(spacing: 8) {

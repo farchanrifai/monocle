@@ -110,7 +110,7 @@ enum BillReconciliationEngine {
 
         let allDueDays = dueDays(for: rule, from: startDate, to: endDate, calendar: calendar)
         let scheduledDays = Set(allDueDays)
-        let existing = existingOccurrences.filter { $0.billRuleID == rule.id && $0.bookID == rule.bookID }
+        let existing = existingOccurrences.filter { $0.billRuleID == rule.id && $0.cardID == rule.cardID }
         let existingDueDays = Set(existing.map(\.dueDay))
 
         var newOccurrences: [BillOccurrence] = []
@@ -122,7 +122,7 @@ enum BillReconciliationEngine {
             let occurrenceDate = Day.date(occurrence.dueDay, calendar: calendar) ?? date
             autoExpenses.append(Expense(id: expenseID, amount: rule.amount, day: occurrence.dueDay,
                 note: rule.name, allocations: [.init(categoryID: rule.categoryID, amount: rule.amount)],
-                source: "bill-automatic", createdAt: occurrenceDate, bookID: rule.bookID))
+                source: "bill-automatic", createdAt: occurrenceDate, cardID: rule.cardID))
             occurrence.status = .recorded
             occurrence.expenseID = expenseID
             occurrence.updatedAt = date
@@ -147,13 +147,13 @@ enum BillReconciliationEngine {
                     allocations: [.init(categoryID: rule.categoryID, amount: rule.amount)],
                     source: "bill-automatic",
                     createdAt: occurrenceDate,
-                    bookID: rule.bookID
+                    cardID: rule.cardID
                 )
 
                 let occurrence = BillOccurrence(
                     id: occurrenceID,
                     billRuleID: rule.id,
-                    bookID: rule.bookID,
+                    cardID: rule.cardID,
                     dueDay: dueDay,
                     status: .recorded,
                     expenseID: expenseID,
@@ -170,7 +170,7 @@ enum BillReconciliationEngine {
                 let occurrence = BillOccurrence(
                     id: occurrenceID,
                     billRuleID: rule.id,
-                    bookID: rule.bookID,
+                    cardID: rule.cardID,
                     dueDay: dueDay,
                     status: .pending,
                     expenseID: nil,

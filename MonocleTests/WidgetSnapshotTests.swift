@@ -9,8 +9,8 @@ final class WidgetSnapshotTests: XCTestCase {
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(WidgetSnapshot.self, from: data)
 
-        XCTAssertEqual(decoded.activeBook.id, original.activeBook.id)
-        XCTAssertEqual(decoded.activeBook.name, original.activeBook.name)
+        XCTAssertEqual(decoded.activeCard.id, original.activeCard.id)
+        XCTAssertEqual(decoded.activeCard.name, original.activeCard.name)
         XCTAssertEqual(decoded.activeStack?.id, original.activeStack?.id)
         XCTAssertEqual(decoded.activeStack?.name, original.activeStack?.name)
         XCTAssertEqual(decoded.activeStack?.cardCount, original.activeStack?.cardCount)
@@ -25,15 +25,15 @@ final class WidgetSnapshotTests: XCTestCase {
     func testWidgetSnapshotStoreFallbackWhenEmpty() {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let snapshot = WidgetSnapshotStore.loadSnapshot(from: missing)
-        XCTAssertFalse(snapshot.activeBook.name.isEmpty)
+        XCTAssertFalse(snapshot.activeCard.name.isEmpty)
         XCTAssertNotNil(snapshot.unavailableReason)
         XCTAssertNil(snapshot.cycleBudget)
     }
 
     func testWidgetSnapshotUpdaterCalculations() throws {
-        let book = BookProfile(id: UUID(), name: "Personal", kind: .real)
+        let card = Card(id: UUID(), name: "Personal", kind: .real)
         let cat = ExpenseCategory(id: UUID(), name: "Coffee", symbol: "cup.and.saucer.fill")
-        let stack = CardStack(id: UUID(), name: "Daily Living", icon: "bag.fill", cardIDs: [book.id])
+        let stack = CardStack(id: UUID(), name: "Daily Living", icon: "bag.fill", cardIDs: [card.id])
         let todayStr = Day.string(.now)
 
         let expense1 = Expense(
@@ -44,7 +44,7 @@ final class WidgetSnapshotTests: XCTestCase {
             allocations: [Allocation(categoryID: cat.id, amount: 35_000_00)],
             source: "manual",
             createdAt: .now,
-            bookID: book.id
+            cardID: card.id
         )
 
         let budget = BudgetVersion(
@@ -52,15 +52,15 @@ final class WidgetSnapshotTests: XCTestCase {
             effectiveDay: "2026-01-01",
             overallLimit: 1_000_000_00,
             startDay: 1,
-            bookID: book.id
+            cardID: card.id
         )
 
         let cycle = BudgetCycle.containing(.now, startDay: 1)
 
         let snapshot = WidgetSnapshotUpdater.update(
-            activeBook: book,
+            activeCard: card,
             activeStack: stack,
-            allBooks: [book],
+            allCards: [card],
             expenses: [expense1],
             stackExpenses: [expense1],
             categories: [cat],
@@ -68,7 +68,7 @@ final class WidgetSnapshotTests: XCTestCase {
             cycle: cycle
         )
 
-        XCTAssertEqual(snapshot.activeBook.name, "Personal")
+        XCTAssertEqual(snapshot.activeCard.name, "Personal")
         XCTAssertEqual(snapshot.activeStack?.name, "Daily Living")
         XCTAssertEqual(snapshot.activeStack?.totalSpent, 35_000_00)
         XCTAssertEqual(snapshot.activeStack?.cardCount, 1)
@@ -82,35 +82,35 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.todaySpending.totalSpent, 35_000_00)
         XCTAssertEqual(snapshot.todaySpending.transactionCount, 1)
         XCTAssertEqual(snapshot.todaySpending.recentTransactions.first?.title, "Espresso")
-        XCTAssertEqual(snapshot.todaySpending.recentTransactions.first?.bookID, book.id)
+        XCTAssertEqual(snapshot.todaySpending.recentTransactions.first?.cardID, card.id)
     }
 
     func testWidgetDeepLinkNavigation() throws {
         let model = AppModel.shared
-        let bookID = try XCTUnwrap(model.books.first?.id)
+        let cardID = try XCTUnwrap(model.cards.first?.id)
         let stackID = UUID()
 
         // Test openCardInHome
-        model.openCardInHome(id: bookID)
+        model.openCardInHome(id: cardID)
         XCTAssertEqual(model.selectedTab, 0)
         XCTAssertFalse(model.showEntry)
-        XCTAssertEqual(model.selectedBookID, bookID)
+        XCTAssertEqual(model.selectedCardID, cardID)
 
         // Test openStackInHome
-        try model.createStack(name: "Test Stack", icon: "folder", cardIDs: [bookID])
+        try model.createStack(name: "Test Stack", icon: "folder", cardIDs: [cardID])
         if let created = model.stacks.first(where: { $0.name == "Test Stack" }) {
             model.openStackInHome(id: created.id)
             XCTAssertEqual(model.selectedTab, 0)
             XCTAssertFalse(model.showEntry)
-            XCTAssertNil(model.selectedBookID)
+            XCTAssertNil(model.selectedCardID)
             XCTAssertEqual(model.activeStackID, created.id)
         }
     }
 
     func testSpendingSessionManagerLifecycle() {
         let manager = SpendingSessionManager.shared
-        let bookID = UUID()
-        manager.startSession(name: "Morning Market", bookName: "Personal", bookID: bookID, budgetLimit: 200_000_00)
+        let cardID = UUID()
+        manager.startSession(name: "Morning Market", cardName: "Personal", cardID: cardID, budgetLimit: 200_000_00)
 
         XCTAssertTrue(manager.isSessionActive)
         XCTAssertEqual(manager.sessionName, "Morning Market")
@@ -118,16 +118,16 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertEqual(manager.sessionSpent, 0)
         XCTAssertEqual(manager.sessionItemCount, 0)
 
-        manager.recordExpense(amount: 45_000_00, note: "Other card", categorySymbol: "basket.fill", bookID: UUID())
+        manager.recordExpense(amount: 45_000_00, note: "Other card", categorySymbol: "basket.fill", cardID: UUID())
         XCTAssertEqual(manager.sessionSpent, 0)
         XCTAssertEqual(manager.sessionItemCount, 0)
 
-        manager.recordExpense(amount: 45_000_00, note: "Fresh Bread", categorySymbol: "basket.fill", bookID: bookID)
+        manager.recordExpense(amount: 45_000_00, note: "Fresh Bread", categorySymbol: "basket.fill", cardID: cardID)
         XCTAssertEqual(manager.sessionSpent, 45_000_00)
         XCTAssertEqual(manager.sessionItemCount, 1)
         XCTAssertEqual(manager.latestItemNote, "Fresh Bread")
 
-        manager.recordExpense(amount: 30_000_00, note: "Fruit", categorySymbol: "apple.logo", bookID: bookID)
+        manager.recordExpense(amount: 30_000_00, note: "Fruit", categorySymbol: "apple.logo", cardID: cardID)
         XCTAssertEqual(manager.sessionSpent, 75_000_00)
         XCTAssertEqual(manager.sessionItemCount, 2)
 

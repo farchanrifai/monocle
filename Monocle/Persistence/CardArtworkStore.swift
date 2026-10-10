@@ -74,8 +74,8 @@ public final class CardArtworkStore: @unchecked Sendable {
         }
     }
 
-    public func saveArtwork(_ rawData: Data, for bookID: UUID) throws -> String {
-        let filename = "\(bookID.uuidString)-\(UUID().uuidString).jpg"
+    public func saveArtwork(_ rawData: Data, for cardID: UUID) throws -> String {
+        let filename = "\(cardID.uuidString)-\(UUID().uuidString).jpg"
         guard let downsampled = downsample(imageData: rawData, maxDimension: 1200) else { throw BackupError.invalid }
         try importArtworkData(downsampled, filename: filename)
 

@@ -5,13 +5,13 @@ import XCTest
 final class BillTests: XCTestCase {
 
     func testBillRuleValidation() throws {
-        let bookID = UUID()
+        let cardID = UUID()
         let catID = UUID()
         let categories = [ExpenseCategory(id: catID, name: "Bills", symbol: "bolt")]
 
         // Valid monthly bill
         let validRule = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Internet",
             amount: 350_000_00,
             categoryID: catID,
@@ -40,7 +40,7 @@ final class BillTests: XCTestCase {
             XCTAssertEqual(error as? BillError, .invalidAmount)
         }
 
-        // Category not in book
+        // Category not in card
         var missingCatRule = validRule
         missingCatRule.categoryID = UUID()
         XCTAssertThrowsError(try missingCatRule.validate(categories: categories)) { error in
@@ -63,7 +63,7 @@ final class BillTests: XCTestCase {
     }
 
     func testReconciliationEngineDueDaysCalculation() throws {
-        let bookID = UUID()
+        let cardID = UUID()
         let catID = UUID()
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -73,7 +73,7 @@ final class BillTests: XCTestCase {
 
         // Test Monthly on day 15
         let monthlyRule = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Gym",
             amount: 500_000_00,
             categoryID: catID,
@@ -85,7 +85,7 @@ final class BillTests: XCTestCase {
 
         // Test Month-end clamping (day 31 in February)
         let monthEndRule = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Rent",
             amount: 5_000_000_00,
             categoryID: catID,
@@ -99,7 +99,7 @@ final class BillTests: XCTestCase {
         let weekStart = try XCTUnwrap(Day.date("2026-09-01", calendar: calendar))
         let weekEnd = try XCTUnwrap(Day.date("2026-09-22", calendar: calendar))
         let weeklyRule = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Weekly Allowance",
             amount: 200_000_00,
             categoryID: catID,
@@ -111,7 +111,7 @@ final class BillTests: XCTestCase {
     }
 
     func testReconciliationIdempotency() throws {
-        let bookID = UUID()
+        let cardID = UUID()
         let catID = UUID()
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -120,7 +120,7 @@ final class BillTests: XCTestCase {
         let created = try XCTUnwrap(Day.date("2026-09-01", calendar: calendar))
 
         let rule = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Streaming",
             amount: 150_000_00,
             categoryID: catID,
@@ -157,16 +157,16 @@ final class BillTests: XCTestCase {
 
     func testAutomaticModeCreatesExpenseAndMarksOccurrenceRecorded() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
-        let bookID = service.activeBookID
+        let cardID = service.activeCardID
         let catID = try XCTUnwrap(service.categories.first?.id)
 
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
         let yesterdayDay = Calendar.current.component(.day, from: yesterday)
 
         let bill = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Cloud Storage",
             amount: 45_000_00,
             categoryID: catID,
@@ -193,10 +193,10 @@ final class BillTests: XCTestCase {
 
     func testPauseDropsLookaheadAndResumeDoesNotBackfill() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
         let start = Day.date("2026-01-01")!
-        var bill = BillRule(bookID: service.activeBookID, name: "Gym", amount: 300_000_00,
+        var bill = BillRule(cardID: service.activeCardID, name: "Gym", amount: 300_000_00,
                             categoryID: try XCTUnwrap(service.categories.first?.id),
                             recurrence: .monthly(day: 15), recordingMode: .automatic, createdAt: start)
         try service.saveBill(bill, asOf: Day.date("2026-01-10")!)
@@ -217,11 +217,11 @@ final class BillTests: XCTestCase {
 
     func testClearingTransactionsDoesNotRecreateAutomaticBills() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
         let due = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
         let bill = BillRule(
-            bookID: service.activeBookID,
+            cardID: service.activeCardID,
             name: "Cloud Storage",
             amount: 45_000_00,
             categoryID: try XCTUnwrap(service.categories.first?.id),
@@ -232,7 +232,7 @@ final class BillTests: XCTestCase {
         try service.saveBill(bill)
         XCTAssertFalse(service.expenses.isEmpty)
 
-        try store.clearExpenses(in: service.activeBookID)
+        try store.clearExpenses(in: service.activeCardID)
         try service.reload()
         try service.reconcileBills()
 
@@ -244,16 +244,16 @@ final class BillTests: XCTestCase {
 
     func testPendingModeRequiresConfirmationAndSkippingWorks() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
-        let bookID = service.activeBookID
+        let cardID = service.activeCardID
         let catID = try XCTUnwrap(service.categories.first?.id)
 
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
         let yesterdayDay = Calendar.current.component(.day, from: yesterday)
 
         let bill = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Electricity",
             amount: 850_000_00,
             categoryID: catID,
@@ -283,7 +283,7 @@ final class BillTests: XCTestCase {
 
         // Test Skipping another bill occurrence
         let bill2 = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Magazine",
             amount: 50_000_00,
             categoryID: catID,
@@ -307,56 +307,56 @@ final class BillTests: XCTestCase {
         XCTAssertEqual(postReconcileOcc.status, .skipped)
     }
 
-    func testMultiBookBillIsolation() throws {
+    func testMultiCardBillIsolation() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let bookA = try store.createBook(named: "Book A")
-        let bookB = try store.createBook(named: "Book B")
+        let cardA = try store.createCard(named: "Book A")
+        let cardB = try store.createCard(named: "Book B")
 
-        let catA = try XCTUnwrap(try store.categories(in: bookA.id).first)
-        let catB = try XCTUnwrap(try store.categories(in: bookB.id).first)
+        let catA = try XCTUnwrap(try store.categories(in: cardA.id).first)
+        let catB = try XCTUnwrap(try store.categories(in: cardB.id).first)
 
         let billA = BillRule(
-            bookID: bookA.id,
+            cardID: cardA.id,
             name: "Bill in A",
             amount: 100_000_00,
             categoryID: catA.id,
             recurrence: .monthly(day: 1)
         )
         let billB = BillRule(
-            bookID: bookB.id,
+            cardID: cardB.id,
             name: "Bill in B",
             amount: 200_000_00,
             categoryID: catB.id,
             recurrence: .monthly(day: 15)
         )
 
-        try store.saveBill(billA, in: bookA.id)
-        try store.saveBill(billB, in: bookB.id)
+        try store.saveBill(billA, in: cardA.id)
+        try store.saveBill(billB, in: cardB.id)
 
-        let billsInA = try store.bills(in: bookA.id)
-        let billsInB = try store.bills(in: bookB.id)
+        let billsInA = try store.bills(in: cardA.id)
+        let billsInB = try store.bills(in: cardB.id)
 
         XCTAssertEqual(billsInA.count, 1)
         XCTAssertEqual(billsInA.first?.name, "Bill in A")
         XCTAssertEqual(billsInB.count, 1)
         XCTAssertEqual(billsInB.first?.name, "Bill in B")
 
-        // Deleting book A removes bill A
-        try store.deleteBook(id: bookA.id)
-        let remainingBillsInB = try store.bills(in: bookB.id)
+        // Deleting card A removes bill A
+        try store.deleteCard(id: cardA.id)
+        let remainingBillsInB = try store.bills(in: cardB.id)
         XCTAssertEqual(remainingBillsInB.count, 1)
         XCTAssertEqual(remainingBillsInB.first?.name, "Bill in B")
     }
 
     func testWorkspaceBackupFormatSixRoundTrip() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
-        let bookID = service.activeBookID
+        let cardID = service.activeCardID
         let catID = try XCTUnwrap(service.categories.first?.id)
 
         let bill = BillRule(
-            bookID: bookID,
+            cardID: cardID,
             name: "Water Utility",
             amount: 120_000_00,
             categoryID: catID,
@@ -367,11 +367,11 @@ final class BillTests: XCTestCase {
 
         let occ = BillOccurrence(
             billRuleID: bill.id,
-            bookID: bookID,
+            cardID: cardID,
             dueDay: "2026-09-20",
             status: .pending
         )
-        try store.saveOccurrence(occ, in: bookID)
+        try store.saveOccurrence(occ, in: cardID)
 
         let backupService = BackupService(
             directory: FileManager.default.temporaryDirectory,
@@ -388,16 +388,16 @@ final class BillTests: XCTestCase {
         let decoded = try WorkspaceBackup.decode(encodedData)
         XCTAssertEqual(decoded.formatVersion, WorkspaceBackup.currentFormat)
 
-        let restoredBook = try XCTUnwrap(decoded.books.first { $0.book.id == bookID })
-        XCTAssertEqual(restoredBook.bills?.count, 1)
-        XCTAssertEqual(restoredBook.bills?.first?.name, "Water Utility")
+        let restoredCard = try XCTUnwrap(decoded.cards.first { $0.card.id == cardID })
+        XCTAssertEqual(restoredCard.bills?.count, 1)
+        XCTAssertEqual(restoredCard.bills?.first?.name, "Water Utility")
 
         // Restore into clean repository
         let newStore = try ExpenseRepository(inMemory: true)
         try newStore.replace(with: decoded)
 
-        let restoredBills = try newStore.bills(in: bookID)
-        let restoredOccurrences = try newStore.billOccurrences(in: bookID)
+        let restoredBills = try newStore.bills(in: cardID)
+        let restoredOccurrences = try newStore.billOccurrences(in: cardID)
 
         XCTAssertEqual(restoredBills.count, 1)
         XCTAssertEqual(restoredBills.first?.name, "Water Utility")
@@ -406,9 +406,9 @@ final class BillTests: XCTestCase {
 
     func testFormatFiveBackupBackwardCompatibility() throws {
         // Construct a legacy Format 5 WorkspaceBackup (which had no bills)
-        let book = BookProfile(id: UUID(), name: "Legacy Book")
-        let item = BookBackupItem(
-            book: book,
+        let card = Card(id: UUID(), name: "Legacy Book")
+        let item = CardBackupItem(
+            card: card,
             categories: ExpenseCategory.defaults,
             expenses: [],
             budgets: [],
@@ -421,22 +421,22 @@ final class BillTests: XCTestCase {
             exportedAt: .now,
             currency: "IDR",
             minorUnitScale: 2,
-            books: [item]
+            cards: [item]
         )
 
         let encoded = try legacyBackup.encoded()
         let decoded = try WorkspaceBackup.decode(encoded)
         XCTAssertEqual(decoded.formatVersion, 5)
-        XCTAssertEqual(decoded.books.first?.bills, nil)
+        XCTAssertEqual(decoded.cards.first?.bills, nil)
     }
 }
 
 extension BillTests {
     func testAutomaticLookaheadPromotesPendingWhenDue() throws {
-        let book = UUID(), category = UUID()
+        let card = UUID(), category = UUID()
         let created = try XCTUnwrap(Day.date("2026-09-01"))
         let due = try XCTUnwrap(Day.date("2026-09-15"))
-        let rule = BillRule(bookID: book, name: "Rent", amount: 10000, categoryID: category,
+        let rule = BillRule(cardID: card, name: "Rent", amount: 10000, categoryID: category,
                             recurrence: .monthly(day: 15), recordingMode: .automatic, createdAt: created)
         let preview = BillReconciliationEngine.reconcile(rule: rule, existingOccurrences: [], asOf: created)
         let pending = try XCTUnwrap(preview.newOccurrences.first)
@@ -451,12 +451,12 @@ extension BillTests {
 
     func testResolvedBillCannotBeRecordedOrSkippedAgain() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
-        let bill = BillRule(bookID: service.activeBookID, name: "Rent", amount: 10000,
+        let bill = BillRule(cardID: service.activeCardID, name: "Rent", amount: 10000,
                             categoryID: try XCTUnwrap(service.categories.first?.id), recurrence: .monthly(day: 1))
         try service.saveBill(bill)
-        let occurrence = BillOccurrence(billRuleID: bill.id, bookID: bill.bookID, dueDay: Day.string(.now))
+        let occurrence = BillOccurrence(billRuleID: bill.id, cardID: bill.cardID, dueDay: Day.string(.now))
         try store.saveOccurrence(occurrence)
         _ = try service.confirmBillOccurrence(occurrence.id)
         XCTAssertThrowsError(try service.confirmBillOccurrence(occurrence.id))
@@ -464,13 +464,13 @@ extension BillTests {
         XCTAssertEqual(service.expenses.count, 1)
     }
 
-    func testOccurrenceDeletionIsScopedToBook() throws {
+    func testOccurrenceDeletionIsScopedToCard() throws {
         let store = try ExpenseRepository(inMemory: true)
-        let a = try store.createBook(named: "A"), b = try store.createBook(named: "B")
-        let rule = BillRule(bookID: a.id, name: "Rent", amount: 10000,
+        let a = try store.createCard(named: "A"), b = try store.createCard(named: "B")
+        let rule = BillRule(cardID: a.id, name: "Rent", amount: 10000,
                             categoryID: try XCTUnwrap(store.categories(in: a.id).first?.id), recurrence: .monthly(day: 1))
         try store.saveBill(rule)
-        let occurrence = BillOccurrence(billRuleID: rule.id, bookID: a.id, dueDay: "2026-09-01")
+        let occurrence = BillOccurrence(billRuleID: rule.id, cardID: a.id, dueDay: "2026-09-01")
         try store.saveOccurrence(occurrence)
         try store.deleteOccurrence(occurrence.id, in: b.id)
         XCTAssertEqual(try store.billOccurrences(in: a.id).count, 1)
@@ -479,7 +479,7 @@ extension BillTests {
 
     func testBatchImportRollsBackEarlierRowsOnFailure() throws {
         let store = try ExpenseRepository(inMemory: true)
-        try store.prepareSampleBook()
+        try store.prepareSampleCard()
         let service = try ExpenseService(store: store)
         let category = try XCTUnwrap(service.categories.first?.id)
         let valid = Expense(amount: 10000, day: "2026-09-01", note: "Valid",

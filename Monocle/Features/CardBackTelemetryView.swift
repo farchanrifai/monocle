@@ -1,24 +1,24 @@
 import SwiftUI
 
-/// Teenage Engineering-inspired monospace telemetry back-face for Monocle book cards.
+/// Teenage Engineering-inspired monospace telemetry back-face for Monocle card cards.
 struct CardBackTelemetryView: View {
     @Bindable var model: AppModel
-    let book: BookProfile
+    let card: Card
     let index: Int
     let onFlipBack: () -> Void
     let onOpenAnalytics: () -> Void
     let onCustomize: () -> Void
 
     var body: some View {
-        let report = AnalyticsReport.build(data: model.reportingData(for: .card(id: book.id, name: book.name)), horizon: .thisCycle)
-        CardBackReportView(model: model, book: book, index: index, onFlipBack: onFlipBack,
+        let report = AnalyticsReport.build(data: model.reportingData(for: .card(id: card.id, name: card.name)), horizon: .thisCycle)
+        CardBackReportView(model: model, card: card, index: index, onFlipBack: onFlipBack,
                            onOpenAnalytics: onOpenAnalytics, onCustomize: onCustomize, report: report)
     }
 }
 
 private struct CardBackReportView: View {
     @Bindable var model: AppModel
-    let book: BookProfile
+    let card: Card
     let index: Int
     let onFlipBack: () -> Void
     let onOpenAnalytics: () -> Void
@@ -27,14 +27,14 @@ private struct CardBackReportView: View {
     let report: AnalyticsReport
     @ScaledMetric(relativeTo: .caption) private var tagSize = 10
 
-    private var customization: BookCardCustomization {
-        model.customization(for: book.id)
+    private var customization: CardCustomization {
+        model.customization(for: card.id)
     }
 
     private var activeBudget: BudgetVersion? { report.period?.budget }
 
     private var technicalTag: String {
-        let clean = book.id.uuidString.replacingOccurrences(of: "-", with: "").prefix(4).uppercased()
+        let clean = card.id.uuidString.replacingOccurrences(of: "-", with: "").prefix(4).uppercased()
         return "MONO-\(String(format: "%02d", index + 1)) // #\(clean)"
     }
 
@@ -68,7 +68,7 @@ private struct CardBackReportView: View {
                         .font(.system(size: tagSize, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.65))
                         .tracking(1.2)
-                    Text(book.name.uppercased())
+                    Text(card.name.uppercased())
                         .font(.system(size: 13, weight: .black, design: .monospaced))
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -272,7 +272,7 @@ private struct CardBackReportView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
             ZStack {
-                cardBackBackground(for: customization, book: book)
+                cardBackBackground(for: customization, card: card)
                 Color.black.opacity(0.52)
                 LinearGradient(
                     colors: [Color.white.opacity(0.08), Color.clear, Color.black.opacity(0.2)],
@@ -345,7 +345,7 @@ private struct CardBackReportView: View {
     }
 
     @ViewBuilder
-    private func cardBackBackground(for customization: BookCardCustomization, book: BookProfile) -> some View {
+    private func cardBackBackground(for customization: CardCustomization, card: Card) -> some View {
         switch customization.style {
         case .palette(let index):
             CardPalette.color(for: index)
@@ -359,7 +359,7 @@ private struct CardBackReportView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                CardPalette.color(for: book.colorIndex)
+                CardPalette.color(for: card.colorIndex)
             }
         }
     }

@@ -49,7 +49,7 @@ struct StackWidgetEntryView: View {
     }
 
     private var stack: WidgetStackSummary {
-        entry.snapshot.activeStack ?? WidgetStackSummary(id: entry.snapshot.activeBook.id, name: "No stack", totalSpent: 0)
+        entry.snapshot.activeStack ?? WidgetStackSummary(id: entry.snapshot.activeCard.id, name: "No stack", totalSpent: 0)
     }
 
     private var smallView: some View {

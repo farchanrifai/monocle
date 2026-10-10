@@ -120,7 +120,7 @@ private struct PaidWithSettingsPane: View {
     @Bindable var model: AppModel
     @State private var newName = ""
     @State private var error: String?
-    private var card: BookProfile? { model.books.first { $0.id == model.activeBookID } }
+    private var card: Card? { model.cards.first { $0.id == model.activeCardID } }
 
     var body: some View {
         Form {
@@ -171,7 +171,7 @@ private struct CurrencySettingsPane: View {
     @State private var pending: String?
     @State private var working = false
     @State private var error: String?
-    private var card: BookProfile? { model.books.first { $0.id == model.activeBookID } }
+    private var card: Card? { model.cards.first { $0.id == model.activeCardID } }
     private var choices: [String] {
         var seen = Set<String>()
         return ([model.reportingCurrency] + Money.commonCurrencies).filter { seen.insert($0).inserted }

@@ -8,11 +8,11 @@ final class ExpenseRepository: ExpenseStore {
 
     private var transactionDepth = 0
     private var transactionFailure: (any Error)?
-    private var bookCache: [UUID: NSManagedObject] = [:]
+    private var cardCache: [UUID: NSManagedObject] = [:]
     private var categoryCache: [UUID: [UUID: NSManagedObject]] = [:]
     private var expenseCache: [UUID: NSManagedObject] = [:]
     private var prefetchedExpenseIDs = Set<UUID>()
-    private var changedBillBooks = Set<UUID>()
+    private var changedBillCards = Set<UUID>()
 
     func transaction(_ operation: () throws -> Void) throws {
         let outer = transactionDepth == 0
@@ -41,11 +41,11 @@ final class ExpenseRepository: ExpenseStore {
 
     private func resetTransactionState() {
         transactionFailure = nil
-        bookCache.removeAll()
+        cardCache.removeAll()
         categoryCache.removeAll()
         expenseCache.removeAll()
         prefetchedExpenseIDs.removeAll()
-        changedBillBooks.removeAll()
+        changedBillCards.removeAll()
     }
 
     private func commitIfNeeded() throws {
@@ -58,10 +58,10 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     private func validateChangedBillGraphs() throws {
-        for bookID in changedBillBooks { _ = try billOccurrences(in: bookID) }
+        for cardID in changedBillCards { _ = try billOccurrences(in: cardID) }
     }
 
-    private func writeModelBFields(of profile: BookProfile, to row: NSManagedObject) {
+    private func writeModelBFields(of profile: Card, to row: NSManagedObject) {
         row.setValue(profile.currency, forKey: "currency")
         row.setValue(profile.spendingCurrency, forKey: "spendingCurrency")
         row.setValue(profile.defaultPaidWithID, forKey: "defaultPaidWithID")
@@ -85,89 +85,89 @@ final class ExpenseRepository: ExpenseStore {
         context.mergePolicy = NSMergePolicy(merge: .errorMergePolicyType)
     }
 
-    func prepareSampleBook(categories: [ExpenseCategory] = ExpenseCategory.defaults) throws {
+    func prepareSampleCard(categories: [ExpenseCategory] = ExpenseCategory.defaults) throws {
         guard try objects("Book").isEmpty else { return }
         do {
-            let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
-            book.setValue(BookProfile.sample.id, forKey: "id")
-            book.setValue(BookProfile.sample.name, forKey: "name")
-            book.setValue(BookProfile.sample.colorIndex, forKey: "colorIndex")
+            let card = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+            card.setValue(Card.demo.id, forKey: "id")
+            card.setValue(Card.demo.name, forKey: "name")
+            card.setValue(Card.demo.colorIndex, forKey: "colorIndex")
             for category in categories {
                 let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
                 row.setValue(category.id, forKey: "id"); row.setValue(category.name, forKey: "name")
-                row.setValue(category.symbol, forKey: "symbol"); row.setValue(book, forKey: "book")
+                row.setValue(category.symbol, forKey: "symbol"); row.setValue(card, forKey: "book")
             }
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
-    func books() throws -> [BookProfile] {
+    func cards() throws -> [Card] {
         try objects("Book").map { row in
             guard let id = row.value(forKey: "id") as? UUID,
                   let name = row.value(forKey: "name") as? String else { throw EntryError.corruptStore }
-            let kind: BookKind = (id == BookProfile.sample.id) ? .sample : .real
+            let kind: CardKind = (id == Card.demo.id) ? .demo : .real
             let colorIndex = (row.value(forKey: "colorIndex") as? NSNumber)?.intValue ?? 0
-            return BookProfile(id: id, name: name, kind: kind, colorIndex: colorIndex,
+            return Card(id: id, name: name, kind: kind, colorIndex: colorIndex,
                                currency: row.value(forKey: "currency") as? String,
                                spendingCurrency: row.value(forKey: "spendingCurrency") as? String,
                                defaultPaidWithID: row.value(forKey: "defaultPaidWithID") as? UUID)
         }
     }
 
-    func createBook(named name: String) throws -> BookProfile {
-        try createBook(named: name, initialCategories: nil)
+    func createCard(named name: String) throws -> Card {
+        try createCard(named: name, initialCategories: nil)
     }
 
-    func createBook(named name: String, initialCategories: [GlobalCategory]?) throws -> BookProfile {
-        let profile = try BookProfile.real(named: name)
+    func createCard(named name: String, initialCategories: [GlobalCategory]?) throws -> Card {
+        let profile = try Card.real(named: name)
         do {
-            let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
-            book.setValue(profile.id, forKey: "id")
-            book.setValue(profile.name, forKey: "name")
-            book.setValue(profile.colorIndex, forKey: "colorIndex")
+            let card = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+            card.setValue(profile.id, forKey: "id")
+            card.setValue(profile.name, forKey: "name")
+            card.setValue(profile.colorIndex, forKey: "colorIndex")
             let catsToSeed = initialCategories ?? GlobalCategory.defaults
             for cat in catsToSeed {
                 let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
                 row.setValue(cat.id, forKey: "id")
                 row.setValue(cat.name, forKey: "name")
                 row.setValue(cat.symbol, forKey: "symbol")
-                row.setValue(book, forKey: "book")
+                row.setValue(card, forKey: "book")
             }
             try commitIfNeeded()
             return profile
         } catch { context.rollback(); throw error }
     }
 
-    func renameBook(id: UUID, to name: String) throws {
+    func renameCard(id: UUID, to name: String) throws {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 40 else { throw BackupError.invalid }
         do {
-            let book = try bookRow(for: id)
-            book.setValue(trimmed, forKey: "name")
+            let card = try cardRow(for: id)
+            card.setValue(trimmed, forKey: "name")
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
-    func updateCard(_ profile: BookProfile) throws {
+    func updateCard(_ profile: Card) throws {
         do {
-            writeModelBFields(of: profile, to: try bookRow(for: profile.id))
+            writeModelBFields(of: profile, to: try cardRow(for: profile.id))
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
-    func deleteBook(id: UUID) throws {
-        let allBooks = try self.books()
-        guard allBooks.count > 1 else { throw BackupError.invalid }
+    func deleteCard(id: UUID) throws {
+        let allCards = try self.cards()
+        guard allCards.count > 1 else { throw BackupError.invalid }
         do {
-            let book = try bookRow(for: id)
-            context.delete(book)
+            let card = try cardRow(for: id)
+            context.delete(card)
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
-    func categories(in bookID: UUID) throws -> [ExpenseCategory] {
-        let book = try bookRow(for: bookID)
-        let set = (book.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
+    func categories(in cardID: UUID) throws -> [ExpenseCategory] {
+        let card = try cardRow(for: cardID)
+        let set = (card.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
         return try set.map { row in
             guard let id = row.value(forKey: "id") as? UUID, let name = row.value(forKey: "name") as? String,
                   let symbol = row.value(forKey: "symbol") as? String else { throw EntryError.corruptStore }
@@ -176,29 +176,29 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func categories() throws -> [ExpenseCategory] {
-        try categories(in: defaultBookID())
+        try categories(in: defaultCardID())
     }
 
-    func expenses(in bookID: UUID) throws -> [Expense] {
-        try fetchExpenses(in: bookID, startDay: nil, endDay: nil, limit: nil, offset: 0)
+    func expenses(in cardID: UUID) throws -> [Expense] {
+        try fetchExpenses(in: cardID, startDay: nil, endDay: nil, limit: nil, offset: 0)
     }
 
     /// A stable page with inclusive start and exclusive end civil days. Callers keep their chosen bounds.
-    func expenses(in bookID: UUID, from startDay: String, to endDay: String,
+    func expenses(in cardID: UUID, from startDay: String, to endDay: String,
                   limit: Int = 200, offset: Int = 0) throws -> [Expense] {
         guard Day.date(startDay) != nil, Day.date(endDay) != nil, startDay < endDay,
               (1...1_000).contains(limit), offset >= 0 else { throw EntryError.invalidDate }
-        return try fetchExpenses(in: bookID, startDay: startDay, endDay: endDay, limit: limit, offset: offset)
+        return try fetchExpenses(in: cardID, startDay: startDay, endDay: endDay, limit: limit, offset: offset)
     }
 
-    private func fetchExpenses(in bookID: UUID, startDay: String?, endDay: String?, limit: Int?, offset: Int) throws -> [Expense] {
+    private func fetchExpenses(in cardID: UUID, startDay: String?, endDay: String?, limit: Int?, offset: Int) throws -> [Expense] {
         try BackendDiagnostics.measure("ExpenseFetch") {
-            let book = try bookRow(for: bookID)
-            let categories = try categories(in: bookID)
+            let card = try cardRow(for: cardID)
+            let categories = try categories(in: cardID)
             let request = NSFetchRequest<NSManagedObject>(entityName: "ExpenseRecord")
             if let startDay, let endDay {
-                request.predicate = NSPredicate(format: "book == %@ AND day >= %@ AND day < %@", book, startDay, endDay)
-            } else { request.predicate = NSPredicate(format: "book == %@", book) }
+                request.predicate = NSPredicate(format: "book == %@ AND day >= %@ AND day < %@", card, startDay, endDay)
+            } else { request.predicate = NSPredicate(format: "book == %@", card) }
             request.sortDescriptors = [NSSortDescriptor(key: "day", ascending: false),
                                        NSSortDescriptor(key: "createdAt", ascending: false),
                                        NSSortDescriptor(key: "id", ascending: true)]
@@ -206,13 +206,13 @@ final class ExpenseRepository: ExpenseStore {
             request.fetchBatchSize = min(limit ?? 200, 200)
             request.fetchOffset = offset
             if let limit { request.fetchLimit = limit }
-            let values = try context.fetch(request).map { try expenseValue($0, in: bookID, categories: categories) }
+            let values = try context.fetch(request).map { try expenseValue($0, in: cardID, categories: categories) }
             guard Set(values.map(\.id)).count == values.count else { throw EntryError.corruptStore }
             return values
         }
     }
 
-    private func expenseValue(_ row: NSManagedObject, in bookID: UUID, categories: [ExpenseCategory]) throws -> Expense {
+    private func expenseValue(_ row: NSManagedObject, in cardID: UUID, categories: [ExpenseCategory]) throws -> Expense {
         guard let id = row.value(forKey: "id") as? UUID, let day = row.value(forKey: "day") as? String,
               let createdAt = row.value(forKey: "createdAt") as? Date,
               let amount = row.value(forKey: "amount") as? Int64,
@@ -220,13 +220,13 @@ final class ExpenseRepository: ExpenseStore {
         let values = try allocations.map { allocation -> Allocation in
             guard let category = allocation.value(forKey: "category") as? NSManagedObject,
                   let categoryID = category.value(forKey: "id") as? UUID,
-                  let categoryBook = category.value(forKey: "book") as? NSManagedObject,
-                  categoryBook.value(forKey: "id") as? UUID == bookID,
+                  let categoryCard = category.value(forKey: "book") as? NSManagedObject,
+                  categoryCard.value(forKey: "id") as? UUID == cardID,
                   let value = allocation.value(forKey: "amount") as? Int64 else { throw EntryError.corruptStore }
             return Allocation(categoryID: categoryID, amount: value)
         }.sorted { $0.categoryID.uuidString < $1.categoryID.uuidString }
         let expense = Expense(id: id, amount: amount, day: day, note: row.value(forKey: "note") as? String ?? "",
-            allocations: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, bookID: bookID,
+            allocations: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, cardID: cardID,
             paidWithID: row.value(forKey: "paidWithID") as? UUID,
             originalAmount: (row.value(forKey: "originalAmount") as? NSNumber)?.int64Value,
             originalCurrency: row.value(forKey: "originalCurrency") as? String,
@@ -237,13 +237,13 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func expenses() throws -> [Expense] {
-        try expenses(in: defaultBookID())
+        try expenses(in: defaultCardID())
     }
 
-    func budgets(in bookID: UUID) throws -> [BudgetVersion] {
-        let book = try bookRow(for: bookID)
-        let cats = try categories(in: bookID)
-        let set = (book.value(forKey: "budgets") as? Set<NSManagedObject>) ?? []
+    func budgets(in cardID: UUID) throws -> [BudgetVersion] {
+        let card = try cardRow(for: cardID)
+        let cats = try categories(in: cardID)
+        let set = (card.value(forKey: "budgets") as? Set<NSManagedObject>) ?? []
         let values = try set.map { row -> BudgetVersion in
             guard let id = row.value(forKey: "id") as? UUID,
                   let effectiveDay = row.value(forKey: "effectiveDay") as? String,
@@ -257,7 +257,7 @@ final class ExpenseRepository: ExpenseStore {
             let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
                                        startDay: startDay, categoryLimits: limits,
                                        transitionEndDay: row.value(forKey: "transitionEndDay") as? String,
-                                       bookID: bookID,
+                                       cardID: cardID,
                                        totalUntilDay: row.value(forKey: "totalUntilDay") as? String)
             try budget.validate(categories: cats)
             return budget
@@ -267,13 +267,13 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func budgets() throws -> [BudgetVersion] {
-        try budgets(in: defaultBookID())
+        try budgets(in: defaultCardID())
     }
 
-    func bills(in bookID: UUID) throws -> [BillRule] {
-        let book = try bookRow(for: bookID)
-        let categories = try categories(in: bookID)
-        let set = (book.value(forKey: "bills") as? Set<NSManagedObject>) ?? []
+    func bills(in cardID: UUID) throws -> [BillRule] {
+        let card = try cardRow(for: cardID)
+        let categories = try categories(in: cardID)
+        let set = (card.value(forKey: "bills") as? Set<NSManagedObject>) ?? []
         let values = try set.map { row -> BillRule in
             guard let id = row.value(forKey: "id") as? UUID,
                   let name = row.value(forKey: "name") as? String,
@@ -297,7 +297,7 @@ final class ExpenseRepository: ExpenseStore {
             case "yearly": recurrence = .yearly(month: recurrenceMonth, day: recurrenceDay)
             default: throw EntryError.corruptStore
             }
-            let value = BillRule(id: id, bookID: bookID, name: name, amount: amount,
+            let value = BillRule(id: id, cardID: cardID, name: name, amount: amount,
                 categoryID: categoryID, recurrence: recurrence,
                 recordingMode: isAutomatic ? .automatic : .pending,
                 hasReminder: hasReminder, reminderLeadDays: reminderLeadDays,
@@ -313,15 +313,15 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func bills() throws -> [BillRule] {
-        try bills(in: defaultBookID())
+        try bills(in: defaultCardID())
     }
 
-    func billOccurrences(in bookID: UUID) throws -> [BillOccurrence] {
-        let book = try bookRow(for: bookID)
-        let rules = try bills(in: bookID)
-        let expenses = try expenses(in: bookID)
+    func billOccurrences(in cardID: UUID) throws -> [BillOccurrence] {
+        let card = try cardRow(for: cardID)
+        let rules = try bills(in: cardID)
+        let expenses = try expenses(in: cardID)
         let request = NSFetchRequest<NSManagedObject>(entityName: "BillOccurrenceRecord")
-        request.predicate = NSPredicate(format: "rule.book == %@ OR rule == nil", book)
+        request.predicate = NSPredicate(format: "rule.book == %@ OR rule == nil", card)
         let occurrences = try context.fetch(request).map { row -> BillOccurrence in
             guard let rule = row.value(forKey: "rule") as? NSManagedObject,
                   let ruleID = rule.value(forKey: "id") as? UUID,
@@ -331,27 +331,27 @@ final class ExpenseRepository: ExpenseStore {
                   let status = BillOccurrenceStatus(rawValue: statusStr),
                   let createdAt = row.value(forKey: "createdAt") as? Date,
                   let updatedAt = row.value(forKey: "updatedAt") as? Date else { throw EntryError.corruptStore }
-            return BillOccurrence(id: id, billRuleID: ruleID, bookID: bookID,
+            return BillOccurrence(id: id, billRuleID: ruleID, cardID: cardID,
                 dueDay: dueDay, status: status, expenseID: row.value(forKey: "expenseID") as? UUID,
                 createdAt: createdAt, updatedAt: updatedAt)
         }
-        try BillOccurrence.validate(occurrences, rules: rules, expenses: expenses, bookID: bookID)
+        try BillOccurrence.validate(occurrences, rules: rules, expenses: expenses, cardID: cardID)
         return occurrences.sorted { $0.dueDay < $1.dueDay }
     }
 
     func billOccurrences() throws -> [BillOccurrence] {
-        try billOccurrences(in: defaultBookID())
+        try billOccurrences(in: defaultCardID())
     }
 
-    func saveBill(_ bill: BillRule, in bookID: UUID) throws {
-        let book = try bookRow(for: bookID)
-        guard bill.bookID == bookID else { throw EntryError.corruptStore }
-        try bill.validate(categories: categories(in: bookID))
+    func saveBill(_ bill: BillRule, in cardID: UUID) throws {
+        let card = try cardRow(for: cardID)
+        guard bill.cardID == cardID else { throw EntryError.corruptStore }
+        try bill.validate(categories: categories(in: cardID))
         do {
-            let existing = try findBillRule("BillRuleRecord", id: bill.id, in: book)
+            let existing = try findBillRule("BillRuleRecord", id: bill.id, in: card)
             if existing == nil, let globalExisting = try find("BillRuleRecord", id: bill.id),
-               let existingBook = globalExisting.value(forKey: "book") as? NSManagedObject,
-               let existingID = existingBook.value(forKey: "id") as? UUID, existingID != bookID {
+               let existingCard = globalExisting.value(forKey: "book") as? NSManagedObject,
+               let existingID = existingCard.value(forKey: "id") as? UUID, existingID != cardID {
                 throw EntryError.corruptStore
             }
             let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: "BillRuleRecord", into: context)
@@ -380,20 +380,20 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(bill.createdAt, forKey: "createdAt")
             row.setValue(bill.scheduleEffectiveDay, forKey: "scheduleEffectiveDay")
             row.setValue(bill.scheduleRevision, forKey: "scheduleRevision")
-            row.setValue(book, forKey: "book")
-            changedBillBooks.insert(bookID)
+            row.setValue(card, forKey: "book")
+            changedBillCards.insert(cardID)
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
     func saveBill(_ bill: BillRule) throws {
-        try saveBill(bill, in: bill.bookID)
+        try saveBill(bill, in: bill.cardID)
     }
 
-    func deleteBill(_ id: UUID, in bookID: UUID) throws {
+    func deleteBill(_ id: UUID, in cardID: UUID) throws {
         do {
-            let book = try bookRow(for: bookID)
-            if let row = try findBillRule("BillRuleRecord", id: id, in: book) {
+            let card = try cardRow(for: cardID)
+            if let row = try findBillRule("BillRuleRecord", id: id, in: card) {
                 context.delete(row)
                 try commitIfNeeded()
             }
@@ -401,21 +401,21 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func deleteBill(_ id: UUID) throws {
-        try deleteBill(id, in: defaultBookID())
+        try deleteBill(id, in: defaultCardID())
     }
 
-    func saveOccurrence(_ occurrence: BillOccurrence, in bookID: UUID) throws {
-        let book = try bookRow(for: bookID)
-        guard let ruleRow = try findBillRule("BillRuleRecord", id: occurrence.billRuleID, in: book) else {
+    func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws {
+        let card = try cardRow(for: cardID)
+        guard let ruleRow = try findBillRule("BillRuleRecord", id: occurrence.billRuleID, in: card) else {
             throw BillError.ruleNotFound
         }
-        guard occurrence.bookID == bookID, Day.date(occurrence.dueDay) != nil,
+        guard occurrence.cardID == cardID, Day.date(occurrence.dueDay) != nil,
               occurrence.createdAt.timeIntervalSince1970.isFinite,
               occurrence.updatedAt.timeIntervalSince1970.isFinite else { throw EntryError.corruptStore }
         switch occurrence.status {
         case .recorded:
             guard let expenseID = occurrence.expenseID, let expense = try expenseRow(id: expenseID),
-                  (expense.value(forKey: "book") as? NSManagedObject) == book else { throw EntryError.corruptStore }
+                  (expense.value(forKey: "book") as? NSManagedObject) == card else { throw EntryError.corruptStore }
         case .pending, .skipped:
             guard occurrence.expenseID == nil else { throw EntryError.corruptStore }
         }
@@ -425,7 +425,7 @@ final class ExpenseRepository: ExpenseStore {
         guard try context.fetch(duplicate).isEmpty else { throw EntryError.corruptStore }
         if let globalExisting = try find("BillOccurrenceRecord", id: occurrence.id),
            (globalExisting.value(forKey: "rule") as? NSManagedObject) != ruleRow { throw EntryError.corruptStore }
-        changedBillBooks.insert(bookID)
+        changedBillCards.insert(cardID)
         do {
             let existing = try findOccurrence("BillOccurrenceRecord", id: occurrence.id, in: ruleRow)
             let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: "BillOccurrenceRecord", into: context)
@@ -441,14 +441,14 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func saveOccurrence(_ occurrence: BillOccurrence) throws {
-        try saveOccurrence(occurrence, in: occurrence.bookID)
+        try saveOccurrence(occurrence, in: occurrence.cardID)
     }
 
-    func deleteOccurrence(_ id: UUID, in bookID: UUID) throws {
+    func deleteOccurrence(_ id: UUID, in cardID: UUID) throws {
         do {
-            let book = try bookRow(for: bookID)
+            let card = try cardRow(for: cardID)
             let request = NSFetchRequest<NSManagedObject>(entityName: "BillOccurrenceRecord")
-            request.predicate = NSPredicate(format: "id == %@ AND rule.book == %@", id as NSUUID, book)
+            request.predicate = NSPredicate(format: "id == %@ AND rule.book == %@", id as NSUUID, card)
             request.fetchLimit = 1
             if let row = try context.fetch(request).first {
                 context.delete(row)
@@ -458,24 +458,24 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func deleteOccurrence(_ id: UUID) throws {
-        try deleteOccurrence(id, in: defaultBookID())
+        try deleteOccurrence(id, in: defaultCardID())
     }
 
-    func prepareInitialBudget(settings: PrototypeSettings, in bookID: UUID? = nil) throws {
-        let targetID = try bookID ?? defaultBookID()
+    func prepareInitialBudget(settings: PrototypeSettings, in cardID: UUID? = nil) throws {
+        let targetID = try cardID ?? defaultCardID()
         guard try budgets(in: targetID).isEmpty else { return }
-        try save(BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, bookID: targetID), in: targetID)
+        try save(BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, cardID: targetID), in: targetID)
     }
 
-    private func categoryRows(in book: NSManagedObject, bookID: UUID) throws -> [UUID: NSManagedObject] {
-        if transactionDepth > 0, let cached = categoryCache[bookID] { return cached }
-        let rows = (book.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
+    private func categoryRows(in card: NSManagedObject, cardID: UUID) throws -> [UUID: NSManagedObject] {
+        if transactionDepth > 0, let cached = categoryCache[cardID] { return cached }
+        let rows = (card.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
         var result: [UUID: NSManagedObject] = [:]
         for row in rows where !row.isDeleted {
             guard let id = row.value(forKey: "id") as? UUID, result[id] == nil else { throw EntryError.corruptStore }
             result[id] = row
         }
-        if transactionDepth > 0 { categoryCache[bookID] = result }
+        if transactionDepth > 0 { categoryCache[cardID] = result }
         return result
     }
 
@@ -496,12 +496,12 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     /// Category rows and candidate identities are loaded once, with bounded SQLite IN predicates.
-    func saveExpenses(_ batch: [Expense], in bookID: UUID) throws {
+    func saveExpenses(_ batch: [Expense], in cardID: UUID) throws {
         guard Set(batch.map(\.id)).count == batch.count else { throw EntryError.corruptStore }
         try BackendDiagnostics.measure("ExpenseBatch", count: batch.count) {
             try transaction {
-                let book = try bookRow(for: bookID)
-                _ = try categoryRows(in: book, bookID: bookID)
+                let card = try cardRow(for: cardID)
+                _ = try categoryRows(in: card, cardID: cardID)
                 let ids = batch.map(\.id)
                 var fetchedIDs = Set<UUID>()
                 for start in stride(from: 0, to: ids.count, by: 400) {
@@ -514,21 +514,21 @@ final class ExpenseRepository: ExpenseStore {
                     }
                     prefetchedExpenseIDs.formUnion(chunk)
                 }
-                for expense in batch { try save(expense, in: bookID) }
+                for expense in batch { try save(expense, in: cardID) }
             }
         }
     }
 
-    func save(_ expense: Expense, in bookID: UUID) throws {
-        let book = try bookRow(for: bookID)
-        let categoryRows = try categoryRows(in: book, bookID: bookID)
-        guard expense.bookID == nil || expense.bookID == bookID else { throw EntryError.corruptStore }
+    func save(_ expense: Expense, in cardID: UUID) throws {
+        let card = try cardRow(for: cardID)
+        let categoryRows = try categoryRows(in: card, cardID: cardID)
+        guard expense.cardID == nil || expense.cardID == cardID else { throw EntryError.corruptStore }
         try expense.validate(categories: categoryValues(categoryRows))
         do {
             let existing = try expenseRow(id: expense.id)
-            if let existing, let existingBook = existing.value(forKey: "book") as? NSManagedObject,
-               let existingID = existingBook.value(forKey: "id") as? UUID, existingID != bookID {
-                throw EntryError.corruptStore // Reject cross-book reparenting
+            if let existing, let existingCard = existing.value(forKey: "book") as? NSManagedObject,
+               let existingID = existingCard.value(forKey: "id") as? UUID, existingID != cardID {
+                throw EntryError.corruptStore // Reject cross-card reparenting
             }
             let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: "ExpenseRecord", into: context)
             if transactionDepth > 0 { expenseCache[expense.id] = row; prefetchedExpenseIDs.insert(expense.id) }
@@ -536,7 +536,7 @@ final class ExpenseRepository: ExpenseStore {
             row.setValue(expense.day, forKey: "day"); row.setValue(expense.note, forKey: "note")
             row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
             writeModelBFields(of: expense, to: row)
-            row.setValue(book, forKey: "book")
+            row.setValue(card, forKey: "book")
             for allocation in row.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] { context.delete(allocation) }
             for value in expense.allocations {
                 guard let category = categoryRows[value.categoryID] else { throw EntryError.missingCategory }
@@ -549,34 +549,34 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func save(_ expense: Expense) throws {
-        try save(expense, in: expense.bookID ?? defaultBookID())
+        try save(expense, in: expense.cardID ?? defaultCardID())
     }
 
-    func save(_ budget: BudgetVersion, in bookID: UUID) throws {
-        let book = try bookRow(for: bookID)
-        try budget.validate(categories: categories(in: bookID))
+    func save(_ budget: BudgetVersion, in cardID: UUID) throws {
+        let card = try cardRow(for: cardID)
+        try budget.validate(categories: categories(in: cardID))
         do {
-            let existingBudgets = (book.value(forKey: "budgets") as? Set<NSManagedObject>) ?? []
+            let existingBudgets = (card.value(forKey: "budgets") as? Set<NSManagedObject>) ?? []
             for row in existingBudgets where
                 row.value(forKey: "effectiveDay") as? String == budget.effectiveDay &&
                 row.value(forKey: "id") as? UUID != budget.id {
                 context.delete(row)
             }
-            let existingInBook = try findBudget("BudgetRecord", id: budget.id, in: book)
-            if existingInBook == nil, let globalExisting = try find("BudgetRecord", id: budget.id),
-               let existingBook = globalExisting.value(forKey: "book") as? NSManagedObject,
-               let existingID = existingBook.value(forKey: "id") as? UUID, existingID != bookID,
+            let existingInCard = try findBudget("BudgetRecord", id: budget.id, in: card)
+            if existingInCard == nil, let globalExisting = try find("BudgetRecord", id: budget.id),
+               let existingCard = globalExisting.value(forKey: "book") as? NSManagedObject,
+               let existingID = existingCard.value(forKey: "id") as? UUID, existingID != cardID,
                budget.id != BudgetVersion.legacyID {
-                throw EntryError.corruptStore // Reject cross-book reparenting
+                throw EntryError.corruptStore // Reject cross-card reparenting
             }
-            let row = existingInBook ?? NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
+            let row = existingInCard ?? NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
             row.setValue(budget.id, forKey: "id")
             row.setValue(budget.effectiveDay, forKey: "effectiveDay")
             row.setValue(budget.overallLimit, forKey: "overallLimit")
             row.setValue(budget.startDay, forKey: "startDay")
             row.setValue(budget.transitionEndDay, forKey: "transitionEndDay")
             row.setValue(budget.totalUntilDay, forKey: "totalUntilDay")
-            row.setValue(book, forKey: "book")
+            row.setValue(card, forKey: "book")
             for value in row.value(forKey: "categoryLimits") as? Set<NSManagedObject> ?? [] { context.delete(value) }
             for categoryLimit in budget.categoryLimits {
                 let value = NSEntityDescription.insertNewObject(forEntityName: "BudgetCategoryRecord", into: context)
@@ -589,35 +589,35 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func save(_ budget: BudgetVersion) throws {
-        try save(budget, in: budget.bookID ?? defaultBookID())
+        try save(budget, in: budget.cardID ?? defaultCardID())
     }
 
-    func saveCategory(_ category: ExpenseCategory, in bookID: UUID) throws {
-        categoryCache.removeValue(forKey: bookID)
-        let book = try bookRow(for: bookID)
-        let category = try category.validated(against: categories(in: bookID))
+    func saveCategory(_ category: ExpenseCategory, in cardID: UUID) throws {
+        categoryCache.removeValue(forKey: cardID)
+        let card = try cardRow(for: cardID)
+        let category = try category.validated(against: categories(in: cardID))
         do {
-            let row = try findCategory("CategoryRecord", id: category.id, in: book) ?? NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
+            let row = try findCategory("CategoryRecord", id: category.id, in: card) ?? NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
             row.setValue(category.id, forKey: "id")
             row.setValue(category.name, forKey: "name")
             row.setValue(category.symbol, forKey: "symbol")
-            row.setValue(book, forKey: "book")
+            row.setValue(card, forKey: "book")
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
     func saveCategory(_ category: ExpenseCategory) throws {
-        try saveCategory(category, in: defaultBookID())
+        try saveCategory(category, in: defaultCardID())
     }
 
-    func deleteCategory(_ id: UUID, in bookID: UUID) throws {
-        categoryCache.removeValue(forKey: bookID)
-        guard try !bills(in: bookID).contains(where: { $0.categoryID == id }) else { throw CategoryError.inUse }
-        guard try !expenses(in: bookID).contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
-        guard try !budgets(in: bookID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
+    func deleteCategory(_ id: UUID, in cardID: UUID) throws {
+        categoryCache.removeValue(forKey: cardID)
+        guard try !bills(in: cardID).contains(where: { $0.categoryID == id }) else { throw CategoryError.inUse }
+        guard try !expenses(in: cardID).contains(where: { $0.allocations.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
+        guard try !budgets(in: cardID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == id }) }) else { throw CategoryError.inUse }
         do {
-            let book = try bookRow(for: bookID)
-            if let row = try findCategory("CategoryRecord", id: id, in: book) {
+            let card = try cardRow(for: cardID)
+            if let row = try findCategory("CategoryRecord", id: id, in: card) {
                 context.delete(row)
                 try commitIfNeeded()
             }
@@ -625,7 +625,7 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func deleteCategory(_ id: UUID) throws {
-        try deleteCategory(id, in: defaultBookID())
+        try deleteCategory(id, in: defaultCardID())
     }
 
     func updateGlobalCategoryMetadata(id: UUID, name: String, symbol: String) throws {
@@ -645,11 +645,11 @@ final class ExpenseRepository: ExpenseStore {
         }
     }
 
-    func activateCategory(_ category: GlobalCategory, in bookID: UUID) throws {
-        categoryCache.removeValue(forKey: bookID)
-        let book = try bookRow(for: bookID)
+    func activateCategory(_ category: GlobalCategory, in cardID: UUID) throws {
+        categoryCache.removeValue(forKey: cardID)
+        let card = try cardRow(for: cardID)
         do {
-            if let existing = try findCategory("CategoryRecord", id: category.id, in: book) {
+            if let existing = try findCategory("CategoryRecord", id: category.id, in: card) {
                 existing.setValue(category.name, forKey: "name")
                 existing.setValue(category.symbol, forKey: "symbol")
             } else {
@@ -657,7 +657,7 @@ final class ExpenseRepository: ExpenseStore {
                 row.setValue(category.id, forKey: "id")
                 row.setValue(category.name, forKey: "name")
                 row.setValue(category.symbol, forKey: "symbol")
-                row.setValue(book, forKey: "book")
+                row.setValue(card, forKey: "book")
             }
             try commitIfNeeded()
         } catch {
@@ -666,15 +666,15 @@ final class ExpenseRepository: ExpenseStore {
         }
     }
 
-    func deactivateCategory(_ categoryID: UUID, in bookID: UUID) throws {
-        categoryCache.removeValue(forKey: bookID)
-        let book = try bookRow(for: bookID)
-        let hasAllocations = try expenses(in: bookID).contains(where: { $0.allocations.contains(where: { $0.categoryID == categoryID }) })
-        let hasBills = try bills(in: bookID).contains(where: { $0.categoryID == categoryID })
-        let hasBudgets = try budgets(in: bookID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == categoryID }) })
+    func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws {
+        categoryCache.removeValue(forKey: cardID)
+        let card = try cardRow(for: cardID)
+        let hasAllocations = try expenses(in: cardID).contains(where: { $0.allocations.contains(where: { $0.categoryID == categoryID }) })
+        let hasBills = try bills(in: cardID).contains(where: { $0.categoryID == categoryID })
+        let hasBudgets = try budgets(in: cardID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == categoryID }) })
         do {
             if !hasAllocations && !hasBills && !hasBudgets {
-                if let row = try findCategory("CategoryRecord", id: categoryID, in: book) {
+                if let row = try findCategory("CategoryRecord", id: categoryID, in: card) {
                     context.delete(row)
                     try commitIfNeeded()
                 }
@@ -692,14 +692,14 @@ final class ExpenseRepository: ExpenseStore {
         let byName = Dictionary(catalog.map { (norm($0.name), $0.id) }, uniquingKeysWith: { first, _ in first })
         var mapping: [UUID: [UUID: UUID]] = [:]
         for row in try objects("CategoryRecord") {
-            guard let book = row.value(forKey: "book") as? NSManagedObject,
-                  let bookID = book.value(forKey: "id") as? UUID,
+            guard let card = row.value(forKey: "book") as? NSManagedObject,
+                  let cardID = card.value(forKey: "id") as? UUID,
                   let oldID = row.value(forKey: "id") as? UUID,
                   let name = row.value(forKey: "name") as? String,
-                  let newID = byName[norm(name)], mapping[bookID]?[oldID] == nil else {
+                  let newID = byName[norm(name)], mapping[cardID]?[oldID] == nil else {
                 throw EntryError.corruptStore
             }
-            mapping[bookID, default: [:]][oldID] = newID
+            mapping[cardID, default: [:]][oldID] = newID
         }
         return mapping
     }
@@ -709,9 +709,9 @@ final class ExpenseRepository: ExpenseStore {
         let mapping = try categoryMigrationMapping(to: catalog)
         let byID = Dictionary(catalog.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         try transaction {
-            for profile in try books() {
-                let book = try bookRow(for: profile.id)
-                let rows = (book.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
+            for profile in try cards() {
+                let card = try cardRow(for: profile.id)
+                let rows = (card.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
                 var canonicalRows: [UUID: NSManagedObject] = [:]
                 for row in rows {
                     guard let oldID = row.value(forKey: "id") as? UUID,
@@ -730,14 +730,14 @@ final class ExpenseRepository: ExpenseStore {
                         canonicalRows[newID] = row
                     }
                 }
-                for budget in (book.value(forKey: "budgets") as? Set<NSManagedObject>) ?? [] {
+                for budget in (card.value(forKey: "budgets") as? Set<NSManagedObject>) ?? [] {
                     for limit in (budget.value(forKey: "categoryLimits") as? Set<NSManagedObject>) ?? [] {
                         guard let oldID = limit.value(forKey: "categoryID") as? UUID,
                               let newID = mapping[profile.id]?[oldID] else { throw EntryError.corruptStore }
                         limit.setValue(newID, forKey: "categoryID")
                     }
                 }
-                for bill in (book.value(forKey: "bills") as? Set<NSManagedObject>) ?? [] {
+                for bill in (card.value(forKey: "bills") as? Set<NSManagedObject>) ?? [] {
                     guard let oldID = bill.value(forKey: "categoryID") as? UUID,
                           let newID = mapping[profile.id]?[oldID] else { throw EntryError.corruptStore }
                     bill.setValue(newID, forKey: "categoryID")
@@ -752,41 +752,41 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     /// User-initiated promotion keeps categories but removes only recorded sample entries.
-    func startEmptyRealBook(_ profile: BookProfile) throws {
+    func startEmptyRealCard(_ profile: Card) throws {
         guard profile.kind == .real else { throw BackupError.invalid }
         do {
-            let book = try bookRow(for: BookProfile.sample.id)
+            let card = try cardRow(for: Card.demo.id)
             for expense in try objects("ExpenseRecord") {
-                if (expense.value(forKey: "book") as? NSManagedObject) == book {
+                if (expense.value(forKey: "book") as? NSManagedObject) == card {
                     try detachBillOccurrences(linkedTo: expense)
                     context.delete(expense)
                 }
             }
-            book.setValue(profile.id, forKey: "id")
-            book.setValue(profile.name, forKey: "name")
-            book.setValue(profile.colorIndex, forKey: "colorIndex")
-            writeModelBFields(of: profile, to: book)
+            card.setValue(profile.id, forKey: "id")
+            card.setValue(profile.name, forKey: "name")
+            card.setValue(profile.colorIndex, forKey: "colorIndex")
+            writeModelBFields(of: profile, to: card)
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
-    func renameRealBook(_ profile: BookProfile) throws {
+    func renameRealCard(_ profile: Card) throws {
         guard profile.kind == .real else { throw BackupError.invalid }
         do {
-            let book = try bookRow(for: profile.id)
-            book.setValue(profile.name, forKey: "name")
+            let card = try cardRow(for: profile.id)
+            card.setValue(profile.name, forKey: "name")
             try commitIfNeeded()
         } catch { context.rollback(); throw error }
     }
 
-    /// Deletes all expenses and their allocations in the specified book, or across all books if nil.
-    func clearExpenses(in bookID: UUID? = nil) throws {
+    /// Deletes all expenses and their allocations in the specified card, or across all cards if nil.
+    func clearExpenses(in cardID: UUID? = nil) throws {
         do {
-            let targetBook: NSManagedObject? = try bookID.map { try bookRow(for: $0) }
+            let targetCard: NSManagedObject? = try cardID.map { try cardRow(for: $0) }
             let allExpenses = try objects("ExpenseRecord")
             for expense in allExpenses {
-                if let targetBook {
-                    if (expense.value(forKey: "book") as? NSManagedObject) == targetBook {
+                if let targetCard {
+                    if (expense.value(forKey: "book") as? NSManagedObject) == targetCard {
                         for allocation in expense.value(forKey: "allocations") as? Set<NSManagedObject> ?? [] {
                             context.delete(allocation)
                         }
@@ -802,8 +802,8 @@ final class ExpenseRepository: ExpenseStore {
             let occurrences = try objects("BillOccurrenceRecord")
             for occ in occurrences {
                 if let rule = occ.value(forKey: "rule") as? NSManagedObject,
-                   let ruleBook = rule.value(forKey: "book") as? NSManagedObject {
-                    if targetBook == nil || ruleBook == targetBook {
+                   let ruleCard = rule.value(forKey: "book") as? NSManagedObject {
+                    if targetCard == nil || ruleCard == targetCard {
                         if occ.value(forKey: "expenseID") != nil {
                             occ.setValue(nil, forKey: "expenseID")
                             occ.setValue(BillOccurrenceStatus.skipped.rawValue, forKey: "status")
@@ -816,35 +816,35 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
-    /// Performs a complete factory wipe of Core Data entities and initializes a single fresh real book.
-    func resetToFreshWorkspace(bookName: String, categories: [ExpenseCategory] = ExpenseCategory.defaults) throws -> (bookID: UUID, categories: [ExpenseCategory]) {
+    /// Performs a complete factory wipe of Core Data entities and initializes a single fresh real card.
+    func resetToFreshWorkspace(cardName: String, categories: [ExpenseCategory] = ExpenseCategory.defaults) throws -> (cardID: UUID, categories: [ExpenseCategory]) {
         do {
             for entity in ["BillOccurrenceRecord", "BillRuleRecord", "AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
                 for row in try objects(entity) { context.delete(row) }
             }
-            let newBookID = UUID()
-            let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
-            book.setValue(newBookID, forKey: "id")
-            book.setValue(bookName, forKey: "name")
+            let newCardID = UUID()
+            let card = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+            card.setValue(newCardID, forKey: "id")
+            card.setValue(cardName, forKey: "name")
             var createdCategories: [ExpenseCategory] = []
             for category in categories {
                 let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
                 row.setValue(category.id, forKey: "id")
                 row.setValue(category.name, forKey: "name")
                 row.setValue(category.symbol, forKey: "symbol")
-                row.setValue(book, forKey: "book")
+                row.setValue(card, forKey: "book")
                 createdCategories.append(category)
             }
-            let initialBudget = BudgetVersion.initial(overallLimit: 5_000_000 * 100, startDay: 1, date: .now, bookID: newBookID)
+            let initialBudget = BudgetVersion.initial(overallLimit: 5_000_000 * 100, startDay: 1, date: .now, cardID: newCardID)
             let budgetRow = NSEntityDescription.insertNewObject(forEntityName: "BudgetRecord", into: context)
             budgetRow.setValue(initialBudget.id, forKey: "id")
             budgetRow.setValue(initialBudget.overallLimit, forKey: "overallLimit")
             budgetRow.setValue(initialBudget.startDay, forKey: "startDay")
             budgetRow.setValue(initialBudget.effectiveDay, forKey: "effectiveDay")
             budgetRow.setValue(initialBudget.transitionEndDay, forKey: "transitionEndDay")
-            budgetRow.setValue(book, forKey: "book")
+            budgetRow.setValue(card, forKey: "book")
             try commitIfNeeded()
-            return (newBookID, createdCategories)
+            return (newCardID, createdCategories)
         } catch {
             context.rollback()
             throw error
@@ -858,17 +858,17 @@ final class ExpenseRepository: ExpenseStore {
             for entity in ["BillOccurrenceRecord", "BillRuleRecord", "AllocationRecord", "ExpenseRecord", "BudgetCategoryRecord", "BudgetRecord", "CategoryRecord", "Book"] {
                 for row in try objects(entity) { context.delete(row) }
             }
-            for item in workspace.books {
-                let book = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
-                book.setValue(item.book.id, forKey: "id")
-                book.setValue(item.book.name, forKey: "name")
-                book.setValue(item.book.colorIndex, forKey: "colorIndex")
-                writeModelBFields(of: item.book, to: book)
+            for item in workspace.cards {
+                let card = NSEntityDescription.insertNewObject(forEntityName: "Book", into: context)
+                card.setValue(item.card.id, forKey: "id")
+                card.setValue(item.card.name, forKey: "name")
+                card.setValue(item.card.colorIndex, forKey: "colorIndex")
+                writeModelBFields(of: item.card, to: card)
                 var categoryRows: [UUID: NSManagedObject] = [:]
                 for category in item.categories {
                     let row = NSEntityDescription.insertNewObject(forEntityName: "CategoryRecord", into: context)
                     row.setValue(category.id, forKey: "id"); row.setValue(category.name, forKey: "name")
-                    row.setValue(category.symbol, forKey: "symbol"); row.setValue(book, forKey: "book")
+                    row.setValue(category.symbol, forKey: "symbol"); row.setValue(card, forKey: "book")
                     categoryRows[category.id] = row
                 }
                 for expense in item.expenses {
@@ -877,7 +877,7 @@ final class ExpenseRepository: ExpenseStore {
                     row.setValue(expense.day, forKey: "day"); row.setValue(expense.note, forKey: "note")
                     row.setValue(expense.source, forKey: "source"); row.setValue(expense.createdAt, forKey: "createdAt")
                     writeModelBFields(of: expense, to: row)
-                    row.setValue(book, forKey: "book")
+                    row.setValue(card, forKey: "book")
                     for value in expense.allocations {
                         let allocation = NSEntityDescription.insertNewObject(forEntityName: "AllocationRecord", into: context)
                         allocation.setValue(value.amount, forKey: "amount")
@@ -886,7 +886,7 @@ final class ExpenseRepository: ExpenseStore {
                     }
                 }
                 let budgets = item.budgets.isEmpty
-                    ? [BudgetVersion.initial(overallLimit: workspace.settings.budget, startDay: workspace.settings.startDay, date: workspace.exportedAt, bookID: item.book.id)]
+                    ? [BudgetVersion.initial(overallLimit: workspace.settings.budget, startDay: workspace.settings.startDay, date: workspace.exportedAt, cardID: item.card.id)]
                     : item.budgets
                 for budget in budgets {
                     try budget.validate(categories: item.categories)
@@ -897,7 +897,7 @@ final class ExpenseRepository: ExpenseStore {
                     row.setValue(budget.startDay, forKey: "startDay")
                     row.setValue(budget.transitionEndDay, forKey: "transitionEndDay")
                     row.setValue(budget.totalUntilDay, forKey: "totalUntilDay")
-                    row.setValue(book, forKey: "book")
+                    row.setValue(card, forKey: "book")
                     for categoryLimit in budget.categoryLimits {
                         let value = NSEntityDescription.insertNewObject(forEntityName: "BudgetCategoryRecord", into: context)
                         value.setValue(categoryLimit.categoryID, forKey: "categoryID")
@@ -935,7 +935,7 @@ final class ExpenseRepository: ExpenseStore {
                         row.setValue(bill.createdAt, forKey: "createdAt")
                         row.setValue(bill.scheduleEffectiveDay, forKey: "scheduleEffectiveDay")
                         row.setValue(bill.scheduleRevision, forKey: "scheduleRevision")
-                        row.setValue(book, forKey: "book")
+                        row.setValue(card, forKey: "book")
                         billRows[bill.id] = row
                     }
                 }
@@ -962,9 +962,9 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
-    /// Replace single-book legacy backup by wrapping it into WorkspaceBackup
-    func replace(with backup: BookBackup) throws {
-        try replace(with: WorkspaceBackup(singleBook: backup))
+    /// Replace single-card legacy backup by wrapping it into WorkspaceBackup
+    func replace(with backup: CardBackup) throws {
+        try replace(with: WorkspaceBackup(singleCard: backup))
     }
 
     func delete(_ id: UUID) throws {
@@ -977,11 +977,11 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
-    func delete(_ id: UUID, in bookID: UUID) throws { try delete(id, in: bookID, at: .now) }
+    func delete(_ id: UUID, in cardID: UUID) throws { try delete(id, in: cardID, at: .now) }
 
-    func delete(_ id: UUID, in bookID: UUID, at date: Date) throws {
-        let book = try bookRow(for: bookID)
-        guard let row = try findCategory("ExpenseRecord", id: id, in: book) else { throw EntryError.corruptStore }
+    func delete(_ id: UUID, in cardID: UUID, at date: Date) throws {
+        let card = try cardRow(for: cardID)
+        guard let row = try findCategory("ExpenseRecord", id: id, in: card) else { throw EntryError.corruptStore }
         do {
             try detachBillOccurrences(linkedTo: row, at: date)
             context.delete(row)
@@ -989,29 +989,29 @@ final class ExpenseRepository: ExpenseStore {
         } catch { context.rollback(); throw error }
     }
 
-    func bookRow(for id: UUID) throws -> NSManagedObject {
-        if transactionDepth > 0, let cached = bookCache[id], !cached.isDeleted { return cached }
-        guard let book = try find("Book", id: id) else { throw EntryError.corruptStore }
-        if transactionDepth > 0 { bookCache[id] = book }
-        return book
+    func cardRow(for id: UUID) throws -> NSManagedObject {
+        if transactionDepth > 0, let cached = cardCache[id], !cached.isDeleted { return cached }
+        guard let card = try find("Book", id: id) else { throw EntryError.corruptStore }
+        if transactionDepth > 0 { cardCache[id] = card }
+        return card
     }
 
-    private func defaultBook() throws -> NSManagedObject {
-        let books = try objects("Book")
-        guard let first = books.first else { throw EntryError.corruptStore }
+    private func defaultCard() throws -> NSManagedObject {
+        let cards = try objects("Book")
+        guard let first = cards.first else { throw EntryError.corruptStore }
         return first
     }
 
-    private func defaultBookID() throws -> UUID {
-        guard let id = try defaultBook().value(forKey: "id") as? UUID else { throw EntryError.corruptStore }
+    private func defaultCardID() throws -> UUID {
+        guard let id = try defaultCard().value(forKey: "id") as? UUID else { throw EntryError.corruptStore }
         return id
     }
 
     private func detachBillOccurrences(linkedTo expense: NSManagedObject, at date: Date = .now) throws {
         guard let id = expense.value(forKey: "id") as? UUID,
-              let book = expense.value(forKey: "book") as? NSManagedObject else { throw EntryError.corruptStore }
+              let card = expense.value(forKey: "book") as? NSManagedObject else { throw EntryError.corruptStore }
         let request = NSFetchRequest<NSManagedObject>(entityName: "BillOccurrenceRecord")
-        request.predicate = NSPredicate(format: "expenseID == %@ AND rule.book == %@", id as NSUUID, book)
+        request.predicate = NSPredicate(format: "expenseID == %@ AND rule.book == %@", id as NSUUID, card)
         for occurrence in try context.fetch(request) {
             occurrence.setValue(nil, forKey: "expenseID")
             occurrence.setValue(BillOccurrenceStatus.skipped.rawValue, forKey: "status")
@@ -1036,23 +1036,23 @@ final class ExpenseRepository: ExpenseStore {
         return try context.fetch(request).first
     }
 
-    private func findCategory(_ entity: String, id: UUID, in book: NSManagedObject) throws -> NSManagedObject? {
+    private func findCategory(_ entity: String, id: UUID, in card: NSManagedObject) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
-        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, book)
+        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, card)
         request.fetchLimit = 1
         return try context.fetch(request).first
     }
 
-    private func findBudget(_ entity: String, id: UUID, in book: NSManagedObject) throws -> NSManagedObject? {
+    private func findBudget(_ entity: String, id: UUID, in card: NSManagedObject) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
-        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, book)
+        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, card)
         request.fetchLimit = 1
         return try context.fetch(request).first
     }
 
-    private func findBillRule(_ entity: String, id: UUID, in book: NSManagedObject) throws -> NSManagedObject? {
+    private func findBillRule(_ entity: String, id: UUID, in card: NSManagedObject) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
-        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, book)
+        request.predicate = NSPredicate(format: "id == %@ AND book == %@", id as NSUUID, card)
         request.fetchLimit = 1
         return try context.fetch(request).first
     }

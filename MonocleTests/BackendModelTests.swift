@@ -8,7 +8,7 @@ final class BackendModelTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let repository = try ExpenseRepository(url: directory.appendingPathComponent("Test.sqlite"))
-        try repository.prepareSampleBook()
+        try repository.prepareSampleCard()
         let state = FileLocalStateStore(directory: directory)
         var preferences = WorkspacePreferences()
         preferences.globalCategories = GlobalCategory.defaults
@@ -19,20 +19,20 @@ final class BackendModelTests: XCTestCase {
     func testCommittedRealCardSaveClearsOnlyItsDurableDraft() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let real = try service.createBook(named: "Real")
+        let real = try service.createCard(named: "Real")
         var sampleDraft = ExpenseDraft()
-        sampleDraft.bookID = BookProfile.sample.id; sampleDraft.amount = "99"
-        try state.saveDraft(sampleDraft, for: BookProfile.sample.id)
+        sampleDraft.cardID = Card.demo.id; sampleDraft.amount = "99"
+        try state.saveDraft(sampleDraft, for: Card.demo.id)
         var realDraft = ExpenseDraft()
-        realDraft.bookID = real.id; realDraft.amount = "1500"; realDraft.categoryID = ExpenseCategory.defaults[0].id
+        realDraft.cardID = real.id; realDraft.amount = "1500"; realDraft.categoryID = ExpenseCategory.defaults[0].id
         try state.saveDraft(realDraft, for: real.id)
         let model = AppModel(expenses: service, state: state, draft: realDraft)
         XCTAssertNil(model.startupError)
         XCTAssertTrue(model.saveDraft())
-        XCTAssertEqual(try state.loadDraft(for: BookProfile.sample.id), sampleDraft)
+        XCTAssertEqual(try state.loadDraft(for: Card.demo.id), sampleDraft)
         let cleared = try state.loadDraft(for: real.id)
         XCTAssertFalse(cleared.hasContent)
-        XCTAssertEqual(cleared.bookID, real.id)
+        XCTAssertEqual(cleared.cardID, real.id)
         XCTAssertNotEqual(cleared.id, realDraft.id)
         XCTAssertEqual(try service.expenses(for: real.id).count, 1)
     }
@@ -40,9 +40,9 @@ final class BackendModelTests: XCTestCase {
     func testDraftCleanupFailureStillReportsCommittedSave() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let real = try service.createBook(named: "Real")
+        let real = try service.createCard(named: "Real")
         var draft = ExpenseDraft()
-        draft.bookID = real.id; draft.amount = "1500"; draft.categoryID = ExpenseCategory.defaults[0].id
+        draft.cardID = real.id; draft.amount = "1500"; draft.categoryID = ExpenseCategory.defaults[0].id
         let failing = FailingModelState(base: state)
         let model = AppModel(expenses: service, state: failing, draft: draft)
         failing.failClearedDraft = real.id
@@ -68,15 +68,15 @@ final class BackendModelTests: XCTestCase {
     func testDirectServiceCommitInvalidatesWarmedInactiveCardCache() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let real = try service.createBook(named: "Shortcut card")
+        let real = try service.createCard(named: "Shortcut card")
         let model = AppModel(expenses: service, state: state)
         XCTAssertEqual(model.expenses(for: real.id).count, 0)
-        _ = model.activities(selectedBookID: nil, allBooks: true)
+        _ = model.activities(selectedCardID: nil, allCards: true)
         let amount: Int64 = 15_000
-        let expense = Expense(amount: amount, day: Day.string(.now), note: "", allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: amount)], bookID: real.id)
+        let expense = Expense(amount: amount, day: Day.string(.now), note: "", allocations: [.init(categoryID: ExpenseCategory.defaults[0].id, amount: amount)], cardID: real.id)
         try service.save(expense)
         XCTAssertEqual(model.expenses(for: real.id).map(\.id), [expense.id])
-        XCTAssertTrue(model.activities(selectedBookID: nil, allBooks: true).contains(where: { $0.id == expense.id }))
+        XCTAssertTrue(model.activities(selectedCardID: nil, allCards: true).contains(where: { $0.id == expense.id }))
     }
 
     func testCardCreationPreferenceFailureRollsBackDiskAndMemory() throws {
@@ -87,9 +87,9 @@ final class BackendModelTests: XCTestCase {
         let model = AppModel(expenses: service, state: failing, backups: backups)
         let before = model.workspacePreferences
         failing.failNextWorkspaceWrite = true
-        XCTAssertThrowsError(try model.createBook(named: "Must roll back"))
-        XCTAssertEqual(try repository.books().count, 1)
-        XCTAssertEqual(model.books.count, 1)
+        XCTAssertThrowsError(try model.createCard(named: "Must roll back"))
+        XCTAssertEqual(try repository.cards().count, 1)
+        XCTAssertEqual(model.cards.count, 1)
         XCTAssertEqual(model.workspacePreferences, before)
         XCTAssertEqual(try state.loadWorkspacePreferences(), before)
         XCTAssertFalse(backups.requiresRecovery)
@@ -98,17 +98,17 @@ final class BackendModelTests: XCTestCase {
     func testFailedPresentationCommandKeepsPriorStackVisibilityAndOrder() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let real = try service.createBook(named: "Real")
+        let real = try service.createCard(named: "Real")
         let failing = FailingModelState(base: state)
         let model = AppModel(expenses: service, state: failing)
         let before = model.workspacePreferences
         failing.failNextWorkspaceWrite = true
         model.setCardAlwaysHidden(id: real.id, isHidden: true)
         XCTAssertEqual(model.workspacePreferences, before)
-        XCTAssertFalse(model.alwaysHiddenBookIDs.contains(real.id))
+        XCTAssertFalse(model.alwaysHiddenCardIDs.contains(real.id))
         XCTAssertNotNil(model.error)
         failing.failNextWorkspaceWrite = true
-        model.moveBookToFront(real.id)
+        model.moveCardToFront(real.id)
         XCTAssertEqual(model.workspacePreferences, before)
         XCTAssertEqual(try state.loadWorkspacePreferences(), before)
     }
@@ -116,13 +116,13 @@ final class BackendModelTests: XCTestCase {
     func testCategoryMigrationWithoutRecoveryCoordinatorRestoresAllLocalStateOnFailure() throws {
         let (directory, repository, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let real = try service.createBook(named: "Real")
+        let real = try service.createCard(named: "Real")
         let category = ExpenseCategory.defaults[0]
         try repository.saveCategory(.init(id: category.id, name: "Travel snack", symbol: category.symbol), in: real.id)
         try service.reload()
-        var sampleDraft = ExpenseDraft(); sampleDraft.bookID = BookProfile.sample.id; sampleDraft.categoryID = category.id
-        var realDraft = ExpenseDraft(); realDraft.bookID = real.id; realDraft.categoryID = category.id
-        try state.saveDraft(sampleDraft, for: BookProfile.sample.id)
+        var sampleDraft = ExpenseDraft(); sampleDraft.cardID = Card.demo.id; sampleDraft.categoryID = category.id
+        var realDraft = ExpenseDraft(); realDraft.cardID = real.id; realDraft.categoryID = category.id
+        try state.saveDraft(sampleDraft, for: Card.demo.id)
         try state.saveDraft(realDraft, for: real.id)
         try state.saveWorkspacePreferences(WorkspacePreferences())
         let before = try repository.categories(in: real.id)
@@ -132,7 +132,7 @@ final class BackendModelTests: XCTestCase {
         XCTAssertNotNil(model.startupError)
         XCTAssertEqual(try repository.categories(in: real.id), before)
         XCTAssertEqual(try state.loadDraft(for: real.id), realDraft)
-        XCTAssertEqual(try state.loadDraft(for: BookProfile.sample.id), sampleDraft)
+        XCTAssertEqual(try state.loadDraft(for: Card.demo.id), sampleDraft)
         XCTAssertTrue(try state.loadWorkspacePreferences().globalCategories.isEmpty)
     }
 
@@ -142,15 +142,15 @@ final class BackendModelTests: XCTestCase {
         let backups = BackupService(directory: directory, repository: repository, state: state, expenses: service)
         let model = AppModel(expenses: service, state: state, backups: backups)
         var candidate = try backups.workspaceSnapshot(currentDraft: model.draft, settings: model.settings)
-        candidate.preferences.alwaysHiddenBookIDs = [BookProfile.sample.id]
+        candidate.preferences.alwaysHiddenCardIDs = [Card.demo.id]
         candidate.settings.appLockTimeout = .fiveMinutes
         try model.restoreWorkspaceBackup(candidate)
-        XCTAssertEqual(model.alwaysHiddenBookIDs, [BookProfile.sample.id])
-        XCTAssertTrue(model.reportingData(for: .stack(id: model.stacks[0].id, name: model.stacks[0].name)).books.isEmpty)
+        XCTAssertEqual(model.alwaysHiddenCardIDs, [Card.demo.id])
+        XCTAssertTrue(model.reportingData(for: .stack(id: model.stacks[0].id, name: model.stacks[0].name)).cards.isEmpty)
         XCTAssertEqual(model.appLock.timeout, .fiveMinutes)
         XCTAssertTrue(model.appLock.needsAuthentication)
         model.autoAppearance = true
-        XCTAssertEqual(try state.loadWorkspacePreferences().alwaysHiddenBookIDs, [BookProfile.sample.id])
+        XCTAssertEqual(try state.loadWorkspacePreferences().alwaysHiddenCardIDs, [Card.demo.id])
     }
 
     func testMalformedSettingsBlockInitializationWithoutReplacingFilesOrCategories() throws {
@@ -178,13 +178,13 @@ final class BackendModelTests: XCTestCase {
         let backups = BackupService(directory: directory, repository: repository, state: state, expenses: service)
         var legacyDraft = ExpenseDraft(); legacyDraft.categoryID = ExpenseCategory.defaults[0].id
         let model = AppModel(expenses: service, state: state, draft: legacyDraft, settings: settings, backups: backups)
-        let real = try model.createBook(named: "Real", selectedCategoryIDs: [])
-        try model.renameBook(id: BookProfile.sample.id, to: "Renamed sample")
-        XCTAssertEqual(try state.loadSettings().book.name, "Renamed sample")
+        let real = try model.createCard(named: "Real", selectedCategoryIDs: [])
+        try model.renameCard(id: Card.demo.id, to: "Renamed sample")
+        XCTAssertEqual(try state.loadSettings().card.name, "Renamed sample")
         try backups.workspaceSnapshot(currentDraft: model.draft, settings: model.settings).validate()
-        try model.deleteBook(id: BookProfile.sample.id)
-        XCTAssertEqual(model.settings.book.id, real.id)
-        XCTAssertEqual(model.draft.bookID, real.id)
+        try model.deleteCard(id: Card.demo.id)
+        XCTAssertEqual(model.settings.card.id, real.id)
+        XCTAssertEqual(model.draft.cardID, real.id)
         XCTAssertNil(model.draft.categoryID)
         XCTAssertEqual(model.settings.categoryRules, [rule])
         XCTAssertEqual(model.settings.archivedCategoryIDs, settings.archivedCategoryIDs)
@@ -203,13 +203,13 @@ final class BackendModelTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let backups = BackupService(directory: directory, repository: repository, state: state, expenses: service)
         var candidate = try backups.workspaceSnapshot(currentDraft: ExpenseDraft(), settings: PrototypeSettings())
-        candidate.settings.book.name = "Stale name"
+        candidate.settings.card.name = "Stale name"
         XCTAssertThrowsError(try candidate.validate())
         candidate.formatVersion = 6
-        XCTAssertEqual(try candidate.normalized().settings.book, .sample)
+        XCTAssertEqual(try candidate.normalized().settings.card, .demo)
         let model = AppModel(expenses: service, state: state, settings: candidate.settings)
         XCTAssertNil(model.startupError)
-        XCTAssertEqual(model.settings.book, .sample)
+        XCTAssertEqual(model.settings.card, .demo)
     }
 
     func testWidgetMissingCorruptAndPreviousDayStatesContainNoSampleSpending() throws {
@@ -233,9 +233,9 @@ final class BackendModelTests: XCTestCase {
     func testMissingSeedMarkerNeverSeedsARealCard() throws {
         let (directory, repository, service, _) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let real = try service.createBook(named: "Real")
-        try repository.deleteBook(id: BookProfile.sample.id)
-        try SampleBookSeeder.seedIfNeeded(repository: repository, directory: directory)
+        let real = try service.createCard(named: "Real")
+        try repository.deleteCard(id: Card.demo.id)
+        try SampleCardSeeder.seedIfNeeded(repository: repository, directory: directory)
         XCTAssertTrue(try repository.expenses(in: real.id).isEmpty)
     }
 }
@@ -247,11 +247,11 @@ private final class FailingModelState: LocalStateStore {
     var failNextWorkspaceWrite = false
     init(base: FileLocalStateStore) { self.base = base }
     func loadDraft() throws -> ExpenseDraft { try base.loadDraft() }
-    func saveDraft(_ value: ExpenseDraft) throws { try saveDraft(value, for: value.bookID ?? BookProfile.sample.id) }
-    func loadDraft(for bookID: UUID) throws -> ExpenseDraft { try base.loadDraft(for: bookID) }
-    func saveDraft(_ value: ExpenseDraft, for bookID: UUID) throws {
-        if bookID == failClearedDraft, !value.hasContent { throw CocoaError(.fileWriteNoPermission) }
-        try base.saveDraft(value, for: bookID)
+    func saveDraft(_ value: ExpenseDraft) throws { try saveDraft(value, for: value.cardID ?? Card.demo.id) }
+    func loadDraft(for cardID: UUID) throws -> ExpenseDraft { try base.loadDraft(for: cardID) }
+    func saveDraft(_ value: ExpenseDraft, for cardID: UUID) throws {
+        if cardID == failClearedDraft, !value.hasContent { throw CocoaError(.fileWriteNoPermission) }
+        try base.saveDraft(value, for: cardID)
     }
     func loadSettings() throws -> PrototypeSettings { try base.loadSettings() }
     func saveSettings(_ value: PrototypeSettings) throws { try base.saveSettings(value) }

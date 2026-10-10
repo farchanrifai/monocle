@@ -3,14 +3,14 @@ import SwiftUI
 /// Paid with labels: an optional answer to "what paid for this?". Never a balance.
 struct PaymentMethodsView: View {
     @Bindable var model: AppModel
-    let bookID: UUID
+    let cardID: UUID
     @State private var editing: PaymentMethod?
 
-    private var book: BookProfile? { model.books.first { $0.id == bookID } }
-    private var defaultTitle: String { "Default for \(book?.name ?? "this card")" }
+    private var card: Card? { model.cards.first { $0.id == cardID } }
+    private var defaultTitle: String { "Default for \(card?.name ?? "this card")" }
     private var defaultSelection: Binding<UUID?> {
-        Binding(get: { book?.defaultPaidWithID },
-                set: { id in model.performUIAction { try model.setDefaultPaidWith(id, for: bookID) } })
+        Binding(get: { card?.defaultPaidWithID },
+                set: { id in model.performUIAction { try model.setDefaultPaidWith(id, for: cardID) } })
     }
 
     var body: some View {
@@ -79,12 +79,12 @@ private struct PaymentMethodEditor: View {
 /// Workspace reporting currency, and the active card's budget and spending currencies.
 struct CurrencySettingsView: View {
     @Bindable var model: AppModel
-    let bookID: UUID
+    let cardID: UUID
     @State private var pendingReporting: String?
     @State private var working = false
     @State private var error: String?
 
-    private var card: BookProfile? { model.books.first { $0.id == bookID } }
+    private var card: Card? { model.cards.first { $0.id == cardID } }
     private var choices: [String] {
         var seen = Set<String>()
         return ([model.reportingCurrency] + Money.commonCurrencies).filter { seen.insert($0).inserted }
@@ -102,12 +102,12 @@ struct CurrencySettingsView: View {
             if let card {
                 Section {
                     Picker("Budget currency", selection: Binding(get: { model.currency(of: card) }, set: { code in
-                        run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: bookID) }
+                        run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: cardID) }
                     })) {
                         ForEach(choices, id: \.self) { Text($0 == model.reportingCurrency ? "\($0) · reporting" : $0).tag($0) }
                     }.accessibilityIdentifier("cardCurrency")
                     Picker("Spending currency", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
-                        run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: bookID) }
+                        run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: cardID) }
                     })) {
                         ForEach(choices, id: \.self) { Text($0).tag($0) }
                     }.accessibilityIdentifier("spendingCurrency")

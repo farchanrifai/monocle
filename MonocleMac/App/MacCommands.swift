@@ -142,7 +142,7 @@ final class MacAppState {
             if inspectorSelection != nil { inspectorSelection = nil } // a selection from another screen has no row to match
             // Analytics opens on whatever card or stack the sidebar last showed.
             switch destination {
-            case .card(let id): analyticsScope = .card(id: id, name: model.books.first { $0.id == id }?.name ?? "Card")
+            case .card(let id): analyticsScope = .card(id: id, name: model.cards.first { $0.id == id }?.name ?? "Card")
             case .stack(let id): analyticsScope = .stack(id: id, name: model.stacks.first { $0.id == id }?.name ?? "Stack")
             case .overview, .activity, .cards: analyticsScope = .allCards
             default: break
@@ -155,8 +155,8 @@ final class MacAppState {
     var editingBill: BillRule?
     var regularEntryVisible = false
     var addingCard = false
-    var editingCard: BookProfile?
-    var deletingCard: BookProfile?
+    var editingCard: Card?
+    var deletingCard: Card?
     var editingStack: CardStack?
     var showHiddenCards = UserDefaults.standard.object(forKey: "MacShowHiddenCards") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showHiddenCards, forKey: "MacShowHiddenCards") }
@@ -229,10 +229,10 @@ final class MacAppState {
 
     /// Lists categories every selected expense's card has, so any of them is valid for all.
     func sharedCategories(for expenses: [Expense]) -> [ExpenseCategory] {
-        let books = Set(expenses.map { $0.bookID ?? model.activeBookID })
-        guard let first = books.first else { return [] }
+        let cards = Set(expenses.map { $0.cardID ?? model.activeCardID })
+        guard let first = cards.first else { return [] }
         let firstCategories = model.activeCategories(for: first)
-        let common = books.dropFirst().reduce(Set(firstCategories.map(\.id))) { $0.intersection(model.activeCategories(for: $1).map(\.id)) }
+        let common = cards.dropFirst().reduce(Set(firstCategories.map(\.id))) { $0.intersection(model.activeCategories(for: $1).map(\.id)) }
         return firstCategories.filter { common.contains($0.id) }
     }
 
@@ -274,8 +274,8 @@ final class MacAppState {
         result += model.stacks.map { stack in
             .init(id: "stack.\(stack.id)", title: "Open \(stack.name)", symbol: stack.icon, commandID: nil, destination: .stack(stack.id))
         }
-        result += model.books.map { book in
-            .init(id: "card.\(book.id)", title: "Open \(book.name)", symbol: "creditcard.fill", commandID: nil, destination: .card(book.id))
+        result += model.cards.map { card in
+            .init(id: "card.\(card.id)", title: "Open \(card.name)", symbol: "creditcard.fill", commandID: nil, destination: .card(card.id))
         }
         result += [
             .init(id: MacCommandID.newExpense.rawValue, title: "New Expense", symbol: "plus.circle", commandID: .newExpense, destination: nil),
@@ -377,11 +377,11 @@ final class MacAppState {
     }
 
     /// Deleting cascades the card's expenses, budgets and bills; callers confirm first.
-    func deleteCard(_ book: BookProfile) {
-        model.performUIAction { try model.deleteBook(id: book.id) }
-        guard !model.books.contains(where: { $0.id == book.id }) else { return }
-        if destination == .card(book.id) { destination = .cards }
-        if inspectorSelection == .card(book.id) { inspect(nil) }
+    func deleteCard(_ card: Card) {
+        model.performUIAction { try model.deleteCard(id: card.id) }
+        guard !model.cards.contains(where: { $0.id == card.id }) else { return }
+        if destination == .card(card.id) { destination = .cards }
+        if inspectorSelection == .card(card.id) { inspect(nil) }
     }
 
     func deleteStack(_ stack: CardStack) {
@@ -389,12 +389,12 @@ final class MacAppState {
         if destination == .stack(stack.id), !model.stacks.contains(where: { $0.id == stack.id }) { destination = .cards }
     }
 
-    func setCardHidden(_ book: BookProfile, _ hidden: Bool) {
-        model.setCardAlwaysHidden(id: book.id, isHidden: hidden)
+    func setCardHidden(_ card: Card, _ hidden: Bool) {
+        model.setCardAlwaysHidden(id: card.id, isHidden: hidden)
     }
 
     func selectCard(_ id: UUID) {
-        _ = model.selectBook(id)
+        _ = model.selectCard(id)
         destination = .card(id)
         inspect(.card(id))
     }
