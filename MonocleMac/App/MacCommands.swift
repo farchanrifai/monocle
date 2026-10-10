@@ -144,6 +144,7 @@ final class MacAppState {
     var inspectorSelection: MacInspectorSelection?
     var inspectorVisible = true { didSet { UserDefaults.standard.set(inspectorVisible, forKey: "MacInspectorVisible") } }
     var editingBill: BillRule?
+    var regularEntryVisible = false
     var addingCard = false
     var editingCard: BookProfile?
     var deletingCard: BookProfile?
@@ -152,7 +153,6 @@ final class MacAppState {
         didSet { UserDefaults.standard.set(showHiddenCards, forKey: "MacShowHiddenCards") }
     }
     var commandBarVisible = false
-    var regularEntryVisible = false
     var searchText = ""
     var searchFocusToken = UUID()
     var transferSheet: DataTransferSheet?
@@ -169,11 +169,11 @@ final class MacAppState {
     }
 
     func edit(_ expense: Expense) {
-        model.edit(expense); model.showEntry = false; regularEntryVisible = true
+        model.edit(expense); model.showEntry = false; showEntryPanel()
     }
 
     func repeatExpense(_ expense: Expense) {
-        model.repeatExpense(expense); model.showEntry = false; regularEntryVisible = true
+        model.repeatExpense(expense); model.showEntry = false; showEntryPanel()
     }
 
     /// Deletes without confirmation; Edit ▸ Undo (⌘Z) restores all of them, and Redo deletes again.
@@ -339,7 +339,7 @@ final class MacAppState {
         switch id {
         case .commandBar: commandBarVisible = true
         case .newExpense:
-            model.openEntry(); model.showEntry = false; regularEntryVisible = true
+            model.openEntry(); model.showEntry = false; showEntryPanel()
         case .quickRecord: showQuickRecord()
         case .focusSearch: searchFocusToken = UUID()
         case .toggleSidebar: NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
@@ -385,8 +385,11 @@ final class MacAppState {
 
     private func showQuickRecord() {
         model.openEntry(); model.showEntry = false
-        quickPanel.show()
+        quickPanel.show(title: "Quick Record")
     }
+
+    /// In-app entry is a sheet; the global hotkey uses the floating panel. Both show `MacExpenseForm`.
+    func showEntryPanel() { regularEntryVisible = true }
 
     private func registerGlobalShortcut() {
         guard let chord = shortcut(for: .quickRecord) else { return }

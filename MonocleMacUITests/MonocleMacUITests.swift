@@ -42,7 +42,7 @@ import XCTest
         XCTAssertTrue(app.textFields["commandBar"].waitForExistence(timeout: 2))
         app.typeText("Quick Record")
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: [])
-        let quickRecord = app.dialogs["Quick Record"]
+        let quickRecord = app.dialogs["monocle"]
         XCTAssertTrue(quickRecord.waitForExistence(timeout: 2))
         XCTAssertTrue(quickRecord.textFields["expenseAmount"].exists)
         XCTAssertEqual(quickRecord.segmentedControls.count, 0)

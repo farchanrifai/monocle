@@ -205,11 +205,57 @@ final class MonocleMacTests: XCTestCase {
     @MainActor private func render(_ view: some View, size: CGSize, name: String) {
         guard ProcessInfo.processInfo.environment["MONOCLE_RENDER"] != nil else { return }
         let host = NSHostingView(rootView: view)
-        host.frame = CGRect(origin: .zero, size: size); host.appearance = NSAppearance(named: .aqua); host.layoutSubtreeIfNeeded()
+        host.frame = CGRect(origin: .zero, size: size); host.appearance = NSAppearance(named: .aqua)
+        // AppKit controls only draw inside a window; this one sits off-screen and never activates the app.
+        let window = NSWindow(contentRect: CGRect(origin: CGPoint(x: -20_000, y: -20_000), size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = host; window.orderFrontRegardless()
+        defer { window.orderOut(nil) }
+        host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: .now + 0.5) // let the split view and table settle
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
         host.cacheDisplay(in: host.bounds, to: rep)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).png")
         try? rep.representation(using: .png, properties: [:])?.write(to: url); print("RENDERED", url.path)
+    }
+
+    @MainActor func testExpenseFormRenders() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try ExpenseRepository(inMemory: true)
+        try repository.prepareSampleBook()
+        let model = AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory))
+        model.openEntry()
+        model.draft.amount = "28000"; model.draft.note = "Kopi susu"; model.draft.categoryID = model.activeCategories.first?.id
+        render(MacExpenseForm(model: model, title: "New Expense") { _ in }, size: CGSize(width: 540, height: 400), name: "expense-form")
+        model.addSplitAllocation()
+        render(MacExpenseForm(model: model, title: "New Expense") { _ in }, size: CGSize(width: 540, height: 520), name: "expense-split")
+    }
+
+    /// The entry panel once crashed on open: auto-sizing fed a window resize back into SwiftUI layout forever.
+    @MainActor func testEntryPanelLaysOutWithoutLooping() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try ExpenseRepository(inMemory: true)
+        try repository.prepareSampleBook()
+        let model = AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory))
+        model.openEntry()
+        let panel = QuickRecordPanelController.makePanel()
+        panel.setFrameOrigin(CGPoint(x: -20_000, y: -20_000)) // off-screen; never activates the app
+        panel.contentViewController = QuickRecordPanelController.makeContent(model: model, title: "New Expense") { _ in }
+        panel.orderFrontRegardless()
+        defer { panel.orderOut(nil) }
+        RunLoop.main.run(until: .now + 0.5)
+        if ProcessInfo.processInfo.environment["MONOCLE_RENDER"] != nil, let frameView = panel.contentView?.superview,
+           let rep = frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds) {
+            frameView.cacheDisplay(in: frameView.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("entry-panel.png"))
+        }
+        let before = panel.frame.height
+        model.addSplitAllocation(); model.addSplitAllocation()
+        RunLoop.main.run(until: .now + 0.5)
+        XCTAssertGreaterThan(before, 300)
+        XCTAssertGreaterThan(panel.frame.height, before, "The panel grows to fit the split editor")
     }
 }

@@ -65,10 +65,10 @@ struct MacRootView: View {
         }
         #endif
         .background(MacTheme.paper)
-        .sheet(isPresented: $state.regularEntryVisible) {
-            MacExpenseForm(model: model, quickRecord: false) { _ in state.regularEntryVisible = false }
-        }
         .sheet(item: $state.transferSheet) { MacDataTransferView(state: state, mode: $0) }
+        .sheet(isPresented: $state.regularEntryVisible) {
+            MacExpenseForm(model: model, title: model.draft.editing ? "Edit Expense" : "New Expense") { _ in state.regularEntryVisible = false }
+        }
         .sheet(isPresented: $state.addingCard) { MacCardEditor(model: model, book: nil) { state.addingCard = false } }
         .sheet(item: $state.editingCard) { book in MacCardEditor(model: model, book: book) { state.editingCard = nil } }
         .sheet(item: $state.editingStack) { stack in MacStackEditor(state: state, stack: stack) { state.editingStack = nil } }
@@ -80,7 +80,7 @@ struct MacRootView: View {
         } message: { Text(model.error ?? state.shortcutError ?? "") }
         .onChange(of: state.searchFocusToken) { _, _ in searchExpanded = true } // an open field refocuses on the token itself
         .onChange(of: model.showEntry) { _, shouldShow in
-            if shouldShow { model.showEntry = false; state.regularEntryVisible = true }
+            if shouldShow { model.showEntry = false; state.showEntryPanel() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .inactive || phase == .background { model.appLock.suspend() }
