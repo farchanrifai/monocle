@@ -292,6 +292,7 @@ extension PaymentMethod.Kind {
 extension EntryFormField {
     var title: String {
         switch self {
+        case .quick: "Quick text field"
         case .date: "Date"
         case .note: "Note"
         case .split: "Split across categories"
@@ -315,6 +316,7 @@ enum PaymentMethodError: LocalizedError, Equatable {
 /// Add Expense fields the user can hide. Amount, Card and Category are always shown.
 enum EntryFormField: String, Codable, CaseIterable, Hashable, Sendable {
     case date, note, split, paidWith, currency
+    case quick // Mac only: the "coffee 28k" line at the top of the form
     static let hiddenByDefault: [EntryFormField] = [.paidWith, .currency]
 }
 

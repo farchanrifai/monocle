@@ -14,29 +14,78 @@ struct MacExpenseForm: View {
     @State private var saved = false
     @State private var showDiscardConfirmation = false
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title).font(.title2.bold())
+    private var showsQuick: Bool { model.isEntryFieldShown(.quick) && !model.draft.editing }
+    private var firstFocus: MacEntryField { showsQuick ? .text : .amount }
+    private var isForeign: Bool { model.draft.isForeign(reporting: model.reportingCurrency) }
+    private let shortcutHelp = "Tab next · Space or ↑↓ opens a list · ⌘↩ save · ⌘⇧S split · Esc close"
 
-            Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 12) {
-                GridRow {
-                    label("Quick")
-                    TextField("“coffee 28k”, Return fills the form", text: $model.draft.text)
-                        .textFieldStyle(.roundedBorder)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(title).font(.title2.bold())
+                Spacer()
+                Image(systemName: "info.circle").foregroundStyle(.secondary)
+                    .help(shortcutHelp)
+                    .accessibilityLabel("Keyboard shortcuts").accessibilityHint(shortcutHelp)
+            }
+
+            if showsQuick {
+                HStack(spacing: 8) {
+                    Image(systemName: "text.cursor").foregroundStyle(.secondary)
+                    TextField("Type “coffee 28k” and press Return", text: $model.draft.text)
+                        .textFieldStyle(.plain)
                         .focused($focus, equals: .text)
                         .onSubmit { parseText() }
                         .accessibilityLabel("Expense description and amount")
                 }
-                GridRow {
-                    label("Amount")
-                    TextField("\(model.draft.currency ?? model.reportingCurrency) amount", text: $model.draft.amount)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(.title3, design: .monospaced))
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(.quaternary.opacity(0.5), in: Capsule())
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Text(model.draft.currency ?? model.reportingCurrency).font(.title3.weight(.medium)).foregroundStyle(.secondary)
+                    TextField("0", text: $model.draft.amount)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 34, weight: .semibold, design: .rounded)).monospacedDigit()
                         .focused($focus, equals: .amount)
+                        .accessibilityLabel("Amount")
                         .accessibilityIdentifier("expenseAmount")
+                    if model.isEntryFieldShown(.currency) || isForeign {
+                        Picker("Currency", selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
+                            model.draft.currency = code == model.reportingCurrency ? nil : code
+                            model.draft.rate = ""; model.draft.rateSource = nil
+                        })) { ForEach(currencyChoices, id: \.self) { Text($0).tag($0) } }
+                            .labelsHidden().fixedSize()
+                    }
                 }
-                GridRow {
-                    label("Card")
+                if isForeign { // a hidden currency field still shows when the expense already has one
+                    HStack(spacing: 6) {
+                        Text("1 \(model.draft.currency ?? "") =").foregroundStyle(.secondary)
+                        TextField("Rate", text: Binding(get: { model.draft.rate }, set: { model.draft.rate = $0; model.draft.rateSource = .manual }))
+                            .textFieldStyle(.roundedBorder).frame(width: 100)
+                        Text(model.reportingCurrency).foregroundStyle(.secondary)
+                        if let expense = try? model.draft.expense(reporting: model.reportingCurrency) {
+                            Text("≈ \(Money.format(expense.amount, code: model.reportingCurrency))").foregroundStyle(.secondary)
+                        } else if let rateError = model.rateError {
+                            Text(rateError).font(.caption).foregroundStyle(.red).lineLimit(2)
+                        }
+                    }.font(.callout)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+
+            VStack(spacing: 1) {
+                if !model.draft.isSplit {
+                    row("Category") {
+                        PopUpPicker(title: "Category", placeholder: "Choose…",
+                                    options: model.activeCategories.map { .init(id: $0.id, name: $0.name, symbol: $0.symbol) },
+                                    selection: $model.draft.categoryID)
+                    }
+                }
+                row("Card") {
                     PopUpPicker(title: "Card", options: model.cards.map { .init(id: $0.id, name: $0.name, symbol: "creditcard.fill") },
                                 selection: Binding(get: { model.draft.cardID ?? model.activeCardID }, set: { id in
                                     guard let id else { return }
@@ -48,64 +97,30 @@ struct MacExpenseForm: View {
                                     }
                                 }))
                 }
-                if !model.draft.isSplit {
-                    GridRow {
-                        label("Category")
-                        PopUpPicker(title: "Category", placeholder: "Choose…",
-                                    options: model.activeCategories.map { .init(id: $0.id, name: $0.name, symbol: $0.symbol) },
-                                    selection: $model.draft.categoryID)
-                    }
-                }
-                // A hidden field still shows when the expense already has a value for it.
-                if model.isEntryFieldShown(.currency) || model.draft.isForeign(reporting: model.reportingCurrency) {
-                    GridRow {
-                        label("Currency")
-                        HStack {
-                            Picker("Currency", selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
-                                model.draft.currency = code == model.reportingCurrency ? nil : code
-                                model.draft.rate = ""; model.draft.rateSource = nil
-                            })) { ForEach(currencyChoices, id: \.self) { Text($0).tag($0) } }
-                                .labelsHidden().fixedSize()
-                            if model.draft.isForeign(reporting: model.reportingCurrency) {
-                                Text("1 \(model.draft.currency ?? "") =").foregroundStyle(.secondary)
-                                TextField("Rate", text: Binding(get: { model.draft.rate }, set: { model.draft.rate = $0; model.draft.rateSource = .manual }))
-                                    .textFieldStyle(.roundedBorder).frame(width: 110)
-                                Text(model.reportingCurrency).foregroundStyle(.secondary)
-                                if let expense = try? model.draft.expense(reporting: model.reportingCurrency) {
-                                    Text("≈ \(Money.format(expense.amount, code: model.reportingCurrency))").foregroundStyle(.secondary)
-                                } else if let rateError = model.rateError {
-                                    Text(rateError).font(.caption).foregroundStyle(.red).lineLimit(2)
-                                }
-                            }
-                        }
-                    }
-                }
                 if (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil {
-                    GridRow {
-                        label("Paid with")
+                    row("Paid with") {
                         PopUpPicker(title: "Paid with", placeholder: "Not set",
                                     options: model.paymentMethods.map { .init(id: $0.id, name: $0.name, symbol: $0.kind.symbol) },
                                     selection: $model.draft.paidWithID)
                     }
                 }
                 if model.isEntryFieldShown(.note) || !model.draft.note.isEmpty {
-                    GridRow {
-                        label("Note")
+                    row("Note") {
                         TextField("Optional", text: $model.draft.note)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain).multilineTextAlignment(.trailing)
                             .focused($focus, equals: .note)
                             .accessibilityIdentifier("expenseNote")
                     }
                 }
                 if model.isEntryFieldShown(.date) || model.draft.civilDay != Day.string(.now) {
-                    GridRow {
-                        label("Date")
+                    row("Date") {
                         DatePicker("Date", selection: $model.draft.date, displayedComponents: .date)
                             .datePickerStyle(.field).labelsHidden().fixedSize()
                             .focused($focus, equals: .date)
                     }
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
 
             if model.draft.isSplit {
                 MacSplitEditor(model: model, focus: $focus)
@@ -113,7 +128,6 @@ struct MacExpenseForm: View {
 
             if let message { Text(message).font(.caption).foregroundStyle(saved ? .green : .red).accessibilityLabel(message) }
 
-            Text("Tab next · Space or ↑↓ opens a list · ⌘↩ save · ⌘⇧S split · Esc close").font(.caption).foregroundStyle(.secondary)
             HStack {
                 if model.isEntryFieldShown(.split) || model.draft.isSplit {
                     Button(model.draft.isSplit ? "Stop Splitting" : "Split…") { toggleSplit() }
@@ -132,11 +146,11 @@ struct MacExpenseForm: View {
         }
         .padding(24).padding(.top, topPadding - 24)
         .frame(width: 540)
-        .defaultFocus($focus, .text)
+        .defaultFocus($focus, firstFocus)
         .task(id: "\(model.draft.currency ?? "")|\(model.draft.civilDay)") { await model.refreshDraftRate() }
         .onAppear {
             model.prefillDraftDefaults()
-            DispatchQueue.main.async { focus = .text } // the top field, every time
+            DispatchQueue.main.async { focus = firstFocus } // the top field, every time
         }
         .confirmationDialog("Keep this draft?", isPresented: $showDiscardConfirmation) {
             Button("Keep Draft and Close") { model.persistDraft(); close(false) }
@@ -151,8 +165,16 @@ struct MacExpenseForm: View {
         return ([model.reportingCurrency] + cards + Money.commonCurrencies).filter { seen.insert($0).inserted }
     }
 
-    private func label(_ text: String) -> some View {
-        Text(text).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+    /// One line of the grouped fields: label left, control right.
+    private func row(_ label: String, @ViewBuilder _ content: () -> some View) -> some View {
+        HStack(spacing: 12) {
+            Text(label).foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            content().frame(maxWidth: 280, alignment: .trailing)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(.quaternary.opacity(0.5))
     }
 
     @discardableResult private func parseText() -> Bool {
