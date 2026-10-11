@@ -55,6 +55,13 @@ struct MacRootView: View {
             if model.appLock.blocksContent { MacLockView(model: model) }
         }
         .frame(minWidth: 1000, minHeight: 620) // sidebar + full-width table columns + 300pt inspector
+        .onChange(of: state.destination, initial: true) { // a collapsed group would hide the selected row
+            switch state.destination {
+            case .card: cardsExpanded = true
+            case .stack: stacksExpanded = true
+            default: break
+            }
+        }
         #if DEBUG
         .onAppear { // UI-test hook: start at a given width (tests can't drag-resize; the saved width would leak between tests)
             let env = ProcessInfo.processInfo.environment
