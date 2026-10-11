@@ -52,8 +52,7 @@ private struct StatTile: View {
             }
             Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .padding(12).frame(maxWidth: .infinity, minHeight: 78, maxHeight: .infinity, alignment: .topLeading)
-        .background(MacTheme.panel, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 8).frame(maxWidth: .infinity, minHeight: 70, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .combine)
     }
 }

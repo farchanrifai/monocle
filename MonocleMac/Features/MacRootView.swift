@@ -2,7 +2,7 @@ import AppKit
 import Charts
 import SwiftUI
 
-enum MacTheme {
+private enum MacTheme {
     static let accent = Color(red: 0.85, green: 0.16, blue: 0.12)
     static let paper = Color(nsColor: .windowBackgroundColor)
     static let panel = Color(nsColor: .controlBackgroundColor)
