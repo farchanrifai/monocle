@@ -15,6 +15,7 @@ struct MacRootView: View {
     @State private var searchExpanded = false
     @AppStorage("MacSidebarStacksExpanded") private var stacksExpanded = true
     @AppStorage("MacSidebarCardsExpanded") private var cardsExpanded = true
+    @State private var peekOpen = false // lags the destination one tick so the row exists before the group expands
     @AppStorage("MacSidebarPlanningExpanded") private var planningExpanded = true
     @AppStorage("MacSidebarShowAllStacks") private var showAllStacks = false
     @AppStorage("MacSidebarShowAllCards") private var showAllCards = false
@@ -106,7 +107,7 @@ struct MacRootView: View {
                 Label("Overview", systemImage: "rectangle.grid.2x2").tag(MacDestination.overview)
                 Label("Activity", systemImage: "list.bullet.rectangle").tag(MacDestination.activity)
             }
-            Section(isExpanded: Binding(get: { stacksExpanded || peekStack != nil }, set: { stacksExpanded = $0 })) {
+            Section(isExpanded: Binding(get: { stacksExpanded || (peekOpen && peekStack != nil) }, set: { stacksExpanded = $0 })) {
                 ForEach(peekStack.map { [$0] } ?? Self.limited(model.stacks, showAll: showAllStacks) { state.destination == .stack($0.id) }) { stack in
                     Label(stack.name, systemImage: stack.icon).tag(MacDestination.stack(stack.id))
                         .contextMenu {
@@ -124,7 +125,7 @@ struct MacRootView: View {
                     Toggle("Show Hidden Cards", isOn: $state.showHiddenCards)
                 }
             }
-            Section(isExpanded: Binding(get: { cardsExpanded || peekCard != nil }, set: { cardsExpanded = $0 })) {
+            Section(isExpanded: Binding(get: { cardsExpanded || (peekOpen && peekCard != nil) }, set: { cardsExpanded = $0 })) {
                 if peekCard == nil { Label("All Cards", systemImage: "creditcard").tag(MacDestination.cards) }
                 ForEach(peekCard.map { [$0] } ?? Self.limited(cards, showAll: showAllCards) { state.destination == .card($0.id) }) { card in
                     Label(card.name, systemImage: "creditcard.fill").tag(MacDestination.card(card.id))
@@ -144,7 +145,12 @@ struct MacRootView: View {
             }
         }
         .listStyle(.sidebar)
-        .animation(.smooth(duration: 0.25), value: state.destination) // animates the group opening and folding back
+        .animation(.smooth(duration: 0.25), value: state.destination) // animates the group folding back
+        .onChange(of: state.destination, initial: true) {
+            var instant = Transaction(); instant.disablesAnimations = true
+            withTransaction(instant) { peekOpen = false }
+            DispatchQueue.main.async { withAnimation(.smooth(duration: 0.25)) { peekOpen = true } }
+        }
         .navigationTitle("monocle")
     }
 
