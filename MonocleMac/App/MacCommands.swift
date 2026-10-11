@@ -189,6 +189,9 @@ final class MacAppState {
         if reveal, !inspectorVisible { inspectorVisible = true }
     }
 
+    /// Every navigation goes through here so the sidebar group animates as it opens and folds.
+    func go(_ target: MacDestination) { withAnimation(.smooth(duration: 0.25)) { destination = target } }
+
     func goBack() {
         guard let previous = backStack.popLast() else { return }
         forwardStack.append(destination)
@@ -367,7 +370,7 @@ final class MacAppState {
     }
 
     func perform(_ command: MacCommand) {
-        if let destination = command.destination { self.destination = destination; commandBarVisible = false; return }
+        if let destination = command.destination { go(destination); commandBarVisible = false; return }
         if let id = command.commandID { perform(id) }
         commandBarVisible = false
     }
@@ -384,13 +387,13 @@ final class MacAppState {
         case .toggleInspector: inspectorVisible.toggle()
         case .goBack: goBack()
         case .goForward: goForward()
-        case .overview: destination = .overview
-        case .activity: destination = .activity
-        case .budgets: destination = .budgets
-        case .bills: destination = .bills
-        case .analytics: destination = .analytics
-        case .cards: destination = .cards
-        case .chat: destination = .chat
+        case .overview: go(.overview)
+        case .activity: go(.activity)
+        case .budgets: go(.budgets)
+        case .bills: go(.bills)
+        case .analytics: go(.analytics)
+        case .cards: go(.cards)
+        case .chat: go(.chat)
         case .importCSV: transferSheet = .importCSV
         case .exportCSV: transferSheet = .exportCSV
         case .exportBackup: transferSheet = .exportBackup
@@ -419,7 +422,7 @@ final class MacAppState {
 
     func selectCard(_ id: UUID) {
         _ = model.selectCard(id)
-        withAnimation(.smooth(duration: 0.25)) { destination = .card(id) } // the sidebar group opens with motion
+        go(.card(id))
         inspect(.card(id))
     }
 
