@@ -839,10 +839,22 @@ private struct MacCardEditor: View {
     @State private var importingPhoto = false
     @State private var preparedPhotos: Set<String> = [] // saved while picking; unused ones are removed on close
     @State private var error: String?
+    @State private var budgetCurrency: String
+    @State private var spendingCurrency: String
+    @State private var defaultPaidWithID: UUID?
+    @State private var saving = false
+    private var currencyChoices: [String] {
+        var seen = Set<String>()
+        return ([model.reportingCurrency, budgetCurrency, spendingCurrency] + Money.commonCurrencies).filter { seen.insert($0).inserted }
+    }
 
     init(model: AppModel, card: Card?, close: @escaping () -> Void) {
         self.model = model; original = card; self.close = close
         draftID = card?.id ?? UUID()
+        let budget = card.map { model.currency(of: $0) } ?? model.reportingCurrency
+        _budgetCurrency = State(initialValue: budget)
+        _spendingCurrency = State(initialValue: card?.spendingCurrency ?? budget)
+        _defaultPaidWithID = State(initialValue: card?.defaultPaidWithID)
         let custom = card.map { model.customization(for: $0.id) } ?? .defaultFor(colorIndex: model.cards.count % CardPalette.standard.count)
         _name = State(initialValue: card?.name ?? "")
         _custom = State(initialValue: custom)
@@ -866,13 +878,23 @@ private struct MacCardEditor: View {
                     .onChange(of: kind) { _, kind in applyKind(kind) }
                 styleControls
                 Picker("Text", selection: $custom.textTone) { ForEach(CardTextTone.allCases, id: \.self) { Text($0.title).tag($0) } }
+                if original != nil {
+                    Section("Currency and payment") {
+                        Picker("Budget currency", selection: $budgetCurrency) { ForEach(currencyChoices, id: \.self) { Text($0).tag($0) } }
+                        Picker("Spending currency", selection: $spendingCurrency) { ForEach(currencyChoices, id: \.self) { Text($0).tag($0) } }
+                        Picker("Default Paid with", selection: $defaultPaidWithID) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(model.paymentMethods) { Text($0.name).tag(UUID?.some($0.id)) }
+                        }
+                    }
+                }
             }.formStyle(.grouped)
             if let error { Text(error).foregroundStyle(.red) }
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { finish(keeping: nil) }
                 Button("Save") { save() }.buttonStyle(.borderedProminent).keyboardShortcut(.return, modifiers: .command)
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || saving)
             }
         }
         .padding(24).frame(width: 560)
@@ -935,6 +957,14 @@ private struct MacCardEditor: View {
     }
 
     private func save() {
+        saving = true
+        Task {
+            defer { saving = false }
+            do { try await apply() } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func apply() async throws {
         do {
             let id: UUID
             if let original {
@@ -944,8 +974,14 @@ private struct MacCardEditor: View {
                 id = try model.createCard(named: name).id
             }
             if custom != model.customization(for: id) { model.updateCustomization(custom, for: id) }
+            if let original {
+                if defaultPaidWithID != original.defaultPaidWithID { try model.setDefaultPaidWith(defaultPaidWithID, for: id) }
+                if budgetCurrency != model.currency(of: original) || spendingCurrency != (original.spendingCurrency ?? model.currency(of: original)) {
+                    try await model.setCardCurrencies(budget: budgetCurrency, spending: spendingCurrency, for: id)
+                }
+            }
             finish(keeping: custom.style)
-        } catch { self.error = error.localizedDescription }
+        }
     }
 
     private func finish(keeping style: CardBackgroundStyle?) {

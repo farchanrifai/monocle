@@ -43,6 +43,7 @@ struct MacSettingsView: View {
                 .formStyle(.grouped)
                 .scrollContentBackground(.hidden)
                 .navigationTitle(pane.title)
+                .toolbar(removing: .title) // the sidebar already names the pane
                 .id(pane) // the detail column otherwise keeps showing the first pane
         }
         .frame(width: 780, height: 560)
@@ -121,12 +122,11 @@ struct MacSettingsView: View {
     }
 }
 
-/// Paid with labels and the active card's default. Labels never carry a balance.
+/// Paid with labels. Labels never carry a balance; each card's default lives in the card editor.
 private struct PaidWithSettingsPane: View {
     @Bindable var model: AppModel
     @State private var newName = ""
     @State private var error: String?
-    private var card: Card? { model.cards.first { $0.id == model.activeCardID } }
 
     var body: some View {
         Form {
@@ -160,27 +160,16 @@ private struct PaidWithSettingsPane: View {
                     if let error { SettingsNote(error).foregroundStyle(.red) }
                 }
             }
-            if let card {
-                Section("Default") {
-                    Picker(card.name, selection: Binding(get: { card.defaultPaidWithID }, set: { id in
-                        do { try model.setDefaultPaidWith(id, for: card.id) } catch { self.error = error.localizedDescription }
-                    })) {
-                        Text("None").tag(UUID?.none)
-                        ForEach(model.paymentMethods) { method in Text(method.name).tag(UUID?.some(method.id)) }
-                    }
-                }
-            }
         }
     }
 }
 
-/// Reporting currency for the workspace; budget and spending currency for the active card.
+/// Reporting currency for the workspace; each card's budget and spending currency live in the card editor.
 private struct CurrencySettingsPane: View {
     @Bindable var model: AppModel
     @State private var pending: String?
     @State private var working = false
     @State private var error: String?
-    private var card: Card? { model.cards.first { $0.id == model.activeCardID } }
     private var choices: [String] {
         var seen = Set<String>()
         return ([model.reportingCurrency] + Money.commonCurrencies).filter { seen.insert($0).inserted }
@@ -193,19 +182,7 @@ private struct CurrencySettingsPane: View {
                     ForEach(choices, id: \.self) { Text($0).tag($0) }
                 }.disabled(working)
             } footer: {
-                SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first.")
-            }
-            if let card {
-                Section {
-                    Picker("Budget", selection: Binding(get: { model.currency(of: card) }, set: { code in
-                        run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: card.id) }
-                    })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.disabled(working)
-                    Picker("Spending", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
-                        run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: card.id) }
-                    })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.disabled(working)
-                } header: { Text(card.name) } footer: {
-                    SettingsNote("The budget currency is what the card's budget and totals use. New expenses start in the spending currency, and the card shows an ≈ amount in it.")
-                }
+                SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first. Each card's own currencies are set when you edit the card.")
             }
             if working || error != nil {
                 Section {
