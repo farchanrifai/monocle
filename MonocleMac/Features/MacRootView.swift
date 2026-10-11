@@ -15,6 +15,7 @@ struct MacRootView: View {
     @State private var searchExpanded = false
     @AppStorage("MacSidebarStacksExpanded") private var stacksExpanded = true
     @AppStorage("MacSidebarCardsExpanded") private var cardsExpanded = true
+    @State private var peekTarget: MacDestination?
     @AppStorage("MacSidebarPlanningExpanded") private var planningExpanded = true
     @AppStorage("MacSidebarShowAllStacks") private var showAllStacks = false
     @AppStorage("MacSidebarShowAllCards") private var showAllCards = false
@@ -99,8 +100,8 @@ struct MacRootView: View {
         let hidden = model.alwaysHiddenCardIDs
         let cards = model.orderedCards.filter { !hidden.contains($0.id) }
         // A collapsed group still shows the open row alone (not the whole list), and folds back when you leave it.
-        var peekStack: Stack? { if !stacksExpanded, case .stack(let id) = state.destination { model.stacks.first { $0.id == id } } else { nil } }
-        var peekCard: Card? { if !cardsExpanded, case .card(let id) = state.destination { cards.first { $0.id == id } } else { nil } }
+        var peekStack: Stack? { if !stacksExpanded, case .stack(let id) = peekTarget { model.stacks.first { $0.id == id } } else { nil } }
+        var peekCard: Card? { if !cardsExpanded, case .card(let id) = peekTarget { cards.first { $0.id == id } } else { nil } }
         return List(selection: $state.destination) {
             Section {
                 Label("Overview", systemImage: "rectangle.grid.2x2").tag(MacDestination.overview)
@@ -144,7 +145,9 @@ struct MacRootView: View {
             }
         }
         .listStyle(.sidebar)
-        .animation(.smooth(duration: 0.25), value: state.destination) // animates the group opening and folding back
+        .onChange(of: state.destination, initial: true) { // the peek follows inside an animation so the group opens and folds with motion
+            withAnimation(.smooth(duration: 0.25)) { peekTarget = state.destination }
+        }
         .navigationTitle("monocle")
     }
 
