@@ -189,6 +189,16 @@ struct MacRootView: View {
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .navigation) {
+            Button { state.goBack() } label: { Label("Back", systemImage: "chevron.left") }
+                .disabled(state.backStack.isEmpty)
+                .help("Back (\(state.shortcut(for: .goBack)?.displayName ?? ""))")
+                .accessibilityIdentifier("navBack")
+            Button { state.goForward() } label: { Label("Forward", systemImage: "chevron.right") }
+                .disabled(state.forwardStack.isEmpty)
+                .help("Forward (\(state.shortcut(for: .goForward)?.displayName ?? ""))")
+                .accessibilityIdentifier("navForward")
+        }
         // No title fills the leading side any more, so a flexible spacer pushes the buttons trailing.
         ToolbarSpacer(.flexible, placement: .primaryAction)
         ToolbarItem(placement: .primaryAction) { searchField }

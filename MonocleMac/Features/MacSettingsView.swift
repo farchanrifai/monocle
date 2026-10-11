@@ -324,7 +324,7 @@ private struct ShortcutSettings: View {
 
     // Spacing between groups instead of one long wall of rows.
     private static let groups: [[MacCommandID]] = [
-        [.commandBar, .newExpense, .quickRecord, .quickChat, .focusSearch, .toggleSidebar, .toggleInspector],
+        [.commandBar, .newExpense, .quickRecord, .quickChat, .focusSearch, .toggleSidebar, .toggleInspector, .goBack, .goForward],
         [.overview, .activity, .budgets, .bills, .analytics, .cards, .chat],
         [.importCSV, .exportCSV, .exportBackup, .restoreBackup, .settings, .lock]
     ]

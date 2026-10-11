@@ -171,6 +171,28 @@ final class MonocleMacTests: XCTestCase {
         XCTAssertEqual(MacRootView.limited(items, showAll: true) { _ in false }.count, 8)
     }
 
+    @MainActor func testBackAndForwardWalkTheVisitedDestinations() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try ExpenseRepository(inMemory: true)
+        try repository.prepareSampleCard()
+        let state = MacAppState(model: AppModel(expenses: try ExpenseService(store: repository), state: FileLocalStateStore(directory: directory)))
+        let start = state.destination
+        XCTAssertTrue(state.backStack.isEmpty && state.forwardStack.isEmpty)
+        let card = UUID()
+        state.destination = .cards; state.destination = .card(card)
+        state.goBack()
+        XCTAssertEqual(state.destination, .cards)
+        state.goBack()
+        XCTAssertEqual(state.destination, start)
+        XCTAssertTrue(state.backStack.isEmpty)
+        state.goForward()
+        XCTAssertEqual(state.destination, .cards)
+        state.destination = .budgets
+        XCTAssertTrue(state.forwardStack.isEmpty, "A new visit drops the forward history")
+    }
+
     @MainActor func testHiddenCardsLeaveStacksAndRenderStackPage() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

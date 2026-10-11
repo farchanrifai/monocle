@@ -44,7 +44,7 @@ enum MacInspectorSelection: Hashable {
 }
 
 enum MacCommandID: String, CaseIterable, Identifiable {
-    case commandBar, newExpense, quickRecord, quickChat, focusSearch, toggleSidebar, toggleInspector
+    case commandBar, newExpense, quickRecord, quickChat, focusSearch, toggleSidebar, toggleInspector, goBack, goForward
     case overview, activity, budgets, bills, analytics, cards, chat
     case importCSV, exportCSV, exportBackup, restoreBackup, settings, lock
 
@@ -85,6 +85,8 @@ extension KeyChord {
         .cards: .init("6", modifiers: .command),
         .chat: .init("7", modifiers: .command),
         .toggleInspector: .init("i", modifiers: [.option, .command]),
+        .goBack: .init("[", modifiers: .command),
+        .goForward: .init("]", modifiers: .command),
         .quickRecord: .init("m", modifiers: [.control, .option, .command]),
         .quickChat: .init("c", modifiers: [.control, .option, .command])
     ]
@@ -138,6 +140,7 @@ final class MacAppState {
     let model: AppModel
     var destination: MacDestination = .overview {
         didSet {
+            if !navigatingHistory, oldValue != destination { backStack.append(oldValue); forwardStack.removeAll() }
             UserDefaults.standard.set(Self.encode(destination), forKey: "MacDestination")
             if inspectorSelection != nil { inspectorSelection = nil } // a selection from another screen has no row to match
             // Analytics opens on whatever card or stack the sidebar last showed.
@@ -149,6 +152,10 @@ final class MacAppState {
             }
         }
     }
+    /// Visited destinations (sidebar pages, cards, stacks); only the page is restored, not selection or scroll.
+    private(set) var backStack: [MacDestination] = []
+    private(set) var forwardStack: [MacDestination] = []
+    @ObservationIgnored private var navigatingHistory = false
     var analyticsScope: AnalyticsFilterScope = .allCards
     var inspectorSelection: MacInspectorSelection?
     var inspectorVisible = true { didSet { UserDefaults.standard.set(inspectorVisible, forKey: "MacInspectorVisible") } }
@@ -180,6 +187,18 @@ final class MacAppState {
     func inspect(_ selection: MacInspectorSelection?, reveal: Bool = false) {
         if inspectorSelection != selection { inspectorSelection = selection }
         if reveal, !inspectorVisible { inspectorVisible = true }
+    }
+
+    func goBack() {
+        guard let previous = backStack.popLast() else { return }
+        forwardStack.append(destination)
+        navigatingHistory = true; destination = previous; navigatingHistory = false
+    }
+
+    func goForward() {
+        guard let next = forwardStack.popLast() else { return }
+        backStack.append(destination)
+        navigatingHistory = true; destination = next; navigatingHistory = false
     }
 
     func edit(_ expense: Expense) {
@@ -258,6 +277,7 @@ final class MacAppState {
         #if DEBUG
         if ProcessInfo.processInfo.environment["MONOCLE_TEST_RUN"] != nil { inspectorVisible = true } // UI tests start from a known layout
         #endif
+        backStack.removeAll() // restoring the saved page is not a navigation
         registerGlobalShortcut()
     }
 
@@ -282,6 +302,8 @@ final class MacAppState {
             .init(id: MacCommandID.quickRecord.rawValue, title: "Quick Add", symbol: "bolt.circle", commandID: .quickRecord, destination: nil),
             .init(id: MacCommandID.quickChat.rawValue, title: "Quick Chat", symbol: "bubble.left.and.text.bubble.right", commandID: .quickChat, destination: nil),
             .init(id: MacCommandID.focusSearch.rawValue, title: "Focus Search", symbol: "magnifyingglass", commandID: .focusSearch, destination: nil),
+            .init(id: MacCommandID.goBack.rawValue, title: "Back", symbol: "chevron.left", commandID: .goBack, destination: nil),
+            .init(id: MacCommandID.goForward.rawValue, title: "Forward", symbol: "chevron.right", commandID: .goForward, destination: nil),
             .init(id: MacCommandID.toggleSidebar.rawValue, title: "Toggle Sidebar", symbol: "sidebar.left", commandID: .toggleSidebar, destination: nil),
             .init(id: MacCommandID.toggleInspector.rawValue, title: "Toggle Inspector", symbol: "pointer.arrow.click", commandID: .toggleInspector, destination: nil),
             .init(id: MacCommandID.importCSV.rawValue, title: "Import CSV", symbol: "square.and.arrow.down", commandID: .importCSV, destination: nil),
@@ -360,6 +382,8 @@ final class MacAppState {
         case .focusSearch: searchFocusToken = UUID()
         case .toggleSidebar: NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
         case .toggleInspector: inspectorVisible.toggle()
+        case .goBack: goBack()
+        case .goForward: goForward()
         case .overview: destination = .overview
         case .activity: destination = .activity
         case .budgets: destination = .budgets
@@ -473,6 +497,9 @@ struct MonocleMacCommands: Commands {
             commandButton("Quick Chat", .quickChat)
         }
         CommandMenu("Navigate") {
+            commandButton("Back", .goBack).disabled(state.backStack.isEmpty)
+            commandButton("Forward", .goForward).disabled(state.forwardStack.isEmpty)
+            Divider()
             commandButton("Overview", .overview)
             commandButton("Activity", .activity)
             commandButton("Budgets", .budgets)
