@@ -258,6 +258,7 @@ private struct MacDateField: View {
             .popover(isPresented: $showCalendar, arrowEdge: .bottom) {
                 DatePicker("Date", selection: $date, displayedComponents: .date)
                     .datePickerStyle(.graphical).labelsHidden().padding(12)
+                    .focusEffectDisabled() // the popover focuses the calendar and drew a blue ring around it
             }
         }
     }
