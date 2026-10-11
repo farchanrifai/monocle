@@ -1,19 +1,14 @@
 ## 1. Immediate Next Step
 
-Budget UI + budget-vs-actual built (see checkpoint). Not yet seen on screen: ask the user to check the demo app (iOS Budgets tab picker, Mac Budgets picker, Analytics "Budget vs actual" card), then discuss what is left:
-- Stack cap is current-only (past stack cycles use today's cap); versioned caps would need `BudgetVersion.stackID` and a format-9 change.
-- Currency drift: stack/all-cards totals convert at today's rate (marked ≈), past cycles too.
-- Saving a goal replaces the cycle budget stored on the same `effectiveDay`.
-- Editing a budget is still active-card only (iOS and Mac); stack cap is edited under Stacks.
-- No UI tests for the new pickers; Mac UI tests not rerun (skipped on purpose, they take over the screen).
-- Open items from before still stand (stale roadmap, privacy label for Frankfurter, Mac Release rebuild, no merge to main).
+Review on screen, then decide: `feat/mac-activity-filters` (Mac only: toolbar Filter with counts/collapsible sections, wider search, card-page quick stats; branched from `feat/model-b`, merge or delete) and the iOS budget screens (never viewed on a device yet: Budgets picker, Analytics "Budget vs actual"; shipped in 0.8.1 (96)).
+- Still open: stack cap is current-only (versioning needs format 9); currency drift at today's rate; a goal replaces the cycle budget on the same `effectiveDay`; Mac UI tests not rerun (and none cover the new budget/filter UI); stale roadmap; privacy label for Frankfurter; Mac Release rebuild; no merge to main.
+- Demo app: after every Mac rebuild, launch it (`open -n --env MONOCLE_DEMO=1 build/macos/DebugDerived/Build/Products/Debug/Monocle.app`).
 
 ## 2. Last Completed Checkpoint
 
-Budget picker for cards and stacks, plus budget vs actual in analytics, on `feat/model-b`. Verified: iOS unit 232 pass (4 skipped), Mac unit 21 pass; no UI tests, no visual check.
+Budget work plus Mac polish, published as SideStore 0.8.1 (96) (`monocle-0.8.1-build-96-unsigned.ipa`, SHA-256 `68109c4e053d2e2e88574f70cac849a405b756568b5294c5ad0224ea4a7be54b`, also in iCloud Monocle-codex). Verified: iOS unit 233 pass (4 skipped), Mac unit 22 pass; Mac screens seen via screenshots, iOS screens not.
 
-- Domain `Monocle/Domain/BudgetStatus.swift`: `BudgetSubject` (.card/.stack), `BudgetStatus` (computed, never stored: limit, spent, pace, projected, lines, approximate), `BudgetCycleResult`, `BudgetReport` (card, cardHistory, stack, stackHistory). Stack limit = cap, else sum of the cards' non-goal budgets as of that cycle; stack cycle = calendar month or `capStartDay`. No storage or format change.
-- `AnalyticsEngine.paceStatus` extracted; `AppModel.budgetStatus/budgetCycles/budgetCardInput/budgetStackInput/budgetLinesAcrossCards`.
-- Shared views `Monocle/Features/BudgetStatusViews.swift` (`BudgetLineRows`, `BudgetCyclesChart`), added to the Mac target in `project.yml` (run `xcodegen generate` after adding files).
-- iOS `BudgetsView` and Mac `MacBudgetsView`: subject menu (Cards, Stacks), status-driven tiles, per-category or per-card lines, cycle-by-cycle chart; Edit only for the active card. Analytics (iOS `budgetVsActualCard`, Mac `budgetVsActual`): this cycle's budget vs actual for the chosen scope (card, stack, or per card for All cards) plus last 6 cycles.
-- Earlier: expired "Total until" goals end, projection scales total spend (`855d0b7`).
+- Budget model (`Monocle/Domain/BudgetStatus.swift`): `BudgetStatus`/`BudgetCycleResult` computed from existing versions, no storage change; expired "Total until" goals end; projection scales total spend; any card's budget is editable (`saveBudget(..., cardID:)`).
+- UI: card/stack picker on Budgets (iOS + Mac), per-card Edit in a stack's "By card" list, Analytics "Budget vs actual" + cycle chart; Mac Budgets/Bills use natural-height grids.
+- Mac (branch `feat/mac-activity-filters`): toolbar Filter, wider search (note, card, Paid with, amount), card-page stats. Details in the commits.
+- Earlier: model B phases 0-6, Mac UI polish; see `docs/planning/model-b-plan.md`.
