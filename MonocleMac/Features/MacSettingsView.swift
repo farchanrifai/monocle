@@ -64,11 +64,24 @@ struct MacSettingsView: View {
                     SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
                 }
                 Section {
-                    ForEach(EntryFormField.allCases, id: \.self) { field in
+                    ForEach([EntryFormField.quick, .currency, .split], id: \.self) { field in
                         Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
                     }
-                } header: { Text("Add Expense form") } footer: {
-                    SettingsNote("Amount, card and category are always shown. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                } header: { Text("Add Expense form") }
+                Section {
+                    ForEach(model.entryRowOrder, id: \.self) { line in
+                        HStack(spacing: 10) {
+                            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
+                            if let field = line.field {
+                                Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
+                            } else {
+                                Text(line.title); Spacer(); Text("Always shown").foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .onMove { model.moveEntryRows(from: $0, to: $1) }
+                } header: { Text("Details, in order") } footer: {
+                    SettingsNote("Drag to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
                 }
             }
         case .paidWith:

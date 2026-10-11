@@ -543,6 +543,12 @@ final class MultiCardTests: XCTestCase {
         XCTAssertTrue(model.isEntryFieldShown(.paidWith)); XCTAssertFalse(model.isEntryFieldShown(.note))
         XCTAssertEqual(Set(try FileLocalStateStore(directory: tempDir).loadWorkspacePreferences().hiddenEntryFields), [.currency, .note])
 
+        // Detail lines: default order until moved; the moved order persists.
+        XCTAssertEqual(model.entryRowOrder, [.category, .card, .paidWith, .note, .date])
+        model.moveEntryRows(from: IndexSet(integer: 4), to: 0)
+        XCTAssertEqual(model.entryRowOrder, [.date, .category, .card, .paidWith, .note])
+        XCTAssertEqual(try FileLocalStateStore(directory: tempDir).loadWorkspacePreferences().entryRowOrder, [.date, .category, .card, .paidWith, .note])
+
         // Breakdown: per label, with "Not set" for the rest; empty when nothing has a label.
         let totals = AnalyticsEngine.paidWithTotals([saved, stale], methods: model.paymentMethods)
         XCTAssertEqual(totals.map(\.name), ["BCA debit", "Not set"])

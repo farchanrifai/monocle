@@ -320,6 +320,29 @@ enum EntryFormField: String, Codable, CaseIterable, Hashable, Sendable {
     static let hiddenByDefault: [EntryFormField] = [.paidWith, .currency]
 }
 
+/// The lines of the Add Expense details group, in the order the user chose. Category and Card are always shown.
+enum EntryFormRow: String, Codable, CaseIterable, Hashable, Sendable {
+    case category, card, paidWith, note, date
+    var title: String {
+        switch self {
+        case .category: "Category"
+        case .card: "Card"
+        case .paidWith: "Paid with"
+        case .note: "Note"
+        case .date: "Date"
+        }
+    }
+    /// The hide/show switch for this line, nil when it is always shown.
+    var field: EntryFormField? {
+        switch self {
+        case .paidWith: .paidWith
+        case .note: .note
+        case .date: .date
+        case .category, .card: nil
+        }
+    }
+}
+
 enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Hashable, Sendable {
     case card
     case category
@@ -385,6 +408,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var paymentMethods: [PaymentMethod] = []
     var hiddenEntryFields: [EntryFormField] = EntryFormField.hiddenByDefault
     var reportingCurrency: String = "IDR"
+    var entryRowOrder: [EntryFormRow] = [] // empty = the default order; only written once the user reorders
 
     var direction: CardVisualDirection {
         get { CardVisualDirection(rawValue: visualDirection) ?? .light }
@@ -404,7 +428,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case visibleCardIDs = "visibleBookIDs", cardOrder = "bookOrder", allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
         case alwaysHiddenCardIDs = "alwaysHiddenBookIDs", stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
-        case shortcutInputOrder, macShortcutBindings, paymentMethods, hiddenEntryFields, reportingCurrency
+        case shortcutInputOrder, macShortcutBindings, paymentMethods, hiddenEntryFields, reportingCurrency, entryRowOrder
     }
 
     init(
@@ -425,7 +449,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         macShortcutBindings: [String: KeyChord] = [:],
         paymentMethods: [PaymentMethod] = [],
         hiddenEntryFields: [EntryFormField] = EntryFormField.hiddenByDefault,
-        reportingCurrency: String = "IDR"
+        reportingCurrency: String = "IDR",
+        entryRowOrder: [EntryFormRow] = []
     ) {
         self.visibleCardIDs = visibleCardIDs
         self.cardOrder = cardOrder
@@ -445,6 +470,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.paymentMethods = paymentMethods
         self.hiddenEntryFields = hiddenEntryFields
         self.reportingCurrency = reportingCurrency
+        self.entryRowOrder = entryRowOrder
     }
 
     init(from decoder: any Decoder) throws {
@@ -468,6 +494,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         paymentMethods = try container.decodeIfPresent([PaymentMethod].self, forKey: .paymentMethods) ?? []
         hiddenEntryFields = try container.decodeIfPresent([EntryFormField].self, forKey: .hiddenEntryFields) ?? EntryFormField.hiddenByDefault
         reportingCurrency = try container.decodeIfPresent(String.self, forKey: .reportingCurrency) ?? "IDR"
+        entryRowOrder = try container.decodeIfPresent([EntryFormRow].self, forKey: .entryRowOrder) ?? []
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -490,6 +517,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(paymentMethods, forKey: .paymentMethods)
         try container.encode(hiddenEntryFields, forKey: .hiddenEntryFields)
         try container.encode(reportingCurrency, forKey: .reportingCurrency)
+        if !entryRowOrder.isEmpty { try container.encode(entryRowOrder, forKey: .entryRowOrder) }
     }
 }
 

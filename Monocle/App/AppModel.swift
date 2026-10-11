@@ -1190,6 +1190,20 @@ final class AppModel {
     /// Amount, Card and Category are always shown; the rest follow the user's form settings.
     func isEntryFieldShown(_ field: EntryFormField) -> Bool { !workspacePreferences.hiddenEntryFields.contains(field) }
 
+    /// The saved order, with any missing line appended in its default place, so a stale or partial list never hides a row.
+    var entryRowOrder: [EntryFormRow] {
+        var seen = Set<EntryFormRow>()
+        return (workspacePreferences.entryRowOrder + EntryFormRow.allCases).filter { seen.insert($0).inserted }
+    }
+
+    func moveEntryRows(from source: IndexSet, to destination: Int) {
+        var order = entryRowOrder
+        order.move(fromOffsets: source, toOffset: destination)
+        var proposed = workspacePreferences
+        proposed.entryRowOrder = order
+        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+    }
+
     func setEntryField(_ field: EntryFormField, shown: Bool) {
         var proposed = workspacePreferences
         proposed.hiddenEntryFields.removeAll { $0 == field }

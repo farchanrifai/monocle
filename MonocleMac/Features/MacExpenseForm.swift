@@ -52,11 +52,13 @@ struct MacExpenseForm: View {
                         .accessibilityLabel("Amount")
                         .accessibilityIdentifier("expenseAmount")
                     if model.isEntryFieldShown(.currency) || isForeign {
-                        Picker("Currency", selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
-                            model.draft.currency = code == model.reportingCurrency ? nil : code
-                            model.draft.rate = ""; model.draft.rateSource = nil
-                        })) { ForEach(currencyChoices, id: \.self) { Text($0).tag($0) } }
-                            .labelsHidden().fixedSize()
+                        PopUpPicker(title: "Currency", options: currencyChoices.map { .init(id: $0, name: $0, symbol: nil) },
+                                    selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
+                                        guard let code else { return }
+                                        model.draft.currency = code == model.reportingCurrency ? nil : code
+                                        model.draft.rate = ""; model.draft.rateSource = nil
+                                    }))
+                            .frame(width: 92) // a real popup so Tab reaches it; a SwiftUI Picker is skipped without Keyboard Navigation
                     }
                 }
                 if isForeign { // a hidden currency field still shows when the expense already has one
@@ -78,47 +80,7 @@ struct MacExpenseForm: View {
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
 
             VStack(spacing: 1) {
-                if !model.draft.isSplit {
-                    row("Category") {
-                        PopUpPicker(title: "Category", placeholder: "Choose…",
-                                    options: model.activeCategories.map { .init(id: $0.id, name: $0.name, symbol: $0.symbol) },
-                                    selection: $model.draft.categoryID)
-                    }
-                }
-                row("Card") {
-                    PopUpPicker(title: "Card", options: model.cards.map { .init(id: $0.id, name: $0.name, symbol: "creditcard.fill") },
-                                selection: Binding(get: { model.draft.cardID ?? model.activeCardID }, set: { id in
-                                    guard let id else { return }
-                                    _ = model.selectCard(id); model.draft.cardID = id
-                                    if !model.draft.editing {
-                                        model.draft.paidWithID = nil
-                                        if model.draft.amount.isEmpty { model.draft.currency = nil }
-                                        model.prefillDraftDefaults()
-                                    }
-                                }))
-                }
-                if (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil {
-                    row("Paid with") {
-                        PopUpPicker(title: "Paid with", placeholder: "Not set",
-                                    options: model.paymentMethods.map { .init(id: $0.id, name: $0.name, symbol: $0.kind.symbol) },
-                                    selection: $model.draft.paidWithID)
-                    }
-                }
-                if model.isEntryFieldShown(.note) || !model.draft.note.isEmpty {
-                    row("Note") {
-                        TextField("Optional", text: $model.draft.note)
-                            .textFieldStyle(.plain).multilineTextAlignment(.trailing)
-                            .focused($focus, equals: .note)
-                            .accessibilityIdentifier("expenseNote")
-                    }
-                }
-                if model.isEntryFieldShown(.date) || model.draft.civilDay != Day.string(.now) {
-                    row("Date") {
-                        DatePicker("Date", selection: $model.draft.date, displayedComponents: .date)
-                            .datePickerStyle(.field).labelsHidden().fixedSize()
-                            .focused($focus, equals: .date)
-                    }
-                }
+                ForEach(model.entryRowOrder, id: \.self) { detailRow($0) }
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
 
@@ -163,6 +125,53 @@ struct MacExpenseForm: View {
         var seen = Set<String>()
         let cards = model.cards.flatMap { [$0.currency, $0.spendingCurrency].compactMap { $0 } }
         return ([model.reportingCurrency] + cards + Money.commonCurrencies).filter { seen.insert($0).inserted }
+    }
+
+    @ViewBuilder private func detailRow(_ kind: EntryFormRow) -> some View {
+        switch kind {
+        case .category:
+            if !model.draft.isSplit {
+                row("Category") {
+                    PopUpPicker(title: "Category", placeholder: "Choose…",
+                                options: model.activeCategories.map { .init(id: $0.id, name: $0.name, symbol: $0.symbol) },
+                                selection: $model.draft.categoryID)
+                }
+            }
+        case .card:
+            row("Card") {
+                PopUpPicker(title: "Card", options: model.cards.map { .init(id: $0.id, name: $0.name, symbol: "creditcard.fill") },
+                            selection: Binding(get: { model.draft.cardID ?? model.activeCardID }, set: { id in
+                                guard let id else { return }
+                                _ = model.selectCard(id); model.draft.cardID = id
+                                if !model.draft.editing {
+                                    model.draft.paidWithID = nil
+                                    if model.draft.amount.isEmpty { model.draft.currency = nil }
+                                    model.prefillDraftDefaults()
+                                }
+                            }))
+            }
+        case .paidWith:
+            if (model.isEntryFieldShown(.paidWith) && !model.paymentMethods.isEmpty) || model.paymentMethod(model.draft.paidWithID) != nil {
+                row("Paid with") {
+                    PopUpPicker(title: "Paid with", placeholder: "Not set",
+                                options: model.paymentMethods.map { .init(id: $0.id, name: $0.name, symbol: $0.kind.symbol) },
+                                selection: $model.draft.paidWithID)
+                }
+            }
+        case .note:
+            if model.isEntryFieldShown(.note) || !model.draft.note.isEmpty {
+                row("Note") {
+                    TextField("Optional", text: $model.draft.note)
+                        .textFieldStyle(.plain).multilineTextAlignment(.trailing)
+                        .focused($focus, equals: .note)
+                        .accessibilityIdentifier("expenseNote")
+                }
+            }
+        case .date:
+            if model.isEntryFieldShown(.date) || model.draft.civilDay != Day.string(.now) {
+                row("Date") { MacDateField(date: $model.draft.date, focus: $focus) }
+            }
+        }
     }
 
     /// One line of the grouped fields: label left, control right.
@@ -214,6 +223,54 @@ struct MacExpenseForm: View {
         if model.draftNeedsConfirmation { showDiscardConfirmation = true }
         else { close(false) }
     }
+}
+
+/// Today / Yesterday shortcuts plus the date itself. The date is one Tab stop: ← → move a day, T is today,
+/// Space or Return opens the calendar.
+private struct MacDateField: View {
+    @Binding var date: Date
+    var focus: FocusState<MacEntryField?>.Binding
+    @State private var showCalendar = false
+    private var calendar: Calendar { .current }
+    private var yesterday: Date { calendar.date(byAdding: .day, value: -1, to: .now) ?? .now }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            chip("Today", on: calendar.isDateInToday(date)) { date = .now }
+            chip("Yesterday", on: calendar.isDateInYesterday(date)) { date = yesterday }
+            Button { showCalendar.toggle() } label: {
+                Label(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).year()), systemImage: "calendar")
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(.quaternary, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .focusable().focused(focus, equals: .date)
+            .onKeyPress(keys: [.leftArrow, .rightArrow, .space, .return, KeyEquivalent("t")]) { press in
+                switch press.key {
+                case .leftArrow: step(-1)
+                case .rightArrow: step(1)
+                case KeyEquivalent("t"): date = .now
+                default: showCalendar = true
+                }
+                return .handled
+            }
+            .accessibilityLabel("Date").accessibilityHint("Left and right arrows change the day, Space opens the calendar")
+            .popover(isPresented: $showCalendar, arrowEdge: .bottom) {
+                DatePicker("Date", selection: $date, displayedComponents: .date)
+                    .datePickerStyle(.graphical).labelsHidden().padding(12)
+            }
+        }
+    }
+
+    private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.plain).font(.callout)
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(on ? AnyShapeStyle(Color.accentColor.opacity(0.25)) : AnyShapeStyle(.quaternary), in: Capsule())
+            .focusable(false) // the date field is the Tab stop
+    }
+
+    private func step(_ days: Int) { date = calendar.date(byAdding: .day, value: days, to: date) ?? date }
 }
 
 enum MacEntryField: Hashable {
