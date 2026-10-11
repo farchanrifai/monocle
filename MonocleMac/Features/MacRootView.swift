@@ -102,7 +102,7 @@ struct MacRootView: View {
         // A collapsed group still shows the open row alone (not the whole list), and folds back when you leave it.
         var peekStack: Stack? { if !stacksExpanded, case .stack(let id) = state.destination { model.stacks.first { $0.id == id } } else { nil } }
         var peekCard: Card? { if !cardsExpanded, case .card(let id) = state.destination { cards.first { $0.id == id } } else { nil } }
-        return List(selection: $state.destination) {
+        return List(selection: Binding(get: { state.destination }, set: { value in withAnimation(.smooth(duration: 0.25)) { state.destination = value } })) { // animated so the peeked group folds on a sidebar click
             Section {
                 Label("Overview", systemImage: "rectangle.grid.2x2").tag(MacDestination.overview)
                 Label("Activity", systemImage: "list.bullet.rectangle").tag(MacDestination.activity)
