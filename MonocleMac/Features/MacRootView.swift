@@ -1135,7 +1135,8 @@ struct MacCardDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let card = state.model.cards.first(where: { $0.id == cardID }) {
-                HStack(alignment: .center, spacing: 24) { MacCardView(model: state.model, card: card); MacCardStats(model: state.model, card: card) }.padding(24)
+                HStack(alignment: .center, spacing: 24) { MacCardView(model: state.model, card: card); MacCardStats(model: state.model, card: card) }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(24)
                 Divider()
             }
             MacActivityView(state: state, cardID: cardID)
