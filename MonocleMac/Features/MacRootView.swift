@@ -55,13 +55,6 @@ struct MacRootView: View {
             if model.appLock.blocksContent { MacLockView(model: model) }
         }
         .frame(minWidth: 1000, minHeight: 620) // sidebar + full-width table columns + 300pt inspector
-        .onChange(of: state.destination, initial: true) { // a collapsed group would hide the selected row
-            switch state.destination {
-            case .card: cardsExpanded = true
-            case .stack: stacksExpanded = true
-            default: break
-            }
-        }
         #if DEBUG
         .onAppear { // UI-test hook: start at a given width (tests can't drag-resize; the saved width would leak between tests)
             let env = ProcessInfo.processInfo.environment
@@ -105,21 +98,24 @@ struct MacRootView: View {
     private var sidebar: some View {
         let hidden = model.alwaysHiddenCardIDs
         let cards = model.orderedCards.filter { !hidden.contains($0.id) }
+        // A collapsed group still shows the open row alone (not the whole list), and folds back when you leave it.
+        var peekStack: Stack? { if !stacksExpanded, case .stack(let id) = state.destination { model.stacks.first { $0.id == id } } else { nil } }
+        var peekCard: Card? { if !cardsExpanded, case .card(let id) = state.destination { cards.first { $0.id == id } } else { nil } }
         return List(selection: $state.destination) {
             Section {
                 Label("Overview", systemImage: "rectangle.grid.2x2").tag(MacDestination.overview)
                 Label("Activity", systemImage: "list.bullet.rectangle").tag(MacDestination.activity)
             }
-            Section(isExpanded: $stacksExpanded) {
-                ForEach(Self.limited(model.stacks, showAll: showAllStacks) { state.destination == .stack($0.id) }) { stack in
+            Section(isExpanded: Binding(get: { stacksExpanded || peekStack != nil }, set: { stacksExpanded = $0 })) {
+                ForEach(peekStack.map { [$0] } ?? Self.limited(model.stacks, showAll: showAllStacks) { state.destination == .stack($0.id) }) { stack in
                     Label(stack.name, systemImage: stack.icon).tag(MacDestination.stack(stack.id))
                         .contextMenu {
                             Button("Edit Stack…") { state.editingStack = stack }
                             Button("Delete Stack", role: .destructive) { state.deleteStack(stack) }.disabled(model.stacks.count < 2)
                         }
                 }
-                moreToggle(count: model.stacks.count, showAll: $showAllStacks)
-                if state.showHiddenCards, !hidden.isEmpty {
+                if peekStack == nil { moreToggle(count: model.stacks.count, showAll: $showAllStacks) }
+                if peekStack == nil, state.showHiddenCards, !hidden.isEmpty {
                     Label("Hidden Cards", systemImage: "eye.slash").tag(MacDestination.hiddenCards)
                 }
             } header: {
@@ -128,13 +124,13 @@ struct MacRootView: View {
                     Toggle("Show Hidden Cards", isOn: $state.showHiddenCards)
                 }
             }
-            Section(isExpanded: $cardsExpanded) {
-                Label("All Cards", systemImage: "creditcard").tag(MacDestination.cards)
-                ForEach(Self.limited(cards, showAll: showAllCards) { state.destination == .card($0.id) }) { card in
+            Section(isExpanded: Binding(get: { cardsExpanded || peekCard != nil }, set: { cardsExpanded = $0 })) {
+                if peekCard == nil { Label("All Cards", systemImage: "creditcard").tag(MacDestination.cards) }
+                ForEach(peekCard.map { [$0] } ?? Self.limited(cards, showAll: showAllCards) { state.destination == .card($0.id) }) { card in
                     Label(card.name, systemImage: "creditcard.fill").tag(MacDestination.card(card.id))
                         .contextMenu { MacCardMenu(state: state, card: card) }
                 }
-                moreToggle(count: cards.count, showAll: $showAllCards)
+                if peekCard == nil { moreToggle(count: cards.count, showAll: $showAllCards) }
             } header: {
                 Text("Cards").contextMenu { Button("New Card…") { state.addingCard = true } }
             }
