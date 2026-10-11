@@ -190,7 +190,10 @@ final class MacAppState {
     }
 
     /// Every navigation goes through here so the sidebar group animates as it opens and folds.
-    func go(_ target: MacDestination) { withAnimation(.smooth(duration: 0.25)) { destination = target } }
+    /// The command bar closes in the same transaction: a separate, unanimated write after it cancelled the sidebar animation.
+    func go(_ target: MacDestination, closingCommandBar: Bool = false) {
+        withAnimation(.smooth(duration: 0.25)) { destination = target; if closingCommandBar { commandBarVisible = false } }
+    }
 
     func goBack() {
         guard let previous = backStack.popLast() else { return }
@@ -370,7 +373,7 @@ final class MacAppState {
     }
 
     func perform(_ command: MacCommand) {
-        if let destination = command.destination { go(destination); commandBarVisible = false; return }
+        if let destination = command.destination { go(destination, closingCommandBar: true); return }
         if let id = command.commandID { perform(id) }
         commandBarVisible = false
     }
