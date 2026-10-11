@@ -4,34 +4,85 @@ import SwiftUI
 struct MacBudgetsView: View {
     @Bindable var state: MacAppState
     @State private var editing = false
+    /// nil follows the active card.
+    @State private var picked: BudgetSubject?
     private var model: AppModel { state.model }
-    private var categories: [ExpenseCategory] { model.activeCategories(for: model.activeCardID) }
-    private var usedPercent: Int {
-        let ratio = Double(model.spent) / Double(max(Int64(1), model.activeBudget.overallLimit))
-        return Int((ratio * 100).rounded())
+    private var subject: BudgetSubject { picked ?? .card(model.activeCardID) }
+    private var editable: Bool { subject == .card(model.activeCardID) }
+    private var isStack: Bool { if case .stack = subject { true } else { false } }
+    private var subjectName: String {
+        switch subject {
+        case .card(let id): model.cards.first { $0.id == id }?.name ?? "Card"
+        case .stack(let id): model.stacks.first { $0.id == id }?.name ?? "Stack"
+        }
     }
+
     var body: some View {
+        let status = model.budgetStatus(subject)
+        let cycles = model.budgetCycles(subject)
         return Page(title: "Budgets") {
-            HStack {
-                SummaryTile(title: "Limit", value: Money.format(model.activeBudget.overallLimit, code: model.activeCardCurrency), detail: model.cycle.label)
-                SummaryTile(title: "Spent", value: Money.format(model.spent, code: model.activeCardCurrency), detail: "\(usedPercent)% used")
-                SummaryTile(title: "Remaining", value: Money.format(model.remaining, code: model.activeCardCurrency),
-                            detail: model.activeBudget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Cycle day \(model.activeBudget.startDay)")
+            subjectMenu
+            if let status {
+                HStack {
+                    SummaryTile(title: "Limit", value: (status.approximate ? "≈ " : "") + Money.format(status.limit, code: status.currency), detail: status.isTransition ? "Transition · \(status.cycle.label)" : status.cycle.label)
+                    SummaryTile(title: "Spent", value: Money.format(status.spent, code: status.currency), detail: "\(Int((status.fraction * 100).rounded()))% used")
+                    SummaryTile(title: "Remaining", value: Money.format(status.remaining, code: status.currency),
+                                detail: status.pace.map { $0.label } ?? (status.isGoal ? "Total until" : "Cycle budget"))
+                }
+                HStack {
+                    Text(isStack ? "By card" : "Category budgets").font(.title2.bold()); Spacer()
+                    if editable { Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
+                }
+                Table(status.lines) {
+                    TableColumn(isStack ? "Card" : "Category") { Text($0.name) }
+                    TableColumn("Spent") { Text(Money.format($0.spent, code: status.currency)).font(.system(.body, design: .monospaced)) }
+                    TableColumn("Limit") { line in
+                        Text(line.limit.map { Money.format($0, code: status.currency) } ?? "—").font(.system(.body, design: .monospaced))
+                    }
+                    TableColumn("Progress") { line in
+                        ProgressView(value: min(1, Double(line.spent) / Double(max(1, line.limit ?? status.limit))))
+                            .tint(line.limit.map { line.spent > $0 } == true ? MC.red : nil)
+                    }
+                }.frame(minHeight: 220)
+                if cycles.count > 1 {
+                    Text("Cycle by cycle").font(.title2.bold())
+                    BudgetCyclesChart(results: cycles, currency: status.currency)
+                    Text(isStack ? "Past stack cycles add up the cards' budgets that applied then. A cap is today's cap." : "Grey is the limit, dark is what you spent. Red went over.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                HStack { Spacer(); if editable { Button("Edit Budget") { editing = true }.buttonStyle(.glass) } }
+                Text(editable ? "This card has no budget yet." : "No monthly budget to show here yet.").foregroundStyle(.secondary)
             }
-            HStack { Text("Category budgets").font(.title2.bold()); Spacer(); Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
-            Table(categories) {
-                TableColumn("Category") { category in Label(category.name, systemImage: category.symbol) }
-                TableColumn("Spent") { category in Text(Money.format(model.spent(in: category), code: model.activeCardCurrency)).font(.system(.body, design: .monospaced)) }
-                TableColumn("Limit") { category in
-                    Text(model.activeBudget.limit(for: category.id).map { Money.format($0, code: model.activeCardCurrency) } ?? "—").font(.system(.body, design: .monospaced))
-                }
-                TableColumn("Progress") { category in
-                    let limit = model.activeBudget.limit(for: category.id) ?? model.activeBudget.overallLimit
-                    ProgressView(value: min(1, Double(model.spent(in: category)) / Double(max(1, limit))))
-                }
-            }.frame(minHeight: 280)
         }
         .sheet(isPresented: $editing) { BudgetEditor(model: model) { editing = false } }
+    }
+
+    private var subjectMenu: some View {
+        Menu {
+            Section("Cards") {
+                ForEach(model.unhiddenCards) { card in
+                    Button { picked = .card(card.id) } label: { Label(card.name, systemImage: subject == .card(card.id) ? "checkmark" : "creditcard") }
+                }
+            }
+            if !model.stacks.isEmpty {
+                Section("Stacks") {
+                    ForEach(model.stacks) { stack in
+                        Button { picked = .stack(stack.id) } label: { Label(stack.name, systemImage: subject == .stack(stack.id) ? "checkmark" : stack.icon) }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: isStack ? "square.stack.3d.up.fill" : "creditcard.fill")
+                Text(subjectName)
+                Image(systemName: "chevron.down").font(.caption2.weight(.bold))
+            }
+            .font(.callout.weight(.medium)).padding(.horizontal, 14).padding(.vertical, 7)
+            .background(Color.secondary.opacity(0.12), in: Capsule())
+        }
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .accessibilityIdentifier("budgetSubjectMenu")
     }
 }
 
@@ -278,6 +329,7 @@ struct MacAnalyticsView: View {
                 SummaryTile(title: "vs previous", value: change.map { "\($0 > 0 ? "+" : "")\($0)%" } ?? "—", detail: "previous \(length) days: \(Money.format(previous))")
                 SummaryTile(title: "Biggest day", value: Money.format(biggestDay?.1 ?? 0), detail: biggestDay.map { Day.title($0.0) } ?? "No spending")
             }
+            budgetVsActual
             cardRow {
                 ChartCard("Spending over time", info: "How much you spent each day. Tall bars show your busiest spending days.") {
                     Chart {
@@ -359,6 +411,38 @@ struct MacAnalyticsView: View {
                             }.font(.callout)
                         }
                     }.frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+        }
+    }
+
+    /// The running budget cycle against what was spent, whatever range is picked (budgets are per cycle).
+    @ViewBuilder private var budgetVsActual: some View {
+        let subject: BudgetSubject? = switch state.analyticsScope {
+        case .card(let id, _): .card(id)
+        case .stack(let id, _): .stack(id)
+        case .allCards: nil
+        }
+        let status = subject.flatMap { model.budgetStatus($0) }
+        let across = subject == nil ? model.budgetLinesAcrossCards() : nil
+        let lines = status?.lines ?? across?.lines ?? []
+        let currency = status?.currency ?? model.reportingCurrency
+        let cycles = subject.map { model.budgetCycles($0) } ?? []
+        if !lines.isEmpty {
+            cardRow {
+                ChartCard("Budget vs actual", info: "This cycle's spending against its budget" + (status == nil ? ", per card. Cards in another currency are converted at today's rate." : ".") + " Red means over the limit.") {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if let status {
+                            Text("\(status.cycle.label) · \(Money.format(status.spent, code: currency)) of \(Money.format(status.limit, code: currency))")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }
+                        BudgetLineRows(lines: lines, currency: currency)
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+                if cycles.count > 1 {
+                    ChartCard("Cycle by cycle", info: "The budget limit (grey) next to what was spent (dark) in each cycle. Red means that cycle went over.") {
+                        BudgetCyclesChart(results: cycles, currency: currency)
+                    }
                 }
             }
         }

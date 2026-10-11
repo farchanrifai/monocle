@@ -960,6 +960,52 @@ final class AppModel {
         return stack.budgetLimit(cardLimits: limits)
     }
 
+    // MARK: - Budget reports
+
+    func budgetCardInput(_ cardID: UUID) -> BudgetCardInput? {
+        guard let card = cards.first(where: { $0.id == cardID }), let budgets = try? expenseService?.budgets(for: cardID) else { return nil }
+        return BudgetCardInput(card: card, budgets: budgets, expenses: expenses(for: cardID), categories: activeCategories(for: cardID),
+                               currency: currency(of: card), amount: { [self] in cardAmount($0, in: card) })
+    }
+
+    func budgetStackInput(_ stackID: UUID) -> BudgetStackInput? {
+        guard let stack = stacks.first(where: { $0.id == stackID }) else { return nil }
+        let inputs = stack.cardIDs.filter { !alwaysHiddenCardIDs.contains($0) }.compactMap(budgetCardInput)
+        return BudgetStackInput(stack: stack, cards: inputs, reportingCurrency: reportingCurrency,
+                                convert: { [self] in approximate($0, from: $1, to: $2) })
+    }
+
+    func budgetStatus(_ subject: BudgetSubject) -> BudgetStatus? {
+        switch subject {
+        case .card(let id): budgetCardInput(id).flatMap { BudgetReport.card($0) }
+        case .stack(let id): budgetStackInput(id).flatMap { BudgetReport.stack($0) }
+        }
+    }
+
+    /// Running and past cycles, oldest first.
+    func budgetCycles(_ subject: BudgetSubject, count: Int = 6) -> [BudgetCycleResult] {
+        switch subject {
+        case .card(let id): budgetCardInput(id).map { BudgetReport.cardHistory($0, count: count) } ?? []
+        case .stack(let id): budgetStackInput(id).map { BudgetReport.stackHistory($0, count: count) } ?? []
+        }
+    }
+
+    /// One row per card with a budget this cycle, in the reporting currency (a card in another currency at today's rate, marked ≈).
+    func budgetLinesAcrossCards() -> (lines: [BudgetLine], approximate: Bool) {
+        var lines: [BudgetLine] = [], mixed = false
+        for card in unhiddenCards {
+            guard let status = budgetStatus(.card(card.id)) else { continue }
+            var limit = status.limit, spent = status.spent
+            if status.currency != reportingCurrency {
+                mixed = true
+                limit = approximate(limit, from: status.currency, to: reportingCurrency) ?? limit
+                spent = approximate(spent, from: status.currency, to: reportingCurrency) ?? spent
+            }
+            lines.append(BudgetLine(id: card.id, name: card.name, limit: limit, spent: spent))
+        }
+        return (lines, mixed)
+    }
+
     // MARK: - Currency
 
     var reportingCurrency: String { workspacePreferences.reportingCurrency }

@@ -106,6 +106,7 @@ targets:
       - path: Monocle/Features/Chat/ExpenseProposalCard.swift
       - path: Monocle/Features/Chat/ChatChartView.swift
       - path: Monocle/Features/StockDesignViews.swift
+      - path: Monocle/Features/BudgetStatusViews.swift
       - path: MonocleMac
     info:
       path: MonocleMac/Resources/Info.plist

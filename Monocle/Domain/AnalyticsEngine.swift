@@ -490,6 +490,19 @@ enum AnalyticsEngine {
         return points.sorted { $0.amount > $1.amount }
     }
 
+    /// Pace is an approximate percentage, not a ledger amount. The expected pace stays fractional
+    /// so even a one-minor-unit budget has a result.
+    static func paceStatus(spent: Int64, budget: Int64, daysElapsed: Int, totalDays: Int) -> SpendingPaceStatus? {
+        guard budget > 0 else { return nil }
+        let expectedPaceSpend = Double(budget) * (Double(daysElapsed) / Double(totalDays))
+        guard expectedPaceSpend > 0 else { return nil }
+        let diff = Double(spent) - expectedPaceSpend
+        let percentage = (abs(diff) / expectedPaceSpend * 100.0).rounded()
+        if percentage >= Double(Int.max) { return .beyondRange }
+        if percentage <= 5 { return .onTrack }
+        return diff > 0 ? .accelerated(percentage: Int(percentage)) : .underPace(percentage: Int(percentage))
+    }
+
     /// Computes high-level KPI spending metrics.
     static func calculateMetrics(
         dailyPoints: [DailySpendPoint],
@@ -520,26 +533,7 @@ enum AnalyticsEngine {
         // Top category
         let topCat = categoryPoints.first.map { ($0.categoryName, $0.amount) }
 
-        // Pace calculation
-        var paceStatus: SpendingPaceStatus? = nil
-        if let budget = overallBudgetLimit, budget > 0 {
-            // Pace is an approximate percentage, not a ledger amount. Retain the
-            // fractional expected pace so even a one-minor-unit budget has a result.
-            let expectedPaceSpend = Double(budget) * (Double(daysElapsed) / Double(fullPeriodDays))
-            if expectedPaceSpend > 0 {
-                let diff = Double(totalSpend) - expectedPaceSpend
-                let percentage = (abs(diff) / expectedPaceSpend * 100.0).rounded()
-                if percentage >= Double(Int.max) {
-                    paceStatus = .beyondRange
-                } else if percentage <= 5 {
-                    paceStatus = .onTrack
-                } else if diff > 0 {
-                    paceStatus = .accelerated(percentage: Int(percentage))
-                } else {
-                    paceStatus = .underPace(percentage: Int(percentage))
-                }
-            }
-        }
+        let paceStatus = overallBudgetLimit.flatMap { paceStatus(spent: totalSpend, budget: $0, daysElapsed: daysElapsed, totalDays: fullPeriodDays) }
 
         return AnalyticsMetrics(
             totalSpend: totalSpend,

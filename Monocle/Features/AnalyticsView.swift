@@ -79,6 +79,7 @@ private struct AnalyticsReportView: View {
                         } else {
                             kpiSummaryCard
                             burnUpTrajectoryCard
+                            budgetVsActualCard
                             dailyRhythmCard
                             monthOverMonthCard
                             categoryBreakdownCard
@@ -545,6 +546,44 @@ private struct AnalyticsReportView: View {
         }
         .padding(20)
         .background(MC.surface, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    // MARK: - Budget vs actual
+
+    private var budgetSubject: BudgetSubject? {
+        switch selectedScope {
+        case .card(let id, _): .card(id)
+        case .stack(let id, _): .stack(id)
+        case .allCards: nil
+        }
+    }
+
+    /// Always the running cycle (budgets are per cycle), whatever time range is picked above.
+    @ViewBuilder private var budgetVsActualCard: some View {
+        let status = budgetSubject.flatMap { model.budgetStatus($0) }
+        let across = budgetSubject == nil ? model.budgetLinesAcrossCards() : nil
+        if status != nil || !(across?.lines.isEmpty ?? true) {
+            let currency = status?.currency ?? model.reportingCurrency
+            let lines = status?.lines ?? across?.lines ?? []
+            let cycles = budgetSubject.map { model.budgetCycles($0) } ?? []
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Budget vs actual").font(.headline)
+                    Text(status.map { "\($0.cycle.label) · \(Money.format($0.spent, code: currency)) of \(Money.format($0.limit, code: currency))" }
+                         ?? "This cycle, per card" + (across?.approximate == true ? " · ≈ at today's rate" : ""))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                BudgetLineRows(lines: lines, currency: currency)
+                if cycles.count > 1 {
+                    Divider()
+                    Text("Cycle by cycle").font(.subheadline.weight(.semibold))
+                    BudgetCyclesChart(results: cycles, currency: currency)
+                }
+            }
+            .padding(20)
+            .background(MC.surface, in: RoundedRectangle(cornerRadius: 20))
+            .accessibilityIdentifier("budgetVsActualCard")
+        }
     }
 
     // MARK: - Chart 2: Daily Spending Rhythm
