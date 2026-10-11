@@ -69,19 +69,23 @@ struct MacSettingsView: View {
                     }
                 } header: { Text("Add Expense form") }
                 Section {
-                    ForEach(model.entryRowOrder, id: \.self) { line in
+                    let order = model.entryRowOrder
+                    ForEach(Array(order.enumerated()), id: \.element) { index, line in
                         HStack(spacing: 10) {
-                            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
                             if let field = line.field {
                                 Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
                             } else {
                                 Text(line.title); Spacer(); Text("Always shown").foregroundStyle(.secondary)
                             }
+                            Button { model.moveEntryRows(from: IndexSet(integer: index), to: index - 1) } label: { Image(systemName: "chevron.up") }
+                                .disabled(index == 0).accessibilityLabel("Move \(line.title) up")
+                            Button { model.moveEntryRows(from: IndexSet(integer: index), to: index + 2) } label: { Image(systemName: "chevron.down") }
+                                .disabled(index == order.count - 1).accessibilityLabel("Move \(line.title) down")
                         }
+                        .buttonStyle(.borderless)
                     }
-                    .onMove { model.moveEntryRows(from: $0, to: $1) }
                 } header: { Text("Details, in order") } footer: {
-                    SettingsNote("Drag to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                    SettingsNote("Use the arrows to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
                 }
             }
         case .paidWith:
