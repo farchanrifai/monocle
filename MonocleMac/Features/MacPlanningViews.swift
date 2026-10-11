@@ -456,9 +456,9 @@ private struct ChartCard<Content: View>: View {
     init(_ title: String, info: String, @ViewBuilder content: () -> Content) { self.title = title; self.info = info; self.content = content() }
     var body: some View {
         GroupBox { content.frame(minHeight: 240, maxHeight: .infinity).padding(8) } label: {
-            HStack(spacing: 4) {
-                Text(title)
-                Button { showInfo.toggle() } label: { Image(systemName: "info.circle").foregroundStyle(.secondary) }
+            HStack(spacing: 6) {
+                Text(title).font(.title3.weight(.semibold))
+                Button { showInfo.toggle() } label: { Image(systemName: "info.circle").font(.callout).foregroundStyle(.secondary) }
                     .buttonStyle(.plain).accessibilityLabel("About \(title)")
                     .popover(isPresented: $showInfo, arrowEdge: .bottom) {
                         Text(info).font(.callout).fixedSize(horizontal: false, vertical: true).frame(width: 240, alignment: .leading).padding(14)
