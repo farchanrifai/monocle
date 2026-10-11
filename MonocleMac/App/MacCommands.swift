@@ -192,13 +192,13 @@ final class MacAppState {
     func goBack() {
         guard let previous = backStack.popLast() else { return }
         forwardStack.append(destination)
-        navigatingHistory = true; destination = previous; navigatingHistory = false
+        navigatingHistory = true; withAnimation(.smooth(duration: 0.25)) { destination = previous }; navigatingHistory = false
     }
 
     func goForward() {
         guard let next = forwardStack.popLast() else { return }
         backStack.append(destination)
-        navigatingHistory = true; destination = next; navigatingHistory = false
+        navigatingHistory = true; withAnimation(.smooth(duration: 0.25)) { destination = next }; navigatingHistory = false
     }
 
     func edit(_ expense: Expense) {
@@ -419,7 +419,7 @@ final class MacAppState {
 
     func selectCard(_ id: UUID) {
         _ = model.selectCard(id)
-        destination = .card(id)
+        withAnimation(.smooth(duration: 0.25)) { destination = .card(id) } // the sidebar group opens with motion
         inspect(.card(id))
     }
 
