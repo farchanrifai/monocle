@@ -122,7 +122,7 @@ struct MacSettingsView: View {
     }
 }
 
-/// Paid with labels. Labels never carry a balance; each card's default lives in the card editor.
+/// Paid with labels and each card's default. Labels never carry a balance.
 private struct PaidWithSettingsPane: View {
     @Bindable var model: AppModel
     @State private var newName = ""
@@ -160,11 +160,23 @@ private struct PaidWithSettingsPane: View {
                     if let error { SettingsNote(error).foregroundStyle(.red) }
                 }
             }
+            Section {
+                ForEach(model.cards) { card in
+                    Picker(card.name, selection: Binding(get: { card.defaultPaidWithID }, set: { id in
+                        do { try model.setDefaultPaidWith(id, for: card.id); error = nil } catch { self.error = error.localizedDescription }
+                    })) {
+                        Text("None").tag(UUID?.none)
+                        ForEach(model.paymentMethods) { method in Text(method.name).tag(UUID?.some(method.id)) }
+                    }
+                }
+            } header: { Text("Default for each card") } footer: {
+                SettingsNote("New expenses on a card start with its default. You can also set this when editing the card.")
+            }
         }
     }
 }
 
-/// Reporting currency for the workspace; each card's budget and spending currency live in the card editor.
+/// Reporting currency for the workspace; budget and spending currency for every card.
 private struct CurrencySettingsPane: View {
     @Bindable var model: AppModel
     @State private var pending: String?
@@ -182,7 +194,20 @@ private struct CurrencySettingsPane: View {
                     ForEach(choices, id: \.self) { Text($0).tag($0) }
                 }.disabled(working)
             } footer: {
-                SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first. Each card's own currencies are set when you edit the card.")
+                SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first.")
+            }
+            ForEach(model.cards) { card in
+                Section {
+                    Picker("Budget", selection: Binding(get: { model.currency(of: card) }, set: { code in
+                        run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: card.id) }
+                    })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.disabled(working)
+                    Picker("Spending", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
+                        run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: card.id) }
+                    })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.disabled(working)
+                } header: { Text(card.name) }
+            }
+            Section {} footer: {
+                SettingsNote("The budget currency is what a card's budget and totals use. New expenses start in the spending currency, and the card shows an ≈ amount in it. You can also set these when editing the card.")
             }
             if working || error != nil {
                 Section {
