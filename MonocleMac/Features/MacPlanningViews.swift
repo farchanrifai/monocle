@@ -25,7 +25,11 @@ private struct BudgetTable: View {
                     }
                 }
             }
+            if lines.isEmpty {
+                Text("Nothing to show yet this cycle.").foregroundStyle(.secondary).gridCellColumns(onEdit == nil ? 4 : 5)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 18).padding(.vertical, 16)
         .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
     }
