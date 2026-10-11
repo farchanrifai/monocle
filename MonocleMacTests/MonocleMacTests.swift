@@ -108,6 +108,12 @@ final class MonocleMacTests: XCTestCase {
         filter = ActivityFilter(from: "2026-09-15", to: "2026-09-30")
         XCTAssertEqual(found("", filter), ["Taxi"])
         XCTAssertEqual(found("taxi", ActivityFilter(categories: ["Food & Drink"])), [])   // search and chips are ANDed
+
+        // Option counts ignore the option's own facet, so a ticked value still shows what the others would add.
+        let options = ActivityFilterOptions(rows: rows)
+        XCTAssertEqual(options.counts(for: .category, under: ActivityFilter()), ["Food & Drink": 2, "Transport": 1])
+        XCTAssertEqual(options.counts(for: .category, under: ActivityFilter(categories: ["Transport"], cards: ["Trip"])), ["Food & Drink": 1, "Transport": 1])
+        XCTAssertEqual(options.counts(for: .card, under: ActivityFilter(from: "2026-09-15")), ["Trip": 2])
     }
 
     func testAPIKeyRoundTripsThroughSandboxedKeychain() throws {
