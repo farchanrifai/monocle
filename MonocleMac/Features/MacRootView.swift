@@ -144,6 +144,7 @@ struct MacRootView: View {
             }
         }
         .listStyle(.sidebar)
+        .animation(.smooth(duration: 0.25), value: state.destination) // animates the group opening and folding back
         .navigationTitle("monocle")
     }
 
