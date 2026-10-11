@@ -1,6 +1,31 @@
 import Charts
 import SwiftUI
 
+/// Rows at their natural height, so a short list leaves no empty striped rows like a Table does.
+private struct BudgetTable: View {
+    let lines: [BudgetLine], currency: String, nameTitle: String, fallbackLimit: Int64
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 14) {
+            GridRow {
+                Text(nameTitle); Text("Spent"); Text("Limit"); Text("Progress")
+            }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
+            Divider().gridCellUnsizedAxes(.horizontal)
+            ForEach(lines) { line in
+                let over = line.limit.map { line.spent > $0 } == true
+                GridRow {
+                    Text(line.name).lineLimit(1)
+                    Text(Money.format(line.spent, code: currency)).font(.system(.body, design: .monospaced)).foregroundStyle(over ? MC.red : .primary)
+                    Text(line.limit.map { Money.format($0, code: currency) } ?? "—").font(.system(.body, design: .monospaced))
+                    ProgressView(value: min(1, Double(line.spent) / Double(max(1, line.limit ?? fallbackLimit))))
+                        .tint(over ? MC.red : nil).frame(minWidth: 160, maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.horizontal, 18).padding(.vertical, 16)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 struct MacBudgetsView: View {
     @Bindable var state: MacAppState
     @State private var editing = false
@@ -32,18 +57,11 @@ struct MacBudgetsView: View {
                 HStack {
                     Text(isStack ? "By card" : "Category budgets").font(.title2.bold()); Spacer()
                     if editable { Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
+                    if case .stack(let id) = subject, let stack = model.stacks.first(where: { $0.id == id }) {
+                        Button("Edit Stack…") { state.editingStack = stack }.buttonStyle(.glass)
+                    }
                 }
-                Table(status.lines) {
-                    TableColumn(isStack ? "Card" : "Category") { Text($0.name) }
-                    TableColumn("Spent") { Text(Money.format($0.spent, code: status.currency)).font(.system(.body, design: .monospaced)) }
-                    TableColumn("Limit") { line in
-                        Text(line.limit.map { Money.format($0, code: status.currency) } ?? "—").font(.system(.body, design: .monospaced))
-                    }
-                    TableColumn("Progress") { line in
-                        ProgressView(value: min(1, Double(line.spent) / Double(max(1, line.limit ?? status.limit))))
-                            .tint(line.limit.map { line.spent > $0 } == true ? MC.red : nil)
-                    }
-                }.frame(minHeight: 220)
+                BudgetTable(lines: status.lines, currency: status.currency, nameTitle: isStack ? "Card" : "Category", fallbackLimit: status.limit)
                 if cycles.count > 1 {
                     Text("Cycle by cycle").font(.title2.bold())
                     BudgetCyclesChart(results: cycles, currency: status.currency)
