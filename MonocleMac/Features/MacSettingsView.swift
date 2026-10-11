@@ -24,10 +24,11 @@ struct MacSettingsView: View {
     @Bindable var state: MacAppState
     @Bindable private var model: AppModel
     @State private var lockError: String?
-    @State private var dropTarget: EntryFormRow?
     @AppStorage("MacSettingsPane") private var savedPane: SettingsPane = .general
     @State private var selection: SettingsPane?
     private var pane: SettingsPane { selection ?? savedPane }
+
+    private static let reorderRowHeight: CGFloat = 26
 
     init(state: MacAppState) { self.state = state; model = state.model }
 
@@ -70,32 +71,28 @@ struct MacSettingsView: View {
                     }
                 } header: { Text("Add Expense form") }
                 Section {
-                    let order = model.entryRowOrder
-                    ForEach(Array(order.enumerated()), id: \.element) { index, line in
-                        HStack(spacing: 10) {
-                            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
-                            if let field = line.field {
-                                Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
-                            } else {
-                                Text(line.title); Spacer(); Text("Always shown").foregroundStyle(.secondary)
+                    // A real List: its rows reorder natively (live, with the system drag cursor). Hand-rolled
+                    // .draggable/.dropDestination rows showed a copy badge, a lagging preview and dead gaps between rows.
+                    List {
+                        ForEach(model.entryRowOrder, id: \.self) { line in
+                            HStack(spacing: 10) {
+                                Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
+                                if let field = line.field {
+                                    Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
+                                } else {
+                                    Text(line.title); Spacer(); Text("Always shown").foregroundStyle(.secondary)
+                                }
                             }
+                            .frame(height: Self.reorderRowHeight)
+                            .listRowSeparator(.hidden)
                         }
-                        .padding(.vertical, 2).contentShape(Rectangle())
-                        .background(dropTarget == line ? Color.accentColor.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 6))
-                        // `.onMove` is a List feature and does nothing in a grouped Form, so rows are dragged by hand.
-                        .draggable(line.rawValue) { Text(line.title).padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8)) }
-                        .dropDestination(for: String.self) { items, _ in
-                            guard let raw = items.first, let moved = EntryFormRow(rawValue: raw), let from = order.firstIndex(of: moved), from != index else { return false }
-                            model.moveEntryRows(from: IndexSet(integer: from), to: from < index ? index + 1 : index)
-                            return true
-                        } isTargeted: { targeted in
-                            if targeted { dropTarget = line } else if dropTarget == line { dropTarget = nil }
-                        }
-                        .accessibilityAction(named: "Move up") { if index > 0 { model.moveEntryRows(from: IndexSet(integer: index), to: index - 1) } }
-                        .accessibilityAction(named: "Move down") { if index < order.count - 1 { model.moveEntryRows(from: IndexSet(integer: index), to: index + 2) } }
+                        .onMove { model.moveEntryRows(from: $0, to: $1) }
                     }
+                    .listStyle(.plain).scrollContentBackground(.hidden).scrollDisabled(true)
+                    .frame(height: CGFloat(model.entryRowOrder.count) * (Self.reorderRowHeight + 8))
+                    .listRowInsets(EdgeInsets())
                 } header: { Text("Details, in order") } footer: {
-                    SettingsNote("Drag a row to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                    SettingsNote("Drag a row by its handle to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
                 }
             }
         case .paidWith:
