@@ -3,6 +3,7 @@ import SwiftUI
 struct BudgetsView: View {
     @Bindable var model: AppModel
     @State private var editing: BudgetEditTarget?
+    @State private var showingAnalytics = false
     /// nil follows the active card.
     @State private var picked: BudgetSubject?
 
@@ -79,9 +80,16 @@ struct BudgetsView: View {
         }.background(MC.paper)
             .navigationTitle("Budgets").navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Analytics", systemImage: "chart.line.uptrend.xyaxis") { showingAnalytics = true }
+                        .accessibilityIdentifier("budgetsAnalyticsButton")
+                }
                 if case .card(let id) = subject { ToolbarItem(placement: .topBarTrailing) { Button("Edit", systemImage: "slider.horizontal.3") { editing = BudgetEditTarget(id: id) } } }
             }
             .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id) }
+            .navigationDestination(isPresented: $showingAnalytics) {
+                AnalyticsView(model: model, showsDismissButton: false, isPushed: true).hidesBottomNavigation(model)
+            }
     }
 
     private var subjectMenu: some View {

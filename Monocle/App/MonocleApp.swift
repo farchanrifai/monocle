@@ -28,8 +28,8 @@ struct RootView: View {
                         }
                         .toolbar(.hidden, for: .tabBar)
                     }
-                    Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
-                        AnalyticsView(model: model, showsDismissButton: false)
+                    Tab("Budgets", systemImage: "chart.pie", value: 1) {
+                        NavigationStack { BudgetsView(model: model) }
                             .toolbar(.hidden, for: .tabBar)
                     }
                 }
@@ -92,10 +92,15 @@ struct RootView: View {
                 model.showEntry = false
                 model.showSettings = false
                 model.selectedTab = 0
-            } else if host == "analytics" {
+            } else if host == "budgets" {
                 model.showEntry = false
                 model.showSettings = false
                 model.selectedTab = 1
+            } else if host == "analytics" {
+                model.showEntry = false
+                model.showSettings = false
+                model.selectedTab = 0
+                model.showAnalytics = true
             } else if host == "session" {
                 if url.path == "/end" {
                     model.sessionManager.endSession()

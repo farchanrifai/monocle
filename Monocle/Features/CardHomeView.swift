@@ -280,7 +280,6 @@ struct CardHomeView: View {
     @State private var expanded = false
     @State private var selectedID: UUID?
     @State private var managing = false
-    @State private var showingBudgets = false
     @State private var showingBills = false
     @State private var draggedCardID: UUID?
     @State private var dragAmount: CGFloat = 0
@@ -460,9 +459,6 @@ struct CardHomeView: View {
             }
         }
         // Pushed on the root stack, so the system back button and the edge swipe work.
-        .navigationDestination(isPresented: $showingBudgets) {
-            BudgetsView(model: model).hidesBottomNavigation(model)
-        }
         .navigationDestination(isPresented: $showingBills) {
             BillsView(model: model).hidesBottomNavigation(model)
         }
@@ -1303,13 +1299,6 @@ struct CardPresentationView: View {
 
             // Tools & Insights
             Menu {
-                Button {
-                    showingBudgets = true
-                } label: {
-                    Label("Budgets", systemImage: "chart.bar.xaxis")
-                }
-                .accessibilityIdentifier("menuBudgets")
-
                 Button {
                     showingBills = true
                 } label: {

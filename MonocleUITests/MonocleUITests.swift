@@ -57,13 +57,13 @@ final class MonocleUITests: XCTestCase {
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        app.buttons["bookOptionsMenu"].tap()
-        app.buttons["Tools & Insights"].tap()
-        app.buttons["Budgets"].tap()
+        // Budgets is a main tab now.
+        app.buttons["homeTab"].press(forDuration: 0.3, thenDragTo: app.buttons["budgetsTab"])
         XCTAssertTrue(app.staticTexts["Where it went"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["homeTab"].tap()
+        XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Tools & Insights"].tap()
         app.buttons["Recurring Bills"].tap()
@@ -279,13 +279,13 @@ final class MonocleUITests: XCTestCase {
         swipeBack()
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5), "Edge swipe leaves Expense Details")
 
-        // Budgets keeps its navigation bar; Analytics (opened from Budgets) pushes on top of it.
-        app.buttons["bookOptionsMenu"].tap()
-        app.buttons["Tools & Insights"].tap()
-        app.buttons["Budgets"].tap()
-        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5))
+        // Analytics is pushed from the Budgets tab; the swipe returns to Budgets.
+        app.buttons["homeTab"].press(forDuration: 0.3, thenDragTo: app.buttons["budgetsTab"])
+        XCTAssertTrue(app.buttons["budgetsAnalyticsButton"].waitForExistence(timeout: 5))
+        app.buttons["budgetsAnalyticsButton"].tap()
+        XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
         swipeBack()
-        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5), "Edge swipe leaves Budgets")
+        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5), "Edge swipe leaves Analytics for Budgets")
     }
 
     @MainActor
@@ -1185,12 +1185,14 @@ final class MonocleUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
-        // 1. Open Analytics from the center tab switcher
+        // 1. Open Analytics from the Budgets tab's top bar
         let homeTab = app.buttons["homeTab"]
-        let analysisTab = app.buttons["analysisTab"]
+        let budgetsTab = app.buttons["budgetsTab"]
         XCTAssertTrue(homeTab.waitForExistence(timeout: 10))
-        XCTAssertTrue(analysisTab.exists)
-        homeTab.press(forDuration: 0.3, thenDragTo: analysisTab)
+        XCTAssertTrue(budgetsTab.exists)
+        homeTab.press(forDuration: 0.3, thenDragTo: budgetsTab)
+        XCTAssertTrue(app.buttons["budgetsAnalyticsButton"].waitForExistence(timeout: 5))
+        app.buttons["budgetsAnalyticsButton"].tap()
 
         // 2. Verify Analytics & Trends is a root page, not a modal
         XCTAssertTrue(app.staticTexts["Analytics & Trends"].waitForExistence(timeout: 5) || app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
@@ -1214,7 +1216,9 @@ final class MonocleUITests: XCTestCase {
             app.buttons["All Cards"].tap()
         }
 
-        // 7. Return to Home from the same switcher
+        // 7. Back to Budgets, then Home from the switcher
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(homeTab.waitForExistence(timeout: 5))
         homeTab.tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["activityFilterButton"].exists)
@@ -1562,13 +1566,10 @@ final class MonocleUITests: XCTestCase {
 
         // 3. Open sub-menu: Tools & Insights
         app.buttons["Tools & Insights"].tap()
-        XCTAssertTrue(app.buttons["Budgets"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Recurring Bills"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Analytics & Trends"].exists)
-        XCTAssertTrue(app.buttons["Recurring Bills"].exists)
-
-        // Tap Budgets
-        app.buttons["Budgets"].tap()
-        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5))
+        app.buttons["Recurring Bills"].tap()
+        XCTAssertTrue(app.navigationBars["Recurring Bills"].waitForExistence(timeout: 5) || app.buttons["addBillButton"].waitForExistence(timeout: 5))
         app.navigationBars.buttons.element(boundBy: 0).tap()
 
         // 4. Open card and capture updated transaction page
