@@ -10,7 +10,7 @@ private struct BudgetTable: View {
             GridRow {
                 Text(nameTitle); Text("Spent"); Text("Limit"); Text("Progress")
                 if onEdit != nil { Text("") }
-            }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
+            }.font(.callout.weight(.medium))
             Divider().gridCellUnsizedAxes(.horizontal)
             ForEach(lines) { line in
                 let over = line.limit.map { line.spent > $0 } == true
@@ -176,6 +176,42 @@ struct MacBillsView: View {
     @State private var adding = false
     private var model: AppModel { state.model }
     private var pending: [BillOccurrence] { model.billOccurrences.filter { $0.status == .pending }.sorted { $0.dueDay < $1.dueDay } }
+    private var selectedBillID: Bill.ID? { if case .bill(let id) = state.inspectorSelection { id } else { nil } }
+
+    /// Short list of rules: rows at their natural height. Click selects, double-click or the menu edits.
+    private var billRows: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 20) {
+                Text("Name").frame(maxWidth: .infinity, alignment: .leading)
+                Text("Amount").frame(width: 150, alignment: .leading)
+                Text("Schedule").frame(width: 150, alignment: .leading)
+                Text("Mode").frame(width: 90, alignment: .leading)
+                Text("Active").frame(width: 50, alignment: .leading)
+            }.font(.callout.weight(.medium)).padding(.horizontal, 12).padding(.bottom, 10)
+            Divider().padding(.bottom, 6)
+            ForEach(model.bills) { bill in
+                HStack(spacing: 20) {
+                    Text(bill.name).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(Money.format(bill.amount)).font(.system(.body, design: .monospaced)).frame(width: 150, alignment: .leading)
+                    Text(bill.recurrence.title).frame(width: 150, alignment: .leading)
+                    Text(bill.recordingMode == .automatic ? "Automatic" : "Confirm").frame(width: 90, alignment: .leading)
+                    Image(systemName: bill.isActive ? "checkmark.circle.fill" : "pause.circle").frame(width: 50, alignment: .leading)
+                        .accessibilityLabel(bill.isActive ? "Active" : "Paused")
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(selectedBillID == bill.id ? Color.accentColor.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) { state.editingBill = bill }
+                .onTapGesture { state.inspect(.bill(bill.id)) }
+                .contextMenu { Button("Edit Bill…") { state.editingBill = bill } }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+            }
+        }
+        .padding(.horizontal, 6).padding(.vertical, 16)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+
     var body: some View {
         Page(title: "Bills") {
             HStack {
@@ -184,21 +220,7 @@ struct MacBillsView: View {
                 SummaryTile(title: "Monthly total", value: Money.format(model.bills.filter(\.isActive).reduce(0) { $0 + $1.amount }), detail: "Scheduled amount")
             }
             HStack { Text("Schedule").font(.title2.bold()); Spacer(); Button("New Bill") { adding = true }.buttonStyle(.glassProminent) }
-            Table(model.bills, selection: Binding<Bill.ID?>(get: {
-                if case .bill(let id) = state.inspectorSelection { id } else { nil }
-            }, set: { state.inspect($0.map { .bill($0) }) })) {
-                TableColumn("Name") { Text($0.name) }
-                TableColumn("Amount") { Text(Money.format($0.amount)).font(.system(.body, design: .monospaced)) }
-                TableColumn("Schedule") { Text($0.recurrence.title) }
-                TableColumn("Mode") { Text($0.recordingMode == .automatic ? "Automatic" : "Confirm") }
-                TableColumn("Active") { Image(systemName: $0.isActive ? "checkmark.circle.fill" : "pause.circle") }
-            }
-            .contextMenu(forSelectionType: Bill.ID.self) { ids in
-                if let bill = model.bills.first(where: { ids.contains($0.id) }) { Button("Edit Bill…") { state.editingBill = bill } }
-            } primaryAction: { ids in
-                state.editingBill = model.bills.first { ids.contains($0.id) }
-            }
-            .frame(minHeight: 240)
+            billRows
             if !pending.isEmpty {
                 Text("Needs attention").font(.title2.bold())
                 ForEach(pending) { occurrence in
