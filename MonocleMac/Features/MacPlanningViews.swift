@@ -4,10 +4,12 @@ import SwiftUI
 /// Rows at their natural height, so a short list leaves no empty striped rows like a Table does.
 private struct BudgetTable: View {
     let lines: [BudgetLine], currency: String, nameTitle: String, fallbackLimit: Int64
+    var onEdit: ((UUID) -> Void)? = nil
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 28, verticalSpacing: 14) {
             GridRow {
                 Text(nameTitle); Text("Spent"); Text("Limit"); Text("Progress")
+                if onEdit != nil { Text("") }
             }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
             Divider().gridCellUnsizedAxes(.horizontal)
             ForEach(lines) { line in
@@ -18,6 +20,9 @@ private struct BudgetTable: View {
                     Text(line.limit.map { Money.format($0, code: currency) } ?? "—").font(.system(.body, design: .monospaced))
                     ProgressView(value: min(1, Double(line.spent) / Double(max(1, line.limit ?? fallbackLimit))))
                         .tint(over ? MC.red : nil).frame(minWidth: 160, maxWidth: .infinity)
+                    if let onEdit {
+                        Button("Edit") { onEdit(line.id) }.buttonStyle(.borderless).accessibilityLabel("Edit \(line.name) budget")
+                    }
                 }
             }
         }
@@ -28,12 +33,12 @@ private struct BudgetTable: View {
 
 struct MacBudgetsView: View {
     @Bindable var state: MacAppState
-    @State private var editing = false
+    @State private var editing: BudgetEditTarget?
     /// nil follows the active card.
     @State private var picked: BudgetSubject?
     private var model: AppModel { state.model }
     private var subject: BudgetSubject { picked ?? .card(model.activeCardID) }
-    private var editable: Bool { subject == .card(model.activeCardID) }
+    private var editCardID: UUID? { if case .card(let id) = subject { id } else { nil } }
     private var isStack: Bool { if case .stack = subject { true } else { false } }
     private var subjectName: String {
         switch subject {
@@ -56,12 +61,10 @@ struct MacBudgetsView: View {
                 }
                 HStack {
                     Text(isStack ? "By card" : "Category budgets").font(.title2.bold()); Spacer()
-                    if editable { Button("Edit Budget") { editing = true }.buttonStyle(.glass) }
-                    if case .stack(let id) = subject, let stack = model.stacks.first(where: { $0.id == id }) {
-                        Button("Edit Stack…") { state.editingStack = stack }.buttonStyle(.glass)
-                    }
+                    if let id = editCardID { Button("Edit Budget") { editing = BudgetEditTarget(id: id) }.buttonStyle(.glass) }
                 }
-                BudgetTable(lines: status.lines, currency: status.currency, nameTitle: isStack ? "Card" : "Category", fallbackLimit: status.limit)
+                BudgetTable(lines: status.lines, currency: status.currency, nameTitle: isStack ? "Card" : "Category", fallbackLimit: status.limit,
+                            onEdit: isStack ? { editing = BudgetEditTarget(id: $0) } : nil)
                 if cycles.count > 1 {
                     Text("Cycle by cycle").font(.title2.bold())
                     BudgetCyclesChart(results: cycles, currency: status.currency)
@@ -69,11 +72,11 @@ struct MacBudgetsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                HStack { Spacer(); if editable { Button("Edit Budget") { editing = true }.buttonStyle(.glass) } }
-                Text(editable ? "This card has no budget yet." : "No monthly budget to show here yet.").foregroundStyle(.secondary)
+                HStack { Spacer(); if let id = editCardID { Button("Edit Budget") { editing = BudgetEditTarget(id: id) }.buttonStyle(.glass) } }
+                Text(editCardID != nil ? "This card has no budget yet." : "No monthly budget to show here yet.").foregroundStyle(.secondary)
             }
         }
-        .sheet(isPresented: $editing) { BudgetEditor(model: model) { editing = false } }
+        .sheet(item: $editing) { target in BudgetEditor(model: model, cardID: target.id) { editing = nil } }
     }
 
     private var subjectMenu: some View {
@@ -106,6 +109,7 @@ struct MacBudgetsView: View {
 
 private struct BudgetEditor: View {
     @Bindable var model: AppModel
+    let cardID: UUID
     let close: () -> Void
     @State private var amount: String
     @State private var startDay: Int
@@ -115,13 +119,14 @@ private struct BudgetEditor: View {
     @State private var isTotal: Bool
     @State private var totalUntil: Date
 
-    init(model: AppModel, close: @escaping () -> Void) {
-        self.model = model; self.close = close
-        _amount = State(initialValue: Money.digits(model.activeBudget.overallLimit))
-        _startDay = State(initialValue: model.activeBudget.startDay)
-        _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: model.activeBudget.categoryLimits.map { ($0.categoryID, Money.digits($0.limit)) }))
-        _isTotal = State(initialValue: model.activeBudget.totalUntilDay != nil)
-        _totalUntil = State(initialValue: model.activeBudget.totalUntilDay.flatMap { Day.date($0) }
+    init(model: AppModel, cardID: UUID, close: @escaping () -> Void) {
+        self.model = model; self.cardID = cardID; self.close = close
+        let budget_ = model.budgetPeriod(for: cardID).budget
+        _amount = State(initialValue: Money.digits(budget_.overallLimit))
+        _startDay = State(initialValue: budget_.startDay)
+        _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: budget_.categoryLimits.map { ($0.categoryID, Money.digits($0.limit)) }))
+        _isTotal = State(initialValue: budget_.totalUntilDay != nil)
+        _totalUntil = State(initialValue: budget_.totalUntilDay.flatMap { Day.date($0) }
             ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now)
     }
 
@@ -133,17 +138,17 @@ private struct BudgetEditor: View {
                     Text("Monthly").tag(false)
                     Text("Total until").tag(true)
                 }.pickerStyle(.segmented)
-                TextField("Overall limit (\(model.activeCardCurrency))", text: $amount)
+                TextField("Overall limit (\(model.currency(ofCard: cardID)))", text: $amount)
                 if isTotal {
-                    DatePicker("Last day", selection: $totalUntil, in: model.cycle.start..., displayedComponents: .date)
-                    Text("One amount from \(Day.title(Day.string(model.cycle.start))) through the last day. Use it for a trip or a goal.")
+                    DatePicker("Last day", selection: $totalUntil, in: model.budgetPeriod(for: cardID).cycle.start..., displayedComponents: .date)
+                    Text("One amount from \(Day.title(Day.string(model.budgetPeriod(for: cardID).cycle.start))) through the last day. Use it for a trip or a goal.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     Stepper("Cycle begins on day \(startDay)", value: $startDay, in: 1...31)
                     Toggle("Apply to next cycle", isOn: $nextCycle)
                 }
                 Section("Categories") {
-                    ForEach(model.activeCategories) { category in
+                    ForEach(model.activeCategories(for: cardID)) { category in
                         TextField(category.name, text: Binding(get: { categoryAmounts[category.id] ?? "" }, set: { categoryAmounts[category.id] = $0 }))
                     }
                 }
@@ -159,8 +164,8 @@ private struct BudgetEditor: View {
                 guard !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
                 return CategoryBudget(categoryID: id, limit: try Money.parse(value))
             }
-            try model.saveBudget(overallLimit: total, startDay: isTotal ? model.activeBudget.startDay : startDay, categoryLimits: categories,
-                                 applyToNextCycle: !isTotal && nextCycle, totalUntil: isTotal ? totalUntil : nil)
+            try model.saveBudget(overallLimit: total, startDay: isTotal ? model.budgetPeriod(for: cardID).budget.startDay : startDay, categoryLimits: categories,
+                                 applyToNextCycle: !isTotal && nextCycle, totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
             close()
         } catch { self.error = error.localizedDescription }
     }

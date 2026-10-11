@@ -464,6 +464,24 @@ final class MultiCardTests: XCTestCase {
         XCTAssertNil(Stack(name: "Empty").budgetLimit(cardLimits: []))
     }
 
+    func testSavingAnotherCardsBudgetLeavesTheActiveCardAlone() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleCard()
+        let other = try repo.createCard(named: "Tokyo")
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
+        try model.saveBudget(overallLimit: 3_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        let activeBefore = model.activeBudget, settingsBefore = model.settings.budget
+
+        try model.saveBudget(overallLimit: 7_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false, cardID: other.id)
+
+        XCTAssertEqual(model.budgetPeriod(for: other.id).budget.overallLimit, 7_000_000_00)
+        XCTAssertEqual(model.activeBudget, activeBefore)
+        XCTAssertEqual(model.settings.budget, settingsBefore)
+    }
+
     func testTotalUntilBudgetIsOnePeriodAndSwitchingBackReplacesIt() throws {
         // Domain: one period from the start through the last day, including after it ends.
         let goal = BudgetVersion(effectiveDay: "2026-10-01", overallLimit: 10_000_000_00, startDay: 1, totalUntilDay: "2027-03-31")

@@ -968,6 +968,14 @@ final class AppModel {
                                currency: currency(of: card), amount: { [self] in cardAmount($0, in: card) })
     }
 
+    /// The running (or goal / transition) period of a card's budget; a card with no budget history gets the settings fallback.
+    func budgetPeriod(for cardID: UUID) -> BudgetPeriod {
+        let budgets = (try? expenseService?.budgets(for: cardID)) ?? []
+        if let period = BudgetHistory.period(containing: .now, budgets: budgets) { return period }
+        let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay)
+        return BudgetPeriod(budget: fallback, cycle: Cycle.containing(.now, startDay: fallback.startDay))
+    }
+
     func budgetStackInput(_ stackID: UUID) -> BudgetStackInput? {
         guard let stack = stacks.first(where: { $0.id == stackID }) else { return nil }
         let inputs = stack.cardIDs.filter { !alwaysHiddenCardIDs.contains($0) }.compactMap(budgetCardInput)
@@ -1831,10 +1839,14 @@ final class AppModel {
 
     /// `totalUntil` makes a "Total until" budget (a goal): one amount from the current period's start through that day.
     func saveBudget(overallLimit: Int64, startDay: Int, categoryLimits: [CategoryBudget], applyToNextCycle: Bool,
-                    totalUntil: Date? = nil, date: Date = .now, calendar: Calendar = .current) throws {
+                    totalUntil: Date? = nil, date: Date = .now, calendar: Calendar = .current, cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
+        // Another card's budget saves the same way but leaves the active card's settings alone.
+        let cardID = cardID ?? activeCardID
+        let isActive = cardID == activeCardID
+        let history = try expenseService.budgets(for: cardID)
         let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: date, calendar: calendar)
-        let current = BudgetHistory.period(containing: date, budgets: budgetHistory, calendar: calendar)
+        let current = BudgetHistory.period(containing: date, budgets: history, calendar: calendar)
             ?? BudgetPeriod(budget: fallback, cycle: Cycle.containing(date, startDay: fallback.startDay, calendar: calendar))
         let effectiveStart: Date
         let transitionEndDay: String?
@@ -1851,7 +1863,7 @@ final class AppModel {
             transitionEndDay = Day.string(BudgetHistory.transitionEnd(after: effectiveStart, startDay: startDay, calendar: calendar), calendar: calendar)
         }
         let effectiveDay = Day.string(effectiveStart, calendar: calendar)
-        let id = budgetHistory.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
+        let id = history.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
         let totalUntilDay = totalUntil.map { Day.string($0, calendar: calendar) }
         if let totalUntilDay { guard totalUntilDay >= effectiveDay else { throw BudgetError.invalidEffectiveDate } }
         let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
@@ -1861,10 +1873,10 @@ final class AppModel {
         // A goal doesn't change the fallback cycle budget that applies once the goal has ended.
         if totalUntilDay == nil { proposed.budget = overallLimit; proposed.startDay = startDay }
         try performWorkspaceCommand {
-            try expenseService.save(budget)
-            try requireState().saveSettings(proposed)
+            try expenseService.save(budget, in: cardID)
+            if isActive { try requireState().saveSettings(proposed) }
         }
-        settings = proposed
+        if isActive { settings = proposed }
         invalidateExpenseCaches()
     }
 
