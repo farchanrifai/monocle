@@ -459,43 +459,31 @@ struct CardHomeView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingBudgets) {
-            NavigationStack {
-                BudgetsView(model: model)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingBudgets = false }
-                        }
-                    }
-            }
+        // Pushed on the root stack, so the system back button and the edge swipe work.
+        .navigationDestination(isPresented: $showingBudgets) {
+            BudgetsView(model: model).hidesBottomNavigation(model)
         }
-        .sheet(isPresented: $showingBills) {
-            NavigationStack {
-                BillsView(model: model)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingBills = false }
-                        }
-                    }
-            }
+        .navigationDestination(isPresented: $showingBills) {
+            BillsView(model: model).hidesBottomNavigation(model)
         }
         .sheet(isPresented: $model.showCSVInterchange) {
             NavigationStack {
                 CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
             }
         }
-        .sheet(isPresented: $model.showAnalytics) {
-            AnalyticsView(model: model)
+        .navigationDestination(isPresented: $model.showAnalytics) {
+            AnalyticsView(model: model, showsDismissButton: false, isPushed: true).hidesBottomNavigation(model)
         }
         .sheet(isPresented: $model.showStartSessionSheet) {
             startSessionSheet
         }
-        .fullScreenCover(item: $selectedExpenseForDetail) { expense in
+        .navigationDestination(item: $selectedExpenseForDetail) { expense in
             TransactionDetailView(
                 initialExpense: expense,
                 model: model,
                 onDismiss: { selectedExpenseForDetail = nil }
             )
+            .hidesBottomNavigation(model)
         }
         .onAppear {
             if displayedCards.isEmpty {
@@ -562,10 +550,6 @@ struct CardHomeView: View {
             .accessibilityIdentifier("homeLogo")
 
             Spacer()
-            if model.selectedCardID == nil {
-                filterMenu
-                    .transition(.scale(scale: 0.5).combined(with: .opacity))
-            }
             optionsMenu
         }
         .padding(.horizontal, 20)
@@ -1109,20 +1093,30 @@ struct CardPresentationView: View {
                 Spacer()
 
                 if cardID == nil {
-                    HStack(spacing: 4) {
-                        Image(systemName: isAllCards ? "rectangle.stack" : (activeStack?.icon ?? "square.stack.3d.up.fill"))
-                            .font(.system(size: 10, weight: .bold))
-                        Text(isAllCards ? "All cards · \(model.unhiddenCards.count)" : "\(activeStack?.name ?? "Stack") · \(activeStack?.cardIDs.count ?? 0)")
-                            .font(.system(size: 11, weight: .semibold))
+                    Menu {
+                        filterMenuContent
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: isAllCards ? "rectangle.stack" : (activeStack?.icon ?? "square.stack.3d.up.fill"))
+                                .font(.system(size: 10, weight: .bold))
+                            Text(isAllCards ? "All cards · \(model.unhiddenCards.count)" : "\(activeStack?.name ?? "Stack") · \(activeStack?.cardIDs.count ?? 0)")
+                                .font(.system(size: 11, weight: .semibold))
+                                .accessibilityIdentifier("activityScopeBadge")
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                        }
+                        .foregroundStyle(isAllCards ? Color.secondary : MC.red)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(isAllCards ? Color.primary.opacity(0.06) : MC.red.opacity(0.12))
+                        )
+                        .contentShape(Capsule())
                     }
-                    .foregroundStyle(isAllCards ? Color.secondary : MC.red)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(isAllCards ? Color.primary.opacity(0.06) : MC.red.opacity(0.12))
-                    )
-                    .accessibilityIdentifier("activityScopeBadge")
+                    .accessibilityLabel(isAllCards ? "All cards" : "Stack: \(activeStack?.name ?? "Stack")")
+                    .accessibilityHint("Choose a stack or all cards")
+                    .accessibilityIdentifier("activityFilterButton")
                 }
             }
 
@@ -1233,60 +1227,47 @@ struct CardPresentationView: View {
         }
     }
 
-    private var filterMenu: some View {
-        Menu {
-            Section("Stacks") {
-                ForEach(model.stacks) { stack in
-                    Button {
-                        model.setActiveStack(id: stack.id)
-                    } label: {
-                        HStack {
-                            Label(stack.name, systemImage: stack.icon)
-                            if model.activeStackID == stack.id && model.filterScope == .activeStack {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            }
-            Section {
+    @ViewBuilder private var filterMenuContent: some View {
+        Section("Stacks") {
+            ForEach(model.stacks) { stack in
                 Button {
-                    model.filterScope = .allCards
+                    model.setActiveStack(id: stack.id)
                 } label: {
                     HStack {
-                        Label("All Active Cards", systemImage: "rectangle.stack")
-                        if model.filterScope == .allCards {
+                        Label(stack.name, systemImage: stack.icon)
+                        if model.activeStackID == stack.id && model.filterScope == .activeStack {
                             Image(systemName: "checkmark")
                         }
                     }
                 }
             }
-            Section {
-                Button {
-                    model.stackCustomizerMode = .create
-                    model.showStackCustomizer = true
-                } label: {
-                    Label("New Stack…", systemImage: "plus")
-                }
-                Button {
-                    model.stackCustomizerMode = .manage
-                    model.showStackCustomizer = true
-                } label: {
-                    Label("Manage Stacks & Cards…", systemImage: "slider.horizontal.3")
+        }
+        Section {
+            Button {
+                model.filterScope = .allCards
+            } label: {
+                HStack {
+                    Label("All Active Cards", systemImage: "rectangle.stack")
+                    if model.filterScope == .allCards {
+                        Image(systemName: "checkmark")
+                    }
                 }
             }
-        } label: {
-            Image(systemName: model.filterScope == .activeStack ? "square.stack.3d.up.fill" : "rectangle.stack")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(model.filterScope == .activeStack ? MC.red : ink)
-                .frame(width: 38, height: 38)
-                .contentShape(Circle())
-                .contentTransition(.symbolEffect(.replace))
         }
-        .buttonStyle(PressFeedbackStyle())
-        .glassEffect(.regular.interactive(), in: .circle)
-        .accessibilityLabel(model.filterScope == .activeStack ? "Filter active: \(model.currentStack?.name ?? "Stack")" : "All cards")
-        .accessibilityIdentifier("activityFilterButton")
+        Section {
+            Button {
+                model.stackCustomizerMode = .create
+                model.showStackCustomizer = true
+            } label: {
+                Label("New Stack…", systemImage: "plus")
+            }
+            Button {
+                model.stackCustomizerMode = .manage
+                model.showStackCustomizer = true
+            } label: {
+                Label("Manage Stacks & Cards…", systemImage: "slider.horizontal.3")
+            }
+        }
     }
 
     private var optionsMenu: some View {

@@ -22,8 +22,11 @@ struct RootView: View {
             } else {
                 TabView(selection: $model.selectedTab) {
                     Tab("Home", systemImage: "house", value: 0) {
-                        CardHomeView(model: model)
-                            .toolbar(.hidden, for: .tabBar)
+                        NavigationStack {
+                            CardHomeView(model: model)
+                                .toolbar(.hidden, for: .navigationBar)
+                        }
+                        .toolbar(.hidden, for: .tabBar)
                     }
                     Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
                         AnalyticsView(model: model, showsDismissButton: false)
@@ -31,7 +34,7 @@ struct RootView: View {
                     }
                 }
                 .toolbar(.hidden, for: .tabBar)
-                .safeAreaBar(edge: .bottom) { BottomNavigation(model: model) }
+                .safeAreaBar(edge: .bottom) { if model.pushedDepth == 0 { BottomNavigation(model: model) } }
                 .tint(MC.red)
                 .sheet(isPresented: $model.showEntry, onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }

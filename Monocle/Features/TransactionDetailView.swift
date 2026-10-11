@@ -33,8 +33,7 @@ struct TransactionDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 24) {
                     heroSection
                     detailsCard
@@ -48,18 +47,6 @@ struct TransactionDetailView: View {
             .navigationTitle("Expense Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onDismiss) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text("Back")
-                                .font(.system(size: 16))
-                        }
-                    }
-                    .accessibilityIdentifier("transactionDetailBack")
-                }
-
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Edit") {
                         startEdit()
@@ -90,7 +77,6 @@ struct TransactionDetailView: View {
             } message: {
                 Text("Are you sure you want to delete this expense? You can undo this action from the confirmation toast.")
             }
-        }
     }
 
     private func startEdit() {

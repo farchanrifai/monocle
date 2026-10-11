@@ -93,6 +93,8 @@ final class AppModel {
     var showStartSessionSheet = false
     var sessionSheetName: String = ""
     var sessionSheetBudget: String = ""
+    /// How many screens are pushed over Home; the floating bottom bar hides while any is.
+    var pushedDepth = 0
     var pendingRepeat = false
     var undoExpense: Expense?
     private(set) var undoOccurrences: [BillOccurrence] = []

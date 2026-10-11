@@ -142,3 +142,23 @@ private struct NativeTabSwitcher: UIViewRepresentable {
         }
     }
 }
+
+extension View {
+    /// For a screen pushed over Home: hides the floating bottom bar while it is on screen.
+    func hidesBottomNavigation(_ model: AppModel) -> some View {
+        onAppear { model.pushedDepth += 1 }
+            .onDisappear { model.pushedDepth = max(0, model.pushedDepth - 1) }
+    }
+}
+
+// A pushed screen that hides its navigation bar (Analytics keeps its own header) would lose the edge swipe back.
+extension UINavigationController: @retroactive UIGestureRecognizerDelegate {
+    override open func viewDidLoad() {
+        super.viewDidLoad()
+        interactivePopGestureRecognizer?.delegate = self
+    }
+
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        viewControllers.count > 1
+    }
+}

@@ -100,7 +100,6 @@ struct BudgetsView: View {
                 if case .card(let id) = subject { ToolbarItem(placement: .topBarTrailing) { Button("Edit", systemImage: "slider.horizontal.3") { editing = BudgetEditTarget(id: id) } } }
             }
             .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id) }
-            .sheet(isPresented: $model.showAnalytics) { AnalyticsView(model: model) }
     }
 
     private var subjectMenu: some View {

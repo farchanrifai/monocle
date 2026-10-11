@@ -4,12 +4,14 @@ import Charts
 struct AnalyticsView: View {
     @Bindable var model: AppModel
     var showsDismissButton = true
+    /// Pushed on a navigation stack: the system bar supplies the title, back button and edge swipe.
+    var isPushed = false
     @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
     @State private var selectedScope: AnalyticsFilterScope = .allCards
 
     var body: some View {
         let report = AnalyticsReport.build(data: model.reportingData(for: selectedScope), horizon: selectedHorizon)
-        AnalyticsReportView(model: model, showsDismissButton: showsDismissButton,
+        AnalyticsReportView(model: model, showsDismissButton: showsDismissButton, isPushed: isPushed,
                             selectedHorizon: $selectedHorizon, selectedScope: $selectedScope, report: report)
     }
 }
@@ -17,6 +19,7 @@ struct AnalyticsView: View {
 private struct AnalyticsReportView: View {
     @Bindable var model: AppModel
     var showsDismissButton = true
+    var isPushed = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
@@ -88,12 +91,14 @@ private struct AnalyticsReportView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 68)
+                    .padding(.top, isPushed ? 16 : 68)
                     .padding(.bottom, 96)
                 }
 
-                topBar(safeAreaTop: safeAreaTop)
-                    .zIndex(1000)
+                if !isPushed {
+                    topBar(safeAreaTop: safeAreaTop)
+                        .zIndex(1000)
+                }
             }
             .onAppear {
                 syncScopeWithHomeContext()
@@ -107,6 +112,8 @@ private struct AnalyticsReportView: View {
             .onChange(of: model.selectedCardID) { _, _ in
                 syncScopeWithHomeContext()
             }
+            .navigationTitle(isPushed ? "Analytics & Trends" : "")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 

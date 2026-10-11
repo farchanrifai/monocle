@@ -63,7 +63,7 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Where it went"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
-        app.buttons["Done"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["bookOptionsMenu"].tap()
         app.buttons["Tools & Insights"].tap()
         app.buttons["Recurring Bills"].tap()
@@ -91,7 +91,7 @@ final class MonocleUITests: XCTestCase {
 
         let billRow = app.buttons["scheduledBill_Fiber Internet"]
         XCTAssertTrue(billRow.waitForExistence(timeout: 5))
-        app.buttons["Done"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
 
         app.terminate(); app.launch()
         app.buttons["bookOptionsMenu"].tap()
@@ -101,7 +101,7 @@ final class MonocleUITests: XCTestCase {
         app.buttons["scheduledBill_Fiber Internet"].tap()
         XCTAssertEqual(app.switches["billReminderToggle"].value as? String, "0")
         app.buttons["Cancel"].tap()
-        app.buttons["Done"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
     }
 
     @MainActor
@@ -197,15 +197,15 @@ final class MonocleUITests: XCTestCase {
         app.buttons["key-0"].tap()
         app.buttons["Close entry"].tap()
         app.buttons["Discard"].tap()
-        XCTAssertTrue(app.buttons["transactionDetailBack"].waitForExistence(timeout: 5))
-        app.buttons["transactionDetailBack"].tap()
+        XCTAssertTrue(app.navigationBars.buttons.element(boundBy: 0).waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["expense-Morning coffee"].waitForExistence(timeout: 5))
         app.buttons["expense-Morning coffee"].tap()
         XCTAssertTrue(app.navigationBars["Expense Details"].waitForExistence(timeout: 5))
         app.buttons["transactionDetailEdit"].tap()
         app.buttons["Close entry"].tap()
-        XCTAssertTrue(app.buttons["transactionDetailBack"].waitForExistence(timeout: 5), "Unmodified edits close without a discard prompt")
-        app.buttons["transactionDetailBack"].tap()
+        XCTAssertTrue(app.navigationBars.buttons.element(boundBy: 0).waitForExistence(timeout: 5), "Unmodified edits close without a discard prompt")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
     }
     @MainActor
@@ -258,8 +258,34 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.buttons["transactionDetailEdit"].exists)
         XCTAssertTrue(app.buttons["transactionDetailDelete"].exists)
 
-        app.buttons["transactionDetailBack"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testEdgeSwipeGoesBackFromPushedScreens() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        func swipeBack() {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
+                .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5)))
+        }
+
+        XCTAssertTrue(app.buttons["expense-Morning coffee"].waitForExistence(timeout: 10))
+        app.buttons["expense-Morning coffee"].tap()
+        XCTAssertTrue(app.navigationBars["Expense Details"].waitForExistence(timeout: 5))
+        swipeBack()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5), "Edge swipe leaves Expense Details")
+
+        // Budgets keeps its navigation bar; Analytics (opened from Budgets) pushes on top of it.
+        app.buttons["bookOptionsMenu"].tap()
+        app.buttons["Tools & Insights"].tap()
+        app.buttons["Budgets"].tap()
+        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5))
+        swipeBack()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5), "Edge swipe leaves Budgets")
     }
 
     @MainActor
@@ -1229,7 +1255,7 @@ final class MonocleUITests: XCTestCase {
 
         // 6. Test opening Trends & Analytics directly from flipped card
         analyticsButton.tap()
-        let dismissAnalyticsButton = app.buttons["dismissAnalyticsView"]
+        let dismissAnalyticsButton = app.navigationBars.buttons.element(boundBy: 0) // pushed: the system back button
         XCTAssertTrue(dismissAnalyticsButton.waitForExistence(timeout: 5))
         let analyticsShot = app.screenshot()
         add(XCTAttachment(screenshot: analyticsShot))
@@ -1543,7 +1569,7 @@ final class MonocleUITests: XCTestCase {
         // Tap Budgets
         app.buttons["Budgets"].tap()
         XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5))
-        app.buttons["Done"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
 
         // 4. Open card and capture updated transaction page
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))

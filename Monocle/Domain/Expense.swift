@@ -44,12 +44,12 @@ struct GlobalCategory: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-struct Split: Codable, Equatable, Sendable {
+struct Split: Codable, Hashable, Sendable {
     var categoryID: UUID
     var amount: Int64
 }
 
-struct Expense: Identifiable, Codable, Equatable, Sendable {
+struct Expense: Identifiable, Codable, Hashable, Sendable {
     var id: UUID = UUID()
     var amount: Int64 // IDR minor units: Rp1 = 100 units.
     var day: String
@@ -89,6 +89,9 @@ struct Expense: Identifiable, Codable, Equatable, Sendable {
         self.rate = rate
         self.rateSource = rateSource
     }
+
+    /// Equal expenses share an id, so hashing the id keeps `==` and the hash consistent.
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
     static func == (lhs: Expense, rhs: Expense) -> Bool {
         lhs.id == rhs.id &&
