@@ -190,10 +190,7 @@ final class MacAppState {
     }
 
     /// Every navigation goes through here so the sidebar group animates as it opens and folds.
-    /// The command bar closes in the same transaction: a separate, unanimated write after it cancelled the sidebar animation.
-    func go(_ target: MacDestination, closingCommandBar: Bool = false) {
-        withAnimation(.smooth(duration: 0.25)) { destination = target; if closingCommandBar { commandBarVisible = false } }
-    }
+    func go(_ target: MacDestination) { withAnimation(.smooth(duration: 0.25)) { destination = target } }
 
     func goBack() {
         guard let previous = backStack.popLast() else { return }
@@ -373,7 +370,11 @@ final class MacAppState {
     }
 
     func perform(_ command: MacCommand) {
-        if let destination = command.destination { go(destination, closingCommandBar: true); return }
+        if let destination = command.destination { // navigate a tick after the overlay is gone, so its removal can't swallow the animation
+            commandBarVisible = false
+            DispatchQueue.main.async { self.go(destination) }
+            return
+        }
         if let id = command.commandID { perform(id) }
         commandBarVisible = false
     }
