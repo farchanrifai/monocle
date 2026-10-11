@@ -66,10 +66,12 @@ struct MacSettingsView: View {
                     SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
                 }
                 Section {
-                    ForEach([EntryFormField.quick, .currency, .split], id: \.self) { field in
+                    ForEach([EntryFormField.quick, .currency, .split, .paidWith, .note, .date], id: \.self) { field in
                         Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
                     }
-                } header: { Text("Add Expense form") }
+                } header: { Text("Add Expense form") } footer: {
+                    SettingsNote("Amount, card and category are always shown. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                }
                 Section {
                     // A real List: its rows reorder natively (live, with the system drag cursor). Hand-rolled
                     // .draggable/.dropDestination rows showed a copy badge, a lagging preview and dead gaps between rows.
@@ -77,23 +79,8 @@ struct MacSettingsView: View {
                         ForEach(model.entryRowOrder, id: \.self) { line in
                             HStack(spacing: 10) {
                                 Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
-                                let shown = line.field.map { model.isEntryFieldShown($0) } ?? true
-                                Text(line.title).foregroundStyle(shown ? .primary : .secondary)
+                                Text(line.title).foregroundStyle((line.field.map { model.isEntryFieldShown($0) } ?? true) ? .primary : .secondary)
                                 Spacer()
-                                if let field = line.field {
-                                    // An eye, not a switch: the list drags a translucent snapshot of the row, and a blue switch
-                                    // ghosting over the rows below looked broken.
-                                    Button { model.setEntryField(field, shown: !shown) } label: {
-                                        Image(systemName: shown ? "eye" : "eye.slash").frame(width: 24)
-                                            .foregroundStyle(shown ? Color.accentColor : .secondary)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .help(shown ? "Shown. Click to hide." : "Hidden. Click to show.")
-                                    .accessibilityLabel("\(line.title) shown").accessibilityValue(shown ? "On" : "Off")
-                                    .accessibilityAddTraits(.isToggle)
-                                } else {
-                                    Text("Always shown").foregroundStyle(.secondary)
-                                }
                             }
                             .frame(height: Self.reorderRowHeight)
                             .listRowSeparator(.hidden)
@@ -103,8 +90,8 @@ struct MacSettingsView: View {
                     .listStyle(.plain).scrollContentBackground(.hidden).scrollDisabled(true)
                     .frame(height: CGFloat(model.entryRowOrder.count) * (Self.reorderRowHeight + 8))
                     .listRowInsets(EdgeInsets())
-                } header: { Text("Details, in order") } footer: {
-                    SettingsNote("Drag a row by its handle to reorder; the eye shows or hides a field. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                } header: { Text("Order of details") } footer: {
+                    SettingsNote("Drag a row to change its place in the form. Hidden fields are greyed out.")
                 }
             }
         case .paidWith:
