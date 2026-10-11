@@ -1,6 +1,6 @@
 ## 1. Immediate Next Step
 
-Review on screen, then decide: `feat/mac-activity-filters` (Mac only: toolbar Filter with counts/collapsible sections, wider search, card-page quick stats; branched from `feat/model-b`, merge or delete) and the iOS budget screens (never viewed on a device yet: Budgets picker, Analytics "Budget vs actual"; shipped in 0.8.1 (96)).
+Review on screen, then decide: `feat/mac-activity-filters` (Mac only: toolbar Filter with counts/collapsible sections, wider search, card-page quick stats; branched from `feat/model-b`, merge or delete) and the iOS budget screens (never viewed on a device yet: Budgets picker, Analytics "Budget vs actual"; shipped in 0.8.1 (96); 0.8.2 (97) on branch `fix/ios-nav-polish` pushes Budgets/Bills/Analytics/Expense Details instead of sheets, fixes edge-swipe back, and moves the stack switcher into the Recent Expenses pill; it is built from that branch and not yet viewed on a device).
 - Still open: stack cap is current-only (versioning needs format 9); currency drift at today's rate; a goal replaces the cycle budget on the same `effectiveDay`; Mac UI tests not rerun (and none cover the new budget/filter UI); stale roadmap; privacy label for Frankfurter; Mac Release rebuild; no merge to main.
 - Demo app: after every Mac rebuild, launch it (`open -n --env MONOCLE_DEMO=1 build/macos/DebugDerived/Build/Products/Debug/Monocle.app`).
 
