@@ -170,6 +170,11 @@ final class MacAppState {
     }
     var commandBarVisible = false
     var searchText = ""
+    /// Narrows the visible full expense table; the toolbar Filter button edits it.
+    var activityFilter = ActivityFilter()
+    /// Set by the visible full expense table (`filterOwner`); nil on pages with nothing to filter, which hides the Filter button.
+    var filterOptions: ActivityFilterOptions?
+    @ObservationIgnored var filterOwner: UUID?
     var searchFocusToken = UUID()
     var transferSheet: DataTransferSheet?
     var shortcutError: String?

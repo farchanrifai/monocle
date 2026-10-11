@@ -211,6 +211,9 @@ struct MacRootView: View {
         }
         // No title fills the leading side any more, so a flexible spacer pushes the buttons trailing.
         ToolbarSpacer(.flexible, placement: .primaryAction)
+        if state.filterOptions != nil {
+            ToolbarItem(placement: .primaryAction) { ActivityFilterButton(state: state) }
+        }
         ToolbarItem(placement: .primaryAction) { searchField }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItemGroup(placement: .primaryAction) {
@@ -577,12 +580,17 @@ struct MacExpenseTable: View {
     @State private var sortOrder: [KeyPathComparator<MacExpenseRow>] = []
     @State private var allRows: [MacExpenseRow] = []
     @State private var rows: [MacExpenseRow] = []
-    @State private var filter = ActivityFilter()
+    @State private var ownerID = UUID()
+    private var filter: ActivityFilter { state.activityFilter }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // The newest-N preview on Overview stays a plain list; full tables get filters.
-            if limit == nil, !allRows.isEmpty { ActivityFilterBar(filter: $filter, rows: allRows, shown: rows.count) }
+            if limit == nil, filter.isActive {
+                HStack(spacing: 10) {
+                    Text("\(rows.count) of \(allRows.count) · filtered").font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                    Button("Clear filters") { state.activityFilter = ActivityFilter() }.buttonStyle(.borderless)
+                }
+            }
             MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
                 .accessibilityIdentifier("activityTable")
         }
@@ -591,7 +599,13 @@ struct MacExpenseTable: View {
             .onChange(of: state.searchText) { refresh() }
             .onChange(of: sortOrder) { refresh() }
             .onChange(of: filter) { refresh() }
-            .onChange(of: cardIDs) { filter = ActivityFilter() }
+            .onChange(of: cardIDs) { state.activityFilter = ActivityFilter() }
+            .onAppear { if limit == nil { state.filterOwner = ownerID; publishOptions() } }
+            .onDisappear {
+                // A newly shown table may already own the filter; only the owner tears it down.
+                guard state.filterOwner == ownerID else { return }
+                state.filterOwner = nil; state.filterOptions = nil; state.activityFilter = ActivityFilter()
+            }
     }
 
     private struct RowsSource: Equatable { let revision: UInt64; let cardIDs: [UUID]?; let cardCount: Int }
@@ -606,6 +620,13 @@ struct MacExpenseTable: View {
         let methods = Dictionary(model.paymentMethods.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         allRows = MacExpenseRow.make(source, cardNames: cards, categoryName: { model.category($0)?.name }, paidWithName: { methods[$0] })
         refresh()
+        publishOptions()
+    }
+
+    private func publishOptions() {
+        guard limit == nil, state.filterOwner == ownerID else { return }
+        let options = ActivityFilterOptions(rows: allRows)
+        if state.filterOptions != options { state.filterOptions = options }
     }
 
     private func refresh() { rows = MacExpenseRow.filter(allRows, query: state.searchText, filter: filter, sortOrder: sortOrder) }
