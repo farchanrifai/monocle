@@ -151,6 +151,7 @@
 		E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9824AED70CAEA0CCB49515DA /* FoundationTests.swift */; };
 		E96BFA92344378EEABD6831F /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
 		EA063225367C0294629084A8 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4391823DC40DCB9EC94E3F48 /* AnalyticsEngine.swift */; };
+		EA616EA5AD2170C11A3A169E /* MacCardStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FE48E8BA47E124000F8A61 /* MacCardStats.swift */; };
 		ECCAC168025AFC19BAD53BF0 /* AppleChatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FDCF200A8F160A2708223FC /* AppleChatTests.swift */; };
 		ED2239D8B4118EEDE952B362 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAB59F8D69B863E198985F9 /* BillsView.swift */; };
 		F50EA37D53743014706A7A91 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0C913F4994169E78CFEEF8 /* Expense.swift */; };
@@ -269,6 +270,7 @@
 		727AA5A5AF5F138499859C39 /* ChatSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSettingsView.swift; sourceTree = "<group>"; };
 		73A58D4990EF303AC7532799 /* widget.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = widget.json; sourceTree = "<group>"; };
 		7626BE09A6EE4CB31A47D198 /* BackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
+		77FE48E8BA47E124000F8A61 /* MacCardStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCardStats.swift; sourceTree = "<group>"; };
 		7E643254671C1B32EF87E456 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7F1E5ADD2F79A00BBA98572F /* MonocleV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV3.xcdatamodel; sourceTree = "<group>"; };
 		7F6058F202B9BEE64BFF836B /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
@@ -365,6 +367,7 @@
 			isa = PBXGroup;
 			children = (
 				BB31C84BE8A5ABFA4B2AE69F /* MacActivityFilter.swift */,
+				77FE48E8BA47E124000F8A61 /* MacCardStats.swift */,
 				BF7C805FEF72AF425AF0A107 /* MacChatView.swift */,
 				38FE13CFCB9D53BA73C3010C /* MacDataTransferView.swift */,
 				2836A02A00B5D4237EF71EEF /* MacExpenseForm.swift */,
@@ -1036,6 +1039,7 @@
 				CABFBDC8861A2FE52A7918E5 /* GlobalHotKeyController.swift in Sources */,
 				814B6560E110230BC76787D5 /* LocalStateStore.swift in Sources */,
 				6C19BA34061DC31098B56D9E /* MacActivityFilter.swift in Sources */,
+				EA616EA5AD2170C11A3A169E /* MacCardStats.swift in Sources */,
 				FEFD946846B76ED10F9D692E /* MacChatView.swift in Sources */,
 				7B62CC7EFA223F37DDA5D6BE /* MacCommands.swift in Sources */,
 				52CC147611D1086BA699DFBF /* MacDataTransferView.swift in Sources */,

@@ -2,7 +2,7 @@ import AppKit
 import Charts
 import SwiftUI
 
-private enum MacTheme {
+enum MacTheme {
     static let accent = Color(red: 0.85, green: 0.16, blue: 0.12)
     static let paper = Color(nsColor: .windowBackgroundColor)
     static let panel = Color(nsColor: .controlBackgroundColor)
@@ -1135,7 +1135,7 @@ struct MacCardDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let card = state.model.cards.first(where: { $0.id == cardID }) {
-                HStack { MacCardView(model: state.model, card: card); Spacer() }.padding(24)
+                HStack(alignment: .center, spacing: 24) { MacCardView(model: state.model, card: card); MacCardStats(model: state.model, card: card) }.padding(24)
                 Divider()
             }
             MacActivityView(state: state, cardID: cardID)
