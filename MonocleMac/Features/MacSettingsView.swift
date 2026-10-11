@@ -28,7 +28,7 @@ struct MacSettingsView: View {
     @State private var selection: SettingsPane?
     private var pane: SettingsPane { selection ?? savedPane }
 
-    private static let reorderRowHeight: CGFloat = 26
+    private static let reorderRowHeight: CGFloat = 30
 
     init(state: MacAppState) { self.state = state; model = state.model }
 
@@ -77,10 +77,13 @@ struct MacSettingsView: View {
                         ForEach(model.entryRowOrder, id: \.self) { line in
                             HStack(spacing: 10) {
                                 Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
-                                if let field = line.field {
+                                Text(line.title)
+                                Spacer()
+                                if let field = line.field { // a plain List draws toggles as checkboxes; the rest of Settings uses switches
                                     Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
+                                        .labelsHidden().toggleStyle(.switch)
                                 } else {
-                                    Text(line.title); Spacer(); Text("Always shown").foregroundStyle(.secondary)
+                                    Text("Always shown").foregroundStyle(.secondary)
                                 }
                             }
                             .frame(height: Self.reorderRowHeight)
