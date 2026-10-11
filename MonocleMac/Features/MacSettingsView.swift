@@ -77,11 +77,20 @@ struct MacSettingsView: View {
                         ForEach(model.entryRowOrder, id: \.self) { line in
                             HStack(spacing: 10) {
                                 Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
-                                Text(line.title)
+                                let shown = line.field.map { model.isEntryFieldShown($0) } ?? true
+                                Text(line.title).foregroundStyle(shown ? .primary : .secondary)
                                 Spacer()
-                                if let field = line.field { // a plain List draws toggles as checkboxes; the rest of Settings uses switches
-                                    Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
-                                        .labelsHidden().toggleStyle(.switch)
+                                if let field = line.field {
+                                    // An eye, not a switch: the list drags a translucent snapshot of the row, and a blue switch
+                                    // ghosting over the rows below looked broken.
+                                    Button { model.setEntryField(field, shown: !shown) } label: {
+                                        Image(systemName: shown ? "eye" : "eye.slash").frame(width: 24)
+                                            .foregroundStyle(shown ? Color.accentColor : .secondary)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help(shown ? "Shown. Click to hide." : "Hidden. Click to show.")
+                                    .accessibilityLabel("\(line.title) shown").accessibilityValue(shown ? "On" : "Off")
+                                    .accessibilityAddTraits(.isToggle)
                                 } else {
                                     Text("Always shown").foregroundStyle(.secondary)
                                 }
@@ -95,7 +104,7 @@ struct MacSettingsView: View {
                     .frame(height: CGFloat(model.entryRowOrder.count) * (Self.reorderRowHeight + 8))
                     .listRowInsets(EdgeInsets())
                 } header: { Text("Details, in order") } footer: {
-                    SettingsNote("Drag a row by its handle to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                    SettingsNote("Drag a row by its handle to reorder; the eye shows or hides a field. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
                 }
             }
         case .paidWith:
