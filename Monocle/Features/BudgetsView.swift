@@ -32,24 +32,6 @@ struct BudgetsView: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
 
-                Button {
-                    model.showAnalytics = true
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "chart.line.uptrend.xyaxis").font(.title3).foregroundStyle(MC.red)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Spending Trends & Charts").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                            Text("Budget vs actual, burn-up curves, and daily rhythm").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                    }
-                    .padding(16)
-                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 18))
-                }
-                .buttonStyle(PressFeedbackStyle())
-                .accessibilityIdentifier("openAnalyticsFromBudgets")
-
                 if let status, !status.lines.isEmpty {
                     HStack {
                         Text(isStack ? "By card" : "Where it went").font(.title3.weight(.semibold))
