@@ -4,7 +4,7 @@ Mac UI polish on `feat/model-b` is done and pushed (last commit `4fbf32c`). Next
 
 - Settings (`MacSettingsView`): grouped `Form` on every pane, pane title hidden. Currency and Paid with list every card; Edit Card (`MacCardEditor`) has the same per-card rows (applied on Save).
 - Navigation: `MacAppState` back/forward history (`backStack`/`forwardStack`), ⌘[ / ⌘], toolbar chevrons, Navigate menu, rebindable in Shortcuts.
-- Sidebar: a collapsed Cards/Stacks group shows only the open card/stack and folds back on leaving. Animation comes from `withAnimation` in `selectCard`, back/forward and the sidebar selection binding, plus a one-tick `peekOpen` lag. Opening from the Cmd-K command bar or search is not wrapped, so it may not animate.
+- Sidebar: a collapsed Cards/Stacks group shows only the open card/stack and folds back on leaving. Animation comes from `withAnimation` in `selectCard`, back/forward and the sidebar selection binding, plus a one-tick `peekOpen` lag. All navigation goes through `MacAppState.go()`; the command bar closes first and navigates one tick later (otherwise the fold does not animate). Search results are not wrapped.
 - Verified: Mac unit 21 pass, Mac UI 10/10 (before the Settings and nav changes; only `testSettingsUseSidebarPanes` rerun after Settings, and the hidden pane title may break its title check, not rerun). iOS untouched since the last checkpoint.
 - Follow-ups from before: privacy policy / App Store label must mention the Frankfurter (ECB) rate request; demo card still named "Sample book"; data model artifact could be marked "implemented".
 
