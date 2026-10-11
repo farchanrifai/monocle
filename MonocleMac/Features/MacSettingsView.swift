@@ -39,14 +39,11 @@ struct MacSettingsView: View {
             .navigationSplitViewColumnWidth(min: 200, ideal: 200, max: 200)
             .toolbar(removing: .sidebarToggle)
         } detail: {
-            ScrollView {
-                detail
-                    .formStyle(.columns)
-                    .padding(.horizontal, 40).padding(.top, 28).padding(.bottom, 40)
-                    .frame(maxWidth: .infinity)
-            }
-            .navigationTitle(pane.title)
-            .id(pane) // the detail column otherwise keeps showing the first pane
+            detail
+                .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
+                .navigationTitle(pane.title)
+                .id(pane) // the detail column otherwise keeps showing the first pane
         }
         .frame(width: 780, height: 560)
         .onAppear { if selection == nil { selection = savedPane } }
@@ -57,18 +54,20 @@ struct MacSettingsView: View {
         switch pane {
         case .general:
             Form {
-                Picker("Entry mode:", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
-                    Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
-                }
-                .pickerStyle(.radioGroup)
-                SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
-                LabeledContent("Add Expense form:") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(EntryFormField.allCases, id: \.self) { field in
-                            Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
-                        }
-                        SettingsNote("Amount, card and category are always shown. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                Section {
+                    Picker("Entry mode", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
+                        Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
                     }
+                    .pickerStyle(.segmented)
+                } footer: {
+                    SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
+                }
+                Section {
+                    ForEach(EntryFormField.allCases, id: \.self) { field in
+                        Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
+                    }
+                } header: { Text("Add Expense form") } footer: {
+                    SettingsNote("Amount, card and category are always shown. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
                 }
             }
         case .paidWith:
@@ -77,39 +76,46 @@ struct MacSettingsView: View {
             CurrencySettingsPane(model: model)
         case .appearance:
             Form {
-                Picker("Appearance:", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
-                    if value == "automatic" { model.autoAppearance = true }
-                    else { model.manualAppearance = value == "light" ? .light : .dark }
-                })) { Text("Automatic").tag("automatic"); Text("Light").tag("light"); Text("Dark").tag("dark") }
-                    .pickerStyle(.radioGroup)
+                Section {
+                    Picker("Appearance", selection: Binding(get: { model.autoAppearance ? "automatic" : model.manualAppearance == .light ? "light" : "dark" }, set: { value in
+                        if value == "automatic" { model.autoAppearance = true }
+                        else { model.manualAppearance = value == "light" ? .light : .dark }
+                    })) { Text("Automatic").tag("automatic"); Text("Light").tag("light"); Text("Dark").tag("dark") }
+                        .pickerStyle(.segmented)
+                } footer: { SettingsNote("Automatic follows your Mac's appearance.") }
             }
         case .shortcuts:
             ShortcutSettings(state: state)
         case .security:
             Form {
-                Picker("Lock Monocle:", selection: Binding(get: { model.settings.appLockTimeout }, set: { value in
-                    Task { if case .failure(let error) = await model.setAppLockTimeout(value) { lockError = error.localizedDescription } }
-                })) {
-                    Text("Never").tag(AppLockTimeout?.none)
-                    ForEach(AppLockTimeout.allCases) { Text($0.title).tag(Optional($0)) }
+                Section {
+                    Picker("Lock Monocle", selection: Binding(get: { model.settings.appLockTimeout }, set: { value in
+                        Task { if case .failure(let error) = await model.setAppLockTimeout(value) { lockError = error.localizedDescription } }
+                    })) {
+                        Text("Never").tag(AppLockTimeout?.none)
+                        ForEach(AppLockTimeout.allCases) { Text($0.title).tag(Optional($0)) }
+                    }
+                } footer: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        SettingsNote("Unlock with Touch ID or your Mac login password.")
+                        if let lockError { SettingsNote(lockError).foregroundStyle(.red) }
+                    }
                 }
-                .fixedSize()
-                SettingsNote("Unlock with Touch ID or your Mac login password.")
-                if let lockError { SettingsNote(lockError).foregroundStyle(.red) }
             }
         case .chat:
             ChatSettingsPane()
         case .data:
             Form {
-                LabeledContent("CSV:") {
-                    HStack { Button("Import…") { state.perform(.importCSV) }; Button("Export…") { state.perform(.exportCSV) } }
-                }
-                LabeledContent("Backup:") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack { Button("Export…") { state.perform(.exportBackup) }; Button("Restore…") { state.perform(.restoreBackup) } }
-                        SettingsNote("Backups use the same format as Monocle for iPhone.")
+                Section("CSV") {
+                    LabeledContent("Spreadsheet") {
+                        HStack { Button("Import…") { state.perform(.importCSV) }; Button("Export…") { state.perform(.exportCSV) } }
                     }
                 }
+                Section {
+                    LabeledContent("Full backup") {
+                        HStack { Button("Export…") { state.perform(.exportBackup) }; Button("Restore…") { state.perform(.restoreBackup) } }
+                    }
+                } header: { Text("Backup") } footer: { SettingsNote("Backups use the same format as Monocle for iPhone.") }
             }
         }
     }
@@ -124,42 +130,45 @@ private struct PaidWithSettingsPane: View {
 
     var body: some View {
         Form {
-            LabeledContent("Labels:") {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(model.paymentMethods) { method in
-                        HStack {
-                            TextField("Name", text: Binding(get: { method.name }, set: { name in
-                                var value = method; value.name = name
-                                do { try model.savePaymentMethod(value); error = nil } catch { self.error = error.localizedDescription }
-                            })).frame(width: 180)
-                            Picker("Kind", selection: Binding(get: { method.kind }, set: { kind in
-                                var value = method; value.kind = kind
-                                do { try model.savePaymentMethod(value) } catch { self.error = error.localizedDescription }
-                            })) { ForEach(PaymentMethod.Kind.allCases, id: \.self) { Text($0.title).tag($0) } }
-                                .labelsHidden().fixedSize()
-                            Button("Delete", role: .destructive) {
-                                do { try model.deletePaymentMethod(id: method.id); error = nil } catch { self.error = error.localizedDescription }
-                            }
+            Section {
+                ForEach(model.paymentMethods) { method in
+                    HStack {
+                        TextField("Name", text: Binding(get: { method.name }, set: { name in
+                            var value = method; value.name = name
+                            do { try model.savePaymentMethod(value); error = nil } catch { self.error = error.localizedDescription }
+                        })).labelsHidden()
+                        Picker("Kind", selection: Binding(get: { method.kind }, set: { kind in
+                            var value = method; value.kind = kind
+                            do { try model.savePaymentMethod(value) } catch { self.error = error.localizedDescription }
+                        })) { ForEach(PaymentMethod.Kind.allCases, id: \.self) { Text($0.title).tag($0) } }
+                            .labelsHidden().fixedSize()
+                        Button("Delete", role: .destructive) {
+                            do { try model.deletePaymentMethod(id: method.id); error = nil } catch { self.error = error.localizedDescription }
                         }
                     }
-                    HStack {
-                        TextField("New label, like BCA debit", text: $newName).frame(width: 180)
-                        Button("Add") {
-                            do { try model.savePaymentMethod(PaymentMethod(name: newName)); newName = ""; error = nil }
-                            catch { self.error = error.localizedDescription }
-                        }.disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
+                }
+                HStack {
+                    TextField("New label", text: $newName, prompt: Text("New label, like BCA debit")).labelsHidden()
+                    Button("Add") {
+                        do { try model.savePaymentMethod(PaymentMethod(name: newName)); newName = ""; error = nil }
+                        catch { self.error = error.localizedDescription }
+                    }.disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } header: { Text("Labels") } footer: {
+                VStack(alignment: .leading, spacing: 4) {
                     SettingsNote("Paid with records how you paid. Monocle never tracks balances.")
                     if let error { SettingsNote(error).foregroundStyle(.red) }
                 }
             }
             if let card {
-                Picker("Default for \(card.name):", selection: Binding(get: { card.defaultPaidWithID }, set: { id in
-                    do { try model.setDefaultPaidWith(id, for: card.id) } catch { self.error = error.localizedDescription }
-                })) {
-                    Text("None").tag(UUID?.none)
-                    ForEach(model.paymentMethods) { method in Text(method.name).tag(UUID?.some(method.id)) }
-                }.fixedSize()
+                Section("Default") {
+                    Picker(card.name, selection: Binding(get: { card.defaultPaidWithID }, set: { id in
+                        do { try model.setDefaultPaidWith(id, for: card.id) } catch { self.error = error.localizedDescription }
+                    })) {
+                        Text("None").tag(UUID?.none)
+                        ForEach(model.paymentMethods) { method in Text(method.name).tag(UUID?.some(method.id)) }
+                    }
+                }
             }
         }
     }
@@ -179,21 +188,31 @@ private struct CurrencySettingsPane: View {
 
     var body: some View {
         Form {
-            Picker("Reporting currency:", selection: Binding(get: { model.reportingCurrency }, set: { pending = $0 })) {
-                ForEach(choices, id: \.self) { Text($0).tag($0) }
-            }.fixedSize().disabled(working)
-            SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first.")
-            if let card {
-                Picker("\(card.name) budget:", selection: Binding(get: { model.currency(of: card) }, set: { code in
-                    run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: card.id) }
-                })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.fixedSize().disabled(working)
-                Picker("\(card.name) spending:", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
-                    run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: card.id) }
-                })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.fixedSize().disabled(working)
-                SettingsNote("The budget currency is what the card's budget and totals use. New expenses start in the spending currency, and the card shows an ≈ amount in it.")
+            Section {
+                Picker("Reporting currency", selection: Binding(get: { model.reportingCurrency }, set: { pending = $0 })) {
+                    ForEach(choices, id: \.self) { Text($0).tag($0) }
+                }.disabled(working)
+            } footer: {
+                SettingsNote("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day; a safety backup is made first.")
             }
-            if working { ProgressView().controlSize(.small) }
-            if let error { SettingsNote(error).foregroundStyle(.red) }
+            if let card {
+                Section {
+                    Picker("Budget", selection: Binding(get: { model.currency(of: card) }, set: { code in
+                        run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: card.id) }
+                    })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.disabled(working)
+                    Picker("Spending", selection: Binding(get: { card.spendingCurrency ?? model.currency(of: card) }, set: { code in
+                        run { try await model.setCardCurrencies(budget: card.currency, spending: code, for: card.id) }
+                    })) { ForEach(choices, id: \.self) { Text($0).tag($0) } }.disabled(working)
+                } header: { Text(card.name) } footer: {
+                    SettingsNote("The budget currency is what the card's budget and totals use. New expenses start in the spending currency, and the card shows an ≈ amount in it.")
+                }
+            }
+            if working || error != nil {
+                Section {
+                    if working { ProgressView().controlSize(.small) }
+                    if let error { SettingsNote(error).foregroundStyle(.red) }
+                }
+            }
         }
         .alert("Change reporting currency to \(pending ?? "")?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {
             Button("Convert") { let code = pending; pending = nil; if let code { run { try await model.changeReportingCurrency(to: code) } } }
@@ -212,8 +231,8 @@ private struct SettingsNote: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View {
-        Text(text).font(.callout).foregroundStyle(.secondary)
-            .frame(maxWidth: 360, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.callout).foregroundStyle(.secondary) // footers inherit this colour in grouped forms
+            .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -226,38 +245,37 @@ private struct ChatSettingsPane: View {
 
     var body: some View {
         Form {
-            LabeledContent("AI Chat:") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Enable AI chat", isOn: $chatEnabled).accessibilityIdentifier("chatEnabledToggle")
-                    Picker("Model", selection: $backend) {
-                        Text("Claude").tag("claude")
-                        Text("Apple Intelligence").tag("apple")
-                    }
-                    .fixedSize()
-                    SettingsNote(backend == "apple"
-                                 ? (AppleChatAgent.unavailableReason ?? "Chat runs on this Mac with Apple Intelligence; nothing leaves the device. Expenses are only saved when you click Save.")
-                                 : "Your messages, plus the spending data needed to answer them (amounts, dates, notes, category and card names), are sent to Anthropic's Claude. Nothing is sent until you use chat, and expenses are only saved when you click Save.")
+            Section {
+                Toggle("Enable AI chat", isOn: $chatEnabled).accessibilityIdentifier("chatEnabledToggle")
+                Picker("Model", selection: $backend) {
+                    Text("Claude").tag("claude")
+                    Text("Apple Intelligence").tag("apple")
                 }
+            } footer: {
+                SettingsNote(backend == "apple"
+                             ? (AppleChatAgent.unavailableReason ?? "Chat runs on this Mac with Apple Intelligence; nothing leaves the device. Expenses are only saved when you click Save.")
+                             : "Your messages, plus the spending data needed to answer them (amounts, dates, notes, category and card names), are sent to Anthropic's Claude. Nothing is sent until you use chat, and expenses are only saved when you click Save.")
             }
-            if backend == "claude" { LabeledContent("API key:") {
-                VStack(alignment: .leading, spacing: 8) {
+            if backend == "claude" {
+                Section {
                     if hasKey {
-                        HStack {
-                            Label("Saved in Keychain", systemImage: "checkmark.seal.fill").foregroundStyle(.secondary)
-                            Button("Remove") { APIKeyStore.delete(); hasKey = false }
+                        LabeledContent("Claude API") {
+                            HStack {
+                                Label("Saved in Keychain", systemImage: "checkmark.seal.fill").foregroundStyle(.secondary)
+                                Button("Remove") { APIKeyStore.delete(); hasKey = false }
+                            }
                         }
                     } else {
                         HStack {
-                            SecureField("API key", text: $keyDraft, prompt: Text("sk-ant-…")).labelsHidden().frame(width: 240)
+                            SecureField("API key", text: $keyDraft, prompt: Text("sk-ant-…")).labelsHidden()
                                 .accessibilityIdentifier("chatAPIKeyField")
                                 .onSubmit(save)
                             Button("Save", action: save)
                                 .disabled(keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
-                    SettingsNote("Stored in the Keychain on this Mac only. Create one at platform.claude.com.")
-                }
-            } }
+                } header: { Text("API key") } footer: { SettingsNote("Stored in the Keychain on this Mac only. Create one at platform.claude.com.") }
+            }
         }
     }
 
@@ -278,9 +296,8 @@ private struct ShortcutSettings: View {
         Form {
             ForEach(Self.groups, id: \.self) { group in
                 Section {
-                    if group != Self.groups.first { Color.clear.frame(height: 14) } // column forms ignore Section spacing
                     ForEach(group) { id in
-                        LabeledContent("\(title(for: id)):") {
+                        LabeledContent(title(for: id)) {
                             if recording == id {
                                 KeyChordRecorder { chord in assign(chord, to: id) }.frame(width: 110, height: 22)
                             } else {
@@ -292,13 +309,13 @@ private struct ShortcutSettings: View {
                     }
                 }
             }
-            LabeledContent("") {
-                VStack(alignment: .leading, spacing: 8) {
+            Section {
+                Button("Restore Defaults") { state.resetShortcuts(); error = nil; recording = nil }
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
                     if let error { SettingsNote(error).foregroundStyle(.red) }
                     SettingsNote("Click a shortcut, then press a key with modifiers. Quit, Hide, Close, Undo, Cut, Copy, Paste, and Select All keep their standard macOS shortcuts.")
-                    Button("Restore Defaults") { state.resetShortcuts(); error = nil; recording = nil }
                 }
-                .padding(.top, 12)
             }
         }
     }
