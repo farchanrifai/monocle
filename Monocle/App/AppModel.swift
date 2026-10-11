@@ -1812,8 +1812,8 @@ final class AppModel {
                                    startDay: startDay, categoryLimits: categoryLimits, transitionEndDay: transitionEndDay,
                                    totalUntilDay: totalUntilDay)
         var proposed = settings
-        proposed.budget = overallLimit
-        proposed.startDay = startDay
+        // A goal doesn't change the fallback cycle budget that applies once the goal has ended.
+        if totalUntilDay == nil { proposed.budget = overallLimit; proposed.startDay = startDay }
         try performWorkspaceCommand {
             try expenseService.save(budget)
             try requireState().saveSettings(proposed)

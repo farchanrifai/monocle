@@ -612,13 +612,14 @@ struct BudgetPeriod: Equatable, Sendable {
 enum BudgetHistory {
     static func active(on date: Date, budgets: [BudgetVersion], calendar: Calendar = Day.calendar) -> BudgetVersion? {
         let day = Day.string(date, calendar: calendar)
-        return budgets.filter { $0.effectiveDay <= day }.max { $0.effectiveDay < $1.effectiveDay }
+        // A "Total until" budget ends after its last day; the cycle budget before it (if any) applies again.
+        return budgets.filter { $0.effectiveDay <= day && ($0.totalUntilDay.map { $0 >= day } ?? true) }.max { $0.effectiveDay < $1.effectiveDay }
     }
 
     static func period(containing date: Date, budgets: [BudgetVersion], calendar: Calendar = Day.calendar) -> BudgetPeriod? {
         guard let budget = active(on: date, budgets: budgets, calendar: calendar) else { return nil }
         let day = Day.string(date, calendar: calendar)
-        // A "Total until" budget is one period from its start through its last day, even after that day passes.
+        // A "Total until" budget is one period from its start through its last day.
         if let lastDay = budget.totalUntilDay, let start = Day.date(budget.effectiveDay, calendar: calendar),
            let last = Day.date(lastDay, calendar: calendar) {
             let reporting = Day.reportingCalendar(calendar)

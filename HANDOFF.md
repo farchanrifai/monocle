@@ -1,20 +1,18 @@
 ## 1. Immediate Next Step
 
-Deep dive into the Budget feature (user will start it in a new session). Nothing is half-done: `feat/model-b` is clean and pushed (last code commit `0d290a0`). Start by reading how budgets work today, then ask the user what they want to change.
-
-- Code: domain `BudgetVersion` and budget cycle logic in `Monocle/Domain/CardBackup.swift` and `Monocle/Application/ExpenseService.swift`; storage in `ExpenseRepository`; iOS screen `Monocle/Features/BudgetsView.swift`; Mac screen `MacBudgetsView` in `MonocleMac/Features/MacPlanningViews.swift`; analytics in `AnalyticsEngine`; widgets in `WidgetSnapshotUpdater`; card back in `CardBackTelemetryView`.
-- Rules on record (`docs/planning/roadmap.md`, M3 specifics): overall and category limits are independent; no carry-forward; effective-dated history; start day clamps at month end; a start-day change applies at the old cycle end with a transition period. Model B added `totalUntilDay` (a budget that runs until a day) and per-card budget currency vs spending currency (display-only ≈ projection); `BudgetPeriod` was kept (see the status block in `docs/planning/model-b-plan.md`).
-- Known edges to check: analytics and widgets for a card budgeted in another currency use today's cached rate; stack caps (`capLimit`/`capStartDay`) convert at today's rate; the Mac budget screen only shows the active card.
-- Test against the demo app (Debug only): build with `xcodebuild -project Monocle.xcodeproj -scheme MonocleMac -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath build/macos/DebugDerived build`, then `open -n --env MONOCLE_DEMO=1 build/macos/DebugDerived/Build/Products/Debug/Monocle.app`.
-- Open items, not blocking: the Mac Release app in `~/Applications` is from before the Mac UI polish (rebuild: `MONOCLE_SIGNING_IDENTITY="Clipboard Dev" scripts/build-macos.sh --install`); the Mac UI tests were not rerun after the Settings, navigation and Add Expense changes (`testSettingsUseSidebarPanes` checks the window title, which may break now the pane title is hidden); `docs/planning/roadmap.md` is stale (dated 2026-09-09) and should be rewritten against the code; privacy policy / App Store label must mention the Frankfurter (ECB) rate request; the demo card is still named "Sample book"; the user has not approved merging model B (`feat/apple-intelligence-chat` must merge first). Don't merge to main until told.
-- The screenshot tool (cmux-cua) was down at the end of this session; visual checks were done by the user from screenshots and screen recordings.
+Budget deep dive, step 1 done (fixes 1 and 2 below). Discuss the rest with the user, then pick one:
+- Past-cycle history: spent vs limit per past cycle, hit/miss record (no such view exists).
+- Stack budgets are a stub: synthetic `BudgetVersion` at `AppModel.swift:~1305`, ignores member cards' start days, transitions, goals; no category roll-up.
+- Currency drift: analytics/widgets/stack caps convert a foreign-currency card budget at today's rate, so past cycles re-value.
+- Mac `MacBudgetsView` shows only the active card.
+- Known gap: saving a goal replaces the cycle budget stored at the same `effectiveDay`, so a goal started on a fresh card leaves no earlier cycle version; after it ends, the fallback is `settings.budget`/`startDay` (goals no longer overwrite those).
+- Open items from the earlier checkpoint still stand (stale roadmap, privacy label for Frankfurter, Mac Release rebuild, Mac UI tests not rerun, no merge to main).
 
 ## 2. Last Completed Checkpoint
 
-Mac UI polish on `feat/model-b`, all pushed (last `0d290a0`). Verified: Mac unit 21 pass, iOS unit 224 pass (4 skipped), Mac UI 10/10 earlier in the session (before the polish). The polish itself was checked by the user in the demo app, not by UI tests.
+Budget fixes on `feat/model-b`. Verified: iOS unit 225 pass (4 skipped); Mac tests and UI tests not run.
 
-- Settings (`MacSettingsView`): grouped `Form`, pane title hidden. Currency and Paid with list every card, and Edit Card (`MacCardEditor`) has the same per-card rows (applied on Save). General has all Add Expense on/off switches (Quick text field, Currency, Split, Paid with, Note, Date) and a separate "Order of details" list (native `List` with `onMove`; `.draggable` rows and `Form` `onMove` both failed) saved in `WorkspacePreferences.entryRowOrder` (written only when non-default, so the golden formats are unchanged).
-- Add Expense (`MacExpenseForm`, used by the in-app sheet and the global Quick Add panel): header with an (i) shortcut tooltip, optional Quick field (`EntryFormField.quick`, Mac only), large amount panel with a Tab-reachable `PopUpPicker` currency, grouped details in the saved order, `MacDateField` (Today/Yesterday chips, one Tab stop, ←/→/T/Space, calendar popover).
-- Navigation: back/forward history in `MacAppState` (⌘[ / ⌘], toolbar chevrons, Navigate menu, rebindable). All navigation goes through `MacAppState.go()`; the command bar closes first and navigates one tick later, otherwise the sidebar fold does not animate. A collapsed Cards/Stacks sidebar group shows only the open card/stack and folds back (`peekOpen` lag plus `withAnimation`). Search results are not wrapped.
-- Analytics: chart card titles are `.title3` semibold, and the cards have 24pt vertical / 14pt horizontal padding.
-- Model B itself (phases 0–6, preview 0.8.0 (95) on the SideStore feed) is unchanged; plan and deviations in `docs/planning/model-b-plan.md`. Backup first: it upgrades data to Core Data V5 / backup format 8 and older builds can't open it.
+- Expired "Total until" goals: `BudgetHistory.active` skips a goal whose `totalUntilDay` is before the date, so the earlier cycle budget (or the settings fallback) applies again. `saveBudget` no longer overwrites `settings.budget`/`startDay` when saving a goal.
+- Projection: `calculateMetrics` scales total spend (`spend × days / elapsed`) instead of the truncated daily average; card back target-per-day uses `checkedScale` too.
+- Tests: updated `testTotalUntilBudgetIsOnePeriodAndSwitchingBackReplacesIt`, added `testProjectionScalesTotalNotRoundedDailyAverage`.
+- Earlier: Mac UI polish (Settings, Add Expense, navigation history, chart padding), model B phases 0-6 (preview 0.8.0 (95)); details in `docs/planning/model-b-plan.md`.

@@ -509,7 +509,7 @@ enum AnalyticsEngine {
         let daysElapsed = max(1, elapsedPoints.count)
 
         let dailyAvg: Int64 = daysElapsed > 0 ? (totalSpend / Int64(daysElapsed)) : 0
-        let projectedTotal = try? Money.checkedScale(dailyAvg, numerator: fullPeriodDays)
+        let projectedTotal = try? Money.checkedScale(totalSpend, numerator: fullPeriodDays, denominator: daysElapsed)
 
         // Highest spend day
         let highestDay = elapsedPoints.max { $0.amount < $1.amount }

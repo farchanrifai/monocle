@@ -472,8 +472,13 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(Day.string(during.cycle.end), "2027-04-01")
         XCTAssertTrue(during.cycle.contains(Expense(amount: 1, day: "2027-03-31", note: "", splits: [])))
         XCTAssertFalse(during.cycle.contains(Expense(amount: 1, day: "2027-04-01", note: "", splits: [])))
-        let after = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date("2027-05-01")), budgets: [goal]))
-        XCTAssertEqual(after.cycle, during.cycle)
+        // After the last day the goal no longer applies: the earlier cycle budget returns, or none.
+        let afterDate = try XCTUnwrap(Day.date("2027-05-01"))
+        XCTAssertNil(BudgetHistory.period(containing: afterDate, budgets: [goal]))
+        let monthly = BudgetVersion(effectiveDay: "2026-09-01", overallLimit: 3_000_000_00, startDay: 1)
+        let back = try XCTUnwrap(BudgetHistory.period(containing: afterDate, budgets: [monthly, goal]))
+        XCTAssertEqual(back.budget.overallLimit, 3_000_000_00)
+        XCTAssertEqual(Day.string(back.cycle.start), "2027-05-01")
         var backwards = goal; backwards.totalUntilDay = "2026-09-30"
         XCTAssertThrowsError(try backwards.validate(categories: []))
 

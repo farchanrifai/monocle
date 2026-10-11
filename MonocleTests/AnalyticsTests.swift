@@ -430,4 +430,18 @@ extension AnalyticsTests {
         XCTAssertEqual(allScope.subtitle, "All cards")
         XCTAssertEqual(allScope.icon, "rectangle.stack")
     }
+
+    func testProjectionScalesTotalNotRoundedDailyAverage() throws {
+        // 100 minor units over 3 of 30 days: 100 * 30 / 3 = 1000, not (100 / 3) * 30 = 990.
+        let start = try XCTUnwrap(Day.date("2026-11-01")), end = try XCTUnwrap(Day.date("2026-11-30"))
+        var running: Int64 = 0
+        let points = (1...3).map { day -> DailySpendPoint in
+            let amount: Int64 = day == 1 ? 34 : 33
+            running += amount
+            let key = "2026-11-0\(day)"
+            return DailySpendPoint(day: key, date: Day.date(key)!, amount: amount, cumulativeAmount: running, targetCumulativeAmount: nil, transactionCount: 1)
+        }
+        let metrics = AnalyticsEngine.calculateMetrics(dailyPoints: points, categoryPoints: [], startDate: start, endDate: end)
+        XCTAssertEqual(metrics.projectedPeriodTotal, 1000)
+    }
 }

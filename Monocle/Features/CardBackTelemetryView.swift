@@ -141,7 +141,7 @@ private struct CardBackReportView: View {
                         .lineLimit(1)
 
                     if let activeBudget {
-                        let targetDaily = activeBudget.overallLimit / Int64(max(1, metrics.totalDaysInPeriod))
+                        let targetDaily = (try? Money.checkedScale(activeBudget.overallLimit, numerator: 1, denominator: max(1, metrics.totalDaysInPeriod))) ?? 0
                         Text("TARGET \(compactMoney(targetDaily))")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .foregroundStyle(.white.opacity(0.75))
