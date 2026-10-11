@@ -577,14 +577,21 @@ struct MacExpenseTable: View {
     @State private var sortOrder: [KeyPathComparator<MacExpenseRow>] = []
     @State private var allRows: [MacExpenseRow] = []
     @State private var rows: [MacExpenseRow] = []
+    @State private var filter = ActivityFilter()
 
     var body: some View {
-        MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
-            .accessibilityIdentifier("activityTable")
+        VStack(alignment: .leading, spacing: 10) {
+            // The newest-N preview on Overview stays a plain list; full tables get filters.
+            if limit == nil, !allRows.isEmpty { ActivityFilterBar(filter: $filter, rows: allRows, shown: rows.count) }
+            MacActivityTable(rows: rows, state: state, sortOrder: $sortOrder)
+                .accessibilityIdentifier("activityTable")
+        }
             // Rows rebuild only when data or the card changes, not on every window refresh (selection, inspector, typing).
             .onChange(of: RowsSource(revision: state.model.dataRevision, cardIDs: cardIDs, cardCount: state.model.cards.count), initial: true) { buildRows() }
             .onChange(of: state.searchText) { refresh() }
             .onChange(of: sortOrder) { refresh() }
+            .onChange(of: filter) { refresh() }
+            .onChange(of: cardIDs) { filter = ActivityFilter() }
     }
 
     private struct RowsSource: Equatable { let revision: UInt64; let cardIDs: [UUID]?; let cardCount: Int }
@@ -596,11 +603,12 @@ struct MacExpenseTable: View {
             source = Array(source.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }.prefix(limit))
         }
         let cards = Dictionary(model.cards.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-        allRows = MacExpenseRow.make(source, cardNames: cards, categoryName: { model.category($0)?.name })
+        let methods = Dictionary(model.paymentMethods.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        allRows = MacExpenseRow.make(source, cardNames: cards, categoryName: { model.category($0)?.name }, paidWithName: { methods[$0] })
         refresh()
     }
 
-    private func refresh() { rows = MacExpenseRow.filter(allRows, query: state.searchText, sortOrder: sortOrder) }
+    private func refresh() { rows = MacExpenseRow.filter(allRows, query: state.searchText, filter: filter, sortOrder: sortOrder) }
 }
 
 struct MacExpenseRow: Identifiable {
@@ -608,11 +616,12 @@ struct MacExpenseRow: Identifiable {
     let title: String
     let category: String
     let card: String
+    var paidWith = ""
     var id: Expense.ID { expense.id }
     var day: String { expense.day }
     var amountMinor: Int64 { expense.amount }
 
-    static func make(_ expenses: [Expense], cardNames: [UUID: String], categoryName: (UUID) -> String?) -> [MacExpenseRow] {
+    static func make(_ expenses: [Expense], cardNames: [UUID: String], categoryName: (UUID) -> String?, paidWithName: (UUID) -> String? = { _ in nil }) -> [MacExpenseRow] {
         var names: [UUID: String] = [:]
         func name(_ id: UUID?) -> String? {
             guard let id else { return nil }
@@ -622,15 +631,24 @@ struct MacExpenseRow: Identifiable {
         return expenses.map { expense in
             let category = name(expense.splits.first?.categoryID)
             return MacExpenseRow(expense: expense, title: expense.note.isEmpty ? category ?? "Expense" : expense.note,
-                                 category: category ?? "Split", card: expense.cardID.flatMap { cardNames[$0] } ?? "")
+                                 category: category ?? "Split", card: expense.cardID.flatMap { cardNames[$0] } ?? "",
+                                 paidWith: expense.paidWithID.flatMap(paidWithName) ?? "")
         }
     }
 
-    static func filter(_ rows: [MacExpenseRow], query: String, sortOrder: [KeyPathComparator<MacExpenseRow>]) -> [MacExpenseRow] {
+    /// Search matches the title, note, category, card, Paid with, and the amount ("45000" or "45,000" finds Rp45,000).
+    func matches(_ query: String, amountDigits: String?) -> Bool {
+        title.localizedCaseInsensitiveContains(query) || category.localizedCaseInsensitiveContains(query)
+            || card.localizedCaseInsensitiveContains(query) || paidWith.localizedCaseInsensitiveContains(query)
+            || expense.note.localizedCaseInsensitiveContains(query)
+            || amountDigits.map { Money.exactDigits(expense.amount).contains($0) } ?? false
+    }
+
+    static func filter(_ rows: [MacExpenseRow], query: String, filter: ActivityFilter = ActivityFilter(), sortOrder: [KeyPathComparator<MacExpenseRow>]) -> [MacExpenseRow] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let filtered = query.isEmpty ? rows : rows.filter {
-            $0.title.localizedCaseInsensitiveContains(query) || $0.category.localizedCaseInsensitiveContains(query)
-        }
+        let digits = query.allSatisfy { $0.isNumber || ",. ".contains($0) } ? query.filter(\.isNumber) : ""
+        let scoped = filter.isActive ? rows.filter(filter.matches) : rows
+        let filtered = query.isEmpty ? scoped : scoped.filter { $0.matches(query, amountDigits: digits.isEmpty ? nil : digits) }
         return sortOrder.isEmpty
             ? filtered.sorted { $0.day == $1.day ? $0.expense.createdAt > $1.expense.createdAt : $0.day > $1.day }
             : filtered.sorted(using: sortOrder)

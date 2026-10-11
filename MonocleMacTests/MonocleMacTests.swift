@@ -84,6 +84,32 @@ final class MonocleMacTests: XCTestCase {
         XCTAssertEqual(byAmount.first?.amountMinor, 100)
     }
 
+    func testActivitySearchWidensAndFiltersNarrow() {
+        let a = Card(name: "Daily"), b = Card(name: "Trip")
+        let food = ExpenseCategory.defaults[0], transport = ExpenseCategory.defaults[1]
+        let method = PaymentMethod(name: "Visa")
+        let expenses = [
+            Expense(amount: 45_000_00, day: "2026-09-10", note: "Lunch", splits: [.init(categoryID: food.id, amount: 45_000_00)], cardID: a.id, paidWithID: method.id),
+            Expense(amount: 12_000_00, day: "2026-09-20", note: "Taxi", splits: [.init(categoryID: transport.id, amount: 12_000_00)], cardID: b.id),
+            Expense(amount: 80_000_00, day: "2026-10-02", note: "Dinner", splits: [.init(categoryID: food.id, amount: 80_000_00)], cardID: b.id)]
+        let names = [food.id: food.name, transport.id: transport.name]
+        let rows = MacExpenseRow.make(expenses, cardNames: [a.id: a.name, b.id: b.name], categoryName: { names[$0] }, paidWithName: { $0 == method.id ? method.name : nil })
+        func found(_ query: String, _ filter: ActivityFilter = ActivityFilter()) -> [String] {
+            MacExpenseRow.filter(rows, query: query, filter: filter, sortOrder: []).map(\.title).sorted()
+        }
+        XCTAssertEqual(found("trip"), ["Dinner", "Taxi"])        // card name
+        XCTAssertEqual(found("visa"), ["Lunch"])                 // Paid with
+        XCTAssertEqual(found("45,000"), ["Lunch"])               // amount, separators ignored
+        XCTAssertEqual(found("12000"), ["Taxi"])
+        var filter = ActivityFilter(categories: ["Food & Drink"])
+        XCTAssertEqual(found("", filter), ["Dinner", "Lunch"])
+        filter.cards = ["Trip"]
+        XCTAssertEqual(found("", filter), ["Dinner"])
+        filter = ActivityFilter(from: "2026-09-15", to: "2026-09-30")
+        XCTAssertEqual(found("", filter), ["Taxi"])
+        XCTAssertEqual(found("taxi", ActivityFilter(categories: ["Food & Drink"])), [])   // search and chips are ANDed
+    }
+
     func testAPIKeyRoundTripsThroughSandboxedKeychain() throws {
         try XCTSkipIf(APIKeyStore.read() != nil, "A real key is saved; leave it alone")
         defer { APIKeyStore.delete() }

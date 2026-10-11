@@ -75,6 +75,7 @@
 		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
 		6814704F0D8604EE1C1A76E3 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6058F202B9BEE64BFF836B /* MacSettingsView.swift */; };
 		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
+		6C19BA34061DC31098B56D9E /* MacActivityFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB31C84BE8A5ABFA4B2AE69F /* MacActivityFilter.swift */; };
 		6D11DFDFBBE1E716A21AF997 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4633CBE5D575706F42975ED /* CardCustomization.swift */; };
 		6E3C9946DB95BDADE52C0046 /* MultiCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF409A3734BE69ADCCAC26D5 /* MultiCardTests.swift */; };
 		6F009E1531788C0681806107 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 528ED8945811020013D20C79 /* ChatSession.swift */; };
@@ -301,6 +302,7 @@
 		AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseService.swift; sourceTree = "<group>"; };
 		B18E42FC22C689B74CEF5F76 /* BudgetStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetStatus.swift; sourceTree = "<group>"; };
 		B77094E961D5E3F21A0C865A /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		BB31C84BE8A5ABFA4B2AE69F /* MacActivityFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacActivityFilter.swift; sourceTree = "<group>"; };
 		BCB1D8F145709EB383CF9B9B /* CategoryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryValidation.swift; sourceTree = "<group>"; };
 		BF7C805FEF72AF425AF0A107 /* MacChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacChatView.swift; sourceTree = "<group>"; };
 		BFAB59F8D69B863E198985F9 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
@@ -362,6 +364,7 @@
 		0A150990CE0365E50A2BAE06 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				BB31C84BE8A5ABFA4B2AE69F /* MacActivityFilter.swift */,
 				BF7C805FEF72AF425AF0A107 /* MacChatView.swift */,
 				38FE13CFCB9D53BA73C3010C /* MacDataTransferView.swift */,
 				2836A02A00B5D4237EF71EEF /* MacExpenseForm.swift */,
@@ -1032,6 +1035,7 @@
 				F5BD9E89A65E0C56FBABCA3E /* ExpenseService.swift in Sources */,
 				CABFBDC8861A2FE52A7918E5 /* GlobalHotKeyController.swift in Sources */,
 				814B6560E110230BC76787D5 /* LocalStateStore.swift in Sources */,
+				6C19BA34061DC31098B56D9E /* MacActivityFilter.swift in Sources */,
 				FEFD946846B76ED10F9D692E /* MacChatView.swift in Sources */,
 				7B62CC7EFA223F37DDA5D6BE /* MacCommands.swift in Sources */,
 				52CC147611D1086BA699DFBF /* MacDataTransferView.swift in Sources */,
