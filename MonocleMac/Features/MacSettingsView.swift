@@ -24,6 +24,7 @@ struct MacSettingsView: View {
     @Bindable var state: MacAppState
     @Bindable private var model: AppModel
     @State private var lockError: String?
+    @State private var dropTarget: EntryFormRow?
     @AppStorage("MacSettingsPane") private var savedPane: SettingsPane = .general
     @State private var selection: SettingsPane?
     private var pane: SettingsPane { selection ?? savedPane }
@@ -72,20 +73,29 @@ struct MacSettingsView: View {
                     let order = model.entryRowOrder
                     ForEach(Array(order.enumerated()), id: \.element) { index, line in
                         HStack(spacing: 10) {
+                            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
                             if let field = line.field {
                                 Toggle(line.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
                             } else {
                                 Text(line.title); Spacer(); Text("Always shown").foregroundStyle(.secondary)
                             }
-                            Button { model.moveEntryRows(from: IndexSet(integer: index), to: index - 1) } label: { Image(systemName: "chevron.up") }
-                                .disabled(index == 0).accessibilityLabel("Move \(line.title) up")
-                            Button { model.moveEntryRows(from: IndexSet(integer: index), to: index + 2) } label: { Image(systemName: "chevron.down") }
-                                .disabled(index == order.count - 1).accessibilityLabel("Move \(line.title) down")
                         }
-                        .buttonStyle(.borderless)
+                        .padding(.vertical, 2).contentShape(Rectangle())
+                        .background(dropTarget == line ? Color.accentColor.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                        // `.onMove` is a List feature and does nothing in a grouped Form, so rows are dragged by hand.
+                        .draggable(line.rawValue) { Text(line.title).padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8)) }
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let raw = items.first, let moved = EntryFormRow(rawValue: raw), let from = order.firstIndex(of: moved), from != index else { return false }
+                            model.moveEntryRows(from: IndexSet(integer: from), to: from < index ? index + 1 : index)
+                            return true
+                        } isTargeted: { targeted in
+                            if targeted { dropTarget = line } else if dropTarget == line { dropTarget = nil }
+                        }
+                        .accessibilityAction(named: "Move up") { if index > 0 { model.moveEntryRows(from: IndexSet(integer: index), to: index - 1) } }
+                        .accessibilityAction(named: "Move down") { if index < order.count - 1 { model.moveEntryRows(from: IndexSet(integer: index), to: index + 2) } }
                     }
                 } header: { Text("Details, in order") } footer: {
-                    SettingsNote("Use the arrows to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
+                    SettingsNote("Drag a row to reorder. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
                 }
             }
         case .paidWith:
