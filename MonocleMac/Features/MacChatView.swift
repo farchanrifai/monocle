@@ -15,7 +15,8 @@ struct MacChatView: View {
     @State private var mentionSelection = 0
     @FocusState private var inputFocused: Bool
     @State private var fieldFrame: CGRect = .zero
-    @State private var flightProgress: CGFloat = 0
+    @State private var flightX: CGFloat = 0
+    @State private var flightY: CGFloat = 0
     @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var model: AppModel { state.model }
@@ -62,10 +63,12 @@ struct MacChatView: View {
         }
         .environment(\.chatFlightID, session.flightID)
         .coordinateSpace(name: "chat")
-        .chatFlightLayer(from: fieldFrame, progress: flightProgress, active: session.flightID != nil, label: flightLabel)
+        .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil, label: flightLabel)
         .onChange(of: session.flightID) { _, id in
-            flightProgress = 0
-            if id != nil { withAnimation(.spring(response: 0.5, dampingFraction: 0.84)) { flightProgress = 1 } }
+            flightX = 0; flightY = 0
+            guard id != nil else { return }
+            withAnimation(.easeOut(duration: 0.16)) { flightX = 1 }
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.88).delay(0.07)) { flightY = 1 }
         }
         .navigationTitle("Chat")
         .onExitCommand { close?() } // Esc hides the Quick Chat panel

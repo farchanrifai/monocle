@@ -32,28 +32,33 @@ struct ChatFlightTarget: PreferenceKey {
 }
 
 extension View {
-    /// Draws the red bubble shape moving from `from` (the composer field, in this view's coordinates) to the flying bubble's
-    /// resting frame as `progress` goes 0 → 1, carrying `label` (the message) inside it, so the text travels with the shape.
+    /// Draws the sent bubble flying out of the composer as in Messages, in two phases timed separately:
+    /// `x` (0 → 1, quick) collapses the field's shape sideways into the bubble's width and height while it stays at the field's level,
+    /// the message riding inside it; `y` (0 → 1, slower) then lifts it into the bubble's resting frame, the text growing to full size.
     /// One-shot: nothing is drawn unless `active`.
-    func chatFlightLayer(from: CGRect, progress: CGFloat, active: Bool, label: Text?) -> some View {
+    func chatFlightLayer(from: CGRect, x: CGFloat, y: CGFloat, active: Bool, label: Text?) -> some View {
         overlayPreferenceValue(ChatFlightTarget.self) { anchor in
             GeometryReader { proxy in
                 if active, let anchor, from.width > 0 {
                     let to = proxy[anchor]
-                    let t = progress
-                    let frame = CGRect(x: from.minX + (to.minX - from.minX) * t, y: from.minY + (to.minY - from.minY) * t,
-                                       width: from.width + (to.width - from.width) * t, height: from.height + (to.height - from.height) * t)
+                    let left = from.minX + (to.minX - from.minX) * x
+                    let right = from.maxX + (to.maxX - from.maxX) * x
+                    let height = from.height + (to.height - from.height) * x
+                    let midY = from.midY + (to.midY - from.midY) * y
+                    let shape = BubbleShape(isUser: true, hasTail: true)
                     ZStack(alignment: .leading) {
-                        BubbleShape(isUser: true, hasTail: true).fill(MC.red)
-                        // Wrapped at the bubble's final inner width, so the text never re-wraps mid-flight.
+                        shape.fill(MC.red.opacity(0.4 + 0.6 * x))
+                        // Wrapped at the bubble's final inner width so it never re-wraps; clipped to the shape while that is still narrower.
                         label?.foregroundStyle(.white)
                             .textRenderer(MentionChipRenderer(chip: .black.opacity(0.28)))
                             .frame(width: to.width - 28, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
+                            .scaleEffect(0.82 + 0.18 * y, anchor: .leading)
                             .padding(.leading, 14)
                     }
-                    .frame(width: frame.width, height: frame.height)
-                    .position(x: frame.midX, y: frame.midY)
+                    .clipShape(shape)
+                    .frame(width: right - left, height: height)
+                    .position(x: (left + right) / 2, y: midY)
                     .transition(.identity)
                 }
             }
@@ -68,13 +73,13 @@ extension ChatSession {
     func appendUserRow(_ text: String, animated: Bool, alongside: () -> Void) -> ChatRow {
         let row = ChatRow(kind: .user(text))
         flightID = animated ? row.id : nil
-        withAnimation(animated ? .spring(response: 0.45, dampingFraction: 0.82) : nil) {
+        withAnimation(animated ? .spring(response: 0.34, dampingFraction: 0.88) : nil) {
             alongside()
             rows.append(row)
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(700))
+                try? await Task.sleep(for: .milliseconds(600))
                 if flightID == row.id { flightID = nil }
             }
         }
