@@ -2,6 +2,20 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [Unreleased]
+### AI Chat: mentions and context
+- `#` mentions a category next to `@` for a card or stack; both can be used in one message. Picker follows the chat scope; Return or Tab (Mac) confirms. Mentions show as rounded chips in the composer and in sent bubbles.
+- A follow-up question that names no period ("what categories?") keeps the period of the last answer (the app tells the assistant which period that was).
+- Chart titles show the real dates ("1–Oct 31, 2026 · Daily") instead of a period keyword.
+- A chat saved under other instructions or tools starts empty; a "thinking block" error from the API restarts the conversation once instead of failing every message.
+
+## [0.8.4] - 2026-10-12
+### Two ways to record, a clearer Add Expense form
+- Text entry ("coffee 28k") is gone from the Add Expense form and the Entry mode settings: record with the form or with AI chat. Shortcuts "record text" still works. Old backups and drafts still open.
+- The reporting-currency equivalent (≈ Rp…) shows beside the rate before a category is chosen.
+- Mac: thousands separators while typing, decimals only once typed (and only for currencies that have them), `28k` / `Rp28.000` become plain digits when you leave the amount field, the date is one line.
+- Quick Chat panel closes with its button and Esc and no longer brings the main window forward.
+
 ## [0.8.0] - 2026-10-11
 ### Cards are purposes (model B)
 Back up before updating (Settings → Backup & restore): this version upgrades your data and older versions can't open it afterwards.

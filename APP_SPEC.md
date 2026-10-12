@@ -128,7 +128,7 @@ Other surfaces:
 Most other screens are `.sheet`s: entry, settings, budgets, bills, CSV, card customizer. Candidate places for chat:
 1. **A third `Tab`.** This needs a matching item in `NativeTabSwitcher` (`BottomNavigation.swift`, which uses `UITabBarItem` tags 0 and 1).
 2. **A sheet triggered from `BottomNavigation` or the Home toolbar**, the same pattern as `showAnalytics` and `showEntry`.
-3. **A new `EntryMode`** in `EntryView`. Keypad and Text modes exist; Text already goes through `ExpenseParser`.
+3. **A new `EntryMode`** in `EntryView`. (Historical: Text mode existed then; it was removed in 0.8.4, so recording is the form or chat. `ExpenseParser` remains for Shortcuts.)
 
 There is no macOS app, so iOS is the only placement.
 

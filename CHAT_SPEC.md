@@ -164,3 +164,12 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 5. Inline summary chart.
 6. `compare_periods`, `get_budget_status`; offline/error states; golden-prompt pass.
 7. Proxy before sharing. v2: streaming, localized UI strings, macOS target.
+
+## 12. Changes since v1
+
+- **Mentions:** `@` picks a card, stack or All Cards (and sets the chat scope); `#` picks a category of the cards in the chat scope and only inserts its name. Both can appear in one message; the word being typed decides which list shows. Return, or Tab on the Mac, confirms the highlighted row. Code: `ChatMentionList` (`Features/Chat/ChatTranscript.swift`). Names are matched case-insensitively, longest first, only at the start of a word.
+- **Mention style:** `MentionChipRenderer` draws a rounded chip behind each mention (`Text` + a custom `TextAttribute`). Bubble: white bold text on a dark chip with a thin space inside each end. Composer (`MentionTextField`): SwiftUI's `TextField` cannot colour part of its text, so its own text is clear and the same text is drawn over it; glyphs must keep their widths there (no bold, no extra characters), so the composer chip only reaches 2pt past the text.
+- **Follow-up period:** each agent remembers the period of its last tool call (`ChatAgent.period(in:)`) and `app_context` carries "Period of your last answer: …"; a follow-up that names no period uses it. Fixes the on-device "what categories?" follow-up.
+- **Saved chats:** `chat.json` stores `ChatAgent.fingerprint` (hash of system prompt + tools). A mismatch, or no fingerprint, starts an empty chat, because thinking blocks are bound to the tools they were made with. If the API still rejects a thinking block, `ChatAgent` resets and retries the turn once with a notice.
+- **Charts:** titles carry dates via `ToolExecutor.rangeLabel` (budget, summary, comparison). The budget tool still covers the current cycle only.
+- **On-device probe (Apple backend):** 9/11. Failing: "pasar 50rb: 30rb makan 20rb belanja" (three separate proposals) and "compare this month vs last" (wrong direction in the text); both also fail on the previous main, so the on-device model drifted.
