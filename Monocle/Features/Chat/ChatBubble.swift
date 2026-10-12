@@ -77,7 +77,16 @@ extension ChatSession {
     /// The bubble's lift is a spring so it overshoots its slot a little and settles back (bouncier than Messages, on purpose);
     /// the rows above ease without overshoot on the measured curve.
     static let liftAnimation = Animation.spring(duration: 0.6, bounce: 0.3).delay(0.16)
-    static let rowsAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.4).delay(0.16)
+    static let imessageRows = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.4).delay(0.16)
+
+    /// How a sent message arrives. `imessage`: the field's shape flies up into the slot. `whatsapp` (default while trying it): no flight;
+    /// the bubble appears in its slot at ~15% size and grows in place from its tail corner, the rows above easing up with it
+    /// (read off a 60fps recording: ~0.17s after send, 99% grown in ~0.15s, ease-out, no overshoot).
+    /// Switch with `defaults write <bundle id> chatSendStyle imessage` (or `whatsapp`). `chat-flight-imessage` is the tagged iMessage baseline.
+    enum SendStyle { case imessage, whatsapp }
+    static var sendStyle: SendStyle { UserDefaults.standard.string(forKey: "chatSendStyle") == "imessage" ? .imessage : .whatsapp }
+    static let whatsappGrow = Animation.easeOut(duration: 0.2).delay(0.06)
+    static var rowsAnimation: Animation { sendStyle == .whatsapp ? whatsappGrow : imessageRows }
 
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
     /// `alongside` runs in the same animation (clearing the draft). Returns the row to hand to `send(appended:)`.
@@ -91,7 +100,7 @@ extension ChatSession {
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(1000)) // fallback; the view clears the flight when the lift completes
+                try? await Task.sleep(for: .milliseconds(Self.sendStyle == .whatsapp ? 600 : 1000)) // iMessage: fallback, the view clears the flight when the lift completes
                 if flightID == row.id { flightID = nil }
             }
         }
@@ -108,6 +117,11 @@ struct ChatBubble<Content: View>: View {
     @Environment(\.chatFlightID) fileprivate var flightID
 
     fileprivate var flying: Bool { rowID != nil && rowID == flightID }
+    /// iMessage style: a travelling copy is drawn elsewhere, so this bubble stays invisible until it lands.
+    fileprivate var hiddenForFlight: Bool { flying && ChatSession.sendStyle == .imessage }
+    /// WhatsApp style: this bubble itself grows from its tail corner.
+    @State private var grown = false
+    fileprivate var growing: Bool { flying && ChatSession.sendStyle == .whatsapp }
 
     var body: some View {
         content
@@ -115,8 +129,11 @@ struct ChatBubble<Content: View>: View {
             .padding(.vertical, 9)
             .foregroundStyle(isUser ? Color.white : Color.primary)
             // The travelling copy (shape and text) is drawn by `chatFlightLayer`; this one appears when it lands.
-            .opacity(flying ? 0 : 1)
+            .opacity(hiddenForFlight ? 0 : 1)
             .background { shape }
+            .scaleEffect(growing && !grown ? 0.15 : 1, anchor: isUser ? .bottomTrailing : .bottomLeading)
+            .onAppear { if growing { withAnimation(ChatSession.whatsappGrow) { grown = true } } }
+            .transition(rowID != nil ? .identity : .opacity)
             .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
             .padding(isUser ? .leading : .trailing, 48)
     }
@@ -125,7 +142,7 @@ struct ChatBubble<Content: View>: View {
 extension ChatBubble {
     @ViewBuilder fileprivate var shape: some View {
         let fill = BubbleShape(isUser: isUser, hasTail: hasTail).fill(isUser ? MC.red : Color.secondary.opacity(0.16))
-        if flying { fill.opacity(0).anchorPreference(key: ChatFlightTarget.self, value: .bounds) { $0 } } else { fill }
+        if hiddenForFlight { fill.opacity(0).anchorPreference(key: ChatFlightTarget.self, value: .bounds) { $0 } } else { fill }
     }
 }
 

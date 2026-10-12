@@ -63,10 +63,10 @@ struct MacChatView: View {
         }
         .environment(\.chatFlightID, session.flightID)
         .coordinateSpace(name: "chat")
-        .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil, label: flightLabel)
+        .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil && ChatSession.sendStyle == .imessage, label: flightLabel)
         .onChange(of: session.flightID) { _, id in
             flightX = 0; flightY = 0
-            guard id != nil else { return }
+            guard id != nil, ChatSession.sendStyle == .imessage else { return }
             withAnimation(ChatSession.sweepAnimation) { flightX = 1 }
             let landed = id
             withAnimation(ChatSession.liftAnimation, completionCriteria: .logicallyComplete) { flightY = 1 } completion: {
