@@ -26,9 +26,9 @@ struct ChatView: View {
                 ChatTranscript(model: model, session: session, send: send)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
+                    // The composer floats over the transcript; this keeps the last bubble resting above it.
+                    .padding(.bottom, composerHeight)
             }
-            // The composer floats over the transcript; this keeps the last bubble resting above it.
-            .contentMargins(.bottom, composerHeight, for: .scrollContent)
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .scrollDismissesKeyboard(.interactively)

@@ -31,10 +31,11 @@ struct MacChatView: View {
                     ChatTranscript(model: model, session: session, send: send)
                         .frame(maxWidth: 720)
                         .padding(.horizontal, gutter).padding(.vertical, compact ? 8 : 16)
+                        // The composer floats over the transcript; this keeps the last bubble resting above it.
+                        // (Real padding: contentMargins is ignored when the content is shorter than the view, which hid a first bubble behind the composer.)
+                        .padding(.bottom, composerHeight)
                         .frame(maxWidth: .infinity)
                 }
-                // The composer floats over the transcript; this keeps the last bubble resting above it.
-                .contentMargins(.bottom, composerHeight, for: .scrollContent)
                 .defaultScrollAnchor(.bottom)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
                 .overlay(alignment: .bottom) {
