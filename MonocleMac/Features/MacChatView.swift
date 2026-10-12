@@ -67,8 +67,11 @@ struct MacChatView: View {
         .onChange(of: session.flightID) { _, id in
             flightX = 0; flightY = 0
             guard id != nil else { return }
-            withAnimation(.easeInOut(duration: 0.14)) { flightX = 1 }
-            withAnimation(ChatSession.liftAnimation) { flightY = 1 }
+            withAnimation(ChatSession.sweepAnimation) { flightX = 1 }
+            let landed = id
+            withAnimation(ChatSession.liftAnimation, completionCriteria: .logicallyComplete) { flightY = 1 } completion: {
+                if session.flightID == landed { session.flightID = nil }
+            }
         }
         .navigationTitle("Chat")
         .onExitCommand { close?() } // Esc hides the Quick Chat panel

@@ -44,13 +44,13 @@ extension View {
                     let left = from.minX + (to.minX - from.minX) * x
                     let right = from.maxX + (to.maxX - from.maxX) * x
                     // Squashed thin while it collapses (the text with it), then stretched back to full size as it lifts.
-                    let squash = 1 - 0.4 * x * (1 - y)
+                    let squash = 1 - 0.4 * x * x * (1 - y)
                     let height = (from.height + (to.height - from.height) * x) * squash
-                    let textScale = 1 - 0.28 * x * (1 - y)
+                    let textScale = 1 - 0.28 * x * x * (1 - y)
                     let midY = from.midY + (to.midY - from.midY) * y
                     let shape = BubbleShape(isUser: true, hasTail: true)
                     ZStack(alignment: .leading) {
-                        shape.fill(MC.red.opacity(0.4 + 0.6 * x))
+                        shape.fill(MC.red.opacity(0.45 + 0.55 * x))
                         // Wrapped at the bubble's final inner width so it never re-wraps; clipped to the shape while that is still narrower.
                         label?.foregroundStyle(.white)
                             .textRenderer(MentionChipRenderer(chip: .black.opacity(0.28)))
@@ -71,8 +71,10 @@ extension View {
 }
 
 extension ChatSession {
-    /// The lift into the slot, after the sideways collapse; the transcript uses it too.
-    static let liftAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.3).delay(0.12)
+    /// Timings measured from a 60fps recording of Messages on the Mac: the sideways sweep is a symmetric bell, fastest near 100ms and done by
+    /// ~180ms; the lift starts at ~110ms (overlapping the end of the sweep) and decelerates until ~380ms. The transcript uses the lift too.
+    static let sweepAnimation = Animation.easeInOut(duration: 0.18)
+    static let liftAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.28).delay(0.11)
 
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
     /// `alongside` runs in the same animation (clearing the draft). Returns the row to hand to `send(appended:)`.
@@ -86,7 +88,7 @@ extension ChatSession {
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(520))
+                try? await Task.sleep(for: .milliseconds(700)) // fallback; the view clears the flight when the lift completes
                 if flightID == row.id { flightID = nil }
             }
         }
