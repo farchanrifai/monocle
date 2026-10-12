@@ -210,8 +210,8 @@ struct MentionTextField: View {
             .foregroundStyle(.clear)
             .accessibilityIdentifier(identifier)
             .overlay(alignment: .topLeading) {
-                ChatMentionList.styled(text, names: names, color: .blue, bold: false, typing: true)
-                    .textRenderer(MentionChipRenderer(chip: .blue.opacity(0.16)))
+                ChatMentionList.styled(text, names: names, color: .white, bold: false, typing: true)
+                    .textRenderer(MentionChipRenderer(chip: .blue))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
