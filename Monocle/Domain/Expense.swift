@@ -333,8 +333,6 @@ struct ExpenseDraft: Codable, Equatable {
     }
     var civilDay = Day.string(.now)
     var preservedAmount: Int64? = nil
-    var text = ""
-    var mode = EntryMode.keypad
     var editing = false
     var createdAt = Date.now
     var source = "manual"
@@ -348,7 +346,7 @@ struct ExpenseDraft: Codable, Equatable {
     var rateSource: Expense.RateSource? = nil
     var isSplit: Bool { !splitParts.isEmpty }
     func isForeign(reporting: String = Money.reportingCurrency) -> Bool { currency.map { $0 != reporting } ?? false }
-    var hasContent: Bool { !amount.isEmpty || !note.isEmpty || !text.isEmpty || categoryID != nil || !splitParts.isEmpty }
+    var hasContent: Bool { !amount.isEmpty || !note.isEmpty || categoryID != nil || !splitParts.isEmpty }
     func resolvedAmount() throws -> Int64 {
         if let preservedAmount, preservedAmount > 0, preservedAmount <= Money.maximum,
            amount == Money.exactDigits(preservedAmount) { return preservedAmount }
@@ -420,7 +418,7 @@ struct ExpenseDraft: Codable, Equatable {
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case id, cardID = "bookID", amount, categoryID, note, date, text, mode, editing, createdAt, source, splitParts = "splitAllocations", civilDay, preservedAmount, paidWithID, currency, rate, rateSource }
+    private enum CodingKeys: String, CodingKey { case id, cardID = "bookID", amount, categoryID, note, date, editing, createdAt, source, splitParts = "splitAllocations", civilDay, preservedAmount, paidWithID, currency, rate, rateSource }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         id = try values.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -433,8 +431,6 @@ struct ExpenseDraft: Codable, Equatable {
         guard let restoredDate = Day.date(civilDay) else { throw EntryError.invalidDate }
         date = restoredDate
         preservedAmount = try values.decodeIfPresent(Int64.self, forKey: .preservedAmount)
-        text = try values.decodeIfPresent(String.self, forKey: .text) ?? ""
-        mode = try values.decodeIfPresent(EntryMode.self, forKey: .mode) ?? .keypad
         editing = try values.decodeIfPresent(Bool.self, forKey: .editing) ?? false
         createdAt = try values.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         source = try values.decodeIfPresent(String.self, forKey: .source) ?? "manual"
@@ -448,7 +444,7 @@ struct ExpenseDraft: Codable, Equatable {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(id, forKey: .id); try values.encodeIfPresent(cardID, forKey: .cardID); try values.encode(amount, forKey: .amount)
         try values.encodeIfPresent(categoryID, forKey: .categoryID); try values.encode(note, forKey: .note)
-        try values.encode(date, forKey: .date); try values.encode(text, forKey: .text); try values.encode(mode, forKey: .mode)
+        try values.encode(date, forKey: .date)
         try values.encode(editing, forKey: .editing); try values.encode(createdAt, forKey: .createdAt); try values.encode(source, forKey: .source)
         try values.encode(splitParts, forKey: .splitParts)
         try values.encodeIfPresent(paidWithID, forKey: .paidWithID); try values.encodeIfPresent(currency, forKey: .currency)
@@ -463,8 +459,6 @@ struct ExpenseDraft: Codable, Equatable {
         lhs.note == rhs.note &&
         lhs.civilDay == rhs.civilDay &&
         lhs.preservedAmount == rhs.preservedAmount &&
-        lhs.text == rhs.text &&
-        lhs.mode == rhs.mode &&
         lhs.editing == rhs.editing &&
         lhs.createdAt == rhs.createdAt &&
         lhs.source == rhs.source &&
@@ -474,8 +468,6 @@ struct ExpenseDraft: Codable, Equatable {
         (lhs.cardID == nil || rhs.cardID == nil || lhs.cardID == rhs.cardID)
     }
 }
-
-enum EntryMode: String, Codable, CaseIterable { case keypad = "Keypad", text = "Text" }
 
 struct ParsedExpense {
     var amount: Int64

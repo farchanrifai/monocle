@@ -5,9 +5,8 @@ struct EntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 52.0
-    private enum Field: Hashable { case text, note }
+    private enum Field: Hashable { case note }
     @FocusState private var focusedField: Field?
-    @State private var message: String?
     @State private var showDate = false
     @State private var showCategories = false
     @State private var showSplits = false
@@ -30,7 +29,6 @@ struct EntryView: View {
                 VStack(spacing: 0) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
-                            if model.draft.mode == .text { textEntry }
                             amountDisplay
                             if model.draft.isSplit {
                                 splitSummary
@@ -63,7 +61,7 @@ struct EntryView: View {
                     .scrollDismissesKeyboard(.interactively)
                     .frame(maxHeight: .infinity)
                     // The keypad is outside the scrolling form: Record can never cover its last row.
-                    if model.draft.mode == .keypad && focusedField == nil {
+                    if focusedField == nil {
                         keypad(rowHeight: min(58, max(44, geometry.size.height * 0.075)))
                             .padding(.horizontal, 24).padding(.top, 4)
                             .transition(.opacity)
@@ -120,31 +118,15 @@ struct EntryView: View {
                     Text(model.draft.editing ? "The saved expense will stay unchanged." : "The amount, category and note you entered will be cleared.")
                 } else { Text(model.error ?? "") }
             }
-            .onChange(of: model.draft.text) { _, _ in
-                if model.draft.mode == .text { parse(hideKeyboard: false) }
-            }
             .sensoryFeedback(.selection, trigger: selectionTick)
-            .onChange(of: model.draft.mode) { _, mode in focusedField = mode == .text ? .text : nil }
             .onAppear {
                 model.prefillDraftDefaults()
-                if model.draft.mode == .text { focusedField = .text }
             }
             .task(id: "\(model.draft.currency ?? "")|\(model.draft.civilDay)") { await model.refreshDraftRate() }
         }.presentationDetents([.large]).presentationDragIndicator(.visible)
             .interactiveDismissDisabled(model.draftNeedsConfirmation)
     }
 
-    private var textEntry: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            TextField("Coffee 28k", text: $model.draft.text)
-                .font(.title3).padding(14).background(MC.surface, in: RoundedRectangle(cornerRadius: 14))
-                .focused($focusedField, equals: .text).submitLabel(.done).onSubmit { parse() }
-                .autocorrectionDisabled().accessibilityIdentifier("expenseText")
-            Button("Done typing", systemImage: "checkmark") { parse() }
-                .font(.subheadline.weight(.semibold)).tint(MC.red).accessibilityIdentifier("parseExpense")
-            if let message { Text(message).font(.caption).foregroundStyle(.secondary) }
-        }
-    }
     private var amountDisplay: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -281,20 +263,6 @@ struct EntryView: View {
         if model.discardDraft() {
             model.showEntry = false
             dismiss()
-        }
-    }
-    private func parse(hideKeyboard: Bool = true) {
-        do {
-            let parsed = try ExpenseParser.parse(model.draft.text, categories: model.activeCategories, rules: model.settings.categoryRules)
-            model.draft.amount = Money.digits(parsed.amount)
-            model.draft.note = parsed.note
-            model.draft.categoryID = parsed.categoryID
-            model.draft.source = "text"
-            message = parsed.categoryID == nil ? "Amount found. Choose a category to finish." : "Ready to add. You can adjust any detail."
-            if hideKeyboard { focusedField = nil }
-        } catch {
-            model.draft.amount = ""; model.draft.categoryID = nil
-            message = error.localizedDescription
         }
     }
 }

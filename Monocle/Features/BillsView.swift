@@ -805,13 +805,6 @@ struct SettingsView: View {
 
                 // MARK: 3. Expense Input
                 Section {
-                    Picker("Default input method", selection: $model.preferredEntryMode) {
-                        ForEach(EntryMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("entryMode")
                     NavigationLink {
                         EntryFormSettingsView(model: model)
                     } label: {
@@ -824,10 +817,6 @@ struct SettingsView: View {
                     .accessibilityIdentifier("entryFormSettings")
                 } header: {
                     Text("Expense Input")
-                } footer: {
-                    Text(model.preferredEntryMode == .keypad
-                        ? "New expense opens numeric keypad for fast amount entry."
-                        : "New expense opens natural language text field (e.g. 'Coffee 28k').")
                 }
 
                 // MARK: 4. Shortcuts & Siri

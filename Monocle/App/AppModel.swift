@@ -469,13 +469,6 @@ final class AppModel {
         }
         return draft.hasContent
     }
-    var preferredEntryMode: EntryMode {
-        get { workspacePreferences.entryMode }
-        set {
-            workspacePreferences.entryMode = newValue
-            persistWorkspacePreferences()
-        }
-    }
 
     func openEntry(for cardID: UUID? = nil, categoryID: UUID? = nil) {
         originalDraft = nil
@@ -486,9 +479,6 @@ final class AppModel {
         draft.cardID = targetCardID
         if let categoryID, let cat = activeCategories(for: targetCardID).first(where: { $0.id == categoryID }) {
             draft.categoryID = cat.id
-        }
-        if !draft.editing {
-            draft.mode = preferredEntryMode
         }
         showEntry = true
     }

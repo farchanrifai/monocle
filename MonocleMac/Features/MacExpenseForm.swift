@@ -14,8 +14,6 @@ struct MacExpenseForm: View {
     @State private var saved = false
     @State private var showDiscardConfirmation = false
 
-    private var showsQuick: Bool { model.isEntryFieldShown(.quick) && !model.draft.editing }
-    private var firstFocus: MacEntryField { showsQuick ? .text : .amount }
     private var isForeign: Bool { model.draft.isForeign(reporting: model.reportingCurrency) }
     private let shortcutHelp = "Tab next · Space or ↑↓ opens a list · ⌘↩ save · ⌘⇧S split · Esc close"
 
@@ -27,19 +25,6 @@ struct MacExpenseForm: View {
                 Image(systemName: "info.circle").foregroundStyle(.secondary)
                     .help(shortcutHelp)
                     .accessibilityLabel("Keyboard shortcuts").accessibilityHint(shortcutHelp)
-            }
-
-            if showsQuick {
-                HStack(spacing: 8) {
-                    Image(systemName: "text.cursor").foregroundStyle(.secondary)
-                    TextField("Type “coffee 28k” and press Return", text: $model.draft.text)
-                        .textFieldStyle(.plain)
-                        .focused($focus, equals: .text)
-                        .onSubmit { parseText() }
-                        .accessibilityLabel("Expense description and amount")
-                }
-                .padding(.horizontal, 12).padding(.vertical, 9)
-                .background(.quaternary.opacity(0.5), in: Capsule())
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -108,11 +93,11 @@ struct MacExpenseForm: View {
         }
         .padding(24).padding(.top, topPadding - 24)
         .frame(width: 540)
-        .defaultFocus($focus, firstFocus)
+        .defaultFocus($focus, .amount)
         .task(id: "\(model.draft.currency ?? "")|\(model.draft.civilDay)") { await model.refreshDraftRate() }
         .onAppear {
             model.prefillDraftDefaults()
-            DispatchQueue.main.async { focus = firstFocus } // the top field, every time
+            DispatchQueue.main.async { focus = .amount } // the top field, every time
         }
         .confirmationDialog("Keep this draft?", isPresented: $showDiscardConfirmation) {
             Button("Keep Draft and Close") { model.persistDraft(); close(false) }
@@ -186,19 +171,6 @@ struct MacExpenseForm: View {
         .background(.quaternary.opacity(0.5))
     }
 
-    @discardableResult private func parseText() -> Bool {
-        do {
-            let parsed = try ExpenseParser.parse(model.draft.text, categories: model.activeCategories, rules: model.settings.categoryRules)
-            model.draft.amount = Money.digits(parsed.amount)
-            model.draft.note = parsed.note
-            model.draft.categoryID = parsed.categoryID ?? model.draft.categoryID
-            model.draft.source = "text"
-            message = parsed.categoryID == nil ? "Amount found. Choose a category." : nil
-            focus = .amount
-            return true
-        } catch { message = error.localizedDescription; return false }
-    }
-
     private func toggleSplit() {
         if model.draft.isSplit { model.stopSplitting(); return }
         model.beginSplitting()
@@ -208,7 +180,6 @@ struct MacExpenseForm: View {
 
     private func save() {
         guard !saved else { return }
-        if model.draft.amount.isEmpty, !model.draft.text.isEmpty, !parseText() { return }
         if !model.draft.isSplit, model.draft.categoryID == nil { message = "Choose a category."; return }
         guard model.saveDraft() else { message = model.error; model.error = nil; return }
         saved = true
@@ -275,7 +246,7 @@ private struct MacDateField: View {
 }
 
 enum MacEntryField: Hashable {
-    case text, amount, note, date, splitAmount(UUID)
+    case amount, note, date, splitAmount(UUID)
 }
 
 private struct MacSplitEditor: View {

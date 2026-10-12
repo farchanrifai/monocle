@@ -57,16 +57,9 @@ struct MacSettingsView: View {
         switch pane {
         case .general:
             Form {
+                SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
                 Section {
-                    Picker("Entry mode", selection: Binding(get: { model.preferredEntryMode }, set: { model.preferredEntryMode = $0 })) {
-                        Text("Manual").tag(EntryMode.keypad); Text("Text").tag(EntryMode.text)
-                    }
-                    .pickerStyle(.segmented)
-                } footer: {
-                    SettingsNote("Quick Add (\(state.shortcut(for: .quickRecord)?.displayName ?? "no shortcut")) and Quick Chat (\(state.shortcut(for: .quickChat)?.displayName ?? "no shortcut")) open from anywhere while Monocle is running.")
-                }
-                Section {
-                    ForEach([EntryFormField.quick, .currency, .split, .paidWith, .note, .date], id: \.self) { field in
+                    ForEach([EntryFormField.currency, .split, .paidWith, .note, .date], id: \.self) { field in
                         Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) }, set: { model.setEntryField(field, shown: $0) }))
                     }
                 } header: { Text("Add Expense form") } footer: {

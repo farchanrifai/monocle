@@ -292,7 +292,6 @@ extension PaymentMethod.Kind {
 extension EntryFormField {
     var title: String {
         switch self {
-        case .quick: "Quick text field"
         case .date: "Date"
         case .note: "Note"
         case .split: "Split across categories"
@@ -316,7 +315,6 @@ enum PaymentMethodError: LocalizedError, Equatable {
 /// Add Expense fields the user can hide. Amount, Card and Category are always shown.
 enum EntryFormField: String, Codable, CaseIterable, Hashable, Sendable {
     case date, note, split, paidWith, currency
-    case quick // Mac only: the "coffee 28k" line at the top of the form
     static let hiddenByDefault: [EntryFormField] = [.paidWith, .currency]
 }
 
@@ -400,7 +398,6 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var stacks: [Stack] = []
     var activeStackID: UUID? = nil
     var filterScopeRaw: String = "activeStack"
-    var entryModeRaw: String = "Keypad"
     var globalCategories: [GlobalCategory] = []
     var cardInactiveCategoryIDs: [UUID: [UUID]] = [:]
     var shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount]
@@ -420,14 +417,9 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         set { filterScopeRaw = newValue.rawValue }
     }
 
-    var entryMode: EntryMode {
-        get { EntryMode(rawValue: entryModeRaw) ?? .keypad }
-        set { entryModeRaw = newValue.rawValue }
-    }
-
     private enum CodingKeys: String, CodingKey {
         case visibleCardIDs = "visibleBookIDs", cardOrder = "bookOrder", allActivitiesScope, visualDirection, autoAppearance, cardCustomizations
-        case alwaysHiddenCardIDs = "alwaysHiddenBookIDs", stacks, activeStackID, filterScopeRaw, entryModeRaw, globalCategories, cardInactiveCategoryIDs
+        case alwaysHiddenCardIDs = "alwaysHiddenBookIDs", stacks, activeStackID, filterScopeRaw, globalCategories, cardInactiveCategoryIDs
         case shortcutInputOrder, macShortcutBindings, paymentMethods, hiddenEntryFields, reportingCurrency, entryRowOrder
     }
 
@@ -442,7 +434,6 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         stacks: [Stack] = [],
         activeStackID: UUID? = nil,
         filterScope: StackFilterScope = .activeStack,
-        entryMode: EntryMode = .keypad,
         globalCategories: [GlobalCategory] = [],
         cardInactiveCategoryIDs: [UUID: [UUID]] = [:],
         shortcutInputOrder: [ShortcutInputField] = [.card, .category, .note, .amount],
@@ -462,7 +453,6 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         self.stacks = stacks
         self.activeStackID = activeStackID
         self.filterScopeRaw = filterScope.rawValue
-        self.entryModeRaw = entryMode.rawValue
         self.globalCategories = globalCategories
         self.cardInactiveCategoryIDs = cardInactiveCategoryIDs
         self.shortcutInputOrder = shortcutInputOrder
@@ -485,14 +475,14 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         stacks = try container.decodeIfPresent([Stack].self, forKey: .stacks) ?? []
         activeStackID = try container.decodeIfPresent(UUID.self, forKey: .activeStackID)
         filterScopeRaw = try container.decodeIfPresent(String.self, forKey: .filterScopeRaw) ?? "activeStack"
-        entryModeRaw = try container.decodeIfPresent(String.self, forKey: .entryModeRaw) ?? "Keypad"
         globalCategories = try container.decodeIfPresent([GlobalCategory].self, forKey: .globalCategories) ?? []
         cardInactiveCategoryIDs = try container.decodeIfPresent([UUID: [UUID]].self, forKey: .cardInactiveCategoryIDs) ?? [:]
         let decodedOrder = try container.decodeIfPresent([ShortcutInputField].self, forKey: .shortcutInputOrder) ?? [.card, .category, .note, .amount]
         self.shortcutInputOrder = decodedOrder
         macShortcutBindings = try container.decodeIfPresent([String: KeyChord].self, forKey: .macShortcutBindings) ?? [:]
         paymentMethods = try container.decodeIfPresent([PaymentMethod].self, forKey: .paymentMethods) ?? []
-        hiddenEntryFields = try container.decodeIfPresent([EntryFormField].self, forKey: .hiddenEntryFields) ?? EntryFormField.hiddenByDefault
+        // Decoded as strings so a stored "quick" (the removed text field) is skipped instead of failing the decode.
+        hiddenEntryFields = try container.decodeIfPresent([String].self, forKey: .hiddenEntryFields)?.compactMap(EntryFormField.init(rawValue:)) ?? EntryFormField.hiddenByDefault
         reportingCurrency = try container.decodeIfPresent(String.self, forKey: .reportingCurrency) ?? "IDR"
         entryRowOrder = try container.decodeIfPresent([EntryFormRow].self, forKey: .entryRowOrder) ?? []
     }
@@ -509,7 +499,6 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         try container.encode(stacks, forKey: .stacks)
         try container.encodeIfPresent(activeStackID, forKey: .activeStackID)
         try container.encode(filterScopeRaw, forKey: .filterScopeRaw)
-        try container.encode(entryModeRaw, forKey: .entryModeRaw)
         try container.encode(globalCategories, forKey: .globalCategories)
         try container.encode(cardInactiveCategoryIDs, forKey: .cardInactiveCategoryIDs)
         try container.encode(shortcutInputOrder, forKey: .shortcutInputOrder)
@@ -770,7 +759,7 @@ extension WorkspacePreferences {
         func validCardList(_ ids: [UUID]) -> Bool { Set(ids).count == ids.count && Set(ids).isSubset(of: cardIDs) }
         guard validCardList(visibleCardIDs), validCardList(cardOrder), validCardList(alwaysHiddenCardIDs),
               CardVisualDirection(rawValue: visualDirection) != nil,
-              StackFilterScope(rawValue: filterScopeRaw) != nil, EntryMode(rawValue: entryModeRaw) != nil,
+              StackFilterScope(rawValue: filterScopeRaw) != nil,
               Set(shortcutInputOrder) == Set(ShortcutInputField.allCases), shortcutInputOrder.count == ShortcutInputField.allCases.count,
               Set(globalCategories.map(\.id)).count == globalCategories.count,
               Set(stacks.map(\.id)).count == stacks.count,

@@ -641,38 +641,6 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(model.orderedCards.first?.id, b1.id)
     }
 
-    func testPreferredEntryModePersistenceAndOpenEntry() throws {
-        let store = try ExpenseRepository(inMemory: true)
-        let card = try store.createCard(named: "Main Card")
-
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-        let state = FileLocalStateStore(directory: tempDir)
-        let expenseService = try ExpenseService(store: store)
-        let model = AppModel(expenses: expenseService, state: state)
-
-        // Default should be keypad
-        XCTAssertEqual(model.preferredEntryMode, .keypad)
-        model.openEntry(for: card.id)
-        XCTAssertEqual(model.draft.mode, .keypad)
-        XCTAssertFalse(model.draft.editing)
-
-        // Switch preferred mode to text
-        model.preferredEntryMode = .text
-        XCTAssertEqual(model.preferredEntryMode, .text)
-
-        // Reopen entry
-        model.openEntry(for: card.id)
-        XCTAssertEqual(model.draft.mode, .text)
-
-        // Verify persistence across new AppModel instance
-        let newModel = AppModel(expenses: expenseService, state: state)
-        XCTAssertEqual(newModel.preferredEntryMode, .text)
-        newModel.openEntry(for: card.id)
-        XCTAssertEqual(newModel.draft.mode, .text)
-    }
-
     func testGlobalCategoryCatalogInitialization() throws {
         let store = try ExpenseRepository(inMemory: true)
         try store.prepareSampleCard()

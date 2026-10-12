@@ -151,9 +151,9 @@ final class MonocleTests: XCTestCase {
             try migrated.container.persistentStoreCoordinator.remove(persistentStore)
         }
     }
-    func testDraftSurvivesCodingWithInputModeAndIdentity() throws {
+    func testDraftSurvivesCodingAndIdentity() throws {
         var draft = ExpenseDraft()
-        draft.amount = "28000"; draft.text = "Coffee 28k"; draft.mode = .text
+        draft.amount = "28000"
         draft.categoryID = ExpenseCategory.defaults[0].id
         draft.splitParts = [
             .init(categoryID: ExpenseCategory.defaults[0].id, amount: "12000"),
@@ -166,7 +166,7 @@ final class MonocleTests: XCTestCase {
     func testOlderDraftWithoutSplitFieldsStillOpens() throws {
         struct OlderDraft: Codable {
             var id = UUID(); var amount = "28000"; var categoryID = ExpenseCategory.defaults[0].id
-            var note = "Coffee"; var date = Date.now; var text = ""; var mode = EntryMode.keypad
+            var note = "Coffee"; var date = Date.now; var text = ""; var mode = "Keypad"
             var editing = false; var createdAt = Date.now; var source = "manual"
         }
         let restored = try JSONDecoder().decode(ExpenseDraft.self, from: JSONEncoder().encode(OlderDraft()))

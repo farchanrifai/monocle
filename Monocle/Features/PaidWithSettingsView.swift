@@ -146,7 +146,7 @@ struct EntryFormSettingsView: View {
     var body: some View {
         Form {
             Section {
-                ForEach(EntryFormField.allCases.filter { $0 != .quick }, id: \.self) { field in
+                ForEach(EntryFormField.allCases, id: \.self) { field in
                     Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) },
                                                       set: { model.setEntryField(field, shown: $0) }))
                         .accessibilityIdentifier("entryField-\(field.rawValue)")

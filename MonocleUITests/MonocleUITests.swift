@@ -19,24 +19,6 @@ final class MonocleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Expense added"].waitForExistence(timeout: 5))
     }
     @MainActor
-    func testTextEntryAndModeSwitchKeepParsedFields() throws {
-        let app = XCUIApplication()
-        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
-        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
-        app.launch()
-        openSettings(app)
-        app.segmentedControls["entryMode"].buttons["Text"].tap()
-        app.buttons["Done"].tap()
-        app.buttons["addExpense"].tap()
-        app.textFields["expenseText"].tap()
-        app.textFields["expenseText"].typeText("Coffee 28k")
-        XCTAssertTrue(app.staticTexts["amountDisplay"].label.contains("28.000"), "Text should parse as it is typed")
-        app.buttons["parseExpense"].tap()
-        XCTAssertEqual(app.textFields["expenseNote"].value as? String, "Coffee")
-        app.buttons["recordExpense"].tap()
-        XCTAssertTrue(app.buttons["expense-Coffee"].waitForExistence(timeout: 5))
-    }
-    @MainActor
     func testInvalidEntryShowsErrorWithoutDismissingDraft() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
