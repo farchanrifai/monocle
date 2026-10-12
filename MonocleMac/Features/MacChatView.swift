@@ -108,8 +108,8 @@ struct MacChatView: View {
                 .focused($inputFocused)
                 // Return picks the highlighted @ suggestion while one is showing.
                 .onSubmit { if !ChatMentionList.pickSelected(mentionSelection, model: model, session: session, draft: &draft) { send(draft) } }
-                .onKeyPress(.downArrow) { ChatMentionList.move(1, selection: &mentionSelection, model: model, draft: draft) ? .handled : .ignored }
-                .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, draft: draft) ? .handled : .ignored }
+                .onKeyPress(.downArrow) { ChatMentionList.move(1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
+                .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
                 .accessibilityIdentifier("chatInput")

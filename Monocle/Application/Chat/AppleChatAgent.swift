@@ -11,6 +11,8 @@ final class AppleChatAgent: ChatBackend {
     /// The target card's categories baked into the session's proposal tools as an enum.
     private var sessionCategories: [String] = []
     private var notes: [String] = []
+    /// The period of the last answer, repeated in app_context so a follow-up that names none keeps it.
+    private var lastPeriod: String?
     /// The current turn's executor and the cards its tool calls produced.
     private var executor: ToolExecutor?
     private var outputs: [ChatAgent.Output] = []
@@ -33,13 +35,13 @@ final class AppleChatAgent: ChatBackend {
     func note(_ text: String) { notes.append(text) }
 
     // ponytail: on-device history lives only in the session; a relaunch or backend switch starts fresh.
-    func reset() { session = nil; notes = [] }
+    func reset() { session = nil; notes = []; lastPeriod = nil }
 
     func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output] {
         if let reason = Self.unavailableReason { return [.error(reason)] }
         let executor = ToolExecutor(model: model, scope: scope, now: now)
         self.executor = executor
-        let prompt = ([ChatAgent.context(executor, now: now, listCategories: false)] + notes.map { "App note: \($0)" } + [text]).joined(separator: "\n\n")
+        let prompt = ([ChatAgent.context(executor, now: now, listCategories: false, lastPeriod: lastPeriod)] + notes.map { "App note: \($0)" } + [text]).joined(separator: "\n\n")
         var notice: [ChatAgent.Output] = []
         let categories = ((try? executor.targetCard()).flatMap { try? model.activeCategories(in: $0.id) } ?? []).map(\.name)
         // ponytail: tools are fixed per session, so a different card's categories start a fresh one (history lost).
@@ -114,6 +116,7 @@ final class AppleChatAgent: ChatBackend {
         if let card = json?["card"] as? String, (try? executor.targetCard()).map({ Self.folded($0.name) }) == Self.folded(card) { json?["card"] = nil }
         let data = json.flatMap { try? JSONSerialization.data(withJSONObject: $0) } ?? Data(input.utf8)
         let outcome = executor.run(name, input: data)
+        if !outcome.isError, let period = ChatAgent.period(in: data) { lastPeriod = period }
         toolLog.append("\(name) \(input) -> \(outcome.json.prefix(300))")
         if let proposal = outcome.proposal { outputs.append(.proposal(proposal)) }
         if let change = outcome.change { outputs.append(.change(change)) }

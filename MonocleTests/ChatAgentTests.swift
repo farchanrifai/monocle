@@ -201,4 +201,21 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertNil(ChatMentionList.query(in: "kopi 28rb"))
     }
 
+    func testHashMentionsACategoryAndTheLaterTriggerWins() {
+        XCTAssertEqual(ChatMentionList.mention(in: "#")?.trigger, "#")
+        let word = ChatMentionList.mention(in: "how much on #Food & Dr")
+        XCTAssertEqual(word?.trigger, "#"); XCTAssertEqual(word?.query, "Food & Dr")
+        XCTAssertEqual(ChatMentionList.mention(in: "@Daily #Tra")?.query, "Tra", "the word being typed decides")
+        XCTAssertEqual(ChatMentionList.mention(in: "#Food @Da")?.trigger, "@")
+        XCTAssertNil(ChatMentionList.mention(in: "issue#12"), "A # inside a word is not a mention")
+    }
+
+    func testFollowUpPeriodIsReadFromToolCalls() {
+        func period(_ json: String) -> String? { ChatAgent.period(in: Data(json.utf8)) }
+        XCTAssertEqual(period(#"{"period": "last_month", "group_by": "category"}"#), "last_month")
+        XCTAssertEqual(period(#"{"period_a": "this_month", "period_b": "last_month"}"#), "last_month")
+        XCTAssertNil(period(#"{"start": "2026-09-01", "end": "2026-09-30"}"#))
+        XCTAssertNil(period(#"{"period": "someday"}"#), "unknown periods are ignored")
+    }
+
 }

@@ -179,51 +179,67 @@ struct ChatMentionList: View {
     /// Highlighted row; arrow keys move it on the Mac, Return picks it.
     @Binding var selection: Int
 
-    struct Target { let scope: AnalyticsFilterScope; let name: String; let icon: String }
+    /// `scope` is set for an @ row (a card, stack or All Cards); a # row is a category and only inserts its name.
+    struct Target { let scope: AnalyticsFilterScope?; let name: String; let icon: String; var trigger: Character = "@" }
 
-    /// "…@Da" → "Da"; nil unless the draft ends in an @ word (at the start or after a space).
-    static func query(in text: String) -> String? {
-        guard let at = text.lastIndex(of: "@"), at == text.startIndex || text[text.index(before: at)].isWhitespace else { return nil }
-        let query = text[text.index(after: at)...]
-        return query.contains(where: \.isNewline) ? nil : String(query)
+    /// "…@Da" → ("@", "Da"), "…#Foo" → ("#", "Foo"); nil unless the draft ends in such a word (at the start or after a space).
+    static func mention(in text: String) -> (trigger: Character, query: String)? {
+        let starts = ["@", "#"].compactMap { mark -> (index: String.Index, mark: Character)? in
+            guard let at = text.lastIndex(of: Character(mark)), at == text.startIndex || text[text.index(before: at)].isWhitespace else { return nil }
+            return (at, Character(mark))
+        }
+        guard let start = starts.max(by: { $0.index < $1.index }) else { return nil }
+        let query = text[text.index(after: start.index)...]
+        return query.contains(where: \.isNewline) ? nil : (start.mark, String(query))
     }
 
-    static func targets(_ model: AppModel, matching query: String) -> [Target] {
-        let all = model.stacks.map { Target(scope: .stack(id: $0.id, name: $0.name), name: $0.name, icon: $0.icon) }
-            + model.unhiddenCards.map { Target(scope: .card(id: $0.id, name: $0.name), name: $0.name, icon: "creditcard") }
-            + [Target(scope: .allCards, name: "All Cards", icon: "rectangle.stack")]
-        return Array((query.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(query) }).prefix(6))
+    static func query(in text: String) -> String? { mention(in: text)?.query }
+
+    static func targets(_ model: AppModel, scope: AnalyticsFilterScope, mention: (trigger: Character, query: String)) -> [Target] {
+        let all: [Target]
+        if mention.trigger == "#" {
+            // The categories of the cards the chat is answering about, once each by name.
+            var seen = Set<String>()
+            all = model.cards(in: scope).flatMap { model.activeCategories(for: $0.id) }
+                .filter { seen.insert($0.name.lowercased()).inserted }
+                .map { Target(scope: nil, name: $0.name, icon: $0.symbol, trigger: "#") }
+        } else {
+            all = model.stacks.map { Target(scope: .stack(id: $0.id, name: $0.name), name: $0.name, icon: $0.icon) }
+                + model.unhiddenCards.map { Target(scope: .card(id: $0.id, name: $0.name), name: $0.name, icon: "creditcard") }
+                + [Target(scope: .allCards, name: "All Cards", icon: "rectangle.stack")]
+        }
+        return Array((mention.query.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(mention.query) }).prefix(6))
     }
 
-    /// Rows currently shown for the draft (empty when no @ word is being typed).
-    static func visible(_ model: AppModel, draft: String) -> [Target] {
-        query(in: draft).map { targets(model, matching: $0) } ?? []
+    /// Rows currently shown for the draft (empty when no @ or # word is being typed).
+    static func visible(_ model: AppModel, session: ChatSession, draft: String) -> [Target] {
+        mention(in: draft).map { targets(model, scope: session.scope ?? ChatScopeMenuItems.homeScope(model), mention: $0) } ?? []
     }
 
     /// Picks the highlighted row (Return on the Mac). False when the list isn't showing.
     @discardableResult
     static func pickSelected(_ selection: Int, model: AppModel, session: ChatSession, draft: inout String) -> Bool {
-        let rows = visible(model, draft: draft)
+        let rows = visible(model, session: session, draft: draft)
         guard !rows.isEmpty else { return false }
         pick(rows[min(max(selection, 0), rows.count - 1)], session: session, model: model, draft: &draft)
         return true
     }
 
     /// Moves the highlight; false (key not handled) when the list isn't showing.
-    static func move(_ step: Int, selection: inout Int, model: AppModel, draft: String) -> Bool {
-        let count = visible(model, draft: draft).count
+    static func move(_ step: Int, selection: inout Int, model: AppModel, session: ChatSession, draft: String) -> Bool {
+        let count = visible(model, session: session, draft: draft).count
         guard count > 0 else { return false }
         selection = min(max(selection + step, 0), count - 1)
         return true
     }
 
     static func pick(_ target: Target, session: ChatSession, model: AppModel, draft: inout String) {
-        if let at = draft.lastIndex(of: "@") { draft = String(draft[..<at]) + "@\(target.name) " }
-        ChatScopeMenuItems.select(target.scope, session: session, model: model)
+        if let at = draft.lastIndex(of: target.trigger) { draft = String(draft[..<at]) + "\(target.trigger)\(target.name) " }
+        if let scope = target.scope { ChatScopeMenuItems.select(scope, session: session, model: model) }
     }
 
     var body: some View {
-        let targets = Self.visible(model, draft: draft)
+        let targets = Self.visible(model, session: session, draft: draft)
         if !targets.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(targets.enumerated()), id: \.offset) { index, target in
@@ -235,7 +251,7 @@ struct ChatMentionList: View {
                                 .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityHint("Answer about \(target.name)")
+                        .accessibilityHint(target.scope == nil ? "Ask about the \(target.name) category" : "Answer about \(target.name)")
                     }
                 }
                 .padding(6)

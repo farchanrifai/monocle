@@ -28,6 +28,8 @@ final class ChatAgent: ChatBackend {
 
     private(set) var messages: [[String: Any]] = []
     private var notes: [String] = []
+    /// The period of the last answer, so a follow-up that names none ("what categories?") keeps it.
+    private var lastPeriod: String?
     private let model: AppModel
     private let transport: (Data) async throws -> Data
 
@@ -40,7 +42,7 @@ final class ChatAgent: ChatBackend {
     /// Something the user did in the UI (saved or discarded a proposal) that Claude should know next turn.
     func note(_ text: String) { notes.append(text) }
 
-    func reset() { messages = []; notes = [] }
+    func reset() { messages = []; notes = []; lastPeriod = nil }
 
     func send(_ text: String, scope: AnalyticsFilterScope, now: Date = .now) async -> [Output] {
         var outputs: [Output] = []
@@ -50,7 +52,7 @@ final class ChatAgent: ChatBackend {
         }
         let checkpoint = messages.count
         let executor = ToolExecutor(model: model, scope: scope, now: now)
-        var content: [[String: Any]] = [["type": "text", "text": Self.context(executor, now: now)]]
+        var content: [[String: Any]] = [["type": "text", "text": Self.context(executor, now: now, lastPeriod: lastPeriod)]]
         content += notes.map { ["type": "text", "text": "App note: \($0)"] }
         content.append(["type": "text", "text": text])
         messages.append(["role": "user", "content": content])
@@ -75,6 +77,7 @@ final class ChatAgent: ChatBackend {
                 let results = blocks.filter { $0["type"] as? String == "tool_use" }.map { block -> [String: Any] in
                     let input = (try? JSONSerialization.data(withJSONObject: block["input"] ?? [String: Any]())) ?? Data()
                     let outcome = executor.run(block["name"] as? String ?? "", input: input)
+                    if !outcome.isError, let period = Self.period(in: input) { lastPeriod = period }
                     if let proposal = outcome.proposal { outputs.append(.proposal(proposal)) }
                     if let change = outcome.change { outputs.append(.change(change)) }
                     if let bill = outcome.bill { outputs.append(.bill(bill)) }
@@ -93,6 +96,13 @@ final class ChatAgent: ChatBackend {
             }
         }
         return rollback(to: checkpoint, outputs, error: "That took too many steps. Try a simpler question.")
+    }
+
+    /// The period a tool call asked about (the later one for compare_periods), when it is one the tools know.
+    static func period(in input: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: input) as? [String: Any],
+              let name = (json["period_b"] ?? json["period"]) as? String, ToolExecutor.Period(rawValue: name) != nil else { return nil }
+        return name
     }
 
     /// Drop this turn so the next request starts from a valid, unedited prefix (no dangling tool_use).
@@ -116,7 +126,7 @@ final class ChatAgent: ChatBackend {
     /// Per-request facts go in the user turn so the system prompt and tools stay byte-stable.
     /// `listCategories: false` for Apple's small model, which answers "what categories?" by echoing the list;
     /// a wrong category name gets the valid list back in the tool error instead.
-    static func context(_ executor: ToolExecutor, now: Date, listCategories: Bool = true) -> String {
+    static func context(_ executor: ToolExecutor, now: Date, listCategories: Bool = true, lastPeriod: String? = nil) -> String {
         let model = executor.model
         let card = try? executor.targetCard()
         let categories = card.flatMap { try? model.activeCategories(in: $0.id) }?.map(\.name) ?? []
@@ -127,7 +137,7 @@ final class ChatAgent: ChatBackend {
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
         Scope: \(scope) (cards: \(cards.joined(separator: ", "))).
         New expenses go to card: \(card?.name ?? "none — ask the user").
-        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")</app_context>
+        \(lastPeriod.map { "Period of your last answer: \($0). A follow-up that names no period (\"what categories?\", \"and transport?\") uses it, not this_month.\n" } ?? "")        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")</app_context>
         """
     }
 
