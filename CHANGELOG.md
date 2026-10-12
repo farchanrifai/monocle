@@ -4,6 +4,7 @@ All notable changes to Monocle are documented in this file.
 
 ## [Unreleased]
 ### AI Chat: mentions and context
+- Sending a message morphs the composer field into the bubble, which then settles into the transcript (iOS and Mac, plain fade with Reduce Motion). The composer is transparent over a progressive blur and the transcript scrolls under it.
 - `#` mentions a category next to `@` for a card or stack; both can be used in one message. Picker follows the chat scope; Return or Tab (Mac) confirms. Mentions show as rounded chips in the composer and in sent bubbles.
 - A follow-up question that names no period ("what categories?") keeps the period of the last answer (the app tells the assistant which period that was).
 - Chart titles show the real dates ("1–Oct 31, 2026 · Daily") instead of a period keyword.

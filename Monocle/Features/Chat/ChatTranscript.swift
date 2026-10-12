@@ -21,8 +21,9 @@ struct ChatTranscript: View {
                 rowView(row, hasTail: isLastInRun(index))
                     .padding(.top, startsRun(index) ? 10 : 0)
             }
-            if session.isTyping { TypingBubble().padding(.top, 10) }
+            if session.isTyping { TypingBubble().padding(.top, 10).transition(.scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity)) }
         }
+        .animation(.spring(response: 0.45, dampingFraction: 0.82), value: session.isTyping)
     }
 
     private var emptyState: some View {
@@ -50,7 +51,7 @@ struct ChatTranscript: View {
     private func rowView(_ row: ChatRow, hasTail: Bool) -> some View {
         switch row.kind {
         case .user(let text), .assistant(let text):
-            ChatBubble(isUser: row.isUser, hasTail: hasTail) {
+            ChatBubble(isUser: row.isUser, hasTail: hasTail, rowID: row.id) {
                 if row.isUser { mentionStyled(text).textRenderer(MentionChipRenderer(chip: .black.opacity(0.28))) } else { Text(Self.markdown(text)) }
             }
                 .accessibilityElement(children: .combine)

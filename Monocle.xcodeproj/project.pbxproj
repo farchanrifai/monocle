@@ -91,6 +91,7 @@
 		8934E3DC238F21D7D643E592 /* ChatAgentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7CC8CAA14DB700C397EDA62 /* ChatAgentTests.swift */; };
 		8ACA09A7ADBA775AB124E8FA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF8F4C883E255C3D2A39FE4E /* Assets.xcassets */; };
 		8B4D549408E90FE0BCBE063D /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C160601BAC9CAC314618CB1 /* APIKeyStore.swift */; };
+		8E048266FD517CE9747C30ED /* ProgressiveBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2D14B5D09CED02E593194A /* ProgressiveBlur.swift */; };
 		8F2B2BAF7BEBD04DE9D4060B /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */; };
 		8F577C6F9697132F42A06283 /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
 		916F656B6332220A662DDD1E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 65AF43141767E4C3DFD4DBFA /* Assets.xcassets */; };
@@ -111,6 +112,7 @@
 		AE96304FEA75BDDC336291AB /* MonocleWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57F4157D596D4DED7003596D /* MonocleWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AF1936EC613A0D1C544AA414 /* MonocleMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0867C42321975FF8870E11C /* MonocleMacTests.swift */; };
 		B04D14CE86233DC5C4BDA553 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82F954B55004100EBACB8D /* AppModel.swift */; };
+		B1426DE8FA5BCCA15BDD7D06 /* ProgressiveBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2D14B5D09CED02E593194A /* ProgressiveBlur.swift */; };
 		B2286718B9150562984000B4 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 528ED8945811020013D20C79 /* ChatSession.swift */; };
 		B258A8D3BADE921642CE86D5 /* ResetDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516DB1D73497124210D8A80B /* ResetDataView.swift */; };
 		B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D433FF1198DE03E544B102E2 /* BudgetsView.swift */; };
@@ -298,6 +300,7 @@
 		AAD80902EB4E8757BF049DEE /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
 		AB0C913F4994169E78CFEEF8 /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
 		AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
+		AC2D14B5D09CED02E593194A /* ProgressiveBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressiveBlur.swift; sourceTree = "<group>"; };
 		ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		AE1E62E3810C8FA6AC73E2CA /* MonocleV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = MonocleV5.xcdatamodel; sourceTree = "<group>"; };
 		AF244D6A3F074AF412D6A770 /* CategoryAndLocaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAndLocaleTests.swift; sourceTree = "<group>"; };
@@ -647,6 +650,7 @@
 				D4BA07EA7DEBD80FDC88F706 /* ChatTranscript.swift */,
 				B77094E961D5E3F21A0C865A /* ChatView.swift */,
 				89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */,
+				AC2D14B5D09CED02E593194A /* ProgressiveBlur.swift */,
 			);
 			path = Chat;
 			sourceTree = "<group>";
@@ -986,6 +990,7 @@
 				3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */,
 				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
 				DB38C125D8390B8EBE581AD0 /* PaidWithSettingsView.swift in Sources */,
+				8E048266FD517CE9747C30ED /* ProgressiveBlur.swift in Sources */,
 				B98408C2329C4567D94BF464 /* RecentsView.swift in Sources */,
 				B258A8D3BADE921642CE86D5 /* ResetDataView.swift in Sources */,
 				FC9C266AD2DCE8ECBC114122 /* SampleCardSeeder.swift in Sources */,
@@ -1050,6 +1055,7 @@
 				FEF650EA8FEA797F3843D5AB /* Monocle.xcdatamodeld in Sources */,
 				310E5DB31CAF2D7D5E3A3043 /* MonocleMacApp.swift in Sources */,
 				CC054967E59236C3095B3D99 /* PlatformIntegrationShims.swift in Sources */,
+				B1426DE8FA5BCCA15BDD7D06 /* ProgressiveBlur.swift in Sources */,
 				F51CA3C6D3276B714B8EE6DE /* SampleCardSeeder.swift in Sources */,
 				CFC2ED8F8DBC21291C70B446 /* StockDesignViews.swift in Sources */,
 				CB1668A7A9BA30AEA926EC75 /* ToolExecutor.swift in Sources */,

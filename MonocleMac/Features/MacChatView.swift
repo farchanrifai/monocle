@@ -14,6 +14,9 @@ struct MacChatView: View {
     @State private var draft = ""
     @State private var mentionSelection = 0
     @FocusState private var inputFocused: Bool
+    @Namespace private var flight
+    @State private var composerHeight: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var model: AppModel { state.model }
     private var session: ChatSession { state.model.chat }
     private var scope: AnalyticsFilterScope { session.scope ?? ChatScopeMenuItems.homeScope(model) }
@@ -29,10 +32,14 @@ struct MacChatView: View {
                         .padding(.horizontal, gutter).padding(.vertical, compact ? 8 : 16)
                         .frame(maxWidth: .infinity)
                 }
+                // The composer floats over the transcript; this keeps the last bubble resting above it.
+                .contentMargins(.bottom, composerHeight, for: .scrollContent)
                 .defaultScrollAnchor(.bottom)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    inputBar.overlay(alignment: .top) {
+                .overlay(alignment: .bottom) {
+                    inputBar
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
+                    .overlay(alignment: .top) {
                         ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
                             .frame(maxWidth: 720).padding(.horizontal, gutter).frame(maxWidth: .infinity)
                             .alignmentGuide(.top) { $0[.bottom] + 4 }
@@ -51,6 +58,7 @@ struct MacChatView: View {
                 .frame(maxHeight: .infinity)
             }
         }
+        .environment(\.chatFlight, ChatFlight(namespace: flight, id: session.flightID))
         .navigationTitle("Chat")
         .onExitCommand { close?() } // Esc hides the Quick Chat panel
         .onAppear {
@@ -113,6 +121,8 @@ struct MacChatView: View {
                 .onKeyPress(.downArrow) { ChatMentionList.move(1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
+                // Where a sent bubble starts: its shape grows out of this field (ChatFlight).
+                .background { Color.clear.matchedGeometryEffect(id: "flight", in: flight, isSource: true) }
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
             Button { send(draft) } label: {
                 Image(systemName: "arrow.up").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
@@ -127,15 +137,17 @@ struct MacChatView: View {
         .frame(maxWidth: 720)
         .padding(.horizontal, gutter).padding(.vertical, 12)
         .frame(maxWidth: .infinity)
-        .background(.bar)
+        .background(alignment: .bottom) {
+            ProgressiveBlur(edge: .bottom, solid: 36, fade: 40, tint: Color(nsColor: .windowBackgroundColor))
+        }
     }
 
     private func send(_ input: String) {
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !session.isTyping, hasKey else { return }
-        draft = ""
         let session = session, model = model, scope = scope
+        let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }
         Task {
-            let outputs = await session.send(input, model: model, scope: scope)
+            let outputs = await session.send(input, model: model, scope: scope, appended: row)
             if case .text(let reply)? = outputs.first(where: { if case .text = $0 { true } else { false } }) {
                 AccessibilityNotification.Announcement(reply).post()
             }

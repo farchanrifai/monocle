@@ -63,6 +63,8 @@ struct ChatRow: Identifiable, Equatable, Codable {
 final class ChatSession {
     var rows: [ChatRow] = [] { didSet { save() } }
     var isTyping = false
+    /// The user row currently morphing out of the composer (views only; never saved).
+    var flightID: UUID?
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
@@ -115,10 +117,11 @@ extension ChatSession {
 
     /// Sends one user message and appends Claude's reply rows. Returns the reply so the caller can announce it.
     @discardableResult
-    func send(_ input: String, model: AppModel, scope: AnalyticsFilterScope) async -> [ChatAgent.Output] {
+    func send(_ input: String, model: AppModel, scope: AnalyticsFilterScope, appended: ChatRow? = nil) async -> [ChatAgent.Output] {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isTyping else { return [] }
-        rows.append(ChatRow(kind: .user(text)))
+        // A view that already appended the row (inside an animation) passes it as `appended`.
+        if appended == nil { rows.append(ChatRow(kind: .user(text))) }
         isTyping = true
         // Switching backend starts the other model fresh; Claude's history is kept for when it comes back.
         if Self.usesApple != (agent is AppleChatAgent) {
