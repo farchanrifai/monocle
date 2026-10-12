@@ -142,6 +142,11 @@ struct MacChatView: View {
     }
 }
 
+/// Esc closes the panel even when nothing in it has focus (e.g. the "AI Chat Is Off" state).
+final class QuickChatPanel: NSPanel {
+    override func cancelOperation(_ sender: Any?) { performClose(sender) }
+}
+
 /// The global Quick Chat window: a floating, non-activating panel like Quick Record, showing the same
 /// ChatSession as the Chat page, so a conversation started here continues in the main window.
 @MainActor
@@ -171,8 +176,9 @@ final class QuickChatPanelController {
     func close() { panel?.orderOut(nil) }
 
     private func makePanel() -> NSPanel {
-        let value = QuickRecordPanelController.makePanel()
-        value.styleMask.insert(.resizable)
+        // Style bits go in at creation: changing styleMask later re-shows the title bar buttons and drops the
+        // non-activating behaviour, which activated Monocle and fronted the main window on first open.
+        let value = QuickRecordPanelController.makePanel(QuickChatPanel.self, extraStyle: [.resizable, .closable])
         value.minSize = NSSize(width: 420, height: 420)
         let controller = NSHostingController(rootView:
             MacChatView(state: state, compact: true, close: { [weak self] in self?.close() })

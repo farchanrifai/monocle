@@ -423,15 +423,15 @@ final class QuickRecordPanelController {
         return value
     }
 
-    static func makePanel() -> NSPanel {
+    static func makePanel(_ type: NSPanel.Type = NSPanel.self, extraStyle: NSWindow.StyleMask = []) -> NSPanel {
         // Titled for key focus, rounded corners and shadow; non-activating so the app in front keeps being the active
         // app; the title bar is transparent with no traffic lights and the system title hidden (drawn centred instead).
-        let value = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 540, height: 420),
-                            styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
+        let value = type.init(contentRect: NSRect(x: 0, y: 0, width: 540, height: 420),
+                            styleMask: NSWindow.StyleMask([.titled, .fullSizeContentView, .nonactivatingPanel]).union(extraStyle), backing: .buffered, defer: false)
         value.title = "monocle" // for accessibility and window lists
         value.titleVisibility = .hidden
         value.titlebarAppearsTransparent = true
-        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { value.standardWindowButton(button)?.isHidden = true }
+        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] where !(extraStyle.contains(.closable) && button == .closeButton) { value.standardWindowButton(button)?.isHidden = true }
         value.isMovableByWindowBackground = true
         value.becomesKeyOnlyIfNeeded = false
         value.hidesOnDeactivate = false // Monocle is never the active app while this shows
