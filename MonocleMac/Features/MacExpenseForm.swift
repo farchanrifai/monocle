@@ -97,6 +97,12 @@ struct MacExpenseForm: View {
         .padding(24).padding(.top, topPadding - 24)
         .frame(width: 540)
         .defaultFocus($focus, .amount)
+        .onChange(of: focus) { old, _ in
+            // Leaving the amount turns shorthand like 28k or Rp28.000 into plain grouped digits; a bad value stays for save to report.
+            guard old == .amount, model.draft.amount.contains(where: \.isLetter),
+                  let minor = try? Money.parse(model.draft.amount, code: model.draft.currency) else { return }
+            model.draft.amount = Money.format(minor, currency: false)
+        }
         .task(id: "\(model.draft.currency ?? "")|\(model.draft.civilDay)") { await model.refreshDraftRate() }
         .onAppear {
             model.prefillDraftDefaults()
