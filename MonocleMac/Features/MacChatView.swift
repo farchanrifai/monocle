@@ -67,8 +67,8 @@ struct MacChatView: View {
         .onChange(of: session.flightID) { _, id in
             flightX = 0; flightY = 0
             guard id != nil else { return }
-            withAnimation(.easeOut(duration: 0.16)) { flightX = 1 }
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.88).delay(0.07)) { flightY = 1 }
+            withAnimation(.easeInOut(duration: 0.14)) { flightX = 1 }
+            withAnimation(ChatSession.liftAnimation) { flightY = 1 }
         }
         .navigationTitle("Chat")
         .onExitCommand { close?() } // Esc hides the Quick Chat panel

@@ -33,8 +33,8 @@ struct ChatFlightTarget: PreferenceKey {
 
 extension View {
     /// Draws the sent bubble flying out of the composer as in Messages, in two phases timed separately:
-    /// `x` (0 → 1, quick) collapses the field's shape sideways into the bubble's width and height while it stays at the field's level,
-    /// the message riding inside it; `y` (0 → 1, slower) then lifts it into the bubble's resting frame, the text growing to full size.
+    /// `x` (0 → 1, quick, ease-in-out) collapses the field's shape sideways into the bubble's width and height while it stays at the field's level,
+    /// the message riding inside it; `y` (0 → 1, slower) then lifts it into the bubble's resting frame, the text growing back to full size.
     /// One-shot: nothing is drawn unless `active`.
     func chatFlightLayer(from: CGRect, x: CGFloat, y: CGFloat, active: Bool, label: Text?) -> some View {
         overlayPreferenceValue(ChatFlightTarget.self) { anchor in
@@ -43,7 +43,10 @@ extension View {
                     let to = proxy[anchor]
                     let left = from.minX + (to.minX - from.minX) * x
                     let right = from.maxX + (to.maxX - from.maxX) * x
-                    let height = from.height + (to.height - from.height) * x
+                    // Squashed thin while it collapses (the text with it), then stretched back to full size as it lifts.
+                    let squash = 1 - 0.4 * x * (1 - y)
+                    let height = (from.height + (to.height - from.height) * x) * squash
+                    let textScale = 1 - 0.28 * x * (1 - y)
                     let midY = from.midY + (to.midY - from.midY) * y
                     let shape = BubbleShape(isUser: true, hasTail: true)
                     ZStack(alignment: .leading) {
@@ -53,7 +56,7 @@ extension View {
                             .textRenderer(MentionChipRenderer(chip: .black.opacity(0.28)))
                             .frame(width: to.width - 28, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
-                            .scaleEffect(0.82 + 0.18 * y, anchor: .leading)
+                            .scaleEffect(x: textScale, y: textScale * squash, anchor: .leading)
                             .padding(.leading, 14)
                     }
                     .clipShape(shape)
@@ -68,18 +71,22 @@ extension View {
 }
 
 extension ChatSession {
+    /// The lift into the slot, after the sideways collapse; the transcript uses it too.
+    static let liftAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.3).delay(0.12)
+
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
     /// `alongside` runs in the same animation (clearing the draft). Returns the row to hand to `send(appended:)`.
     func appendUserRow(_ text: String, animated: Bool, alongside: () -> Void) -> ChatRow {
         let row = ChatRow(kind: .user(text))
         flightID = animated ? row.id : nil
-        withAnimation(animated ? .spring(response: 0.34, dampingFraction: 0.88) : nil) {
+        // The rows above move while the bubble lifts, not before (as in Messages).
+        withAnimation(animated ? Self.liftAnimation : nil) {
             alongside()
             rows.append(row)
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(600))
+                try? await Task.sleep(for: .milliseconds(520))
                 if flightID == row.id { flightID = nil }
             }
         }

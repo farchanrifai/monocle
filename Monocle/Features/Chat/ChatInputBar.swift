@@ -6,6 +6,8 @@ struct ChatInputBar: View {
     var isBusy: Bool
     var names: [Character: [String]] = [:]
     var onSend: () -> Void
+    /// Reports the field's frame in the chat's coordinate space (where a sent bubble takes off).
+    var onFieldFrame: (CGRect) -> Void = { _ in }
 
     private var canSend: Bool { !isBusy && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
@@ -16,6 +18,7 @@ struct ChatInputBar: View {
                 .focused(focused)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("chat")) } action: { onFieldFrame($0) }
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
             Button(action: onSend) {
                 Image(systemName: "arrow.up")

@@ -15,6 +15,10 @@ struct ChatView: View {
     @State private var showingSetup = false
     @State private var mentionSelection = 0
     @State private var composerHeight: CGFloat = 0
+    @State private var fieldFrame: CGRect = .zero
+    @State private var flightX: CGFloat = 0
+    @State private var flightY: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isTyping: Bool { session.isTyping }
     private var scope: AnalyticsFilterScope { session.scope ?? ChatScopeMenuItems.homeScope(model) }
@@ -45,7 +49,7 @@ struct ChatView: View {
             .overlay(alignment: .bottom) {
                 Group {
                   if chatEnabled && hasKey {
-                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
+                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) }, onFieldFrame: { fieldFrame = $0 })
                         .overlay(alignment: .top) {
                             ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
                                 .padding(.horizontal, 12)
@@ -60,6 +64,15 @@ struct ChatView: View {
                   }
                 }
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
+            }
+            .environment(\.chatFlightID, session.flightID)
+            .coordinateSpace(name: "chat")
+            .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil, label: flightLabel)
+            .onChange(of: session.flightID) { _, id in
+                flightX = 0; flightY = 0
+                guard id != nil else { return }
+                withAnimation(.easeInOut(duration: 0.14)) { flightX = 1 }
+                withAnimation(ChatSession.liftAnimation) { flightY = 1 }
             }
             .sensoryFeedback(.impact(weight: .light), trigger: sentCount)
             .navigationTitle("monocle")
@@ -105,11 +118,17 @@ struct ChatView: View {
         }
     }
 
+    /// The message that is flying out of the field, styled like its bubble.
+    private var flightLabel: Text? {
+        guard let id = session.flightID, case .user(let text)? = session.rows.last(where: { $0.id == id })?.kind else { return nil }
+        return ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true, padded: true)
+    }
+
     private func send(_ input: String) {
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isTyping, hasKey else { return }
         sentCount += 1
         let session = session, model = model, scope = scope
-        let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: false) { draft = "" }
+        let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }
         Task {
             let outputs = await session.send(input, model: model, scope: scope, appended: row)
             // VoiceOver users hear the reply arrive without hunting for it.
