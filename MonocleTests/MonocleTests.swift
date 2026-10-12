@@ -151,6 +151,28 @@ final class MonocleTests: XCTestCase {
             try migrated.container.persistentStoreCoordinator.remove(persistentStore)
         }
     }
+    func testAmountInputGroupsThousandsAndKeepsDecimalsHiddenUntilTyped() {
+        let us = Locale(identifier: "en_US"), id = Locale(identifier: "id_ID")
+        XCTAssertEqual(Money.groupedInput("134273645", locale: us, code: "JPY"), "134,273,645")
+        XCTAssertEqual(Money.groupedInput("134.273.645", locale: id, code: "IDR"), "134.273.645")
+        XCTAssertEqual(Money.groupedInput("1,234", locale: us, code: "USD"), "1,234")
+        XCTAssertEqual(Money.groupedInput("1234.", locale: us, code: "USD"), "1,234.")
+        XCTAssertEqual(Money.groupedInput("1234.567", locale: us, code: "USD"), "1,234.56")
+        XCTAssertEqual(Money.groupedInput("1234,5", locale: id, code: "USD"), "1.234,5")
+        XCTAssertEqual(Money.groupedInput("1234.5", locale: us, code: "JPY"), "1,234", "whole-unit currencies drop decimals")
+        XCTAssertEqual(Money.groupedInput("28k", locale: us, code: "IDR"), "28k")
+        XCTAssertEqual(Money.groupedInput("", locale: us, code: "IDR"), "")
+        XCTAssertEqual(try Money.parse(Money.groupedInput("1234567.5", locale: us, code: "USD"), locale: us, code: "USD"), 123_456_750)
+    }
+    func testReportingEquivalentNeedsOnlyAmountAndRate() {
+        var draft = ExpenseDraft()
+        draft.currency = "JPY"; draft.amount = "1000"; draft.rate = "112.99"
+        XCTAssertEqual(draft.reportingEquivalent(reporting: "IDR"), 11_299_000)
+        draft.rate = ""
+        XCTAssertNil(draft.reportingEquivalent(reporting: "IDR"))
+        draft.currency = nil; draft.rate = "112.99"
+        XCTAssertNil(draft.reportingEquivalent(reporting: "IDR"), "not foreign")
+    }
     func testDraftSurvivesCodingAndIdentity() throws {
         var draft = ExpenseDraft()
         draft.amount = "28000"

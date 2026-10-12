@@ -180,8 +180,8 @@ struct EntryView: View {
                         }.font(.caption)
                     }
                 }.font(.subheadline)
-                if let expense = try? model.draft.expense(reporting: model.reportingCurrency) {
-                    Text("≈ \(Money.format(expense.amount, code: model.reportingCurrency))").font(.caption).foregroundStyle(.secondary)
+                if let equivalent = model.draft.reportingEquivalent(reporting: model.reportingCurrency) {
+                    Text("≈ \(Money.format(equivalent, code: model.reportingCurrency))").font(.subheadline.weight(.semibold))
                 } else if let rateError = model.rateError {
                     Text(rateError).font(.caption).foregroundStyle(MC.red)
                 }

@@ -271,6 +271,22 @@ enum Money {
     }
 
     static func digits(_ amount: Int64) -> String { String(amount / 100) }
+
+    /// Amount text as people type it: thousands grouped, decimals only once typed (and only where the currency has them).
+    /// Anything else, like `28k` or `Rp28.000`, is left as typed for `parse`.
+    static func groupedInput(_ text: String, locale: Locale = .autoupdatingCurrent, code: String? = nil) -> String {
+        let decimal = locale.decimalSeparator ?? ".", group = locale.groupingSeparator ?? ","
+        let parts = text.replacingOccurrences(of: group, with: "").replacingOccurrences(of: " ", with: "").components(separatedBy: decimal)
+        guard parts.count <= 2, parts.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isNumber } }) else { return text }
+        var whole = ""
+        for (offset, digit) in parts[0].reversed().enumerated() {
+            if offset > 0, offset % 3 == 0 { whole = group + whole }
+            whole = String(digit) + whole
+        }
+        let places = fractionDigits(code ?? reportingCurrency)
+        guard parts.count == 2, places > 0 else { return whole }
+        return whole + decimal + parts[1].prefix(places)
+    }
     static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent, code: String? = nil) -> String {
         let value = Decimal(amount) / 100
         let number = value.formatted(.number.locale(locale).precision(.fractionLength(0...(amount % 100 == 0 ? 0 : 2))))
@@ -354,6 +370,11 @@ struct ExpenseDraft: Codable, Equatable {
     }
     func resolvedAllocatedAmount() throws -> Int64 {
         try Money.checkedSum(splitParts.map { $0.amount.isEmpty ? 0 : try $0.resolvedAmount(code: currency) })
+    }
+    /// The typed amount in the reporting currency. Needs only an amount and a rate, so it can show before a category is chosen.
+    func reportingEquivalent(reporting: String = Money.reportingCurrency) -> Int64? {
+        guard isForeign(reporting: reporting), let rate = resolvedRate(), let value = try? resolvedAmount() else { return nil }
+        return try? Money.convert(value, rate: rate, to: reporting)
     }
     func resolvedRate() -> Decimal? {
         Decimal(string: rate.replacingOccurrences(of: ",", with: "."), locale: Locale(identifier: "en_US_POSIX")).flatMap { $0 > 0 ? $0 : nil }

@@ -30,7 +30,7 @@ struct MacExpenseForm: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
                     Text(model.draft.currency ?? model.reportingCurrency).font(.title3.weight(.medium)).foregroundStyle(.secondary)
-                    TextField("0", text: $model.draft.amount)
+                    TextField("0", text: amountText)
                         .textFieldStyle(.plain)
                         .font(.system(size: 34, weight: .semibold, design: .rounded)).monospacedDigit()
                         .focused($focus, equals: .amount)
@@ -48,15 +48,18 @@ struct MacExpenseForm: View {
                 }
                 if isForeign { // a hidden currency field still shows when the expense already has one
                     HStack(spacing: 6) {
-                        Text("1 \(model.draft.currency ?? "") =").foregroundStyle(.secondary)
-                        TextField("Rate", text: Binding(get: { model.draft.rate }, set: { model.draft.rate = $0; model.draft.rateSource = .manual }))
-                            .textFieldStyle(.roundedBorder).frame(width: 100)
-                        Text(model.reportingCurrency).foregroundStyle(.secondary)
-                        if let expense = try? model.draft.expense(reporting: model.reportingCurrency) {
-                            Text("≈ \(Money.format(expense.amount, code: model.reportingCurrency))").foregroundStyle(.secondary)
+                        // The answer on the left, the rate that produced it (editable) on the right.
+                        if let equivalent = model.draft.reportingEquivalent(reporting: model.reportingCurrency) {
+                            Text("≈ \(Money.format(equivalent, code: model.reportingCurrency))").fontWeight(.semibold)
+                                .accessibilityLabel("Equivalent \(Money.format(equivalent, code: model.reportingCurrency))")
                         } else if let rateError = model.rateError {
                             Text(rateError).font(.caption).foregroundStyle(.red).lineLimit(2)
                         }
+                        Spacer(minLength: 8)
+                        Text("1 \(model.draft.currency ?? "") =").foregroundStyle(.secondary)
+                        TextField("Rate", text: Binding(get: { model.draft.rate }, set: { model.draft.rate = $0; model.draft.rateSource = .manual }))
+                            .textFieldStyle(.roundedBorder).frame(width: 90)
+                        Text(model.reportingCurrency).foregroundStyle(.secondary)
                     }.font(.callout)
                 }
             }
@@ -104,6 +107,16 @@ struct MacExpenseForm: View {
             Button("Discard Draft", role: .destructive) { if model.discardDraft() { close(false) } }
             Button("Continue Editing", role: .cancel) {}
         } message: { Text("Your entered details can be kept for the next time you add an expense.") }
+    }
+
+    /// The amount field shows thousands separators while typing; the draft keeps the grouped text, which `Money.parse` accepts.
+    private var amountText: Binding<String> {
+        Binding(get: {
+            let draft = model.draft
+            // An amount loaded for editing is stored as plain digits with a dot; show it in the user's format.
+            if let kept = draft.preservedAmount, draft.amount == Money.exactDigits(kept) { return Money.format(kept, currency: false) }
+            return Money.groupedInput(draft.amount, code: draft.currency)
+        }, set: { model.draft.amount = Money.groupedInput($0, code: model.draft.currency) })
     }
 
     private var currencyChoices: [String] {
@@ -164,7 +177,7 @@ struct MacExpenseForm: View {
         HStack(spacing: 12) {
             Text(label).foregroundStyle(.secondary)
             Spacer(minLength: 8)
-            content().frame(maxWidth: 280, alignment: .trailing)
+            content().frame(maxWidth: 340, alignment: .trailing)
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .frame(maxWidth: .infinity)
@@ -210,7 +223,8 @@ private struct MacDateField: View {
             chip("Today", on: calendar.isDateInToday(date)) { date = .now }
             chip("Yesterday", on: calendar.isDateInYesterday(date)) { date = yesterday }
             Button { showCalendar.toggle() } label: {
-                Label(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).year()), systemImage: "calendar")
+                Label(date.formatted(.dateTime.day().month(.abbreviated).year()), systemImage: "calendar")
+                    .lineLimit(1).fixedSize()
                     .padding(.horizontal, 10).padding(.vertical, 4)
                     .background(.quaternary, in: Capsule())
             }
@@ -236,7 +250,7 @@ private struct MacDateField: View {
 
     private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
-            .buttonStyle(.plain).font(.callout)
+            .buttonStyle(.plain).font(.callout).lineLimit(1).fixedSize()
             .padding(.horizontal, 10).padding(.vertical, 4)
             .background(on ? AnyShapeStyle(Color.accentColor.opacity(0.25)) : AnyShapeStyle(.quaternary), in: Capsule())
             .focusable(false) // the date field is the Tab stop
