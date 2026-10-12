@@ -14,7 +14,8 @@ struct MacChatView: View {
     @State private var draft = ""
     @State private var mentionSelection = 0
     @FocusState private var inputFocused: Bool
-    @Namespace private var flight
+    @State private var fieldFrame: CGRect = .zero
+    @State private var flightProgress: CGFloat = 0
     @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var model: AppModel { state.model }
@@ -58,7 +59,13 @@ struct MacChatView: View {
                 .frame(maxHeight: .infinity)
             }
         }
-        .environment(\.chatFlight, ChatFlight(namespace: flight, id: session.flightID))
+        .environment(\.chatFlightID, session.flightID)
+        .coordinateSpace(name: "chat")
+        .chatFlightLayer(from: fieldFrame, progress: flightProgress, active: session.flightID != nil)
+        .onChange(of: session.flightID) { _, id in
+            flightProgress = 0
+            if id != nil { withAnimation(.spring(response: 0.5, dampingFraction: 0.84)) { flightProgress = 1 } }
+        }
         .navigationTitle("Chat")
         .onExitCommand { close?() } // Esc hides the Quick Chat panel
         .onAppear {
@@ -122,7 +129,7 @@ struct MacChatView: View {
                 .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 // Where a sent bubble starts: its shape grows out of this field (ChatFlight).
-                .background { Color.clear.matchedGeometryEffect(id: "flight", in: flight, isSource: true) }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("chat")) } action: { fieldFrame = $0 }
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
             Button { send(draft) } label: {
                 Image(systemName: "arrow.up").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)

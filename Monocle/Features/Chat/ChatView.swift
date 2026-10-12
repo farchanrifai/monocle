@@ -14,9 +14,7 @@ struct ChatView: View {
     private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var showingSetup = false
     @State private var mentionSelection = 0
-    @Namespace private var flight
     @State private var composerHeight: CGFloat = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isTyping: Bool { session.isTyping }
     private var scope: AnalyticsFilterScope { session.scope ?? ChatScopeMenuItems.homeScope(model) }
@@ -98,7 +96,6 @@ struct ChatView: View {
             }
         }
         .tint(MC.red)
-        .environment(\.chatFlight, ChatFlight(namespace: flight, id: session.flightID))
         .onAppear { if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) } }
         .sheet(isPresented: $showingSetup, onDismiss: { savedKey = APIKeyStore.read() != nil }) {
             NavigationStack {
@@ -112,7 +109,7 @@ struct ChatView: View {
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isTyping, hasKey else { return }
         sentCount += 1
         let session = session, model = model, scope = scope
-        let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }
+        let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: false) { draft = "" }
         Task {
             let outputs = await session.send(input, model: model, scope: scope, appended: row)
             // VoiceOver users hear the reply arrive without hunting for it.
