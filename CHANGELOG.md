@@ -2,7 +2,7 @@
 
 All notable changes to Monocle are documented in this file.
 
-## [Unreleased]
+## [0.8.5] - 2026-10-12
 ### AI Chat: mentions and context
 - Sending a message morphs the composer field into the bubble, which then settles into the transcript (iOS and Mac, plain fade with Reduce Motion). The composer is transparent over a progressive blur and the transcript scrolls under it.
 - `#` mentions a category next to `@` for a card or stack; both can be used in one message. Picker follows the chat scope; Return or Tab (Mac) confirms. Mentions show as rounded chips in the composer and in sent bubbles.
