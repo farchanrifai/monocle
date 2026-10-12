@@ -112,12 +112,9 @@ struct ChatTranscript: View {
         index > 0 && rows[index - 1].isUser != rows[index].isUser
     }
 
-    /// A sent message with its @card and #category mentions marked, so they read apart from the rest of the text.
+    /// A sent message with its @card and #category mentions in their own colour, so they read apart from the rest of the text.
     private func mentionStyled(_ text: String) -> AttributedString {
-        var seen = Set<String>()
-        let categories = model.cards.flatMap { model.activeCategories(for: $0.id) }.map(\.name).filter { seen.insert($0.lowercased()).inserted }
-        let scopes = model.stacks.map(\.name) + model.cards.map(\.name) + ["All Cards"]
-        return ChatMentionList.highlight(text, names: ["@": scopes, "#": categories])
+        ChatMentionList.highlight(text, names: ChatMentionList.names(model), color: Color(red: 1, green: 0.9, blue: 0.55), bold: true)
     }
 
     private static func markdown(_ text: String) -> AttributedString {
@@ -180,6 +177,27 @@ struct ChatScopeMenuItems: View {
 
 /// Typing "@" in the chat input lists stacks and cards; picking one sets the chat scope, like the scope menu.
 /// Floats above the input (attach with `.overlay(alignment: .top)`), so the transcript never moves.
+/// The composer's text field with @ and # mentions in colour. SwiftUI's TextField can't colour part of its text, so the
+/// field's own text is clear and a Text with the same font and width is drawn over it; the caret and selection stay native.
+struct MentionTextField: View {
+    let prompt: String
+    @Binding var text: String
+    let names: [Character: [String]]
+    var identifier = "chatInput"
+
+    var body: some View {
+        TextField(prompt, text: $text, axis: .vertical)
+            .foregroundStyle(.clear)
+            .accessibilityIdentifier(identifier)
+            .overlay(alignment: .topLeading) {
+                Text(ChatMentionList.highlight(text, names: names, color: MC.red, bold: false, typing: true))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+    }
+}
+
 struct ChatMentionList: View {
     let model: AppModel
     let session: ChatSession
@@ -203,9 +221,23 @@ struct ChatMentionList: View {
 
     static func query(in text: String) -> String? { mention(in: text)?.query }
 
-    /// Marks each "@Name" / "#Name" (a known name after a space or at the start, longest match first) with bold text on a light chip.
-    static func highlight(_ text: String, names: [Character: [String]]) -> AttributedString {
+    /// What "@" and "#" can name: cards, stacks and All Cards; every category once.
+    static func names(_ model: AppModel) -> [Character: [String]] {
+        var seen = Set<String>()
+        let categories = model.cards.flatMap { model.activeCategories(for: $0.id) }.map(\.name).filter { seen.insert($0.lowercased()).inserted }
+        return ["@": model.stacks.map(\.name) + model.cards.map(\.name) + ["All Cards"], "#": categories]
+    }
+
+    /// Colours each "@Name" / "#Name" (a known name after a space or at the start, longest match first).
+    /// `typing` also colours the unfinished mention at the end of a draft. The composer passes `bold: false`:
+    /// it draws this text over its own invisible text, so the glyphs must keep the same widths.
+    static func highlight(_ text: String, names: [Character: [String]], color: Color, bold: Bool, typing: Bool = false) -> AttributedString {
         var result = AttributedString(text)
+        func paint(_ range: Range<String.Index>) {
+            guard let target = Range(range, in: result) else { return }
+            result[target].foregroundColor = color
+            if bold { result[target].font = .body.bold() }
+        }
         var index = text.startIndex
         while index < text.endIndex {
             defer { index = text.index(after: index) }
@@ -214,11 +246,10 @@ struct ChatMentionList: View {
             let ends: (String.Index) -> Bool = { $0 == text.endIndex || !(text[$0].isLetter || text[$0].isNumber) }
             guard let name = candidates.sorted(by: { $0.count > $1.count }).first(where: {
                 rest.range(of: $0, options: [.caseInsensitive, .anchored]).map { ends($0.upperBound) } ?? false
-            }), let match = rest.range(of: name, options: [.caseInsensitive, .anchored]),
-                  let range = Range(index..<match.upperBound, in: result) else { continue }
-            result[range].font = .body.bold()
-            result[range].backgroundColor = .white.opacity(0.28)
+            }), let match = rest.range(of: name, options: [.caseInsensitive, .anchored]) else { continue }
+            paint(index..<match.upperBound)
         }
+        if typing, let open = mention(in: text), let start = text.lastIndex(of: open.trigger) { paint(start..<text.endIndex) }
         return result
     }
 

@@ -41,7 +41,7 @@ struct ChatView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if chatEnabled && hasKey {
-                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, onSend: { send(draft) })
+                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
                         .overlay(alignment: .top) {
                             ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
                                 .padding(.horizontal, 12)

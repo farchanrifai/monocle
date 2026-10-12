@@ -324,7 +324,7 @@ struct ToolExecutor {
         let result = SummaryResult(period: input.period.horizon.rawValue, start: report.range.startDay, end: report.range.endDay,
                                    scope: Self.label(target), total: Amount(report.metrics.totalSpend),
                                    count: report.metrics.transactionCount, groups: groups)
-        let title = "\(input.period.horizon.rawValue) · \(target.title)"
+        let title = "\(Self.rangeLabel(report.range.startDay, report.range.endDay)) · \(target.title)"
         let chart: ChatChart = switch input.groupBy ?? .category {
         case .category: ChatChart(categories: report.categoryPoints, title: title)
         case .card: ChatChart(style: .bars, title: title, items: report.cardPoints.map { .init(label: $0.cardName, value: $0.amount) })
@@ -355,7 +355,7 @@ struct ToolExecutor {
                                    scope: Self.label(target), totalA: Amount(a.metrics.totalSpend), totalB: Amount(b.metrics.totalSpend),
                                    change: Amount(change), summary: summary, categories: deltas)
         let rows = names.map { ChatChart.Item(label: $0, value: spentB[$0] ?? 0, reference: spentA[$0] ?? 0) }.sorted { max($0.value, $0.reference ?? 0) > max($1.value, $1.reference ?? 0) }
-        let chart = ChatChart(style: .comparison, title: "\(periodA.horizon.rawValue) vs \(periodB.horizon.rawValue) · \(target.title)",
+        let chart = ChatChart(style: .comparison, title: "\(Self.rangeLabel(a.range.startDay, a.range.endDay)) vs \(Self.rangeLabel(b.range.startDay, b.range.endDay)) · \(target.title)",
                               items: [.init(label: "Total", value: b.metrics.totalSpend, reference: a.metrics.totalSpend)] + rows,
                               series: [periodA.horizon.rawValue, periodB.horizon.rawValue])
         return Outcome(json: try Self.encode(result), chart: chart)
@@ -384,7 +384,19 @@ struct ToolExecutor {
         }
         let items = [ChatChart.Item(label: "Overall", value: spent, reference: period.budget.overallLimit)]
             + period.budget.categoryLimits.map { .init(label: names[$0.categoryID] ?? "Unknown", value: spentByCategory[$0.categoryID] ?? 0, reference: $0.limit) }
-        return Outcome(json: try Self.encode(result), chart: ChatChart(style: .budget, title: "Budget this cycle · \(card.name)", items: items))
+        return Outcome(json: try Self.encode(result), chart: ChatChart(style: .budget, title: "Budget \(Self.rangeLabel(Day.string(period.cycle.start), Day.string(lastDay))) · \(card.name)", items: items))
+    }
+
+    /// "1–31 Oct 2026", "1 Sep – 12 Oct 2026" or a span across years: what a chart title shows instead of a period keyword.
+    static func rangeLabel(_ start: String, _ end: String) -> String {
+        guard let from = Day.date(start), let to = Day.date(end) else { return "\(start) – \(end)" }
+        let calendar = Day.calendar
+        let sameYear = calendar.component(.year, from: from) == calendar.component(.year, from: to)
+        if sameYear, calendar.component(.month, from: from) == calendar.component(.month, from: to), from != to {
+            return "\(calendar.component(.day, from: from))–\(to.formatted(.dateTime.day().month(.abbreviated).year()))"
+        }
+        if from == to { return to.formatted(.dateTime.day().month(.abbreviated).year()) }
+        return "\(from.formatted(sameYear ? .dateTime.day().month(.abbreviated) : .dateTime.day().month(.abbreviated).year())) – \(to.formatted(.dateTime.day().month(.abbreviated).year()))"
     }
 
     private func cardList() -> CardList {

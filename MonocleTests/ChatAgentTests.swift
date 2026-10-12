@@ -213,13 +213,26 @@ final class ChatAgentTests: XCTestCase {
     func testMentionsMarkKnownNamesOnly() {
         let names: [Character: [String]] = ["@": ["Everyday", "Tokyo Trip"], "#": ["Food & Drink", "Food"]]
         func marked(_ text: String) -> [String] {
-            let result = ChatMentionList.highlight(text, names: names)
-            return result.runs.filter { $0.backgroundColor != nil }.map { String(result[$0.range].characters) }
+            let result = ChatMentionList.highlight(text, names: names, color: .red, bold: true)
+            return result.runs.filter { $0.foregroundColor != nil }.map { String(result[$0.range].characters) }
         }
         XCTAssertEqual(marked("last month on #Food & Drink  @Everyday"), ["#Food & Drink", "@Everyday"])
         XCTAssertEqual(marked("#food is cheap, @tokyo trip too"), ["#food", "@tokyo trip"], "case doesn't matter")
         XCTAssertEqual(marked("@tokyo is nice"), [], "a partial name doesn't match")
         XCTAssertEqual(marked("mail me@Everyday and #Foodie"), [], "inside a word, or a longer word, is not a mention")
+    }
+
+    func testDraftColoursTheMentionBeingTyped() {
+        let names: [Character: [String]] = ["@": ["Everyday"], "#": ["Food & Drink"]]
+        let result = ChatMentionList.highlight("on #Foo", names: names, color: .red, bold: false, typing: true)
+        XCTAssertEqual(result.runs.filter { $0.foregroundColor != nil }.map { String(result[$0.range].characters) }, ["#Foo"])
+        XCTAssertTrue(ChatMentionList.highlight("on #Foo", names: names, color: .red, bold: false).runs.allSatisfy { $0.foregroundColor == nil })
+    }
+
+    func testRangeLabelNamesTheDates() {
+        XCTAssertTrue(ToolExecutor.rangeLabel("2026-10-01", "2026-10-31").hasPrefix("1–"))
+        XCTAssertTrue(ToolExecutor.rangeLabel("2026-10-01", "2026-10-31").contains("2026"))
+        XCTAssertTrue(ToolExecutor.rangeLabel("2026-09-01", "2026-10-12").contains(" – "), "a span across months names both ends")
     }
 
     func testBothMentionsCanShareAMessage() {

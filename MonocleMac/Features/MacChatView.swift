@@ -102,7 +102,7 @@ struct MacChatView: View {
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 8) {
             // Return sends; Option-Return adds a line.
-            TextField("Add an expense or ask… (@ card, # category)", text: $draft, axis: .vertical)
+            MentionTextField(prompt: "Add an expense or ask… (@ card, # category)", text: $draft, names: ChatMentionList.names(model))
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .focused($inputFocused)
@@ -112,7 +112,6 @@ struct MacChatView: View {
                 .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
-                .accessibilityIdentifier("chatInput")
             Button { send(draft) } label: {
                 Image(systemName: "arrow.up").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                     .frame(width: 34, height: 34)
