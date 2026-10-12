@@ -33,8 +33,9 @@ struct ChatFlightTarget: PreferenceKey {
 
 extension View {
     /// Draws the red bubble shape moving from `from` (the composer field, in this view's coordinates) to the flying bubble's
-    /// resting frame as `progress` goes 0 → 1. One-shot: nothing is drawn unless `active`.
-    func chatFlightLayer(from: CGRect, progress: CGFloat, active: Bool) -> some View {
+    /// resting frame as `progress` goes 0 → 1, carrying `label` (the message) inside it, so the text travels with the shape.
+    /// One-shot: nothing is drawn unless `active`.
+    func chatFlightLayer(from: CGRect, progress: CGFloat, active: Bool, label: Text?) -> some View {
         overlayPreferenceValue(ChatFlightTarget.self) { anchor in
             GeometryReader { proxy in
                 if active, let anchor, from.width > 0 {
@@ -42,9 +43,18 @@ extension View {
                     let t = progress
                     let frame = CGRect(x: from.minX + (to.minX - from.minX) * t, y: from.minY + (to.minY - from.minY) * t,
                                        width: from.width + (to.width - from.width) * t, height: from.height + (to.height - from.height) * t)
-                    BubbleShape(isUser: true, hasTail: true).fill(MC.red)
-                        .frame(width: frame.width, height: frame.height)
-                        .position(x: frame.midX, y: frame.midY)
+                    ZStack(alignment: .leading) {
+                        BubbleShape(isUser: true, hasTail: true).fill(MC.red)
+                        // Wrapped at the bubble's final inner width, so the text never re-wraps mid-flight.
+                        label?.foregroundStyle(.white)
+                            .textRenderer(MentionChipRenderer(chip: .black.opacity(0.28)))
+                            .frame(width: to.width - 28, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 14)
+                    }
+                    .frame(width: frame.width, height: frame.height)
+                    .position(x: frame.midX, y: frame.midY)
+                    .transition(.identity)
                 }
             }
             .allowsHitTesting(false)
@@ -64,7 +74,7 @@ extension ChatSession {
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(800))
+                try? await Task.sleep(for: .milliseconds(700))
                 if flightID == row.id { flightID = nil }
             }
         }
@@ -79,7 +89,6 @@ struct ChatBubble<Content: View>: View {
     var rowID: UUID? = nil
     @ViewBuilder let content: Content
     @Environment(\.chatFlightID) fileprivate var flightID
-    @State private var landed = false
 
     fileprivate var flying: Bool { rowID != nil && rowID == flightID }
 
@@ -88,9 +97,8 @@ struct ChatBubble<Content: View>: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .foregroundStyle(isUser ? Color.white : Color.primary)
-            // The text stays where it will rest and fades in while the shape travels; only the shape morphs, so nothing re-wraps mid-flight.
-            .opacity(flying && !landed ? 0 : 1)
-            .onAppear { if flying { withAnimation(.easeIn(duration: 0.22).delay(0.18)) { landed = true } } }
+            // The travelling copy (shape and text) is drawn by `chatFlightLayer`; this one appears when it lands.
+            .opacity(flying ? 0 : 1)
             .background { shape }
             .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
             .padding(isUser ? .leading : .trailing, 48)

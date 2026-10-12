@@ -61,7 +61,7 @@ struct MacChatView: View {
         }
         .environment(\.chatFlightID, session.flightID)
         .coordinateSpace(name: "chat")
-        .chatFlightLayer(from: fieldFrame, progress: flightProgress, active: session.flightID != nil)
+        .chatFlightLayer(from: fieldFrame, progress: flightProgress, active: session.flightID != nil, label: flightLabel)
         .onChange(of: session.flightID) { _, id in
             flightProgress = 0
             if id != nil { withAnimation(.spring(response: 0.5, dampingFraction: 0.84)) { flightProgress = 1 } }
@@ -83,6 +83,12 @@ struct MacChatView: View {
         if ChatSession.usesFakeClaude { return true }
         #endif
         return APIKeyStore.read() != nil
+    }
+
+    /// The message that is flying out of the field, styled like its bubble.
+    private var flightLabel: Text? {
+        guard let id = session.flightID, case .user(let text)? = session.rows.last(where: { $0.id == id })?.kind else { return nil }
+        return ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true, padded: true)
     }
 
     private var gutter: CGFloat { compact ? 16 : 24 }
