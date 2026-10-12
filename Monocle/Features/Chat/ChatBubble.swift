@@ -74,7 +74,10 @@ extension ChatSession {
     /// Timings measured from a 60fps recording of Messages on the Mac: the sideways sweep is a symmetric bell, fastest near 100ms and done by
     /// ~180ms; the lift starts at ~110ms (overlapping the end of the sweep) and decelerates until ~380ms. The transcript uses the lift too.
     static let sweepAnimation = Animation.easeInOut(duration: 0.18)
-    static let liftAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.28).delay(0.11)
+    /// The bubble's lift is a spring so it overshoots its slot a little and settles back (bouncier than Messages, on purpose);
+    /// the rows above ease without overshoot on the measured curve.
+    static let liftAnimation = Animation.spring(duration: 0.42, bounce: 0.35).delay(0.11)
+    static let rowsAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.28).delay(0.11)
 
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
     /// `alongside` runs in the same animation (clearing the draft). Returns the row to hand to `send(appended:)`.
@@ -82,7 +85,7 @@ extension ChatSession {
         let row = ChatRow(kind: .user(text))
         flightID = animated ? row.id : nil
         // The rows above move while the bubble lifts, not before (as in Messages).
-        withAnimation(animated ? Self.liftAnimation : nil) {
+        withAnimation(animated ? Self.rowsAnimation : nil) {
             alongside()
             rows.append(row)
         }
