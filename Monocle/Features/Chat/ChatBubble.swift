@@ -85,7 +85,7 @@ extension ChatSession {
     /// Switch with `defaults write <bundle id> chatSendStyle imessage` (or `whatsapp`). `chat-flight-imessage` is the tagged iMessage baseline.
     enum SendStyle { case imessage, whatsapp }
     static var sendStyle: SendStyle { UserDefaults.standard.string(forKey: "chatSendStyle") == "imessage" ? .imessage : .whatsapp }
-    static let whatsappGrow = Animation.timingCurve(0.15, 0.6, 0.25, 1, duration: 0.26).delay(0.12)
+    static let whatsappGrow = Animation.timingCurve(0.15, 0.6, 0.25, 1, duration: 0.26).delay(0.22)
     static var rowsAnimation: Animation { sendStyle == .whatsapp ? whatsappGrow : imessageRows }
 
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
@@ -100,7 +100,7 @@ extension ChatSession {
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(Self.sendStyle == .whatsapp ? 700 : 1000)) // iMessage: fallback, the view clears the flight when the lift completes
+                try? await Task.sleep(for: .milliseconds(Self.sendStyle == .whatsapp ? 800 : 1000)) // iMessage: fallback, the view clears the flight when the lift completes
                 if flightID == row.id { flightID = nil }
             }
         }
