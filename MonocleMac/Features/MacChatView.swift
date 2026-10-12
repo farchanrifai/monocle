@@ -102,7 +102,7 @@ struct MacChatView: View {
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 8) {
             // Return sends; Option-Return adds a line.
-            TextField("Add an expense or ask… (@ for a card)", text: $draft, axis: .vertical)
+            TextField("Add an expense or ask… (@ card, # category)", text: $draft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .focused($inputFocused)

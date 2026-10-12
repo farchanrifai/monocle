@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// The tool loop (CHAT_SPEC §6): send the conversation, run every requested tool on-device, return all
@@ -45,6 +46,17 @@ final class ChatAgent: ChatBackend {
     func reset() { messages = []; notes = []; lastPeriod = nil }
 
     func send(_ text: String, scope: AnalyticsFilterScope, now: Date = .now) async -> [Output] {
+        await turn(text, scope: scope, now: now, restarted: false)
+    }
+
+    /// Changes whenever the instructions or tools do; a saved conversation made under another one can't be continued
+    /// (its thinking blocks are bound to the old tools), so ChatSession drops it on load.
+    static let fingerprint: String = {
+        let tools = (try? JSONSerialization.data(withJSONObject: ChatAgent.tools, options: [.sortedKeys])) ?? Data()
+        return SHA256.hash(data: Data(ChatAgent.systemPrompt.utf8) + tools).map { String(format: "%02x", $0) }.joined()
+    }()
+
+    private func turn(_ text: String, scope: AnalyticsFilterScope, now: Date, restarted: Bool) async -> [Output] {
         var outputs: [Output] = []
         if messages.count > Self.maxMessages {
             reset()
@@ -65,6 +77,11 @@ final class ChatAgent: ChatBackend {
                       json["content"] is [[String: Any]] else { throw ClaudeClient.ClientError.invalidResponse }
                 reply = json
             } catch {
+                // History made under older tools or instructions no longer verifies; start over once instead of failing every message.
+                if !restarted, error.localizedDescription.contains("`thinking` block") {
+                    reset()
+                    return [.notice("Started a fresh conversation: the assistant was updated.")] + (await turn(text, scope: scope, now: now, restarted: true))
+                }
                 return rollback(to: checkpoint, outputs, error: error.localizedDescription)
             }
             let blocks = reply["content"] as? [[String: Any]] ?? []

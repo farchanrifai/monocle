@@ -77,8 +77,10 @@ final class ChatSession {
         self.fileURL = fileURL
         guard let fileURL, let data = try? Data(contentsOf: fileURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              json["fingerprint"] as? String == ChatAgent.fingerprint,
               let ui = json["ui"], let uiData = try? JSONSerialization.data(withJSONObject: ui),
               let snapshot = try? JSONDecoder().decode(Snapshot.self, from: uiData) else { return }
+        // ponytail: a chat saved under other instructions or tools (no fingerprint, or a different one) starts empty too.
         // ponytail: an unreadable file starts an empty chat and is overwritten on the next change; chat is not ledger data.
         loading = true
         rows = snapshot.rows
@@ -99,7 +101,7 @@ final class ChatSession {
         guard !loading, let fileURL else { return }
         do {
             let ui = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Snapshot(rows: rows, scope: scope)))
-            let json: [String: Any] = ["version": 1, "ui": ui, "messages": (agent as? ChatAgent)?.messages ?? restoredMessages]
+            let json: [String: Any] = ["version": 1, "fingerprint": ChatAgent.fingerprint, "ui": ui, "messages": (agent as? ChatAgent)?.messages ?? restoredMessages]
             try JSONSerialization.data(withJSONObject: json).write(to: fileURL, options: .atomic)
         } catch {
             // ponytail: history is a convenience copy; a failed write never interrupts the chat.

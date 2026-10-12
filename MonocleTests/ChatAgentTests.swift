@@ -210,6 +210,42 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertNil(ChatMentionList.mention(in: "issue#12"), "A # inside a word is not a mention")
     }
 
+    func testMentionsMarkKnownNamesOnly() {
+        let names: [Character: [String]] = ["@": ["Everyday", "Tokyo Trip"], "#": ["Food & Drink", "Food"]]
+        func marked(_ text: String) -> [String] {
+            let result = ChatMentionList.highlight(text, names: names)
+            return result.runs.filter { $0.backgroundColor != nil }.map { String(result[$0.range].characters) }
+        }
+        XCTAssertEqual(marked("last month on #Food & Drink  @Everyday"), ["#Food & Drink", "@Everyday"])
+        XCTAssertEqual(marked("#food is cheap, @tokyo trip too"), ["#food", "@tokyo trip"], "case doesn't matter")
+        XCTAssertEqual(marked("@tokyo is nice"), [], "a partial name doesn't match")
+        XCTAssertEqual(marked("mail me@Everyday and #Foodie"), [], "inside a word, or a longer word, is not a mention")
+    }
+
+    func testBothMentionsCanShareAMessage() {
+        XCTAssertEqual(ChatMentionList.mention(in: "#Food & Drink @Eve")?.trigger, "@")
+        XCTAssertEqual(ChatMentionList.mention(in: "#Food & Drink @Everyday #Tra")?.query, "Tra")
+    }
+
+    func testStaleSavedChatStartsEmpty() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("chat.json")
+        let ui = try JSONSerialization.jsonObject(with: JSONEncoder().encode(["rows": [ChatRow(kind: .user("hi"))]]))
+        func write(_ fingerprint: String?) throws {
+            var json: [String: Any] = ["version": 1, "ui": ui, "messages": []]
+            json["fingerprint"] = fingerprint
+            try JSONSerialization.data(withJSONObject: json).write(to: url)
+        }
+        try write(nil)
+        XCTAssertTrue(ChatSession(fileURL: url).rows.isEmpty, "a chat saved before fingerprints starts empty")
+        try write("old")
+        XCTAssertTrue(ChatSession(fileURL: url).rows.isEmpty)
+        try write(ChatAgent.fingerprint)
+        XCTAssertEqual(ChatSession(fileURL: url).rows.count, 1)
+    }
+
     func testFollowUpPeriodIsReadFromToolCalls() {
         func period(_ json: String) -> String? { ChatAgent.period(in: Data(json.utf8)) }
         XCTAssertEqual(period(#"{"period": "last_month", "group_by": "category"}"#), "last_month")

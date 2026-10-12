@@ -50,7 +50,7 @@ struct ChatTranscript: View {
     private func rowView(_ row: ChatRow, hasTail: Bool) -> some View {
         switch row.kind {
         case .user(let text), .assistant(let text):
-            ChatBubble(isUser: row.isUser, hasTail: hasTail) { Text(Self.markdown(text)) }
+            ChatBubble(isUser: row.isUser, hasTail: hasTail) { Text(row.isUser ? mentionStyled(text) : Self.markdown(text)) }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text(row.isUser ? "You: " : "Monocle: ") + Text(Self.markdown(text)))
                 .contextMenu {
@@ -110,6 +110,14 @@ struct ChatTranscript: View {
 
     private func startsRun(_ index: Int) -> Bool {
         index > 0 && rows[index - 1].isUser != rows[index].isUser
+    }
+
+    /// A sent message with its @card and #category mentions marked, so they read apart from the rest of the text.
+    private func mentionStyled(_ text: String) -> AttributedString {
+        var seen = Set<String>()
+        let categories = model.cards.flatMap { model.activeCategories(for: $0.id) }.map(\.name).filter { seen.insert($0.lowercased()).inserted }
+        let scopes = model.stacks.map(\.name) + model.cards.map(\.name) + ["All Cards"]
+        return ChatMentionList.highlight(text, names: ["@": scopes, "#": categories])
     }
 
     private static func markdown(_ text: String) -> AttributedString {
@@ -194,6 +202,25 @@ struct ChatMentionList: View {
     }
 
     static func query(in text: String) -> String? { mention(in: text)?.query }
+
+    /// Marks each "@Name" / "#Name" (a known name after a space or at the start, longest match first) with bold text on a light chip.
+    static func highlight(_ text: String, names: [Character: [String]]) -> AttributedString {
+        var result = AttributedString(text)
+        var index = text.startIndex
+        while index < text.endIndex {
+            defer { index = text.index(after: index) }
+            guard let candidates = names[text[index]], index == text.startIndex || text[text.index(before: index)].isWhitespace else { continue }
+            let rest = text[text.index(after: index)...]
+            let ends: (String.Index) -> Bool = { $0 == text.endIndex || !(text[$0].isLetter || text[$0].isNumber) }
+            guard let name = candidates.sorted(by: { $0.count > $1.count }).first(where: {
+                rest.range(of: $0, options: [.caseInsensitive, .anchored]).map { ends($0.upperBound) } ?? false
+            }), let match = rest.range(of: name, options: [.caseInsensitive, .anchored]),
+                  let range = Range(index..<match.upperBound, in: result) else { continue }
+            result[range].font = .body.bold()
+            result[range].backgroundColor = .white.opacity(0.28)
+        }
+        return result
+    }
 
     static func targets(_ model: AppModel, scope: AnalyticsFilterScope, mention: (trigger: Character, query: String)) -> [Target] {
         let all: [Target]
