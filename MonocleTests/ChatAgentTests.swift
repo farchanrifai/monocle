@@ -213,8 +213,7 @@ final class ChatAgentTests: XCTestCase {
     func testMentionsMarkKnownNamesOnly() {
         let names: [Character: [String]] = ["@": ["Everyday", "Tokyo Trip"], "#": ["Food & Drink", "Food"]]
         func marked(_ text: String) -> [String] {
-            let result = ChatMentionList.highlight(text, names: names, color: .red, bold: true)
-            return result.runs.filter { $0.foregroundColor != nil }.map { String(result[$0.range].characters) }
+            ChatMentionList.mentionRanges(text, names: names).map { String(text[$0]) }
         }
         XCTAssertEqual(marked("last month on #Food & Drink  @Everyday"), ["#Food & Drink", "@Everyday"])
         XCTAssertEqual(marked("#food is cheap, @tokyo trip too"), ["#food", "@tokyo trip"], "case doesn't matter")
@@ -224,16 +223,15 @@ final class ChatAgentTests: XCTestCase {
 
     func testDraftColoursTheMentionBeingTyped() {
         let names: [Character: [String]] = ["@": ["Everyday"], "#": ["Food & Drink"]]
-        let result = ChatMentionList.highlight("on #Foo", names: names, color: .red, bold: false, typing: true)
-        XCTAssertEqual(result.runs.filter { $0.foregroundColor != nil }.map { String(result[$0.range].characters) }, ["#Foo"])
-        XCTAssertTrue(ChatMentionList.highlight("on #Foo", names: names, color: .red, bold: false).runs.allSatisfy { $0.foregroundColor == nil })
+        let text = "on #Foo"
+        XCTAssertEqual(ChatMentionList.mentionRanges(text, names: names, typing: true).map { String(text[$0]) }, ["#Foo"])
+        XCTAssertTrue(ChatMentionList.mentionRanges(text, names: names).isEmpty)
     }
 
     func testTypingColoursOnlyTheNamePartOfTheTail() {
         let names: [Character: [String]] = ["@": ["Work", "Tokyo Trip"], "#": ["Food & Drink"]]
         func coloured(_ text: String) -> [String] {
-            let result = ChatMentionList.highlight(text, names: names, color: .red, bold: false, typing: true)
-            return result.runs.filter { $0.foregroundColor != nil }.map { String(result[$0.range].characters) }
+            ChatMentionList.mentionRanges(text, names: names, typing: true).map { String(text[$0]) }
         }
         XCTAssertEqual(coloured("what's in @Work last month?"), ["@Work"])
         XCTAssertEqual(coloured("on @Tokyo Tr"), ["@Tokyo Tr"], "an unfinished multi-word name stays coloured")

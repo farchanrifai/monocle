@@ -50,7 +50,9 @@ struct ChatTranscript: View {
     private func rowView(_ row: ChatRow, hasTail: Bool) -> some View {
         switch row.kind {
         case .user(let text), .assistant(let text):
-            ChatBubble(isUser: row.isUser, hasTail: hasTail) { Text(row.isUser ? mentionStyled(text) : Self.markdown(text)) }
+            ChatBubble(isUser: row.isUser, hasTail: hasTail) {
+                if row.isUser { mentionStyled(text).textRenderer(MentionChipRenderer(chip: .black.opacity(0.28))) } else { Text(Self.markdown(text)) }
+            }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text(row.isUser ? "You: " : "Monocle: ") + Text(Self.markdown(text)))
                 .contextMenu {
@@ -112,10 +114,9 @@ struct ChatTranscript: View {
         index > 0 && rows[index - 1].isUser != rows[index].isUser
     }
 
-    /// A sent message with its @card and #category mentions in their own colour, so they read apart from the rest of the text.
-    private func mentionStyled(_ text: String) -> AttributedString {
-        // White on the bubble's red can't change hue and stay readable, so the mention gets a darker chip instead.
-        ChatMentionList.highlight(text, names: ChatMentionList.names(model), color: .white, background: .black.opacity(0.28), bold: true)
+    /// A sent message with its @card and #category mentions as chips, so they read apart from the rest of the text.
+    private func mentionStyled(_ text: String) -> Text {
+        ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true)
     }
 
     private static func markdown(_ text: String) -> AttributedString {
@@ -178,6 +179,24 @@ struct ChatScopeMenuItems: View {
 
 /// Typing "@" in the chat input lists stacks and cards; picking one sets the chat scope, like the scope menu.
 /// Floats above the input (attach with `.overlay(alignment: .top)`), so the transcript never moves.
+/// Marks the text of a mention so `MentionChipRenderer` can find it.
+struct MentionChip: TextAttribute {}
+
+/// Draws a rounded, padded chip behind every `MentionChip` run, then the text on top.
+/// The chip reaches a little past the glyphs; it never changes the text's own layout.
+struct MentionChipRenderer: TextRenderer {
+    var chip: Color
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        for line in layout {
+            for run in line where run[MentionChip.self] != nil {
+                let rect = run.typographicBounds.rect.insetBy(dx: -4, dy: -1)
+                context.fill(Path(roundedRect: rect, cornerRadius: 7, style: .continuous), with: .color(chip))
+            }
+        }
+        for line in layout { context.draw(line) }
+    }
+}
+
 /// The composer's text field with @ and # mentions in colour. SwiftUI's TextField can't colour part of its text, so the
 /// field's own text is clear and a Text with the same font and width is drawn over it; the caret and selection stay native.
 struct MentionTextField: View {
@@ -191,7 +210,8 @@ struct MentionTextField: View {
             .foregroundStyle(.clear)
             .accessibilityIdentifier(identifier)
             .overlay(alignment: .topLeading) {
-                Text(ChatMentionList.highlight(text, names: names, color: .blue, bold: false, typing: true))
+                ChatMentionList.styled(text, names: names, color: .blue, bold: false, typing: true)
+                    .textRenderer(MentionChipRenderer(chip: .blue.opacity(0.16)))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -229,17 +249,11 @@ struct ChatMentionList: View {
         return ["@": model.stacks.map(\.name) + model.cards.map(\.name) + ["All Cards"], "#": categories]
     }
 
-    /// Colours each "@Name" / "#Name" (a known name after a space or at the start, longest match first).
-    /// `typing` also colours the unfinished mention at the end of a draft. The composer passes `bold: false`:
-    /// it draws this text over its own invisible text, so the glyphs must keep the same widths.
-    static func highlight(_ text: String, names: [Character: [String]], color: Color, background: Color? = nil, bold: Bool, typing: Bool = false) -> AttributedString {
-        var result = AttributedString(text)
-        func paint(_ range: Range<String.Index>) {
-            guard let target = Range(range, in: result) else { return }
-            result[target].foregroundColor = color
-            if let background { result[target].backgroundColor = background }
-            if bold { result[target].font = .body.bold() }
-        }
+    /// The "@Name" / "#Name" stretches of a draft (a known name after a space or at the start, longest match first).
+    /// `typing` adds the unfinished mention at the end: the trigger plus as much of the text after it as still begins
+    /// some name, so "@Work last month?" gives only "@Work" and an unfinished "@Tokyo Tr" gives all of it.
+    static func mentionRanges(_ text: String, names: [Character: [String]], typing: Bool = false) -> [Range<String.Index>] {
+        var ranges: [Range<String.Index>] = []
         var index = text.startIndex
         while index < text.endIndex {
             defer { index = text.index(after: index) }
@@ -249,18 +263,33 @@ struct ChatMentionList: View {
             guard let name = candidates.sorted(by: { $0.count > $1.count }).first(where: {
                 rest.range(of: $0, options: [.caseInsensitive, .anchored]).map { ends($0.upperBound) } ?? false
             }), let match = rest.range(of: name, options: [.caseInsensitive, .anchored]) else { continue }
-            paint(index..<match.upperBound)
+            ranges.append(index..<match.upperBound)
         }
-        // The word being typed: the trigger plus as much of the text after it as still begins some name, so
-        // "@Work last month?" colours only "@Work" and an unfinished "@Tokyo Tr" colours all of it.
         if typing, let open = mention(in: text), let start = text.lastIndex(of: open.trigger) {
             let tail = text[text.index(after: start)...].lowercased()
             let pool = (names[open.trigger] ?? []).map { $0.lowercased() }
             var length = tail.count
             while length > 0, !pool.contains(where: { $0.hasPrefix(String(tail.prefix(length))) }) { length -= 1 }
-            paint(start..<(text.index(start, offsetBy: 1 + length, limitedBy: text.endIndex) ?? text.endIndex))
+            ranges.append(start..<(text.index(start, offsetBy: 1 + length, limitedBy: text.endIndex) ?? text.endIndex))
         }
-        return result
+        // Overlapping or touching stretches become one chip.
+        return ranges.sorted { $0.lowerBound < $1.lowerBound }.reduce(into: []) { merged, range in
+            if let last = merged.last, range.lowerBound <= last.upperBound { merged[merged.count - 1] = last.lowerBound..<max(last.upperBound, range.upperBound) }
+            else { merged.append(range) }
+        }
+    }
+
+    /// The text with each mention in `color` and tagged for `MentionChipRenderer`, which draws the rounded chip behind it.
+    /// The composer passes `bold: false`: it draws this over its own invisible text, so the glyphs must keep the same widths.
+    static func styled(_ text: String, names: [Character: [String]], color: Color, bold: Bool, typing: Bool = false) -> Text {
+        var result = Text(verbatim: ""), cursor = text.startIndex
+        for range in mentionRanges(text, names: names, typing: typing) {
+            let plain = Text(verbatim: String(text[cursor..<range.lowerBound]))
+            let chip = Text(verbatim: String(text[range])).foregroundStyle(color).fontWeight(bold ? .bold : nil).customAttribute(MentionChip())
+            result = Text("\(result)\(plain)\(chip)")
+            cursor = range.upperBound
+        }
+        return Text("\(result)\(Text(verbatim: String(text[cursor...])))")
     }
 
     static func targets(_ model: AppModel, scope: AnalyticsFilterScope, mention: (trigger: Character, query: String)) -> [Target] {
