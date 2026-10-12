@@ -106,8 +106,10 @@ struct MacChatView: View {
                 .textFieldStyle(.plain)
                 .lineLimit(1...6)
                 .focused($inputFocused)
-                // Return picks the highlighted @ suggestion while one is showing.
+                // Return picks the highlighted @ or # suggestion while one is showing.
                 .onSubmit { if !ChatMentionList.pickSelected(mentionSelection, model: model, session: session, draft: &draft) { send(draft) } }
+                // Tab confirms the highlighted suggestion too; with no list showing it keeps moving focus.
+                .onKeyPress(.tab) { ChatMentionList.pickSelected(mentionSelection, model: model, session: session, draft: &draft) ? .handled : .ignored }
                 .onKeyPress(.downArrow) { ChatMentionList.move(1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
