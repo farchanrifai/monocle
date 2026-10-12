@@ -71,13 +71,13 @@ extension View {
 }
 
 extension ChatSession {
-    /// Timings measured from a 60fps recording of Messages on the Mac: the sideways sweep is a symmetric bell, fastest near 100ms and done by
+    /// Shape from a 60fps recording of Messages on the Mac, slowed about 1.4x for a softer feel: the sideways sweep is a symmetric bell, fastest near 100ms and done by
     /// ~180ms; the lift starts at ~110ms (overlapping the end of the sweep) and decelerates until ~380ms. The transcript uses the lift too.
-    static let sweepAnimation = Animation.easeInOut(duration: 0.18)
+    static let sweepAnimation = Animation.easeInOut(duration: 0.26)
     /// The bubble's lift is a spring so it overshoots its slot a little and settles back (bouncier than Messages, on purpose);
     /// the rows above ease without overshoot on the measured curve.
-    static let liftAnimation = Animation.spring(duration: 0.42, bounce: 0.35).delay(0.11)
-    static let rowsAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.28).delay(0.11)
+    static let liftAnimation = Animation.spring(duration: 0.6, bounce: 0.3).delay(0.16)
+    static let rowsAnimation = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.4).delay(0.16)
 
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
     /// `alongside` runs in the same animation (clearing the draft). Returns the row to hand to `send(appended:)`.
@@ -91,7 +91,7 @@ extension ChatSession {
         }
         if animated {
             Task {
-                try? await Task.sleep(for: .milliseconds(700)) // fallback; the view clears the flight when the lift completes
+                try? await Task.sleep(for: .milliseconds(1000)) // fallback; the view clears the flight when the lift completes
                 if flightID == row.id { flightID = nil }
             }
         }
