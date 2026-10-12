@@ -116,7 +116,7 @@ struct ChatTranscript: View {
 
     /// A sent message with its @card and #category mentions as chips, so they read apart from the rest of the text.
     private func mentionStyled(_ text: String) -> Text {
-        ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true)
+        ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true, padded: true)
     }
 
     private static func markdown(_ text: String) -> AttributedString {
@@ -186,10 +186,12 @@ struct MentionChip: TextAttribute {}
 /// The chip reaches a little past the glyphs; it never changes the text's own layout.
 struct MentionChipRenderer: TextRenderer {
     var chip: Color
+    /// How far the chip reaches past the text. The composer keeps this small: there the neighbours are one plain space away.
+    var outset: CGFloat = 1
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout {
             for run in line where run[MentionChip.self] != nil {
-                let rect = run.typographicBounds.rect.insetBy(dx: -4, dy: -1)
+                let rect = run.typographicBounds.rect.insetBy(dx: -outset, dy: -1)
                 context.fill(Path(roundedRect: rect, cornerRadius: 7, style: .continuous), with: .color(chip))
             }
         }
@@ -211,7 +213,7 @@ struct MentionTextField: View {
             .accessibilityIdentifier(identifier)
             .overlay(alignment: .topLeading) {
                 ChatMentionList.styled(text, names: names, color: .white, bold: false, typing: true)
-                    .textRenderer(MentionChipRenderer(chip: .blue))
+                    .textRenderer(MentionChipRenderer(chip: MC.red.opacity(0.75), outset: 2))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -280,12 +282,13 @@ struct ChatMentionList: View {
     }
 
     /// The text with each mention in `color` and tagged for `MentionChipRenderer`, which draws the rounded chip behind it.
-    /// The composer passes `bold: false`: it draws this over its own invisible text, so the glyphs must keep the same widths.
-    static func styled(_ text: String, names: [Character: [String]], color: Color, bold: Bool, typing: Bool = false) -> Text {
+    /// The composer passes `bold: false` and `padded: false`: it draws this over its own invisible text, so every glyph must keep its width.
+    /// `padded` puts a thin space inside each end of the chip, which is real room around the name without moving the words beside it.
+    static func styled(_ text: String, names: [Character: [String]], color: Color, bold: Bool, padded: Bool = false, typing: Bool = false) -> Text {
         var result = Text(verbatim: ""), cursor = text.startIndex
         for range in mentionRanges(text, names: names, typing: typing) {
             let plain = Text(verbatim: String(text[cursor..<range.lowerBound]))
-            let chip = Text(verbatim: String(text[range])).foregroundStyle(color).fontWeight(bold ? .bold : nil).customAttribute(MentionChip())
+            let chip = Text(verbatim: padded ? "\u{2009}\(text[range])\u{2009}" : String(text[range])).foregroundStyle(color).fontWeight(bold ? .bold : nil).customAttribute(MentionChip())
             result = Text("\(result)\(plain)\(chip)")
             cursor = range.upperBound
         }
