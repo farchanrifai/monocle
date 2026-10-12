@@ -114,7 +114,8 @@ struct ChatTranscript: View {
 
     /// A sent message with its @card and #category mentions in their own colour, so they read apart from the rest of the text.
     private func mentionStyled(_ text: String) -> AttributedString {
-        ChatMentionList.highlight(text, names: ChatMentionList.names(model), color: Color(red: 1, green: 0.9, blue: 0.55), bold: true)
+        // White on the bubble's red can't change hue and stay readable, so the mention gets a darker chip instead.
+        ChatMentionList.highlight(text, names: ChatMentionList.names(model), color: .white, background: .black.opacity(0.28), bold: true)
     }
 
     private static func markdown(_ text: String) -> AttributedString {
@@ -190,7 +191,7 @@ struct MentionTextField: View {
             .foregroundStyle(.clear)
             .accessibilityIdentifier(identifier)
             .overlay(alignment: .topLeading) {
-                Text(ChatMentionList.highlight(text, names: names, color: MC.red, bold: false, typing: true))
+                Text(ChatMentionList.highlight(text, names: names, color: .blue, bold: false, typing: true))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -231,11 +232,12 @@ struct ChatMentionList: View {
     /// Colours each "@Name" / "#Name" (a known name after a space or at the start, longest match first).
     /// `typing` also colours the unfinished mention at the end of a draft. The composer passes `bold: false`:
     /// it draws this text over its own invisible text, so the glyphs must keep the same widths.
-    static func highlight(_ text: String, names: [Character: [String]], color: Color, bold: Bool, typing: Bool = false) -> AttributedString {
+    static func highlight(_ text: String, names: [Character: [String]], color: Color, background: Color? = nil, bold: Bool, typing: Bool = false) -> AttributedString {
         var result = AttributedString(text)
         func paint(_ range: Range<String.Index>) {
             guard let target = Range(range, in: result) else { return }
             result[target].foregroundColor = color
+            if let background { result[target].backgroundColor = background }
             if bold { result[target].font = .body.bold() }
         }
         var index = text.startIndex
@@ -249,7 +251,15 @@ struct ChatMentionList: View {
             }), let match = rest.range(of: name, options: [.caseInsensitive, .anchored]) else { continue }
             paint(index..<match.upperBound)
         }
-        if typing, let open = mention(in: text), let start = text.lastIndex(of: open.trigger) { paint(start..<text.endIndex) }
+        // The word being typed: the trigger plus as much of the text after it as still begins some name, so
+        // "@Work last month?" colours only "@Work" and an unfinished "@Tokyo Tr" colours all of it.
+        if typing, let open = mention(in: text), let start = text.lastIndex(of: open.trigger) {
+            let tail = text[text.index(after: start)...].lowercased()
+            let pool = (names[open.trigger] ?? []).map { $0.lowercased() }
+            var length = tail.count
+            while length > 0, !pool.contains(where: { $0.hasPrefix(String(tail.prefix(length))) }) { length -= 1 }
+            paint(start..<(text.index(start, offsetBy: 1 + length, limitedBy: text.endIndex) ?? text.endIndex))
+        }
         return result
     }
 

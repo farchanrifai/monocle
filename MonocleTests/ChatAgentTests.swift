@@ -229,6 +229,18 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertTrue(ChatMentionList.highlight("on #Foo", names: names, color: .red, bold: false).runs.allSatisfy { $0.foregroundColor == nil })
     }
 
+    func testTypingColoursOnlyTheNamePartOfTheTail() {
+        let names: [Character: [String]] = ["@": ["Work", "Tokyo Trip"], "#": ["Food & Drink"]]
+        func coloured(_ text: String) -> [String] {
+            let result = ChatMentionList.highlight(text, names: names, color: .red, bold: false, typing: true)
+            return result.runs.filter { $0.foregroundColor != nil }.map { String(result[$0.range].characters) }
+        }
+        XCTAssertEqual(coloured("what's in @Work last month?"), ["@Work"])
+        XCTAssertEqual(coloured("on @Tokyo Tr"), ["@Tokyo Tr"], "an unfinished multi-word name stays coloured")
+        XCTAssertEqual(coloured("on @zzz"), ["@"], "no name starts that way: only the trigger")
+        XCTAssertEqual(coloured("on #"), ["#"])
+    }
+
     func testRangeLabelNamesTheDates() {
         XCTAssertTrue(ToolExecutor.rangeLabel("2026-10-01", "2026-10-31").hasPrefix("1–"))
         XCTAssertTrue(ToolExecutor.rangeLabel("2026-10-01", "2026-10-31").contains("2026"))
