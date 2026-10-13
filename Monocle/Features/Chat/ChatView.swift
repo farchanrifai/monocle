@@ -15,9 +15,6 @@ struct ChatView: View {
     @State private var showingSetup = false
     @State private var mentionSelection = 0
     @State private var composerHeight: CGFloat = 0
-    @State private var fieldFrame: CGRect = .zero
-    @State private var flightX: CGFloat = 0
-    @State private var flightY: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isTyping: Bool { session.isTyping }
@@ -49,7 +46,7 @@ struct ChatView: View {
             .overlay(alignment: .bottom) {
                 Group {
                   if chatEnabled && hasKey {
-                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) }, onFieldFrame: { fieldFrame = $0 })
+                    ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
                         .overlay(alignment: .top) {
                             ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
                                 .padding(.horizontal, 12)
@@ -66,17 +63,6 @@ struct ChatView: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
             }
             .environment(\.chatFlightID, session.flightID)
-            .coordinateSpace(name: "chat")
-            .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil && ChatSession.sendStyle == .imessage, label: flightLabel)
-            .onChange(of: session.flightID) { _, id in
-                flightX = 0; flightY = 0
-                guard id != nil, ChatSession.sendStyle == .imessage else { return }
-                withAnimation(ChatSession.sweepAnimation) { flightX = 1 }
-                let landed = id
-                withAnimation(ChatSession.liftAnimation, completionCriteria: .logicallyComplete) { flightY = 1 } completion: {
-                    if session.flightID == landed { session.flightID = nil }
-                }
-            }
             .sensoryFeedback(.impact(weight: .light), trigger: sentCount)
             .navigationTitle("monocle")
             .navigationBarTitleDisplayMode(.inline)
@@ -119,12 +105,6 @@ struct ChatView: View {
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }
             }
         }
-    }
-
-    /// The message that is flying out of the field, styled like its bubble.
-    private var flightLabel: Text? {
-        guard let id = session.flightID, case .user(let text)? = session.rows.last(where: { $0.id == id })?.kind else { return nil }
-        return ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true, padded: true)
     }
 
     private func send(_ input: String) {

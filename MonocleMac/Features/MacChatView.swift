@@ -14,9 +14,6 @@ struct MacChatView: View {
     @State private var draft = ""
     @State private var mentionSelection = 0
     @FocusState private var inputFocused: Bool
-    @State private var fieldFrame: CGRect = .zero
-    @State private var flightX: CGFloat = 0
-    @State private var flightY: CGFloat = 0
     @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var model: AppModel { state.model }
@@ -62,17 +59,6 @@ struct MacChatView: View {
             }
         }
         .environment(\.chatFlightID, session.flightID)
-        .coordinateSpace(name: "chat")
-        .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil && ChatSession.sendStyle == .imessage, label: flightLabel)
-        .onChange(of: session.flightID) { _, id in
-            flightX = 0; flightY = 0
-            guard id != nil, ChatSession.sendStyle == .imessage else { return }
-            withAnimation(ChatSession.sweepAnimation) { flightX = 1 }
-            let landed = id
-            withAnimation(ChatSession.liftAnimation, completionCriteria: .logicallyComplete) { flightY = 1 } completion: {
-                if session.flightID == landed { session.flightID = nil }
-            }
-        }
         .navigationTitle("Chat")
         .onExitCommand { close?() } // Esc hides the Quick Chat panel
         .onAppear {
@@ -90,12 +76,6 @@ struct MacChatView: View {
         if ChatSession.usesFakeClaude { return true }
         #endif
         return APIKeyStore.read() != nil
-    }
-
-    /// The message that is flying out of the field, styled like its bubble.
-    private var flightLabel: Text? {
-        guard let id = session.flightID, case .user(let text)? = session.rows.last(where: { $0.id == id })?.kind else { return nil }
-        return ChatMentionList.styled(text, names: ChatMentionList.names(model), color: .white, bold: true, padded: true)
     }
 
     private var gutter: CGFloat { compact ? 16 : 24 }
@@ -141,8 +121,6 @@ struct MacChatView: View {
                 .onKeyPress(.downArrow) { ChatMentionList.move(1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .onKeyPress(.upArrow) { ChatMentionList.move(-1, selection: &mentionSelection, model: model, session: session, draft: draft) ? .handled : .ignored }
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                // Where a sent bubble starts: its shape grows out of this field (ChatFlight).
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("chat")) } action: { fieldFrame = $0 }
                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
             Button { send(draft) } label: {
                 Image(systemName: "arrow.up").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)

@@ -4,7 +4,7 @@
 
 **Next:** the chat follow-up period carry-over is fixed in code (`6f720d1`, `lastPeriod` repeated in `app_context`, test `testFollowUpPeriodIsReadFromToolCalls`); only a live check on a phone is left ("last month spending", then "what categories?"). Pick from the open list. Update `CHANGELOG.md` for 0.8.6-0.8.9 when the next IPA is built (not done yet).
 
-**Send style:** WhatsApp style is the default and the user is happy with the iOS result as of 0.8.8. `ChatSession.sendStyle` (`chatSendStyle` default) still switches to iMessage; ask the user which to keep, then delete the other and the switch. Constants are in the `ChatSession` extension in `Monocle/Features/Chat/ChatBubble.swift`.
+**Send style:** decided, WhatsApp style kept. The iMessage flight and the `chatSendStyle` switch are deleted (tag `chat-flight-imessage` keeps the old code). Constants: `ChatSession.growDuration` / `whatsappGrow` / `replyAnimation` in `Monocle/Features/Chat/ChatBubble.swift`; `CHAT_SPEC.md` §12.
 
 **Open items (none blocking):**
 - Chat: budget tool only covers the current cycle; Apple on-device probe 9/11 (also failing on `main`); keep the Apple backend for now (user decision); a proxy before sharing the app; chat streaming and localized strings.
