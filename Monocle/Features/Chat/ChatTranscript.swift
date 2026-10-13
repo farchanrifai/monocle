@@ -30,10 +30,10 @@ struct ChatTranscript: View {
                                 if let text {
                                     Text(Self.markdown(streaming ? session.pacer.visible : text))
                                         .textRenderer(StreamFadeRenderer(shown: shown))
+                                        .modifier(SmoothHeight())
                                         .transition(.opacity)
                                 } else { TypingDots().transition(.opacity) }
                             }
-                            .animation(.easeOut(duration: 0.2), value: Int(shown ?? -1)) // the bubble follows the text instead of jumping
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(text.map { Text("Monocle: ") + Text(Self.markdown($0)) } ?? Text("Monocle is typing"))

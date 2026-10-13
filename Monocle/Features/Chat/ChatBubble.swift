@@ -152,3 +152,17 @@ struct StreamFadeRenderer: TextRenderer {
         }
     }
 }
+
+/// Lets a bubble's height glide when its text wraps onto a new line. A text view's own height changes instantly, so the height is
+/// measured and applied back as an animated frame; the new line fades in (`StreamFadeRenderer`) while the bubble opens for it.
+struct SmoothHeight: ViewModifier {
+    @State private var height: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+            .frame(height: height > 0 ? height : nil, alignment: .top)
+            .animation(.smooth(duration: 0.35), value: height)
+    }
+}

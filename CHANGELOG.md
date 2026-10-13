@@ -2,6 +2,9 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.3] - 2026-10-13
+- Streaming: when the reply wraps onto a new line the bubble opens smoothly for it instead of jumping a line at once.
+
 ## [0.9.2] - 2026-10-13
 ### Smoother streaming
 - Streamed text is paced: it appears at a steady speed (faster when a backlog builds) instead of in network-sized jumps, each new word fading in, and the bubble grows with it instead of stepping.
