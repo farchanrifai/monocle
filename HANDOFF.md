@@ -2,7 +2,7 @@
 
 `main` is merged and pushed up to `71760a9` (fast-forward of `feat/chat-category-mentions`; includes 0.8.5-0.8.8). SideStore has **0.8.8 (103)** (`monocle-0.8.8-build-103-unsigned.ipa`, SHA-256 `9df361f6e94a6be3acd37560c071fe7db1eee1bcc2fd0b7a481a693a8d5a3569`, also in iCloud `Monocle-codex/`). The `@name` scope fix (`71760a9`) is NOT in any IPA yet; the user said to batch it with the next change (next version 0.8.9 (104)).
 
-**Next:** verify whether the chat follow-up period carry-over ("what categories?" answers this month, not last) is already fixed by `6f720d1`; then pick from the open list. Update `CHANGELOG.md` for 0.8.6-0.8.9 when the next IPA is built (not done yet).
+**Next:** the chat follow-up period carry-over is fixed in code (`6f720d1`, `lastPeriod` repeated in `app_context`, test `testFollowUpPeriodIsReadFromToolCalls`); only a live check on a phone is left ("last month spending", then "what categories?"). Pick from the open list. Update `CHANGELOG.md` for 0.8.6-0.8.9 when the next IPA is built (not done yet).
 
 **Send style:** WhatsApp style is the default and the user is happy with the iOS result as of 0.8.8. `ChatSession.sendStyle` (`chatSendStyle` default) still switches to iMessage; ask the user which to keep, then delete the other and the switch. Constants are in the `ChatSession` extension in `Monocle/Features/Chat/ChatBubble.swift`.
 
