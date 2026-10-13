@@ -24,6 +24,7 @@ struct BubbleShape: Shape {
 /// and reports where it will rest; `ChatFlightLayer` draws the travelling shape.
 extension EnvironmentValues {
     @Entry var chatFlightID: UUID? = nil
+    @Entry var chatReplyID: UUID? = nil
 }
 
 struct ChatFlightTarget: PreferenceKey {
@@ -86,6 +87,7 @@ extension ChatSession {
     enum SendStyle { case imessage, whatsapp }
     static var sendStyle: SendStyle { UserDefaults.standard.string(forKey: "chatSendStyle") == "imessage" ? .imessage : .whatsapp }
     static let whatsappGrow = Animation.timingCurve(0.15, 0.6, 0.25, 1, duration: 0.26).delay(0.22)
+    static let replyAnimation = Animation.spring(duration: 0.45, bounce: 0.12)
     static var rowsAnimation: Animation { sendStyle == .whatsapp ? whatsappGrow : imessageRows }
 
     /// Appends the user's bubble inside a spring so its shape flies out of the composer field (`chatFlightLayer`), then lets go of the flight.
@@ -115,13 +117,14 @@ struct ChatBubble<Content: View>: View {
     var rowID: UUID? = nil
     @ViewBuilder let content: Content
     @Environment(\.chatFlightID) fileprivate var flightID
+    @Environment(\.chatReplyID) fileprivate var replyID
 
-    fileprivate var flying: Bool { rowID != nil && rowID == flightID }
+    fileprivate var flying: Bool { rowID != nil && rowID == (isUser ? flightID : replyID) }
     /// iMessage style: a travelling copy is drawn elsewhere, so this bubble stays invisible until it lands.
     fileprivate var hiddenForFlight: Bool { flying && ChatSession.sendStyle == .imessage }
     /// WhatsApp style: this bubble itself grows from its tail corner.
     @State private var grown = false
-    fileprivate var growing: Bool { flying && ChatSession.sendStyle == .whatsapp }
+    fileprivate var growing: Bool { flying && (!isUser || ChatSession.sendStyle == .whatsapp) }
 
     var body: some View {
         content
@@ -131,8 +134,8 @@ struct ChatBubble<Content: View>: View {
             // The travelling copy (shape and text) is drawn by `chatFlightLayer`; this one appears when it lands.
             .opacity(hiddenForFlight ? 0 : 1)
             .background { shape }
-            .scaleEffect(growing && !grown ? 0.15 : 1, anchor: isUser ? .bottomTrailing : .bottomLeading)
-            .onAppear { if growing { withAnimation(ChatSession.whatsappGrow) { grown = true } } }
+            .scaleEffect(growing && !grown ? (isUser ? 0.15 : 0.3) : 1, anchor: isUser ? .bottomTrailing : .bottomLeading)
+            .onAppear { if growing { withAnimation(isUser ? ChatSession.whatsappGrow : ChatSession.replyAnimation) { grown = true } } }
             .transition(rowID != nil ? .identity : .opacity)
             .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
             .padding(isUser ? .leading : .trailing, 48)

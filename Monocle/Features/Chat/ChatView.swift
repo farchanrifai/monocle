@@ -66,6 +66,7 @@ struct ChatView: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
             }
             .environment(\.chatFlightID, session.flightID)
+            .environment(\.chatReplyID, session.replyID)
             .coordinateSpace(name: "chat")
             .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil && ChatSession.sendStyle == .imessage, label: flightLabel)
             .onChange(of: session.flightID) { _, id in

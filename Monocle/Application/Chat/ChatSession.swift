@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 enum ProposalState: Equatable, Codable { case pending, saved, discarded, opened, undone }
 
@@ -65,6 +66,8 @@ final class ChatSession {
     var isTyping = false
     /// The user row currently morphing out of the composer (views only; never saved).
     var flightID: UUID?
+    /// The assistant bubble still growing out of the thinking bubble.
+    var replyID: UUID?
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
@@ -138,8 +141,8 @@ extension ChatSession {
         })
         self.agent = agent
         let outputs = await agent.send(text, scope: scope, now: .now)
-        isTyping = false
-        rows += outputs.map { output in
+        // The reply grows out of the thinking bubble: both changes land in one animation, the first text bubble scales up from its tail.
+        let reply = outputs.map { output -> ChatRow in
             switch output {
             case .text(let text): ChatRow(kind: .assistant(text))
             case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
@@ -148,6 +151,17 @@ extension ChatSession {
             case .chart(let chart): ChatRow(kind: .chart(chart))
             case .notice(let text): ChatRow(kind: .notice(text))
             case .error(let text): ChatRow(kind: .error(text))
+            }
+        }
+        replyID = reply.first { if case .assistant = $0.kind { true } else { false } }?.id
+        withAnimation(Self.replyAnimation) {
+            isTyping = false
+            rows += reply
+        }
+        if let id = replyID {
+            Task {
+                try? await Task.sleep(for: .milliseconds(800))
+                if replyID == id { replyID = nil }
             }
         }
         return outputs

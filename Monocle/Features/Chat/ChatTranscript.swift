@@ -21,7 +21,7 @@ struct ChatTranscript: View {
                 rowView(row, hasTail: isLastInRun(index))
                     .padding(.top, startsRun(index) ? 10 : 0)
             }
-            if session.isTyping { TypingBubble().padding(.top, 10).transition(.scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity)) }
+            if session.isTyping { TypingBubble().padding(.top, 10).transition(.asymmetric(insertion: .scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity), removal: .identity)) }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: session.isTyping)
     }
