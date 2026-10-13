@@ -164,7 +164,8 @@ struct MacChatView: View {
 
     private func send(_ input: String) {
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !session.isTyping, hasKey else { return }
-        let session = session, model = model, scope = scope
+        let session = session, model = model
+        let scope = ChatScopeMenuItems.applyMention(in: input, session: session, model: model)
         let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }
         Task {
             let outputs = await session.send(input, model: model, scope: scope, appended: row)

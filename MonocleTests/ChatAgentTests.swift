@@ -221,6 +221,15 @@ final class ChatAgentTests: XCTestCase {
         XCTAssertEqual(marked("mail me@Everyday and #Foodie"), [], "inside a word, or a longer word, is not a mention")
     }
 
+    func testTypedAtMentionSetsTheScopeOnSend() throws {
+        let session = ChatSession()
+        XCTAssertEqual(ChatScopeMenuItems.applyMention(in: "and @all cards?", session: session, model: model), .allCards)
+        XCTAssertEqual(session.scope, .allCards, "the header follows")
+        let stack = try XCTUnwrap(model.stacks.first { $0.name == "Daily" })
+        XCTAssertEqual(ChatScopeMenuItems.applyMention(in: "how much on @daily", session: session, model: model), .stack(id: stack.id, name: "Daily"))
+        XCTAssertEqual(ChatScopeMenuItems.applyMention(in: "no mention here", session: session, model: model), .stack(id: stack.id, name: "Daily"), "no mention keeps the scope")
+    }
+
     func testDraftColoursTheMentionBeingTyped() {
         let names: [Character: [String]] = ["@": ["Everyday"], "#": ["Food & Drink"]]
         let text = "on #Foo"

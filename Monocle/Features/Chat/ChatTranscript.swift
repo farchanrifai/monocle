@@ -180,6 +180,22 @@ struct ChatScopeMenuItems: View {
         session.rows.append(ChatRow(kind: .notice("Now answering about \(label(target))")))
     }
 
+    /// A hand-typed "@Name" that was never picked from the list still sets the scope on send, so the header never disagrees with the answer.
+    /// The last "@" mention wins; returns the scope the message is sent with.
+    static func applyMention(in text: String, session: ChatSession, model: AppModel) -> AnalyticsFilterScope {
+        let names = ChatMentionList.names(model)
+        if let range = ChatMentionList.mentionRanges(text, names: names).last(where: { text[$0].first == "@" }) {
+            let name = String(text[range].dropFirst())
+            let target: AnalyticsFilterScope? =
+                if let stack = model.stacks.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { .stack(id: stack.id, name: stack.name) }
+                else if let card = model.cards.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { .card(id: card.id, name: card.name) }
+                else if name.caseInsensitiveCompare("All Cards") == .orderedSame { .allCards }
+                else { nil }
+            if let target { select(target, session: session, model: model) }
+        }
+        return session.scope ?? homeScope(model)
+    }
+
     var body: some View {
         if !model.stacks.isEmpty {
             Section("Stacks") {
