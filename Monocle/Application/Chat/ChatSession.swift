@@ -68,6 +68,8 @@ final class ChatSession {
     var flightID: UUID?
     /// Identity of the thinking bubble; the reply's first text row reuses it so the bubble grows in place.
     var typingID = UUID()
+    /// The reply as it streams in; shown in the thinking bubble until the finished rows replace it. Never saved.
+    var streamingText: String?
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
@@ -139,7 +141,15 @@ extension ChatSession {
             #endif
             guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
             return try await ClaudeClient(apiKey: key).send(body)
+        } stream: { body, onText in
+            guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
+            return try await ClaudeClient(apiKey: key).stream(body, onText: onText)
         })
+        streamingText = nil
+        (agent as? ChatAgent)?.onText = { [weak self] delta in
+            guard let self else { return }
+            streamingText = delta.map { (streamingText ?? "") + $0 }
+        }
         self.agent = agent
         let outputs = await agent.send(text, scope: scope, now: .now)
         // The reply grows out of the thinking bubble: both changes land in one animation, the first text bubble scales up from its tail.
@@ -157,6 +167,7 @@ extension ChatSession {
         }
         withAnimation(Self.replyAnimation) {
             isTyping = false
+            streamingText = nil
             rows += reply
         }
         return outputs

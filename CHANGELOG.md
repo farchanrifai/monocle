@@ -2,6 +2,10 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.1] - 2026-10-13
+### Chat replies stream in
+- The reply appears word by word as Claude writes it: the thinking bubble opens up at the first words and keeps growing, instead of waiting for the whole answer. Tool steps (budget, summaries, expense proposals) still run before their cards appear. If the connection drops after text has shown, the error appears and the turn is rolled back as before.
+
 ## [0.9.0] - 2026-10-13
 ### Shortcuts that answer, and a smoother chat
 - New Shortcuts and Siri actions that only read: **How Much Did I Spend** (this month, last month, last 30 days, cycle, year to date; optionally one stack or card), **Budget Left**, and **Ask Monocle** (your question goes to AI chat; anything it proposes waits in the app for you to confirm). Stacks can now be picked in Shortcuts.

@@ -39,13 +39,14 @@ struct ChatTranscript: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: session.isTyping)
+        .animation(ChatSession.replyAnimation, value: session.streamingText == nil) // the thinking bubble opens up when the first words arrive
     }
 
     private var ids: [UUID] { rows.map(\.id) + (session.isTyping ? [session.typingID] : []) }
 
     /// `.some(nil)` for the thinking bubble, `.some(text)` for an assistant text, nil for every other row.
     private func bubbleText(_ row: ChatRow?) -> String?? {
-        guard let row else { return .some(nil) }
+        guard let row else { return .some(session.streamingText.flatMap { $0.isEmpty ? nil : $0 }) }
         if case .assistant(let text) = row.kind { return .some(text) }
         return nil
     }

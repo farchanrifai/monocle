@@ -33,11 +33,17 @@ final class ChatAgent: ChatBackend {
     private var lastPeriod: String?
     private let model: AppModel
     private let transport: (Data) async throws -> Data
+    /// Streams a request: calls back with each text delta and returns the assembled response. nil sends the whole request at once.
+    typealias Stream = (Data, @escaping @MainActor @Sendable (String) -> Void) async throws -> Data
+    private let stream: Stream?
+    /// Live text of the step being answered; `nil` marks the start of a new step (the previous step's text is final).
+    var onText: (@MainActor (String?) -> Void)?
 
-    init(model: AppModel, messages: [[String: Any]] = [], transport: @escaping (Data) async throws -> Data) {
+    init(model: AppModel, messages: [[String: Any]] = [], transport: @escaping (Data) async throws -> Data, stream: Stream? = nil) {
         self.model = model
         self.messages = messages
         self.transport = transport
+        self.stream = stream
     }
 
     /// Something the user did in the UI (saved or discarded a proposal) that Claude should know next turn.
@@ -72,7 +78,15 @@ final class ChatAgent: ChatBackend {
         for _ in 0..<Self.maxSteps {
             let reply: [String: Any]
             do {
-                let data = try await transport(try JSONSerialization.data(withJSONObject: requestBody()))
+                let data: Data
+                if let stream, let onText {
+                    onText(nil)
+                    var body = requestBody()
+                    body["stream"] = true
+                    data = try await stream(try JSONSerialization.data(withJSONObject: body)) { delta in onText(delta) }
+                } else {
+                    data = try await transport(try JSONSerialization.data(withJSONObject: requestBody()))
+                }
                 guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                       json["content"] is [[String: Any]] else { throw ClaudeClient.ClientError.invalidResponse }
                 reply = json

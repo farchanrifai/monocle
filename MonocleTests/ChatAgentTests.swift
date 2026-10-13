@@ -177,6 +177,82 @@ final class ChatAgentTests: XCTestCase {
         ["type": "tool_use", "id": id, "name": name, "input": input]
     }
 
+    // MARK: - Streaming
+
+    /// The events of one streamed message: thinking, a text block split in pieces, then a tool call whose input arrives as partial JSON.
+    private static let toolTurnEvents: [[String: Any]] = [
+        ["type": "message_start", "message": ["id": "msg_1", "role": "assistant", "content": [], "usage": ["input_tokens": 10]]],
+        ["type": "content_block_start", "index": 0, "content_block": ["type": "thinking", "thinking": "", "signature": ""]],
+        ["type": "content_block_delta", "index": 0, "delta": ["type": "thinking_delta", "thinking": "Hm."]],
+        ["type": "content_block_delta", "index": 0, "delta": ["type": "signature_delta", "signature": "sig123"]],
+        ["type": "content_block_stop", "index": 0],
+        ["type": "content_block_start", "index": 1, "content_block": ["type": "text", "text": ""]],
+        ["type": "content_block_delta", "index": 1, "delta": ["type": "text_delta", "text": "Let me "]],
+        ["type": "content_block_delta", "index": 1, "delta": ["type": "text_delta", "text": "check."]],
+        ["type": "content_block_stop", "index": 1],
+        ["type": "content_block_start", "index": 2, "content_block": ["type": "tool_use", "id": "t1", "name": "list_cards", "input": [String: Any]()]],
+        ["type": "content_block_delta", "index": 2, "delta": ["type": "input_json_delta", "partial_json": ""]],
+        ["type": "content_block_stop", "index": 2],
+        ["type": "message_delta", "delta": ["stop_reason": "tool_use"], "usage": ["output_tokens": 20]],
+        ["type": "message_stop"],
+    ]
+
+    func testStreamAssemblerRebuildsTheNonStreamingMessage() throws {
+        var assembler = StreamAssembler()
+        var deltas: [String] = []
+        for event in Self.toolTurnEvents { if let delta = assembler.add(event) { deltas.append(delta) } }
+        XCTAssertEqual(deltas, ["Let me ", "check."])
+        let message = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(assembler.message)) as? [String: Any])
+        XCTAssertEqual(message["stop_reason"] as? String, "tool_use")
+        let blocks = try XCTUnwrap(message["content"] as? [[String: Any]])
+        XCTAssertEqual(blocks.map { $0["type"] as? String }, ["thinking", "text", "tool_use"])
+        XCTAssertEqual(blocks[0]["thinking"] as? String, "Hm.")
+        XCTAssertEqual(blocks[0]["signature"] as? String, "sig123", "thinking must round-trip with its signature")
+        XCTAssertEqual(blocks[1]["text"] as? String, "Let me check.")
+        XCTAssertEqual(blocks[2]["name"] as? String, "list_cards")
+        XCTAssertNotNil(blocks[2]["input"] as? [String: Any], "an empty partial input is an empty object, not missing")
+    }
+
+    func testStreamAssemblerParsesPartialToolInput() throws {
+        var assembler = StreamAssembler()
+        for event: [String: Any] in [
+            ["type": "message_start", "message": ["role": "assistant"]],
+            ["type": "content_block_start", "index": 0, "content_block": ["type": "tool_use", "id": "t", "name": "get_summary", "input": [String: Any]()]],
+            ["type": "content_block_delta", "index": 0, "delta": ["type": "input_json_delta", "partial_json": "{\"period\": \"last_"]],
+            ["type": "content_block_delta", "index": 0, "delta": ["type": "input_json_delta", "partial_json": "month\"}"]],
+            ["type": "content_block_stop", "index": 0],
+            ["type": "message_stop"],
+        ] { _ = assembler.add(event) }
+        let message = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(assembler.message)) as? [String: Any])
+        let input = try XCTUnwrap(((message["content"] as? [[String: Any]])?.first)?["input"] as? [String: Any])
+        XCTAssertEqual(input["period"] as? String, "last_month")
+    }
+
+    func testAgentStreamsTextAndStillRunsTools() async throws {
+        // Step 1 streams a preface and asks for a tool; step 2 streams the answer.
+        var turns: [[[String: Any]]] = [
+            Self.toolTurnEvents,
+            [["type": "message_start", "message": ["role": "assistant"]],
+             ["type": "content_block_start", "index": 0, "content_block": ["type": "text", "text": ""]],
+             ["type": "content_block_delta", "index": 0, "delta": ["type": "text_delta", "text": "You have "]],
+             ["type": "content_block_delta", "index": 0, "delta": ["type": "text_delta", "text": "one card."]],
+             ["type": "content_block_stop", "index": 0],
+             ["type": "message_delta", "delta": ["stop_reason": "end_turn"]],
+             ["type": "message_stop"]],
+        ]
+        let agent = ChatAgent(model: model, transport: { _ in XCTFail("should stream"); return Data() }, stream: { body, onText in
+            var assembler = StreamAssembler()
+            for event in turns.removeFirst() { if let delta = assembler.add(event) { await onText(delta) } }
+            return try XCTUnwrap(assembler.message)
+        })
+        var live: [String?] = []
+        agent.onText = { live.append($0) }
+        let outputs = await agent.send("cards?", scope: .allCards)
+        XCTAssertEqual(live, [nil, "Let me ", "check.", nil, "You have ", "one card."], "nil marks each new step")
+        XCTAssertEqual(outputs, [.text("Let me check."), .text("You have one card.")])
+        XCTAssertEqual(agent.messages.count, 4, "user, assistant (tool_use), tool_result, assistant")
+    }
+
     func testStrictToolsStayUnderTheAPIOptionalParameterLimit() {
         func optionals(_ schema: [String: Any]) -> Int {
             let properties = schema["properties"] as? [String: [String: Any]] ?? [:]
