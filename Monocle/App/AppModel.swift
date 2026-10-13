@@ -990,7 +990,7 @@ final class AppModel {
         }
     }
 
-    /// One row per card with a budget this cycle, in the reporting currency (a card in another currency at today's rate, marked ≈).
+    /// One row per card with a budget this cycle, in the reporting currency (a card in another currency: spending at each expense's own rate, its limit at today's rate, marked ≈).
     func budgetLinesAcrossCards() -> (lines: [BudgetLine], approximate: Bool) {
         var lines: [BudgetLine] = [], mixed = false
         for card in unhiddenCards {
@@ -998,8 +998,10 @@ final class AppModel {
             var limit = status.limit, spent = status.spent
             if status.currency != reportingCurrency {
                 mixed = true
+                // Only the limit has no date, so only it converts at today's rate; spending is the sum of each expense's own
+                // reporting amount (already converted at its day's rate), so the ≈ marks the limit alone.
                 limit = approximate(limit, from: status.currency, to: reportingCurrency) ?? limit
-                spent = approximate(spent, from: status.currency, to: reportingCurrency) ?? spent
+                spent = Money.sum(expenses(for: card.id).filter { status.cycle.contains($0) }.map(\.amount))
             }
             lines.append(BudgetLine(id: card.id, name: card.name, limit: limit, spent: spent))
         }

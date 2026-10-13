@@ -2,6 +2,11 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.4] - 2026-10-13
+- Budgets across cards: a card in another currency now shows its spending at the rate of each expense's own day; only its limit converts at today's rate (still marked ≈).
+- Budget editor: a "Total until" goal now says it replaces this cycle's monthly budget, and what comes back when the goal ends.
+- Chat composer: clearing the message after Send no longer happens inside the send animation (an attempt at the "old text comes back when I type" bug; not reproduced in the simulator, so unconfirmed).
+
 ## [0.9.3] - 2026-10-13
 - Streaming: when the reply wraps onto a new line the bubble opens smoothly for it instead of jumping a line at once.
 

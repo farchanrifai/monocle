@@ -90,6 +90,24 @@ final class CurrencyTests: XCTestCase {
         XCTAssertNil(model.cards.first { $0.id == cardID }?.spendingCurrency) // same as budget currency
     }
 
+    func testAcrossCardsSpendingUsesEachExpensesOwnRateNotTodays() async throws {
+        let (model, _, dir) = try makeModel()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cardID = model.activeCardID
+        let category = try XCTUnwrap(model.activeCategories.first?.id)
+        try model.saveBudget(overallLimit: 2_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        try await model.setCardCurrencies(budget: "JPY", spending: nil, for: cardID)
+        // ¥1,000 typed at a manual Rp120 (today's cached rate is Rp100): the ledger keeps Rp120,000.
+        let yen = Expense(amount: 12_000_000, day: Day.string(.now), note: "Ramen", splits: [.init(categoryID: category, amount: 12_000_000)], cardID: cardID,
+                          originalAmount: 100_000, originalCurrency: "JPY", rate: "120", rateSource: .manual)
+        try model.save(yen)
+        let across = model.budgetLinesAcrossCards()
+        XCTAssertTrue(across.approximate, "the limit still converts at today's rate")
+        let line = try XCTUnwrap(across.lines.first { $0.id == cardID })
+        XCTAssertEqual(line.spent, 12_000_000, "spending is what was actually recorded in rupiah, not ¥1,000 at today's rate (Rp100,000)")
+        XCTAssertEqual(line.limit, 2_000_000_00, "¥20,000 back at today's Rp100")
+    }
+
     func testReportingCurrencyChangeReconvertsHistoryKeepsManualRatesAndConvertsBudgets() async throws {
         let (model, repo, dir) = try makeModel()
         defer { try? FileManager.default.removeItem(at: dir) }

@@ -32,13 +32,14 @@ extension ChatSession {
     static let whatsappGrow = Animation.timingCurve(0.15, 0.6, 0.25, 1, duration: 0.3)
     static let replyAnimation = Animation.spring(duration: 0.45, bounce: 0.12)
 
-    /// Appends the user's bubble inside the grow animation; `alongside` runs in the same animation (clearing the draft).
+    /// Appends the user's bubble inside the grow animation; `alongside` runs just before it, unanimated (clearing the draft).
     /// Returns the row to hand to `send(appended:)`.
     func appendUserRow(_ text: String, animated: Bool, alongside: () -> Void) -> ChatRow {
         let row = ChatRow(kind: .user(text))
         flightID = animated ? row.id : nil
+        // Clearing the draft stays outside the animation: a text field changed inside an animated transaction can keep showing its old text.
+        alongside()
         withAnimation(animated ? Self.whatsappGrow : nil) {
-            alongside()
             rows.append(row)
         }
         if animated {

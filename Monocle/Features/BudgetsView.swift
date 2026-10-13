@@ -163,6 +163,8 @@ struct BudgetEditor: View {
         return try Money.parse(input)
     }
     private var changingStartDay: Bool { startDay != budget.startDay }
+    /// A goal starts at this cycle's start, so it takes the place of a monthly budget that starts there.
+    private var replacesMonthly: Bool { budget.totalUntilDay == nil && budget.effectiveDay == Day.string(cycle.start) }
     private var transitionCycle: Cycle {
         .init(start: cycle.end, end: BudgetHistory.transitionEnd(after: cycle.end, startDay: startDay))
     }
@@ -180,6 +182,7 @@ struct BudgetEditor: View {
                     }
                 } footer: {
                     Text(isTotal ? "One amount for the whole period, from \(Day.title(Day.string(cycle.start))) through the last day. Use it for a trip or a goal."
+                                    + (replacesMonthly ? " It replaces this cycle's monthly budget, category limits included; the monthly total comes back when the goal ends, the category limits do not." : "")
                                  : "The budget repeats every cycle.")
                 }
                 Section("Overall budget · \(model.currency(ofCard: cardID))") {

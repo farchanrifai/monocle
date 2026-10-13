@@ -268,6 +268,7 @@ struct MentionTextField: View {
                 ChatMentionList.styled(text, names: names, color: .white, bold: false, typing: true)
                     .textRenderer(MentionChipRenderer(chip: MC.red.opacity(0.75), outset: 2))
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .transaction { $0.animation = nil } // the typed text mirrors the field exactly, never mid-transition
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }

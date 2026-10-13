@@ -301,6 +301,41 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
+    func testChatComposerIsReallyEmptyAfterSending() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)", "-chatBackend", "apple"]
+        app.launch()
+        app.buttons["chatButton"].tap()
+        app.buttons["chatSetup"].tap()
+        let toggle = app.switches["chatEnabledToggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.tap()
+        app.buttons["Done"].tap()
+
+        let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("first question")
+        app.buttons["chatSend"].tap()
+        sleep(2) // the reply (or the on-device error) arrives
+        input.tap()
+        input.typeText("x")
+        keepScreenshot(app.screenshot())
+        XCTAssertEqual(input.value as? String, "x", "the field must not bring back the sent message")
+
+        // Same again after the keyboard was dismissed by tapping the transcript, as on a phone.
+        app.buttons["chatSend"].tap()
+        sleep(2)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        input.tap()
+        input.typeText("y")
+        keepScreenshot(app.screenshot())
+        XCTAssertEqual(input.value as? String, "y", "the field must not bring back the sent message after the keyboard was dismissed")
+    }
+
+    @MainActor
     func testChatOptInFromBottomBarAndCloses() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
