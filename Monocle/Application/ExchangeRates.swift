@@ -5,8 +5,8 @@ protocol RateSource: Sendable {
     func rates(from: String, to: String, start: String, end: String) async throws -> [String: Decimal]
 }
 
-/// Frankfurter serves European Central Bank reference rates for working days. It's the app's
-/// only network request for data: it sends two currency codes and dates, nothing about expenses.
+/// Frankfurter serves European Central Bank reference rates for working days. The only data request that is always
+/// available (AI chat is opt-in): it sends two currency codes and dates, nothing about expenses. See docs/privacy.md.
 struct FrankfurterRateSource: RateSource {
     var session: URLSession = .shared
 

@@ -1,0 +1,39 @@
+# Monocle privacy policy (draft)
+
+Last updated: 2026-10-13. Draft for the owner to host; replace the contact line before publishing.
+
+Monocle keeps your spending on your device. There is no account, no sign-in, no analytics or advertising SDK, and no Monocle server.
+
+## What stays on your device
+Cards, expenses, categories, budgets, bills, settings, backups and the chat history (`chat.json`). Your personal Anthropic API key, if you add one, sits in the iOS/macOS Keychain on that device only. Face ID / passcode app lock is handled by the system; Monocle never sees your biometrics.
+
+## The two network requests the app can make
+
+| Request | When | What is sent | Who receives it |
+|---|---|---|---|
+| Exchange rates | You record or view an expense in a currency other than your reporting currency | Two currency codes and a date range, e.g. `JPY` to `IDR`, 2026-10-01 to 2026-10-13. Nothing about your expenses. | Frankfurter (`api.frankfurter.dev`, European Central Bank reference rates). Like any web request it also sees your IP address. |
+| AI chat | Only after you turn on AI Chat in Settings and add your own API key | Your message, the names of your cards, stacks and categories, and the results of the questions you ask (aggregates for the requested range; at most 50 rows). Never: app-lock settings, backups, card artwork, cards outside the chat scope. | Anthropic (`api.anthropic.com`), straight from your device using your own key. Anthropic's own terms and privacy policy apply to that request. |
+
+AI chat is off by default. Turning it off, or clearing the key, stops the requests. Chat history is deleted by Clear chat, Reset data, Clear all transactions and backup restore.
+
+## Sharing, selling, tracking
+Monocle does not sell or share your data and does not track you across apps or sites.
+
+## Contact
+<owner contact here>
+
+---
+
+# App Store privacy label (answers, if the app ships there)
+
+- **Data collected by the developer:** none. Monocle has no server; nothing is sent to the developer.
+- **Third-party data collection:** the two requests above go to third parties, but the data they receive is not linked to an identity by the app and is not used for tracking.
+  - Frankfurter: currency codes, dates (not personal data). IP address is incidental to the request.
+  - Anthropic (opt-in, user's own key): user content (the chat message and the spending context above). Declare "User Content" as collected by a third party only if Apple's review treats the user's own API key flow as developer-routed. The safer answer, if a proxy is added (CHAT_SPEC §8), is to declare User Content and Other Data collected, used for App Functionality, not linked to identity, not used for tracking.
+- **Tracking:** No.
+- **Required-reason APIs / `PrivacyInfo.xcprivacy`:** none exists in the repo yet. Add one before App Store submission and list the required-reason APIs the app actually uses (for example file timestamp and UserDefaults).
+
+# Before publishing
+1. Host this page and set the URL in App Store Connect (Privacy Policy URL).
+2. If the Cloudflare proxy lands, update the AI chat row: requests go to the proxy first, which forwards them and logs no message content.
+3. If sync (iCloud) is ever added, this page and the label change.
