@@ -66,8 +66,8 @@ final class ChatSession {
     var isTyping = false
     /// The user row currently morphing out of the composer (views only; never saved).
     var flightID: UUID?
-    /// The assistant bubble still growing out of the thinking bubble.
-    var replyID: UUID?
+    /// Identity of the thinking bubble; the reply's first text row reuses it so the bubble grows in place.
+    var typingID = UUID()
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
@@ -125,6 +125,7 @@ extension ChatSession {
         guard !text.isEmpty, !isTyping else { return [] }
         // A view that already appended the row (inside an animation) passes it as `appended`.
         if appended == nil { rows.append(ChatRow(kind: .user(text))) }
+        typingID = UUID()
         isTyping = true
         // Switching backend starts the other model fresh; Claude's history is kept for when it comes back.
         if Self.usesApple != (agent is AppleChatAgent) {
@@ -142,9 +143,10 @@ extension ChatSession {
         self.agent = agent
         let outputs = await agent.send(text, scope: scope, now: .now)
         // The reply grows out of the thinking bubble: both changes land in one animation, the first text bubble scales up from its tail.
-        let reply = outputs.map { output -> ChatRow in
+        let firstText = outputs.firstIndex { if case .text = $0 { true } else { false } }
+        let reply = outputs.enumerated().map { index, output -> ChatRow in
             switch output {
-            case .text(let text): ChatRow(kind: .assistant(text))
+            case .text(let text): ChatRow(id: index == firstText ? typingID : UUID(), kind: .assistant(text))
             case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
             case .change(let change): ChatRow(kind: .change(change, .pending))
             case .bill(let bill): ChatRow(kind: .bill(bill, .pending))
@@ -153,16 +155,9 @@ extension ChatSession {
             case .error(let text): ChatRow(kind: .error(text))
             }
         }
-        replyID = reply.first { if case .assistant = $0.kind { true } else { false } }?.id
         withAnimation(Self.replyAnimation) {
             isTyping = false
             rows += reply
-        }
-        if let id = replyID {
-            Task {
-                try? await Task.sleep(for: .milliseconds(800))
-                if replyID == id { replyID = nil }
-            }
         }
         return outputs
     }

@@ -17,13 +17,37 @@ struct ChatTranscript: View {
     var body: some View {
         LazyVStack(spacing: 4) {
             if rows.isEmpty && !session.isTyping { emptyState }
-            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                rowView(row, hasTail: isLastInRun(index))
-                    .padding(.top, startsRun(index) ? 10 : 0)
+            ForEach(Array(ids.enumerated()), id: \.element) { index, id in
+                let row = index < rows.count ? rows[index] : nil // nil: the thinking bubble
+                Group {
+                    // One call site for the thinking bubble and the reply's first text, so the same view grows in place.
+                    if let text = bubbleText(row) {
+                        ChatBubble(isUser: false, hasTail: isLastInRun(index), rowID: id) {
+                            if let text { Text(Self.markdown(text)).transition(.opacity) } else { TypingDots().transition(.opacity) }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(text.map { Text("Monocle: ") + Text(Self.markdown($0)) } ?? Text("Monocle is typing"))
+                        .contextMenu {
+                            if let text { Button("Copy", systemImage: "doc.on.doc") { Self.copy(text) } }
+                        }
+                    } else if let row {
+                        rowView(row, hasTail: isLastInRun(index))
+                    }
+                }
+                .padding(.top, startsRun(index) ? 10 : 0)
+                .transition(row == nil ? .scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity) : .identity)
             }
-            if session.isTyping { TypingBubble().padding(.top, 10).transition(.asymmetric(insertion: .scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity), removal: .identity)) }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: session.isTyping)
+    }
+
+    private var ids: [UUID] { rows.map(\.id) + (session.isTyping ? [session.typingID] : []) }
+
+    /// `.some(nil)` for the thinking bubble, `.some(text)` for an assistant text, nil for every other row.
+    private func bubbleText(_ row: ChatRow?) -> String?? {
+        guard let row else { return .some(nil) }
+        if case .assistant(let text) = row.kind { return .some(text) }
+        return nil
     }
 
     private var emptyState: some View {
@@ -106,13 +130,14 @@ struct ChatTranscript: View {
 
     // Tails sit on the last bubble of a same-sender run, as in Messages.
     private func isLastInRun(_ index: Int) -> Bool {
+        guard index < rows.count else { return true } // the thinking bubble
         guard rows[index].isBubble else { return false }
         let next = rows.indices.contains(index + 1) ? rows[index + 1] : nil
         return next == nil || next?.isUser != rows[index].isUser || next?.isBubble == false
     }
 
     private func startsRun(_ index: Int) -> Bool {
-        index > 0 && rows[index - 1].isUser != rows[index].isUser
+        index > 0 && rows[index - 1].isUser != (index < rows.count ? rows[index].isUser : false)
     }
 
     /// A sent message with its @card and #category mentions as chips, so they read apart from the rest of the text.

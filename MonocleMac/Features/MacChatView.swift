@@ -62,7 +62,6 @@ struct MacChatView: View {
             }
         }
         .environment(\.chatFlightID, session.flightID)
-            .environment(\.chatReplyID, session.replyID)
         .coordinateSpace(name: "chat")
         .chatFlightLayer(from: fieldFrame, x: flightX, y: flightY, active: session.flightID != nil && ChatSession.sendStyle == .imessage, label: flightLabel)
         .onChange(of: session.flightID) { _, id in
