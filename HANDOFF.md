@@ -1,24 +1,17 @@
 ## 1. Immediate Next Step
 
-**Merge `main` first (the user has to run it, or say so in the new session).** Background sessions are not allowed to push or merge `main`, so the chat branch is pushed but `main` is still at `319c04b` (0.8.4 (99)). `feat/chat-category-mentions` is a straight extension of `main` (about 25 commits, clean tree, pushed to `origin`, includes the 0.8.5 (100) bump). Run from the main checkout:
-`git fetch && git merge --ff-only origin/feat/chat-category-mentions && git push origin main`
-Then update `docs/planning/roadmap.md` only if the user wants (stale, 2026-09-09).
+`main` is merged and pushed up to `71760a9` (fast-forward of `feat/chat-category-mentions`; includes 0.8.5-0.8.8). SideStore has **0.8.8 (103)** (`monocle-0.8.8-build-103-unsigned.ipa`, SHA-256 `9df361f6e94a6be3acd37560c071fe7db1eee1bcc2fd0b7a481a693a8d5a3569`, also in iCloud `Monocle-codex/`). The `@name` scope fix (`71760a9`) is NOT in any IPA yet; the user said to batch it with the next change (next version 0.8.9 (104)).
 
-**0.8.5 (100) is built and published to SideStore** (feed `farchanrifai/monocle-releases`, tag `v0.8.5-build.100`): `monocle-0.8.5-build-100-unsigned.ipa`, SHA-256 `0199545566f4c1f66110f237a7f10c078251cf484c1a51425ae5b8284edb01b4`, also in iCloud `Monocle-codex/` (earlier IPAs kept). Built from the chat branch, not from `main`, so after the fast-forward `main` and the IPA match. SideStore should offer the update; the user has not installed it yet.
+**Next:** verify whether the chat follow-up period carry-over ("what categories?" answers this month, not last) is already fixed by `6f720d1`; then pick from the open list. Update `CHANGELOG.md` for 0.8.6-0.8.9 when the next IPA is built (not done yet).
 
-**Then watch on a phone what Claude never saw (Computer Use was down the whole session):**
-- WhatsApp-style send on iOS: first bubble in a fresh chat, keyboard up, long multi-line message, Reduce Motion. The Mac was confirmed "ok" by the user; iOS shares the code (`ChatBubble.swift`, wired in `ChatView.swift`) but was never watched.
-- Composer chip overlay (caret alignment on long or multi-line drafts, a chip at the very start possibly clipped, chip touching punctuation). If it drifts, replace it with a real `TextEditor(text: AttributedString)` (macOS 26 / iOS 26: Return-to-send via `onKeyPress`, manual placeholder).
-- Floating composer blur strength (solid 34 / fade 46 iOS, 36 / 40 Mac were guessed).
-
-**Send style switch (user is trying WhatsApp):** `ChatSession.sendStyle` reads the `chatSendStyle` default (`whatsapp` default, or `imessage`; `defaults write com.farchan.monocle.mac chatSendStyle imessage` on the Mac). WhatsApp: the bubble appears in its slot at 15% scale, holds 0.22s, grows from its tail corner (`whatsappGrow`: cubic-bezier 0.15, 0.6, 0.25, 1 over 0.26s); the rows above ease with it. iMessage: composer shape sweeps and lifts into the slot (`sweepAnimation`, `liftAnimation` spring bounce 0.3, `rowsAnimation`); tag `chat-flight-imessage` (`041a17e`) marks that baseline. Constants live in the `ChatSession` extension in `Monocle/Features/Chat/ChatBubble.swift`; details in `CHAT_SPEC.md` §12 "Send morph" and "Send style switch". Ask which style to keep; if one wins, delete the other and the switch.
+**Send style:** WhatsApp style is the default and the user is happy with the iOS result as of 0.8.8. `ChatSession.sendStyle` (`chatSendStyle` default) still switches to iMessage; ask the user which to keep, then delete the other and the switch. Constants are in the `ChatSession` extension in `Monocle/Features/Chat/ChatBubble.swift`.
 
 **Open items (none blocking):**
 - Chat: budget tool only covers the current cycle; Apple on-device probe 9/11 (also failing on `main`); keep the Apple backend for now (user decision); a proxy before sharing the app; chat streaming and localized strings.
 - Live checks pending: Quick Chat, charts and the `@`/`#` picker on iOS, Mac Analytics, iOS 0.8.x screens on a device (pushed navigation, Budgets tab, stack pill, new amount/rate layout).
 - Release housekeeping: privacy policy / App Store label must mention the Frankfurter (ECB) rate request; Mac Release app in `~/Applications` is old (`MONOCLE_SIGNING_IDENTITY="Clipboard Dev" scripts/build-macos.sh --install`); `docs/planning/roadmap.md` is stale; demo card still named "Sample book".
 - Model B gaps: stack cap is current-only (versioning needs `BudgetVersion.stackID` and backup format 9); stack and all-cards totals convert foreign cards at today's rate (marked ≈); saving a "Total until" goal replaces the cycle budget on the same `effectiveDay`; widget deep links `monocle://budgets` / `monocle://analytics` untested on a device.
-- Only `main` and the chat branch exist. This worktree (`.claude/worktrees/quickchat-window-fix`) is locked and is on `feat/chat-category-mentions`; the main checkout is on `main`.
+- `.claude/worktrees/quickchat-window-fix` is still on `feat/chat-category-mentions` (same commit as `main` now); the main checkout is on `main`.
 
 **Workflow notes for this repo:**
 - Two ways to record an expense: the manual form and AI chat. Text entry is gone; `ExpenseParser` stays only for the Shortcuts "record text" action.
@@ -33,12 +26,10 @@ Then update `docs/planning/roadmap.md` only if the user wants (stale, 2026-09-09
 
 ## 2. Last Completed Checkpoint
 
-**Chat UI session, committed and pushed on `feat/chat-category-mentions` (head = the 0.8.5 bump), published as SideStore 0.8.5 (100):**
-- Composer floats over the transcript on a `ProgressiveBlur` (`Monocle/Features/Chat/ProgressiveBlur.swift`, shared with the Mac target); bottom room is real padding equal to the measured composer height (`contentMargins` hid a first bubble behind the composer).
-- Send animation, Mac and iOS: iMessage-style flight (curves measured from the user's 60fps recordings of Messages, Mac and iPhone) and a WhatsApp-style grow-in-place (measured from a WhatsApp-style recording), switchable via `chatSendStyle`; WhatsApp is the default with a 0.22s hold. Mac confirmed OK by the user; iOS not watched.
-- Earlier on the branch: `#` category mentions, rounded mention chips, Tab to confirm, follow-up period carry-over, saved-chat fingerprint, chart dates.
-- Docs: `CHAT_SPEC.md` §12, `CHANGELOG.md` (`[0.8.5] - 2026-10-12`), this file. Memory note `chat-send-flight-imessage` keeps the iMessage constants.
+Chat UI polish from the user's phone recordings (frames read at 60fps), all merged to `main`:
+- Reply grows in place from the thinking bubble: the thinking bubble and the reply's first text row share one identity (`ChatSession.typingID`, one `ChatBubble` call site in `ChatTranscript`), so the bubble resizes and the text crossfades.
+- Sent (red) bubble: the old grow sat at 30% until the 800ms flight timer cleared because the `onAppear` state change never took effect. It is now clock-driven (`GrowIn` modifier with `TimelineView`, `ChatSession.growDuration` 0.3s, no hold).
+- A hand-typed `@name` sets the chat scope on send (`ChatScopeMenuItems.applyMention`, stacks, then cards, then All Cards); the header follows. `@` scope is sticky for the chat, not per message. New test `testTypedAtMentionSetsTheScopeOnSend`.
+- Published 0.8.6 (101), 0.8.7 (102), 0.8.8 (103).
 
-**Verified:** Mac and iOS builds succeed; the Release device build and IPA succeeded; iOS `ChatAgentTests` 18 pass; Mac unit tests 22 pass (1 skipped) as of the first morph commit (not rerun after the later timing changes). Not verified: Mac UI tests (skipped on purpose), any animation or the floating composer by Claude on screen, any iOS screen on a device, the composer chip and Tab behaviour on screen.
-
-**Shipped before this:** SideStore 0.8.4 (99), `monocle-0.8.4-build-99-unsigned.ipa`, SHA-256 `9c646796698686b51cf8d89932d99768ede93447b657423686b62a9656df9b15`.
+**Verified:** iOS and Mac builds; 242 iOS unit tests pass (4 skipped) at 0.8.7; `ChatAgentTests` 19 pass after the scope fix. The user confirmed on a phone that the AI bubble is OK (0.8.7) and then the red bubble fix (0.8.8). Not verified: Mac UI tests (skipped on purpose), the scope fix on a device, the full suite after the scope fix.
