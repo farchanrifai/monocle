@@ -1,6 +1,6 @@
 ## 1. Immediate Next Step
 
-0.9.5 (109) is the latest (file and SHA are in the release notes below once published; 0.9.4 was `monocle-0.9.4-build-108-unsigned.ipa`, SHA-256 `06a30ec1801d3b14975ee9405e69bc5dea58e664865db954492b673f72c470f2`). Streaming (0.9.1), pacer/fade (0.9.2) and the `SmoothHeight` wrap glide (0.9.3) are in CHAT_SPEC §12; 0.9.3 not yet confirmed on a phone.
+0.9.5 (109) is the latest (`monocle-0.9.5-build-109-unsigned.ipa`, SHA-256 `41ff628ede8eb041f8ef81db36cba8376c5c683ce4869f504e9ada23f4abb24e`, iCloud `Monocle-codex/`; 0.9.4 was `monocle-0.9.4-build-108-unsigned.ipa`, SHA-256 `06a30ec1801d3b14975ee9405e69bc5dea58e664865db954492b673f72c470f2`). Streaming (0.9.1), pacer/fade (0.9.2) and the `SmoothHeight` wrap glide (0.9.3) are in CHAT_SPEC §12; 0.9.3 not yet confirmed on a phone.
 
 **Composer bug (fix in 0.9.5, unconfirmed on a phone):** the user's recording showed that after Send the field was blank with no placeholder, so the UITextView still held the old text (the overlay mirrors the empty binding); it returned on the next keystroke (keyboard suggestion bar still showed the last word, so likely marked/autocorrect text blocked the programmatic clear). `ChatInputBar` now gives the field a new `.id` on every Send and refocuses it. Simulator tests (`testChatComposerIsReallyEmptyAfterSending`) cannot reproduce marked text, so only the user can confirm. Mac composer not touched. Also in 0.9.5: sending scrolls to the bottom (`ScrollPosition` + a second scroll after layout; `testChatSendFromTheTopScrollsToTheNewMessage`).
 
