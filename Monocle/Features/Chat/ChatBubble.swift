@@ -85,6 +85,7 @@ extension ChatSession {
     /// Switch with `defaults write <bundle id> chatSendStyle imessage` (or `whatsapp`). `chat-flight-imessage` is the tagged iMessage baseline.
     enum SendStyle { case imessage, whatsapp }
     static var sendStyle: SendStyle { UserDefaults.standard.string(forKey: "chatSendStyle") == "imessage" ? .imessage : .whatsapp }
+    static let growDuration = 0.3
     static let whatsappGrow = Animation.timingCurve(0.15, 0.6, 0.25, 1, duration: 0.3)
     static let replyAnimation = Animation.spring(duration: 0.45, bounce: 0.12)
     static var rowsAnimation: Animation { sendStyle == .whatsapp ? whatsappGrow : imessageRows }
@@ -121,7 +122,6 @@ struct ChatBubble<Content: View>: View {
     /// iMessage style: a travelling copy is drawn elsewhere, so this bubble stays invisible until it lands.
     fileprivate var hiddenForFlight: Bool { flying && ChatSession.sendStyle == .imessage }
     /// WhatsApp style: this bubble itself grows from its tail corner.
-    @State private var grown = false
     fileprivate var growing: Bool { flying && ChatSession.sendStyle == .whatsapp }
 
     var body: some View {
@@ -132,11 +132,25 @@ struct ChatBubble<Content: View>: View {
             // The travelling copy (shape and text) is drawn by `chatFlightLayer`; this one appears when it lands.
             .opacity(hiddenForFlight ? 0 : 1)
             .background { shape }
-            .scaleEffect(growing && !grown ? 0.3 : 1, anchor: isUser ? .bottomTrailing : .bottomLeading)
-            .onAppear { if growing { withAnimation(ChatSession.whatsappGrow) { grown = true } } }
+            .modifier(GrowIn(active: growing, anchor: isUser ? .bottomTrailing : .bottomLeading))
             .transition(rowID != nil ? .identity : .opacity)
             .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
             .padding(isUser ? .leading : .trailing, 48)
+    }
+}
+
+/// Scales the bubble up from its tail corner, driven by the clock rather than by a state change, so the first (small) frame
+/// can never wait on an animation transaction: it starts the moment the view is born and eases out over `ChatSession.growDuration`.
+private struct GrowIn: ViewModifier {
+    var active: Bool
+    var anchor: UnitPoint
+    @State private var born = Date()
+
+    func body(content: Content) -> some View {
+        TimelineView(.animation(paused: !active)) { context in
+            let t = min(max(context.date.timeIntervalSince(born) / ChatSession.growDuration, 0), 1)
+            content.scaleEffect(active ? 0.3 + 0.7 * (1 - pow(1 - t, 3)) : 1, anchor: anchor)
+        }
     }
 }
 
