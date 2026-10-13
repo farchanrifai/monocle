@@ -97,3 +97,58 @@ struct TypingDots: View {
             .foregroundStyle(.secondary)
     }
 }
+
+/// Paces streamed text: network chunks arrive in bursts, so the bubble reveals what has arrived at a steady rate
+/// (about 45 characters a second, faster when a backlog builds up) instead of in jumps. Driven by the view's clock.
+@MainActor
+final class StreamPacer {
+    private(set) var target = ""
+    private var shown = 0.0
+    private var last: Date?
+
+    /// The part of `target` revealed so far.
+    var visible: String { String(target.prefix(Int(shown.rounded(.up)))) }
+    var caughtUp: Bool { shown >= Double(target.count) - 0.5 }
+
+    func set(_ text: String) { target = text }
+    func reset() { target = ""; shown = 0; last = nil }
+
+    /// Moves the reveal to `date`; returns how many characters are revealed (fractional while the newest one fades in).
+    func advance(to date: Date) -> Double {
+        let dt = min(max(date.timeIntervalSince(last ?? date), 0), 0.1)
+        last = date
+        let count = Double(target.count)
+        shown = min(count, shown + max(45, (count - shown) * 4) * dt)
+        return shown
+    }
+
+    /// Lets the reveal catch up before the finished row replaces the streaming bubble (gives up after 1.5s: the view may not be on screen).
+    func drain() async {
+        for _ in 0..<30 where !caughtUp { try? await Task.sleep(for: .milliseconds(50)) }
+    }
+}
+
+/// Fades the newest glyphs in: each glyph is `fade` positions behind the newest one before it is fully opaque, so text appears
+/// with a soft leading edge as the pacer reveals it. `shown` nil draws the text normally.
+struct StreamFadeRenderer: TextRenderer {
+    var shown: Double?
+    var fade: Double = 12
+
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        guard let shown else { for line in layout { context.draw(line) }; return }
+        var total = 0
+        for line in layout { for run in line { total += run.count } }
+        let newest = shown - Double(Int(shown.rounded(.up)) - 1) // 0...1: how far the newest character has come in
+        var index = 0
+        for line in layout {
+            for run in line {
+                for slice in run {
+                    var glyph = context
+                    glyph.opacity = min(max((newest + Double(total - 1 - index)) / fade, 0), 1)
+                    glyph.draw(slice)
+                    index += 1
+                }
+            }
+        }
+    }
+}

@@ -2,6 +2,10 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.2] - 2026-10-13
+### Smoother streaming
+- Streamed text is paced: it appears at a steady speed (faster when a backlog builds) instead of in network-sized jumps, each new word fading in, and the bubble grows with it instead of stepping.
+
 ## [0.9.1] - 2026-10-13
 ### Chat replies stream in
 - The reply appears word by word as Claude writes it: the thinking bubble opens up at the first words and keeps growing, instead of waiting for the whole answer. Tool steps (budget, summaries, expense proposals) still run before their cards appear. If the connection drops after text has shown, the error appears and the turn is rolled back as before.

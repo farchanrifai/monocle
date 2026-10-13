@@ -22,8 +22,18 @@ struct ChatTranscript: View {
                 Group {
                     // One call site for the thinking bubble and the reply's first text, so the same view grows in place.
                     if let text = bubbleText(row) {
-                        ChatBubble(isUser: false, hasTail: isLastInRun(index), rowID: id) {
-                            if let text { Text(Self.markdown(text)).transition(.opacity) } else { TypingDots().transition(.opacity) }
+                        let streaming = row == nil && text != nil
+                        // The clock only runs while text streams in; at rest it renders once.
+                        TimelineView(.animation(paused: !streaming)) { context in
+                            let shown = streaming ? session.pacer.advance(to: context.date) : nil
+                            ChatBubble(isUser: false, hasTail: isLastInRun(index), rowID: id) {
+                                if let text {
+                                    Text(Self.markdown(streaming ? session.pacer.visible : text))
+                                        .textRenderer(StreamFadeRenderer(shown: shown))
+                                        .transition(.opacity)
+                                } else { TypingDots().transition(.opacity) }
+                            }
+                            .animation(.easeOut(duration: 0.2), value: Int(shown ?? -1)) // the bubble follows the text instead of jumping
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(text.map { Text("Monocle: ") + Text(Self.markdown($0)) } ?? Text("Monocle is typing"))

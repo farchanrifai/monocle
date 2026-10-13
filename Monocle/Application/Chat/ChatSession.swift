@@ -70,6 +70,8 @@ final class ChatSession {
     var typingID = UUID()
     /// The reply as it streams in; shown in the thinking bubble until the finished rows replace it. Never saved.
     var streamingText: String?
+    /// Reveals `streamingText` at a steady pace (see `StreamPacer`).
+    let pacer = StreamPacer()
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
@@ -146,9 +148,11 @@ extension ChatSession {
             return try await ClaudeClient(apiKey: key).stream(body, onText: onText)
         })
         streamingText = nil
+        pacer.reset()
         (agent as? ChatAgent)?.onText = { [weak self] delta in
             guard let self else { return }
             streamingText = delta.map { (streamingText ?? "") + $0 }
+            if let streamingText { pacer.set(streamingText) } else { pacer.reset() }
         }
         self.agent = agent
         let outputs = await agent.send(text, scope: scope, now: .now)
@@ -165,9 +169,11 @@ extension ChatSession {
             case .error(let text): ChatRow(kind: .error(text))
             }
         }
+        await pacer.drain() // let the last words finish fading in before the finished bubble replaces the stream
         withAnimation(Self.replyAnimation) {
             isTyping = false
             streamingText = nil
+            pacer.reset()
             rows += reply
         }
         return outputs
