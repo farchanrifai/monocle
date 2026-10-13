@@ -1,6 +1,6 @@
 ## 1. Immediate Next Step
 
-0.9.0 (104) is built and published (see the checkpoint below for file and SHA). `main` has everything. Shortcuts got read-only answer intents (`SpendingSummaryIntent`, `BudgetLeftIntent`, `AskMonocleIntent`, `StackEntity`, all in `Monocle/Integrations/ExpenseIntents.swift`, shared helper `AskAnswers` runs `ToolExecutor`).
+0.9.0 (104) is built and published (`monocle-0.9.0-build-104-unsigned.ipa`, SHA-256 `167e5e6490ac8b17c517430b73602daf34631a1dcbb43a4101be011a87208090`, also in iCloud `Monocle-codex/`). `main` has everything. Shortcuts got read-only answer intents (`SpendingSummaryIntent`, `BudgetLeftIntent`, `AskMonocleIntent`, `StackEntity`, all in `Monocle/Integrations/ExpenseIntents.swift`, shared helper `AskAnswers` runs `ToolExecutor`).
 
 **Next:** live-check on a phone: the three new Shortcuts and Siri phrases, the chat `@name` scope, "last month" then "what categories?". Then pick from the open list. Shortcuts gaps left: Add Expense takes whole rupiah only (no foreign currency or decimals; changing the `Int` parameter could break users' saved shortcuts, so needs care), no Remove-last-expense intent, no Indonesian phrases, no payment-method parameter, expenses are not `IndexedEntity` for Spotlight, the Control Center button only opens the app.
 
