@@ -2,6 +2,13 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.0] - 2026-10-13
+### Shortcuts that answer, and a smoother chat
+- New Shortcuts and Siri actions that only read: **How Much Did I Spend** (this month, last month, last 30 days, cycle, year to date; optionally one stack or card), **Budget Left**, and **Ask Monocle** (your question goes to AI chat; anything it proposes waits in the app for you to confirm). Stacks can now be picked in Shortcuts.
+- "Add an expense in Monocle" now means Add Expense only; Quick entry has its own phrase ("Quick entry in Monocle").
+- Chat: the reply grows out of the thinking bubble; the sent bubble starts growing at once instead of sitting small. The iMessage-style send animation and its switch are gone.
+- Chat: a hand-typed `@name` sets the scope when you send, so the header matches the answer.
+
 ## [0.8.5] - 2026-10-12
 ### AI Chat: mentions and context
 - Sent messages animate in: the bubble appears in its slot, holds a moment, then grows from its tail corner while the rows above ease up (iOS and Mac). An iMessage-style version, where the composer field's shape flies up into the slot, is built in and switchable (`chatSendStyle`). Reduce Motion skips both. The composer is transparent over a progressive blur and the transcript scrolls under it.

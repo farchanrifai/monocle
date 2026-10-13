@@ -162,4 +162,42 @@ final class IntentTests: XCTestCase {
         let saved = try XCTUnwrap(try store.expenses(in: second.id).first)
         XCTAssertEqual(saved.splits.first?.categoryID, allowed.id)
     }
+
+    func testSpendingSummaryAndBudgetIntentsAnswerFromTheSameToolsAsChat() async throws {
+        let (store, service, model) = try makeTestModel()
+        AppEnvironment.shared.model = model
+        AppEnvironment.shared.expenses = service
+        let card = try store.cards()[0]
+        let category = try XCTUnwrap(model.activeCategories(for: card.id).first)
+        try service.record(amountInRupiah: 28_000, categoryID: category.id, note: "Kopi", in: card.id)
+        try service.record(amountInRupiah: 12_000, categoryID: category.id, note: "Roti", in: card.id)
+
+        let summary = try AskAnswers.summary(period: .thisMonth, scope: AskAnswers.scopeName(card: CardEntity(card), stack: nil), model: model)
+        XCTAssertEqual(summary.count, 2)
+        XCTAssertEqual(summary.total.display, Money.format(40_000_00))
+
+        let all = try AskAnswers.summary(period: .thisMonth, scope: nil, model: model)
+        XCTAssertEqual(all.total.display, summary.total.display, "No scope means everything")
+
+        var intent = SpendingSummaryIntent()
+        intent.card = CardEntity(card)
+        _ = try await intent.perform()
+
+        XCTAssertThrowsError(try AskAnswers.summary(period: .thisMonth, scope: "card:Nope", model: model), "An unknown card is an error, not a zero")
+        _ = try await BudgetLeftIntent().perform()
+    }
+
+    func testAskMonocleNeedsChatOnAndNeverSavesAProposal() async throws {
+        let (_, service, model) = try makeTestModel()
+        AppEnvironment.shared.model = model
+        AppEnvironment.shared.expenses = service
+        UserDefaults.standard.removeObject(forKey: "chatEnabled")
+        var intent = AskMonocleIntent()
+        intent.question = "how much this month?"
+        do { _ = try await intent.perform(); XCTFail("chat is off") } catch AskError.chatOff {}
+
+        let proposal = Expense(amount: 28_000_00, day: "2026-10-13", note: "Kopi", splits: [], source: "chat", createdAt: .now)
+        XCTAssertEqual(AskMonocleIntent.spoken([.text("Hi"), .proposal(proposal)]), "Hi I prepared a change. Open Monocle to confirm it.")
+        XCTAssertEqual(AskMonocleIntent.spoken([]), "No answer.")
+    }
 }

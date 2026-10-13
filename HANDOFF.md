@@ -1,8 +1,8 @@
 ## 1. Immediate Next Step
 
-`main` is merged and pushed up to `71760a9` (fast-forward of `feat/chat-category-mentions`; includes 0.8.5-0.8.8). SideStore has **0.8.8 (103)** (`monocle-0.8.8-build-103-unsigned.ipa`, SHA-256 `9df361f6e94a6be3acd37560c071fe7db1eee1bcc2fd0b7a481a693a8d5a3569`, also in iCloud `Monocle-codex/`). The `@name` scope fix (`71760a9`) is NOT in any IPA yet; the user said to batch it with the next change (next version 0.8.9 (104)).
+0.9.0 (104) is built and published (see the checkpoint below for file and SHA). `main` has everything. Shortcuts got read-only answer intents (`SpendingSummaryIntent`, `BudgetLeftIntent`, `AskMonocleIntent`, `StackEntity`, all in `Monocle/Integrations/ExpenseIntents.swift`, shared helper `AskAnswers` runs `ToolExecutor`).
 
-**Next:** the chat follow-up period carry-over is fixed in code (`6f720d1`, `lastPeriod` repeated in `app_context`, test `testFollowUpPeriodIsReadFromToolCalls`); only a live check on a phone is left ("last month spending", then "what categories?"). Pick from the open list. Update `CHANGELOG.md` for 0.8.6-0.8.9 when the next IPA is built (not done yet).
+**Next:** live-check on a phone: the three new Shortcuts and Siri phrases, the chat `@name` scope, "last month" then "what categories?". Then pick from the open list. Shortcuts gaps left: Add Expense takes whole rupiah only (no foreign currency or decimals; changing the `Int` parameter could break users' saved shortcuts, so needs care), no Remove-last-expense intent, no Indonesian phrases, no payment-method parameter, expenses are not `IndexedEntity` for Spotlight, the Control Center button only opens the app.
 
 **Send style:** decided, WhatsApp style kept. The iMessage flight and the `chatSendStyle` switch are deleted (tag `chat-flight-imessage` keeps the old code). Constants: `ChatSession.growDuration` / `whatsappGrow` / `replyAnimation` in `Monocle/Features/Chat/ChatBubble.swift`; `CHAT_SPEC.md` §12.
 
