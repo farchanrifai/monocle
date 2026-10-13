@@ -2,6 +2,10 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.5] - 2026-10-13
+- Chat composer: after Send the field is recreated, so the old message can no longer come back when you start typing the next one (the old text was still inside the field, hidden by the display; seen in your screen recording).
+- Chat: sending while scrolled up brings the conversation back to the bottom, where your message and the reply appear.
+
 ## [0.9.4] - 2026-10-13
 - Budgets across cards: a card in another currency now shows its spending at the rate of each expense's own day; only its limit converts at today's rate (still marked ≈).
 - Budget editor: a "Total until" goal now says it replaces this cycle's monthly budget, and what comes back when the goal ends.

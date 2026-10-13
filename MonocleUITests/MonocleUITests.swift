@@ -336,6 +336,44 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
+    func testChatSendFromTheTopScrollsToTheNewMessage() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)", "-chatBackend", "apple"]
+        app.launch()
+        app.buttons["chatButton"].tap()
+        app.buttons["chatSetup"].tap()
+        let toggle = app.switches["chatEnabledToggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.tap()
+        app.buttons["Done"].tap()
+        let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+
+        // Enough messages that the first ones scroll off the top.
+        input.tap()
+        for number in 1...8 {
+            input.typeText("message number \(number)")
+            app.buttons["chatSend"].tap()
+            sleep(1)
+        }
+        // Scroll back to the start of the conversation.
+        for _ in 0..<6 { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))) }
+        let first = app.staticTexts["You: message number 1"], last8 = app.staticTexts["You: message number 8"]
+        XCTAssertTrue(first.isHittable, "scrolled to the start of the conversation")
+
+        input.tap()
+        input.typeText("brand new message")
+        app.buttons["chatSend"].tap()
+        let latest = app.staticTexts["You: brand new message"]
+        XCTAssertTrue(latest.waitForExistence(timeout: 3))
+        sleep(2)
+        XCTAssertTrue(latest.isHittable, "sending scrolls the conversation to the bottom")
+        XCTAssertFalse(first.isHittable, "and the start of the conversation is off screen")
+        keepScreenshot(app.screenshot())
+    }
+
+    @MainActor
     func testChatOptInFromBottomBarAndCloses() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString

@@ -14,6 +14,7 @@ struct ChatView: View {
     private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var showingSetup = false
     @State private var mentionSelection = 0
+    @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -30,6 +31,7 @@ struct ChatView: View {
                     // The composer floats over the transcript; this keeps the last bubble resting above it.
                     .padding(.bottom, composerHeight)
             }
+            .scrollPosition($scrollPosition)
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .scrollDismissesKeyboard(.interactively)
@@ -113,6 +115,12 @@ struct ChatView: View {
         let session = session, model = model
         let scope = ChatScopeMenuItems.applyMention(in: input, session: session, model: model)
         let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }
+        // Sending from higher up the conversation brings you back to the bottom, where the new message and its reply appear.
+        withAnimation(reduceMotion ? nil : .smooth) { scrollPosition.scrollTo(edge: .bottom) }
+        Task { // once more after layout, so the new bubble's height is counted
+            try? await Task.sleep(for: .milliseconds(120))
+            withAnimation(reduceMotion ? nil : .smooth) { scrollPosition.scrollTo(edge: .bottom) }
+        }
         Task {
             let outputs = await session.send(input, model: model, scope: scope, appended: row)
             // VoiceOver users hear the reply arrive without hunting for it.

@@ -13,6 +13,7 @@ struct MacChatView: View {
     private var hasKey: Bool { savedKey || backend == "apple" }
     @State private var draft = ""
     @State private var mentionSelection = 0
+    @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @FocusState private var inputFocused: Bool
     @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -34,6 +35,7 @@ struct MacChatView: View {
                         .padding(.bottom, composerHeight)
                         .frame(maxWidth: .infinity)
                 }
+                .scrollPosition($scrollPosition)
                 .defaultScrollAnchor(.bottom)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
                 .overlay(alignment: .bottom) {
@@ -145,6 +147,11 @@ struct MacChatView: View {
         let session = session, model = model
         let scope = ChatScopeMenuItems.applyMention(in: input, session: session, model: model)
         let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }
+        withAnimation(reduceMotion ? nil : .smooth) { scrollPosition.scrollTo(edge: .bottom) }
+        Task { // once more after layout, so the new bubble's height is counted
+            try? await Task.sleep(for: .milliseconds(120))
+            withAnimation(reduceMotion ? nil : .smooth) { scrollPosition.scrollTo(edge: .bottom) }
+        }
         Task {
             let outputs = await session.send(input, model: model, scope: scope, appended: row)
             if case .text(let reply)? = outputs.first(where: { if case .text = $0 { true } else { false } }) {
