@@ -6,13 +6,15 @@ struct ClaudeClient: Sendable {
     static let model = "claude-haiku-5-5"
 
     enum ClientError: LocalizedError {
-        case offline, unauthorized, busy, rejected(String), invalidResponse
+        case offline, unauthorized, deviceRejected, busy, limit(String), rejected(String), invalidResponse
 
         var errorDescription: String? {
             switch self {
             case .offline: "Chat needs internet. You can still add expenses with the + button."
             case .unauthorized: "Your API key was rejected. Check it in Settings → AI Chat."
+            case .deviceRejected: "This device's Luna registration was rejected. Remove it and register again in Settings → AI Chat."
             case .busy: "Claude is busy right now. Try again in a moment."
+            case .limit(let message): message
             case .rejected(let message): "Request failed: \(message)"
             case .invalidResponse: "Claude sent a reply the app couldn't read."
             }
@@ -52,7 +54,7 @@ struct ClaudeClient: Sendable {
         guard status == 200 else {
             var data = Data()
             for try await byte in bytes { data.append(byte) }
-            throw Self.failure(status: status, data: data)
+            throw failure(status: status, data: data)
         }
         var assembler = StreamAssembler()
         do {
@@ -72,7 +74,7 @@ struct ClaudeClient: Sendable {
     }
 
     private func makeRequest(_ body: Data) -> URLRequest {
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        var request = URLRequest(url: LunaProxy.messagesURL(for: apiKey))
         request.httpMethod = "POST"
         request.httpBody = body
         request.timeoutInterval = 60
@@ -89,14 +91,17 @@ struct ClaudeClient: Sendable {
         catch is URLError { throw ClientError.offline }
         guard let status = (response as? HTTPURLResponse)?.statusCode else { throw ClientError.invalidResponse }
         if status == 200 { return data }
-        throw Self.failure(status: status, data: data)
+        throw failure(status: status, data: data)
     }
 
-    private static func failure(status: Int, data: Data) -> ClientError {
-        switch status {
-        case 401, 403: .unauthorized
+    private func failure(status: Int, data: Data) -> ClientError {
+        // The Luna proxy marks its spend caps so they show their message instead of a retry (CHAT_SPEC §8).
+        if status == 429, let error = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? [String: Any],
+           error["type"] as? String == "luna_cap_error", let message = error["message"] as? String { return .limit(message) }
+        return switch status {
+        case 401, 403: LunaProxy.isProxyToken(apiKey) ? .deviceRejected : .unauthorized
         case 429, 500...599: .busy
-        default: .rejected(message(in: data) ?? "HTTP \(status)")
+        default: .rejected(Self.message(in: data) ?? "HTTP \(status)")
         }
     }
 

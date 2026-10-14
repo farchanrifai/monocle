@@ -6,6 +6,9 @@ struct ChatSettingsView: View {
     @AppStorage("chatBackend") private var backend = "claude"
     @State private var keyDraft = ""
     @State private var hasKey = APIKeyStore.read() != nil
+    @State private var inviteDraft = ""
+    @State private var registering = false
+    @State private var registerError: String?
 
     var body: some View {
         Form {
@@ -24,7 +27,7 @@ struct ChatSettingsView: View {
 
             if backend == "claude" { Section {
                 if hasKey {
-                    LabeledContent("API key", value: "Saved on this iPhone")
+                    LabeledContent(APIKeyStore.read().map(LunaProxy.isProxyToken) == true ? "Luna proxy" : "API key", value: "Saved on this iPhone")
                     Button("Remove key", role: .destructive) {
                         APIKeyStore.delete()
                         hasKey = false
@@ -40,10 +43,30 @@ struct ChatSettingsView: View {
                     }
                     .disabled(keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+                if !hasKey {
+                    SecureField("Invite code", text: $inviteDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("chatInviteField")
+                    Button(registering ? "Registering…" : "Register with invite") {
+                        registering = true
+                        registerError = nil
+                        Task {
+                            do {
+                                let token = try await LunaProxy.register(inviteCode: inviteDraft.trimmingCharacters(in: .whitespacesAndNewlines), deviceLabel: "Monocle iPhone")
+                                hasKey = APIKeyStore.save(token)
+                                inviteDraft = ""
+                            } catch { registerError = error.localizedDescription }
+                            registering = false
+                        }
+                    }
+                    .disabled(registering || inviteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if let registerError { Text(registerError).foregroundStyle(.red).font(.footnote) }
+                }
             } header: {
                 Text("Anthropic API key")
             } footer: {
-                Text("Stored in the Keychain on this device only. Create one at platform.claude.com.")
+                Text("Stored in the Keychain on this device only. Paste your own key from platform.claude.com, or register with an invite code to use the Luna server, which then relays your messages to Claude.")
             } }
         }
         .navigationTitle("AI Chat")

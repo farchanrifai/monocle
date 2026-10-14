@@ -59,3 +59,34 @@ final class ClaudeClientStreamTests: XCTestCase {
         catch ClaudeClient.ClientError.rejected(let message) { XCTAssertEqual(message, "too long") }
     }
 }
+
+final class LunaProxyTests: XCTestCase {
+    func testProxyTokenRoutesToTheWorkerAndPersonalKeysStayDirect() {
+        XCTAssertEqual(LunaProxy.messagesURL(for: "lt_abc").host, "luna-server.farchan.workers.dev")
+        XCTAssertEqual(LunaProxy.messagesURL(for: "lt_abc").path, "/llm/v1/messages")
+        XCTAssertEqual(LunaProxy.messagesURL(for: "sk-ant-xyz").absoluteString, "https://api.anthropic.com/v1/messages")
+    }
+
+    @MainActor
+    func testProxyCapShowsItsOwnMessageInsteadOfBusy() async {
+        CannedProtocol.status = 429
+        CannedProtocol.body = Data(#"{"type":"error","error":{"type":"luna_cap_error","message":"Today's AI limit for this device is used up."}}"#.utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [CannedProtocol.self]
+        let client = ClaudeClient(apiKey: "lt_test", session: URLSession(configuration: configuration))
+        do { _ = try await client.stream(Data("{}".utf8)) { _ in }; XCTFail("expected a limit error") }
+        catch { XCTAssertEqual(error.localizedDescription, "Today's AI limit for this device is used up.") }
+    }
+
+    @MainActor
+    func testRevokedProxyTokenAsksToRegisterAgain() async {
+        CannedProtocol.status = 401
+        CannedProtocol.body = Data("{}".utf8)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [CannedProtocol.self]
+        let client = ClaudeClient(apiKey: "lt_test", session: URLSession(configuration: configuration))
+        do { _ = try await client.stream(Data("{}".utf8)) { _ in }; XCTFail("expected a rejection") }
+        catch ClaudeClient.ClientError.deviceRejected {}
+        catch { XCTFail("wrong error \(error)") }
+    }
+}

@@ -140,6 +140,7 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 - SideStore install → no App Attest. v1 guard: per-install random token issued by the Worker, per-token rate limit + daily spend cap.
 - Before TestFlight/App Store: App Attest or sign-in.
 - Worker logs no message content.
+- **Built (Luna Worker, `luna-server`):** app registers with an owner-minted invite code (Settings → AI Chat) and stores the returned `lt_…` token in the same Keychain slot as a personal key; the `lt_` prefix routes requests to `https://luna-server.farchan.workers.dev/llm/v1/messages` (`LunaProxy.swift`). The Worker clamps model/max_tokens/server tools, meters usage per device, and returns 429 `luna_cap_error` when a cap is hit; `ClaudeClient` shows that message (`.limit`) instead of retrying as busy.
 
 ## 9. Privacy
 

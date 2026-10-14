@@ -107,6 +107,7 @@
 		9F471CA0C6A571DE6BF1DF84 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B77094E961D5E3F21A0C865A /* ChatView.swift */; };
 		A2280307B2F14361406D9981 /* ChatChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168B97772F4D84A4069D459D /* ChatChartView.swift */; };
 		A23CB608C2C5776D5B40210C /* SpendingActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */; };
+		A59062581C97F10ABC8737BB /* LunaProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8256E8503273CA251C53424C /* LunaProxy.swift */; };
 		A5DF105D10DC5C7A4FB122C1 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */; };
 		A75084F321F54945FD5190C3 /* ClaudeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */; };
 		A915ADE62CAC7D29C79F273F /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */; };
@@ -146,6 +147,7 @@
 		CFC2ED8F8DBC21291C70B446 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
 		D28862952E06ADCA4386CF2A /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
 		D6A62922768B3F0E803F2844 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */; };
+		D86CB7EF1BACB3E132457870 /* LunaProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8256E8503273CA251C53424C /* LunaProxy.swift */; };
 		DB38C125D8390B8EBE581AD0 /* PaidWithSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */; };
 		DDEBFCFF6342B39DCFB0D54D /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C6F2F7E78348046E865E34 /* BackupService.swift */; };
 		E4744CA94D57CE96A6BD7C60 /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD14F3361CFDC5E8013E693F /* ChatAgent.swift */; };
@@ -282,6 +284,7 @@
 		7F6058F202B9BEE64BFF836B /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
 		80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
 		8205E545FE1B914526921654 /* RecentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentsView.swift; sourceTree = "<group>"; };
+		8256E8503273CA251C53424C /* LunaProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaProxy.swift; sourceTree = "<group>"; };
 		82ABBAF91FAB26CF897BD7C9 /* MonocleMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MonocleMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8339F3A026D71C9C88AFC132 /* QuickEntryControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickEntryControl.swift; sourceTree = "<group>"; };
 		849E94FE728A21FC66DDD8FE /* MonocleTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonocleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -521,6 +524,7 @@
 				FD14F3361CFDC5E8013E693F /* ChatAgent.swift */,
 				528ED8945811020013D20C79 /* ChatSession.swift */,
 				0F1E13842D2817DAD0B12EA7 /* ClaudeClient.swift */,
+				8256E8503273CA251C53424C /* LunaProxy.swift */,
 				36A5A20992A825EF1360FD47 /* ToolExecutor.swift */,
 			);
 			path = Chat;
@@ -994,6 +998,7 @@
 				BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */,
 				2632A060A85BB7A9F0136CD0 /* ExpenseService.swift in Sources */,
 				9321C8B23F73EED9EA109E04 /* LocalStateStore.swift in Sources */,
+				D86CB7EF1BACB3E132457870 /* LunaProxy.swift in Sources */,
 				66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */,
 				3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */,
 				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
@@ -1051,6 +1056,7 @@
 				F5BD9E89A65E0C56FBABCA3E /* ExpenseService.swift in Sources */,
 				CABFBDC8861A2FE52A7918E5 /* GlobalHotKeyController.swift in Sources */,
 				814B6560E110230BC76787D5 /* LocalStateStore.swift in Sources */,
+				A59062581C97F10ABC8737BB /* LunaProxy.swift in Sources */,
 				6C19BA34061DC31098B56D9E /* MacActivityFilter.swift in Sources */,
 				EA616EA5AD2170C11A3A169E /* MacCardStats.swift in Sources */,
 				FEFD946846B76ED10F9D692E /* MacChatView.swift in Sources */,
@@ -1264,7 +1270,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 109;
+				CURRENT_PROJECT_VERSION = 110;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1286,7 +1292,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.9.5;
+				MARKETING_VERSION = 0.9.6;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -1394,7 +1400,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 109;
+				CURRENT_PROJECT_VERSION = 110;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1410,7 +1416,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.9.5;
+				MARKETING_VERSION = 0.9.6;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
