@@ -1,6 +1,8 @@
 ## 1. Immediate Next Step
 
-0.9.6 (110) is the latest (`monocle-0.9.6-build-110-unsigned.ipa`, SHA-256 `2877a0f83ff501a6b9294c2c983f81ad857405c4d05387a99e1e5c65c29a1a0d`; 0.9.5 was `monocle-0.9.5-build-109-unsigned.ipa`, SHA-256 `41ff628ede8eb041f8ef81db36cba8376c5c683ce4869f504e9ada23f4abb24e`, iCloud `Monocle-codex/`; 0.9.4 was `monocle-0.9.4-build-108-unsigned.ipa`, SHA-256 `06a30ec1801d3b14975ee9405e69bc5dea58e664865db954492b673f72c470f2`). Streaming (0.9.1), pacer/fade (0.9.2) and the `SmoothHeight` wrap glide (0.9.3) are in CHAT_SPEC §12; 0.9.3 not yet confirmed on a phone.
+0.9.7 (111) is the latest (`monocle-0.9.7-build-111-unsigned.ipa`, SHA-256 `e704d1a57b7eaaf092d8f189cfdc3f29c39a6125b9195665bed36f93e53bab4a`, iCloud `Monocle-codex/`; 0.9.6 was `monocle-0.9.6-build-110-unsigned.ipa`; 0.9.5 was `monocle-0.9.5-build-109-unsigned.ipa`, SHA-256 `41ff628ede8eb041f8ef81db36cba8376c5c683ce4869f504e9ada23f4abb24e`, iCloud `Monocle-codex/`; 0.9.4 was `monocle-0.9.4-build-108-unsigned.ipa`, SHA-256 `06a30ec1801d3b14975ee9405e69bc5dea58e664865db954492b673f72c470f2`). Streaming (0.9.1), pacer/fade (0.9.2) and the `SmoothHeight` wrap glide (0.9.3) are in CHAT_SPEC §12; 0.9.3 not yet confirmed on a phone.
+
+**0.9.7 adds the Luna bridge (opt-in snapshot push, Settings → Luna, `LunaBridge`; CHAT_SPEC §8) and `monocle://chat?q=`; not yet checked on a phone with a real invite/`ingest` scope.**
 
 **Composer bug (fix in 0.9.5, unconfirmed on a phone):** the user's recording showed that after Send the field was blank with no placeholder, so the UITextView still held the old text (the overlay mirrors the empty binding); it returned on the next keystroke (keyboard suggestion bar still showed the last word, so likely marked/autocorrect text blocked the programmatic clear). `ChatInputBar` now gives the field a new `.id` on every Send and refocuses it. Simulator tests (`testChatComposerIsReallyEmptyAfterSending`) cannot reproduce marked text, so only the user can confirm. Mac composer not touched. Also in 0.9.5: sending scrolls to the bottom (`ScrollPosition` + a second scroll after layout; `testChatSendFromTheTopScrollsToTheNewMessage`).
 
@@ -15,7 +17,6 @@
 - Live checks pending: Quick Chat, charts and the `@`/`#` picker on iOS, Mac Analytics, iOS 0.8.x screens on a device (pushed navigation, Budgets tab, stack pill, new amount/rate layout).
 - Release housekeeping: privacy policy drafted in `docs/privacy.md` (needs the owner's contact line, hosting, and a `PrivacyInfo.xcprivacy`, which does not exist yet); Mac Release app in `~/Applications` is old (`MONOCLE_SIGNING_IDENTITY="Clipboard Dev" scripts/build-macos.sh --install`); `docs/planning/roadmap.md` is stale; demo card still named "Sample book".
 - Model B gaps: stack cap is current-only (versioning needs `BudgetVersion.stackID` and backup format 9); stack and all-cards totals convert foreign cards at today's rate (marked ≈); saving a "Total until" goal replaces the cycle budget on the same `effectiveDay`; widget deep links `monocle://budgets` / `monocle://analytics` untested on a device.
-- `.claude/worktrees/quickchat-window-fix` is still on `feat/chat-category-mentions` (same commit as `main` now); the main checkout is on `main`.
 
 **Workflow notes for this repo:**
 - Two ways to record an expense: the manual form and AI chat. Text entry is gone; `ExpenseParser` stays only for the Shortcuts "record text" action.
@@ -30,10 +31,4 @@
 
 ## 2. Last Completed Checkpoint
 
-Chat UI polish from the user's phone recordings (frames read at 60fps), all merged to `main`:
-- Reply grows in place from the thinking bubble: the thinking bubble and the reply's first text row share one identity (`ChatSession.typingID`, one `ChatBubble` call site in `ChatTranscript`), so the bubble resizes and the text crossfades.
-- Sent (red) bubble: the old grow sat at 30% until the 800ms flight timer cleared because the `onAppear` state change never took effect. It is now clock-driven (`GrowIn` modifier with `TimelineView`, `ChatSession.growDuration` 0.3s, no hold).
-- A hand-typed `@name` sets the chat scope on send (`ChatScopeMenuItems.applyMention`, stacks, then cards, then All Cards); the header follows. `@` scope is sticky for the chat, not per message. New test `testTypedAtMentionSetsTheScopeOnSend`.
-- Published 0.8.6 (101), 0.8.7 (102), 0.8.8 (103).
-
-**Verified:** iOS and Mac builds; 242 iOS unit tests pass (4 skipped) at 0.8.7; `ChatAgentTests` 19 pass after the scope fix. The user confirmed on a phone that the AI bubble is OK (0.8.7) and then the red bubble fix (0.8.8). Not verified: Mac UI tests (skipped on purpose), the scope fix on a device, the full suite after the scope fix.
+Luna proxy, 0.9.6 (110), confirmed working on a phone: invite-code registration in Settings → AI Chat (`LunaProxy.swift`, `lt_` token in the API-key Keychain slot, requests routed to `luna-server.farchan.workers.dev`), cap errors shown as `.limit`, revoked token shown as `.deviceRejected` ("register again"), `content-type` header on `/register`. Tests: `LunaProxyTests`, 258 iOS unit tests pass at 0.9.7. `.claude/` is gitignored; the stale `quickchat-window-fix` worktree and two merged remote branches were removed by the user. Published as `monocle-0.9.6-build-110-unsigned.ipa`, SHA-256 `2877a0f83ff501a6b9294c2c983f81ad857405c4d05387a99e1e5c65c29a1a0d`.

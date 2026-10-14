@@ -141,6 +141,7 @@ Settings additions (in `SettingsView`): "AI Chat" toggle (shows disclosure on fi
 - Before TestFlight/App Store: App Attest or sign-in.
 - Worker logs no message content.
 - **Built (Luna Worker, `luna-server`):** app registers with an owner-minted invite code (Settings → AI Chat) and stores the returned `lt_…` token in the same Keychain slot as a personal key; the `lt_` prefix routes requests to `https://luna-server.farchan.workers.dev/llm/v1/messages` (`LunaProxy.swift`). The Worker clamps model/max_tokens/server tools, meters usage per device, and returns 429 `luna_cap_error` when a cap is hit; `ClaudeClient` shows that message (`.limit`) instead of retrying as busy.
+- **Luna bridge (opt-in snapshot push):** Settings → Luna (`LunaSettingsView`, `LunaBridge`) sends `LunaSnapshot` schema 1 (cards, bills + occurrences from 30 days back to 60 ahead, budget status for cards and stacks, this/last month totals by category; never expenses or notes) to `/ingest/monocle` with the same `lt_` token (needs the `ingest` scope). Debounced 8 s after each commit, plus on foreground and "Send now"; no retry queue. `revision` is the send time in ms (`committedRevision` restarts at 0 each launch). Golden payload: `MonocleTests/Fixtures/luna-snapshot-v1.json`, copied to `luna-server/test/fixtures/` (write it with `WRITE_LUNA_FIXTURE=1`). `monocle://chat?q=…` opens chat with the question in the composer.
 
 ## 9. Privacy
 

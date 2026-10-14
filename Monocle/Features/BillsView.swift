@@ -915,6 +915,22 @@ struct SettingsView: View {
                     Text("Add expenses and ask about your spending by chatting with Claude. Off until you turn it on.")
                 }
 
+                // MARK: Luna
+                Section {
+                    NavigationLink {
+                        LunaSettingsView(model: model)
+                    } label: {
+                        Label {
+                            Text("Luna")
+                        } icon: {
+                            SettingsIcon(symbol: "moon.stars.fill", color: MC.red)
+                        }
+                    }
+                    .accessibilityIdentifier("lunaSettings")
+                } footer: {
+                    Text("Share bills, budgets and monthly totals with your own Luna assistant. Off until you turn it on.")
+                }
+
                 // MARK: 5. Security & Privacy
                 Section {
                     NavigationLink {

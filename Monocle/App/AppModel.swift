@@ -78,6 +78,10 @@ final class AppModel {
     var csvInterchangeInitialTab = 0
     var showAnalytics = false
     var showChat = false
+    /// Text for the chat composer, set by `monocle://chat?q=` (Luna's "Ask in Monocle"); ChatView takes it.
+    var chatPrefill: String?
+    /// Opt-in snapshot push to the owner's Luna server (Settings → Luna).
+    @ObservationIgnored lazy var lunaBridge = LunaBridge(model: self)
     /// Replaced by AppEnvironment with a file-backed session; tests keep this in-memory one.
     var chat = ChatSession()
     var selectedTab = 0
@@ -290,7 +294,7 @@ final class AppModel {
             try ensureDefaultStack()
             try ensureSingleStackPerCard()
             try expenses.reconcileBills()
-            expenses.onCommit = { [weak self] in self?.committedWorkspaceChanged() }
+            expenses.onCommit = { [weak self] in self?.committedWorkspaceChanged(); self?.lunaBridge.schedule() }
             syncWidgetSnapshot()
             Task { [weak self] in await self?.prefetchCardRates() }
         } catch {

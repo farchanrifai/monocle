@@ -12,12 +12,14 @@
 		048A925144F7E74950D05BA3 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44BAEF7EC1FCF366A20C968B /* WidgetSnapshot.swift */; };
 		09034E4DD4D927104A87205D /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
 		09CD1347DC2C34DC992988F3 /* StackWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E776EC0867369F536BEBC4 /* StackWidget.swift */; };
+		0B2BE06AE93936FDFCDD7207 /* LunaSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B45E37134E777CB1990B86D /* LunaSnapshot.swift */; };
 		0D620B558ECBCB24392F65FD /* CategoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C573062CE2769892729F737 /* CategoryManager.swift */; };
 		0F6F3FFB14D8DD030BEC004F /* BackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7626BE09A6EE4CB31A47D198 /* BackupTests.swift */; };
 		110FAD1B3C0E0290C56184FC /* CSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37911938CA6DB5DDAECA328B /* CSVTests.swift */; };
 		122A67F2459579B86AE5C485 /* CardBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA606B3DC5ED4862EEE3ADE /* CardBackup.swift */; };
 		12321F76FEE42D2EAFE3275B /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCA3C08EAE94767AA19C79B /* AnalyticsView.swift */; };
 		130694EFB39C5DB23F31DAD3 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15119B5A62BE722F4E6FA3B4 /* AppLock.swift */; };
+		161E2F0D92CFB88ACC049FAD /* LunaSnapshot+Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00EE78F399CDA397B437001E /* LunaSnapshot+Model.swift */; };
 		18625E8091F4974B32DFD62A /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5D48F2860CCEE4CCF07F5C /* ChatBubble.swift */; };
 		192E542F8D2211B574F83755 /* ChatTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BA07EA7DEBD80FDC88F706 /* ChatTranscript.swift */; };
 		194046FA9F10CAA80CD213D7 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4633CBE5D575706F42975ED /* CardCustomization.swift */; };
@@ -27,6 +29,7 @@
 		23843A06C992562945B53391 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */; };
 		25D229DDD80BFE401EB36006 /* preferences.json in Resources */ = {isa = PBXBuildFile; fileRef = FFD2D60F98C962544A241747 /* preferences.json */; };
 		2632A060A85BB7A9F0136CD0 /* ExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */; };
+		268F22C289CEC8B8B6AF6B08 /* LunaSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7415226FFD94A5D2ECFA4C4 /* LunaSnapshotTests.swift */; };
 		272F246064287966CBFF7130 /* CardBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA606B3DC5ED4862EEE3ADE /* CardBackup.swift */; };
 		27FBC893C5758EE673836A2E /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE599406EF5472DD7EFA518D /* BudgetWidget.swift */; };
 		293AFAA58FB172153063BB2E /* MonocleMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3085159AA9E2AD61AD09383C /* MonocleMacUITests.swift */; };
@@ -76,11 +79,14 @@
 		66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */; };
 		6814704F0D8604EE1C1A76E3 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6058F202B9BEE64BFF836B /* MacSettingsView.swift */; };
 		687ABCAE104AC0BA97E9D3B6 /* MonocleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E643EF13CB000D733AF86E5 /* MonocleUITests.swift */; };
+		695F321D570EF8592506D57C /* LunaSnapshot+Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00EE78F399CDA397B437001E /* LunaSnapshot+Model.swift */; };
 		6C19BA34061DC31098B56D9E /* MacActivityFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB31C84BE8A5ABFA4B2AE69F /* MacActivityFilter.swift */; };
 		6D11DFDFBBE1E716A21AF997 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4633CBE5D575706F42975ED /* CardCustomization.swift */; };
+		6E369FCA6673E4F872EA8A00 /* LunaSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B45E37134E777CB1990B86D /* LunaSnapshot.swift */; };
 		6E3C9946DB95BDADE52C0046 /* MultiCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF409A3734BE69ADCCAC26D5 /* MultiCardTests.swift */; };
 		6F009E1531788C0681806107 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 528ED8945811020013D20C79 /* ChatSession.swift */; };
 		707E431F5CE77BD981B66BA9 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */; };
+		71FED569A4851E7D5D98CAD3 /* LunaSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B2FE2A19C3B13DCA1DDCEC /* LunaSettingsView.swift */; };
 		72F2BF6F7F8EA4E82F3BE094 /* BudgetStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9E93F75C999AFA68BB0185 /* BudgetStatusViews.swift */; };
 		77EB8C30826A8260B1DBCF01 /* BackendModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB4BA9DC19AC2A1019BE3D7 /* BackendModelTests.swift */; };
 		7B62CC7EFA223F37DDA5D6BE /* MacCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1045F694C31E10BD74EE0CB /* MacCommands.swift */; };
@@ -120,6 +126,7 @@
 		B258A8D3BADE921642CE86D5 /* ResetDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516DB1D73497124210D8A80B /* ResetDataView.swift */; };
 		B35EFA1B7B11DA95857C4CAB /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D433FF1198DE03E544B102E2 /* BudgetsView.swift */; };
 		B39CF82F7566F4290FB3C42A /* MacExpenseForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2836A02A00B5D4237EF71EEF /* MacExpenseForm.swift */; };
+		B3C71C39576BE859DE07D5DF /* LunaBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE11EC8C32F887A2012214 /* LunaBridge.swift */; };
 		B3F5BCBF153F85B85187ED41 /* BudgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18E42FC22C689B74CEF5F76 /* BudgetStatus.swift */; };
 		B42BEC75B82DAD88D288D4CC /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C34E06B27C22C9AADF8622 /* BillNotificationService.swift */; };
 		B6865924C5C269586C6693BE /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4B81B891A0740B138F4E63 /* MacRootView.swift */; };
@@ -141,11 +148,13 @@
 		CB1668A7A9BA30AEA926EC75 /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A5A20992A825EF1360FD47 /* ToolExecutor.swift */; };
 		CB3DCC962C7AB9A703380415 /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B028773774A3470A180190 /* TransactionDetailView.swift */; };
 		CC054967E59236C3095B3D99 /* PlatformIntegrationShims.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9305B569DE8A0ECBCD5027 /* PlatformIntegrationShims.swift */; };
+		CCFC9802D326D3EA18AA6BE3 /* luna-snapshot-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = 554918B2E1D7A5DD8BDB8CFC /* luna-snapshot-v1.json */; };
 		CD0326437A18DBDFEA2F5DD6 /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71073E7844EEEC92CAB6515F /* WidgetSnapshotTests.swift */; };
 		CD05EDCD700CBB805D9216C2 /* QuickCaptureWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */; };
 		CFB8E20EE4A6884CF4AB5146 /* ShortcutOrderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */; };
 		CFC2ED8F8DBC21291C70B446 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
 		D28862952E06ADCA4386CF2A /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */; };
+		D2ECA2FB9EAC588774EC0CA6 /* LunaBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE11EC8C32F887A2012214 /* LunaBridge.swift */; };
 		D6A62922768B3F0E803F2844 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */; };
 		D86CB7EF1BACB3E132457870 /* LunaProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8256E8503273CA251C53424C /* LunaProxy.swift */; };
 		DB38C125D8390B8EBE581AD0 /* PaidWithSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */; };
@@ -224,6 +233,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		00EE78F399CDA397B437001E /* LunaSnapshot+Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LunaSnapshot+Model.swift"; sourceTree = "<group>"; };
 		06E9AEE93F4282B495CB1CDC /* ShortcutOrderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutOrderSettingsView.swift; sourceTree = "<group>"; };
 		0C3ADDB907E0A315203A1616 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
 		0EAB308BC1BCC790DB79CDF8 /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
@@ -242,6 +252,7 @@
 		2AE6074B0A1FFB434E362D4E /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotStore.swift; sourceTree = "<group>"; };
 		3085159AA9E2AD61AD09383C /* MonocleMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleMacUITests.swift; sourceTree = "<group>"; };
 		31B028773774A3470A180190 /* TransactionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionDetailView.swift; sourceTree = "<group>"; };
+		35B2FE2A19C3B13DCA1DDCEC /* LunaSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaSettingsView.swift; sourceTree = "<group>"; };
 		36A5A20992A825EF1360FD47 /* ToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
 		37911938CA6DB5DDAECA328B /* CSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVTests.swift; sourceTree = "<group>"; };
 		38FE13CFCB9D53BA73C3010C /* MacDataTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDataTransferView.swift; sourceTree = "<group>"; };
@@ -256,6 +267,7 @@
 		4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingActivityWidget.swift; sourceTree = "<group>"; };
 		516DB1D73497124210D8A80B /* ResetDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataView.swift; sourceTree = "<group>"; };
 		528ED8945811020013D20C79 /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
+		554918B2E1D7A5DD8BDB8CFC /* luna-snapshot-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "luna-snapshot-v1.json"; sourceTree = "<group>"; };
 		55C6F2F7E78348046E865E34 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		5717053E6A3C91B893ADB5DA /* BackendSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSessionTests.swift; sourceTree = "<group>"; };
 		57F4157D596D4DED7003596D /* MonocleWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MonocleWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -293,6 +305,8 @@
 		87F9018A4325E0300B4CA9C9 /* Monocle.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Monocle.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		89A0767FD506C9E00DCDAAE9 /* ExpenseProposalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseProposalCard.swift; sourceTree = "<group>"; };
 		8B13DB25ED5CA2073CCB5418 /* WidgetStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
+		8B45E37134E777CB1990B86D /* LunaSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaSnapshot.swift; sourceTree = "<group>"; };
+		8CFE11EC8C32F887A2012214 /* LunaBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaBridge.swift; sourceTree = "<group>"; };
 		8DD9FB88E2A572D015D39DA4 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
 		8E9E93F75C999AFA68BB0185 /* BudgetStatusViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetStatusViews.swift; sourceTree = "<group>"; };
 		9724B1C00A878339AAC34BE8 /* AnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsTests.swift; sourceTree = "<group>"; };
@@ -329,6 +343,7 @@
 		D595B81662BC7EEBCA6BC3F1 /* BackendBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendBackupTests.swift; sourceTree = "<group>"; };
 		D5B8A3B1741C4A061670A9AF /* CardBackTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBackTelemetryView.swift; sourceTree = "<group>"; };
 		D6FD0BAA32721C9D15AFF734 /* MacPlanningViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanningViews.swift; sourceTree = "<group>"; };
+		D7415226FFD94A5D2ECFA4C4 /* LunaSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaSnapshotTests.swift; sourceTree = "<group>"; };
 		D8A95968AB19AE7F0E748DA0 /* BudgetReportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetReportTests.swift; sourceTree = "<group>"; };
 		D9C7126EAC97EDD86B07098A /* BackendDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendDiagnostics.swift; sourceTree = "<group>"; };
 		DB0A6327C10E9A9C31261974 /* WidgetSnapshotUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotUpdater.swift; sourceTree = "<group>"; };
@@ -494,6 +509,16 @@
 			path = Widgets;
 			sourceTree = "<group>";
 		};
+		645FD69FC6188C6CFCB5107E /* Luna */ = {
+			isa = PBXGroup;
+			children = (
+				8CFE11EC8C32F887A2012214 /* LunaBridge.swift */,
+				8B45E37134E777CB1990B86D /* LunaSnapshot.swift */,
+				00EE78F399CDA397B437001E /* LunaSnapshot+Model.swift */,
+			);
+			path = Luna;
+			sourceTree = "<group>";
+		};
 		68BDC19A975F7A511DB26A02 /* MonocleMacUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -573,6 +598,7 @@
 				A788AC314A298A5FC0EA2582 /* ExchangeRates.swift */,
 				AFFAA679F1F790CE5EDDDCB5 /* ExpenseService.swift */,
 				868577581FC31D6AAAB43D65 /* Chat */,
+				645FD69FC6188C6CFCB5107E /* Luna */,
 			);
 			path = Application;
 			sourceTree = "<group>";
@@ -594,6 +620,7 @@
 				10F67A2FA49F2D1CF4FA93B0 /* CSVInterchangeView.swift */,
 				43978C12CBA85939416CDB4F /* EntryDismissalGuard.swift */,
 				6486A991712AB436BBFA6A1D /* EntryView.swift */,
+				35B2FE2A19C3B13DCA1DDCEC /* LunaSettingsView.swift */,
 				A2CFA9F89E9B4AAE0CA5803F /* PaidWithSettingsView.swift */,
 				8205E545FE1B914526921654 /* RecentsView.swift */,
 				516DB1D73497124210D8A80B /* ResetDataView.swift */,
@@ -629,6 +656,7 @@
 				9824AED70CAEA0CCB49515DA /* FoundationTests.swift */,
 				13CDA90B99E89FF5A17837B1 /* GoldenFormatTests.swift */,
 				F27F454BBE1A750AB3A31B55 /* IntentTests.swift */,
+				D7415226FFD94A5D2ECFA4C4 /* LunaSnapshotTests.swift */,
 				259DC603F39D197686C31B1F /* MonocleTests.swift */,
 				DF409A3734BE69ADCCAC26D5 /* MultiCardTests.swift */,
 				6F5AB7EB2A6E0A3FB280C24E /* StreamPacerTests.swift */,
@@ -642,6 +670,7 @@
 			isa = PBXGroup;
 			children = (
 				68A4D59399BABAFD90333B56 /* draft.json */,
+				554918B2E1D7A5DD8BDB8CFC /* luna-snapshot-v1.json */,
 				FFD2D60F98C962544A241747 /* preferences.json */,
 				DCB89AA16C298D209CE5565F /* settings.json */,
 				73A58D4990EF303AC7532799 /* widget.json */,
@@ -881,6 +910,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				43AED6CD37310AE8A2BA36CB /* draft.json in Resources */,
+				CCFC9802D326D3EA18AA6BE3 /* luna-snapshot-v1.json in Resources */,
 				25D229DDD80BFE401EB36006 /* preferences.json in Resources */,
 				5EF3A4D64E89F1E8AA213C64 /* settings.json in Resources */,
 				C22C9EE8BD0785B6EB7F0C18 /* widget.json in Resources */,
@@ -931,6 +961,7 @@
 				E81E957B77A30E17C109B652 /* FoundationTests.swift in Sources */,
 				7CE7BA610CD5D92DCE00561A /* GoldenFormatTests.swift in Sources */,
 				385B102CD99B88F0C2E0F9B2 /* IntentTests.swift in Sources */,
+				268F22C289CEC8B8B6AF6B08 /* LunaSnapshotTests.swift in Sources */,
 				2F8C74264FB456CC93B87EDE /* MonocleTests.swift in Sources */,
 				6E3C9946DB95BDADE52C0046 /* MultiCardTests.swift in Sources */,
 				7EACFE4FC004200A7C3BC3E2 /* StreamPacerTests.swift in Sources */,
@@ -998,7 +1029,11 @@
 				BF21B5C6B46CA65A525CA24A /* ExpenseRepository.swift in Sources */,
 				2632A060A85BB7A9F0136CD0 /* ExpenseService.swift in Sources */,
 				9321C8B23F73EED9EA109E04 /* LocalStateStore.swift in Sources */,
+				B3C71C39576BE859DE07D5DF /* LunaBridge.swift in Sources */,
 				D86CB7EF1BACB3E132457870 /* LunaProxy.swift in Sources */,
+				71FED569A4851E7D5D98CAD3 /* LunaSettingsView.swift in Sources */,
+				161E2F0D92CFB88ACC049FAD /* LunaSnapshot+Model.swift in Sources */,
+				0B2BE06AE93936FDFCDD7207 /* LunaSnapshot.swift in Sources */,
 				66346965318074D7104F082E /* Monocle.xcdatamodeld in Sources */,
 				3A586F6BAF96B60AA43586BE /* MonocleApp.swift in Sources */,
 				C7969D03BEAAC2EA6C50C852 /* MonocleStyle.swift in Sources */,
@@ -1056,7 +1091,10 @@
 				F5BD9E89A65E0C56FBABCA3E /* ExpenseService.swift in Sources */,
 				CABFBDC8861A2FE52A7918E5 /* GlobalHotKeyController.swift in Sources */,
 				814B6560E110230BC76787D5 /* LocalStateStore.swift in Sources */,
+				D2ECA2FB9EAC588774EC0CA6 /* LunaBridge.swift in Sources */,
 				A59062581C97F10ABC8737BB /* LunaProxy.swift in Sources */,
+				695F321D570EF8592506D57C /* LunaSnapshot+Model.swift in Sources */,
+				6E369FCA6673E4F872EA8A00 /* LunaSnapshot.swift in Sources */,
 				6C19BA34061DC31098B56D9E /* MacActivityFilter.swift in Sources */,
 				EA616EA5AD2170C11A3A169E /* MacCardStats.swift in Sources */,
 				FEFD946846B76ED10F9D692E /* MacChatView.swift in Sources */,
@@ -1270,7 +1308,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 110;
+				CURRENT_PROJECT_VERSION = 111;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1292,7 +1330,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.9.6;
+				MARKETING_VERSION = 0.9.7;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -1400,7 +1438,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 110;
+				CURRENT_PROJECT_VERSION = 111;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1416,7 +1454,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.9.6;
+				MARKETING_VERSION = 0.9.7;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;

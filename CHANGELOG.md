@@ -2,6 +2,10 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [0.9.7] - 2026-10-14
+- Settings → Luna: optionally share bills and due dates, budgets and monthly totals by category with your own Luna server (needs the invite registration; off until you turn it on; individual expenses and notes are never sent).
+- `monocle://chat?q=…` opens chat with the question already in the composer (for Luna's "Ask in Monocle").
+
 ## [0.9.6] - 2026-10-14
 - Chat: you can now register with an invite code in Settings → AI Chat to use the Luna server instead of your own API key; its daily limit shows its own message instead of "Claude is busy".
 - If the Luna server rejects this device, the error now says to register again instead of blaming an API key.

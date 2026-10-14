@@ -100,13 +100,24 @@ struct ChatView: View {
             }
         }
         .tint(MC.red)
-        .onAppear { if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) } }
+        .onAppear {
+            if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) }
+            takePrefill()
+        }
+        .onChange(of: model.chatPrefill) { _, _ in takePrefill() }
         .sheet(isPresented: $showingSetup, onDismiss: { savedKey = APIKeyStore.read() != nil }) {
             NavigationStack {
                 ChatSettingsView()
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }
             }
         }
+    }
+
+    /// A `monocle://chat?q=` question lands in the composer; the owner taps Send.
+    private func takePrefill() {
+        guard let text = model.chatPrefill else { return }
+        draft = text
+        model.chatPrefill = nil
     }
 
     private func send(_ input: String) {

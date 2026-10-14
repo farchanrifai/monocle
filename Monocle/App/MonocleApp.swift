@@ -64,6 +64,7 @@ struct RootView: View {
             } else {
                 model.appLock.resume()
                 do { try model.reload() } catch { model.error = error.localizedDescription }
+                model.lunaBridge.schedule(after: .seconds(1))
             }
         }
         .onChange(of: model.draft) { _, _ in model.persistDraft() }
@@ -101,6 +102,11 @@ struct RootView: View {
                 model.showSettings = false
                 model.selectedTab = 0
                 model.showAnalytics = true
+            } else if host == "chat" {
+                model.showEntry = false
+                model.showSettings = false
+                model.chatPrefill = queryItems.first(where: { $0.name == "q" })?.value
+                model.showChat = true
             } else if host == "session" {
                 if url.path == "/end" {
                     model.sessionManager.endSession()
