@@ -13,10 +13,11 @@ enum LunaProxy {
     }
 
     enum RegisterError: LocalizedError {
-        case offline, rejected(String)
+        case offline, unreachable(String), rejected(String)
         var errorDescription: String? {
             switch self {
             case .offline: "Needs internet to register."
+            case .unreachable(let reason): "Couldn't reach the Luna server: \(reason)"
             case .rejected(let message): message
             }
         }
@@ -31,7 +32,12 @@ enum LunaProxy {
         request.httpBody = try JSONSerialization.data(withJSONObject: ["invite_code": inviteCode, "device_label": deviceLabel])
         let data: Data, response: URLResponse
         do { (data, response) = try await session.data(for: request) }
-        catch is URLError { throw RegisterError.offline }
+        catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff: throw RegisterError.offline
+            default: throw RegisterError.unreachable(error.localizedDescription)
+            }
+        }
         let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard (response as? HTTPURLResponse)?.statusCode == 200, let token = json?["token"] as? String else {
             throw RegisterError.rejected(((json?["error"] as? [String: Any])?["message"] as? String) ?? "Registration failed.")

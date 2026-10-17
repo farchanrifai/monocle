@@ -16,6 +16,15 @@ private final class CannedProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+/// Fails every request with a fixed `URLError`.
+private final class FailingProtocol: URLProtocol {
+    nonisolated(unsafe) static var code = URLError.Code.notConnectedToInternet
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(Self.code)) }
+    override func stopLoading() {}
+}
+
 @MainActor
 final class ClaudeClientStreamTests: XCTestCase {
     private var client: ClaudeClient {
@@ -61,6 +70,18 @@ final class ClaudeClientStreamTests: XCTestCase {
 }
 
 final class LunaProxyTests: XCTestCase {
+    func testRegisterSaysOfflineOnlyWhenTheDeviceIsOffline() async {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FailingProtocol.self]
+        let session = URLSession(configuration: configuration)
+        FailingProtocol.code = .notConnectedToInternet
+        do { _ = try await LunaProxy.register(inviteCode: "x", deviceLabel: "test", session: session); XCTFail("must throw") }
+        catch LunaProxy.RegisterError.offline {} catch { XCTFail("expected offline, got \(error)") }
+        FailingProtocol.code = .timedOut
+        do { _ = try await LunaProxy.register(inviteCode: "x", deviceLabel: "test", session: session); XCTFail("must throw") }
+        catch LunaProxy.RegisterError.unreachable {} catch { XCTFail("expected unreachable, got \(error)") }
+    }
+
     func testProxyTokenRoutesToTheWorkerAndPersonalKeysStayDirect() {
         XCTAssertEqual(LunaProxy.messagesURL(for: "lt_abc").host, "luna-server.farchan.workers.dev")
         XCTAssertEqual(LunaProxy.messagesURL(for: "lt_abc").path, "/llm/v1/messages")

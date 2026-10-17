@@ -2,6 +2,14 @@ import SwiftUI
 
 /// Opt-in switch, disclosure and personal API key for AI chat (CHAT_SPEC §0 rule 6, §9).
 struct ChatSettingsView: View {
+    /// Tells devices apart on the Luna server, e.g. "iPhone17,1 iOS 26.1". `UIDevice.name` is just "iPhone" since iOS 16.
+    static var deviceLabel: String {
+        var info = utsname()
+        uname(&info)
+        let machine = withUnsafeBytes(of: info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
+        return "\(machine) iOS \(UIDevice.current.systemVersion)"
+    }
+
     @AppStorage("chatEnabled") private var chatEnabled = false
     @AppStorage("chatBackend") private var backend = "claude"
     @State private var keyDraft = ""
@@ -53,7 +61,7 @@ struct ChatSettingsView: View {
                         registerError = nil
                         Task {
                             do {
-                                let token = try await LunaProxy.register(inviteCode: inviteDraft.trimmingCharacters(in: .whitespacesAndNewlines), deviceLabel: "Monocle iPhone")
+                                let token = try await LunaProxy.register(inviteCode: inviteDraft.trimmingCharacters(in: .whitespacesAndNewlines), deviceLabel: Self.deviceLabel)
                                 hasKey = APIKeyStore.save(token)
                                 inviteDraft = ""
                             } catch { registerError = error.localizedDescription }
