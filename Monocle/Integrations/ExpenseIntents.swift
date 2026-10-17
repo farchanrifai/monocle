@@ -565,6 +565,25 @@ struct BudgetLeftIntent: AppIntent {
     }
 }
 
+struct RemoveLastExpenseIntent: AppIntent {
+    static let title: LocalizedStringResource = "Remove Last Expense"
+    static let description = IntentDescription("Removes the expense you added most recently, on any card, after you confirm. Undo it in the app.")
+    static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
+    static var supportedModes: IntentModes { .background }
+
+    @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        let model = AppEnvironment.shared.model
+        guard let last = model.allExpenses().max(by: { $0.createdAt < $1.createdAt }) else {
+            return .result(dialog: "There's no expense to remove.")
+        }
+        let label = last.note.isEmpty ? Money.format(last.amount) : "\(Money.format(last.amount)) (\(last.note))"
+        try await requestConfirmation(result: .result(dialog: IntentDialog(stringLiteral: "Remove \(label)?")))
+        model.delete(last)
+        guard model.undoExpense?.id == last.id else { return .result(dialog: IntentDialog(stringLiteral: model.error ?? "Couldn't remove the expense.")) }
+        return .result(dialog: "Removed \(label).")
+    }
+}
+
 struct AskMonocleIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask Monocle"
     static let description = IntentDescription("Asks Monocle's AI chat a question about your spending, or to prepare an expense. Anything it proposes waits in the app for your confirmation.")
@@ -651,6 +670,15 @@ struct MonocleShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Budget left",
             systemImageName: "gauge.with.dots.needle.33percent"
+        )
+        AppShortcut(
+            intent: RemoveLastExpenseIntent(),
+            phrases: [
+                "Remove last expense in \(.applicationName)",
+                "Undo last expense in \(.applicationName)"
+            ],
+            shortTitle: "Remove last expense",
+            systemImageName: "minus.circle"
         )
         AppShortcut(
             intent: AskMonocleIntent(),

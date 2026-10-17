@@ -77,11 +77,11 @@ import XCTest
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
 
         let notes = ["Morning coffee", "Lunch at work", "Ride home", "Weekly groceries", "Cinema night", "Coffee with friends"]
-        for destination in ["Overview", "Activity", "Sample book"] {
+        for destination in ["Overview", "Activity", "Sample card"] {
             switch destination {
             case "Overview": app.staticTexts["Overview"].firstMatch.click()
             case "Activity": app.typeKey("2", modifierFlags: .command)
-            default: app.staticTexts["Sample book"].firstMatch.click()
+            default: app.staticTexts["Sample card"].firstMatch.click()
             }
             XCTAssertTrue(app.outlines["activityTable"].waitForExistence(timeout: 5))
             var clickDurations: [TimeInterval] = []
@@ -147,7 +147,7 @@ import XCTest
         app.launch()
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 5))
-        app.staticTexts["Sample book"].firstMatch.click() // card page: its fixed-width card used to break the split view
+        app.staticTexts["Sample card"].firstMatch.click() // card page: its fixed-width card used to break the split view
         sleep(1) // let the width hook apply
         let toggle = app.buttons["toggleInspector"].firstMatch
         for _ in 0..<2 {

@@ -2,6 +2,11 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [Unreleased]
+- New Shortcut and Siri action **Remove Last Expense**: removes the expense you added most recently, after you confirm; Undo it in the app.
+- Luna registration: "Needs internet" only shows when the phone is offline; other failures say the server couldn't be reached and why. The device now registers under its model and iOS version instead of "Monocle iPhone".
+- The demo card is now called "Sample card".
+
 ## [0.9.7] - 2026-10-14
 - Settings → Luna: optionally share bills and due dates, budgets and monthly totals by category with your own Luna server (needs the invite registration; off until you turn it on; individual expenses and notes are never sent).
 - `monocle://chat?q=…` opens chat with the question already in the composer (for Luna's "Ask in Monocle").

@@ -13,7 +13,7 @@ struct Card: Identifiable, Codable, Equatable, Hashable, Sendable {
     var spendingCurrency: String? = nil
     var defaultPaidWithID: UUID? = nil
 
-    static let demo = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample book", kind: .demo, colorIndex: 0)
+    static let demo = Self(id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!, name: "Sample card", kind: .demo, colorIndex: 0)
 
     init(id: UUID = UUID(), name: String, kind: CardKind = .real, colorIndex: Int = 0,
          currency: String? = nil, spendingCurrency: String? = nil, defaultPaidWithID: UUID? = nil) {
