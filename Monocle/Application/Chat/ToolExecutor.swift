@@ -87,7 +87,7 @@ struct ToolExecutor {
     }
     struct SummaryInput: Decodable { let period: Period; var groupBy: GroupBy?; var scope: String? }
     struct CompareInput: Decodable { let periodA: Period; let periodB: Period; var scope: String? }
-    struct BudgetInput: Decodable { var card: String? }
+    struct BudgetInput: Decodable { var card: String?; var cycle: String? }
 
     // MARK: - Outputs
 
@@ -365,10 +365,15 @@ struct ToolExecutor {
         let card = try input.card.map { try card(named: $0) } ?? targetCard()
         guard let service = model.expenseService else { throw EntryError.corruptStore }
         let budgets = try service.budgets(for: card.id)
-        guard let period = BudgetHistory.period(containing: now, budgets: budgets) else {
+        var day = now
+        if input.cycle == "previous", let current = BudgetHistory.period(containing: now, budgets: budgets) {
+            day = Day.calendar.date(byAdding: .day, value: -1, to: current.cycle.start) ?? now
+        }
+        guard input.cycle != "previous" || day != now, let period = BudgetHistory.period(containing: day, budgets: budgets) else {
             return Outcome(json: try Self.encode(BudgetResult(card: card.name, hasBudget: false)))
         }
-        let report = try report(.thisCycle, scope: .card(id: card.id, name: card.name))
+        // The previous cycle is "this cycle" as seen from its last day.
+        let report = try report(.thisCycle, scope: .card(id: card.id, name: card.name), at: day)
         let spent = report.metrics.totalSpend
         let lastDay = Day.calendar.date(byAdding: .day, value: -1, to: period.cycle.end) ?? period.cycle.start
         var result = BudgetResult(card: card.name, hasBudget: true,
@@ -477,8 +482,8 @@ struct ToolExecutor {
         return BudgetHistory.period(containing: now, budgets: budgets)?.cycle
     }
 
-    private func report(_ period: Period, scope target: AnalyticsFilterScope) throws -> AnalyticsReport {
-        let report = AnalyticsReport.build(data: model.reportingData(for: target), horizon: period.horizon, now: now)
+    private func report(_ period: Period, scope target: AnalyticsFilterScope, at date: Date? = nil) throws -> AnalyticsReport {
+        let report = AnalyticsReport.build(data: model.reportingData(for: target), horizon: period.horizon, now: date ?? now)
         if let error = report.errorMessage { throw ToolError(message: error) }
         return report
     }

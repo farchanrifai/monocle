@@ -2,6 +2,9 @@
 
 All notable changes to Monocle are documented in this file.
 
+## [Unreleased]
+- Chat: you can ask about last budget cycle ("how did I do on budget last cycle?"), not only the current one.
+
 ## [0.9.8] - 2026-10-18
 - New Shortcut and Siri action **Remove Last Expense**: removes the expense you added most recently, after you confirm; Undo it in the app.
 - Luna registration: "Needs internet" only shows when the phone is offline; other failures say the server couldn't be reached and why. The device now registers under its model and iOS version instead of "Monocle iPhone".

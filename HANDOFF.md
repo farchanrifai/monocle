@@ -1,5 +1,13 @@
 ## 1. Immediate Next Step
 
+0.9.8 (112) is the latest: `monocle-0.9.8-build-112-unsigned.ipa`, SHA-256 `b1896d3146dfa4de14ed2d1b36faa6ef7192fc8760e46b512fc94b73075f4217`, iCloud `Monocle-codex/`, published to `farchanrifai/monocle-releases` (tag `v0.9.8-build.112`). It adds the Remove Last Expense Shortcut, the Luna `register` fix (offline only when offline, real device label), "Sample card", and `Monocle/Resources/PrivacyInfo.xcprivacy` (iOS + Mac targets; no tracking, no collected data, UserDefaults `CA92.1`).
+
+Unreleased on `main`: `get_budget_status` takes `cycle: current|previous` (`ToolExecutor.budgetStatus`; `testBudgetStatusForThePreviousCycle`). 260 iOS unit tests and 22 Mac unit tests pass; Mac UI tests not run.
+
+**Next:** phone checks on 0.9.8 (Luna bridge with a real invite, streaming, composer clear, Shortcuts incl. Remove Last Expense, widget deep links). Stack cap versioning still needs owner approval (`BudgetVersion.stackID`, backup format 9). Left: `docs/privacy.md` contact line + hosting; chat width creep; Shortcuts payment-method parameter, Spotlight `IndexedEntity`, Control Center action.
+
+## 2. Last Completed Checkpoint
+
 0.9.7 (111) is the latest (`monocle-0.9.7-build-111-unsigned.ipa`, SHA-256 `e704d1a57b7eaaf092d8f189cfdc3f29c39a6125b9195665bed36f93e53bab4a`, iCloud `Monocle-codex/`; 0.9.6 was `monocle-0.9.6-build-110-unsigned.ipa`; 0.9.5 was `monocle-0.9.5-build-109-unsigned.ipa`, SHA-256 `41ff628ede8eb041f8ef81db36cba8376c5c683ce4869f504e9ada23f4abb24e`, iCloud `Monocle-codex/`; 0.9.4 was `monocle-0.9.4-build-108-unsigned.ipa`, SHA-256 `06a30ec1801d3b14975ee9405e69bc5dea58e664865db954492b673f72c470f2`). Streaming (0.9.1), pacer/fade (0.9.2) and the `SmoothHeight` wrap glide (0.9.3) are in CHAT_SPEC §12; 0.9.3 not yet confirmed on a phone.
 
 **0.9.7 adds the Luna bridge (opt-in snapshot push, Settings → Luna, `LunaBridge`; CHAT_SPEC §8) and `monocle://chat?q=`; not yet checked on a phone with a real invite/`ingest` scope.**
@@ -28,7 +36,3 @@
 - Mac UI tests take over the screen: run them only when the user is away. None were run.
 - The shell blocks compound git commands and `git -C` in a worktree-isolated session: run plain, separate commands; write multi-line Python edits to `$CLAUDE_JOB_DIR/tmp` and run the file.
 - To study a user's screen recording: `ffmpeg` frames at the native rate (`-fps_mode passthrough`) plus pts from `ffprobe`, tile into a contact sheet and read it; that is how the Messages and WhatsApp curves were measured.
-
-## 2. Last Completed Checkpoint
-
-Luna proxy, 0.9.6 (110), confirmed working on a phone: invite-code registration in Settings → AI Chat (`LunaProxy.swift`, `lt_` token in the API-key Keychain slot, requests routed to `luna-server.farchan.workers.dev`), cap errors shown as `.limit`, revoked token shown as `.deviceRejected` ("register again"), `content-type` header on `/register`. Tests: `LunaProxyTests`, 258 iOS unit tests pass at 0.9.7. `.claude/` is gitignored; the stale `quickchat-window-fix` worktree and two merged remote branches were removed by the user. Published as `monocle-0.9.6-build-110-unsigned.ipa`, SHA-256 `2877a0f83ff501a6b9294c2c983f81ad857405c4d05387a99e1e5c65c29a1a0d`.

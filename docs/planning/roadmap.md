@@ -23,7 +23,7 @@ Make recording and understanding personal spending pleasant enough to use every 
 
 - **Phone checks:** Luna bridge with a real invite, chat streaming and composer clearing (0.9.3–0.9.5), Shortcuts, widget deep links, 0.8.x screens.
 - **Stack cap versioning:** caps are current-only; needs `BudgetVersion.stackID` and backup format 9 with golden fixtures. Needs owner approval.
-- **Chat:** budget tool covers the current cycle only; width creep on the first streamed line; Apple on-device probe at 9/11.
+- **Chat:** budget tool covers the current and previous cycle only; width creep on the first streamed line; Apple on-device probe at 9/11.
 - **Shortcuts:** Add Expense takes whole rupiah only (changing the `Int` parameter can break saved shortcuts); no payment-method parameter; no Spotlight `IndexedEntity`; Control Center button only opens the app.
 - **Localization:** the app has none; Indonesian would be a whole-app String Catalog project.
 - **Release:** `docs/privacy.md` needs a contact line and hosting.

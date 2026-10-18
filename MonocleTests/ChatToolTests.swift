@@ -176,6 +176,19 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(chart?.items.last?.reference, 50_000_00)
     }
 
+    func testBudgetStatusForThePreviousCycle() throws {
+        XCTAssertEqual(json(run("get_budget_status", ["card": "Daily", "cycle": "previous"]))["has_budget"] as? Bool, false)
+
+        try repo.save(BudgetVersion.initial(overallLimit: 100_000_00, startDay: 1, date: Day.date("2026-07-10")!, cardID: daily.id), in: daily.id)
+        try model.reload()
+
+        let result = json(run("get_budget_status", ["card": "Daily", "cycle": "previous"]))
+        XCTAssertEqual(result["cycle_start"] as? String, "2026-08-01")
+        XCTAssertEqual(result["cycle_end"] as? String, "2026-08-31")
+        XCTAssertEqual(rupiah(result["spent"]), 60_000)
+        XCTAssertEqual(rupiah(json(run("get_budget_status", ["card": "Daily"]))["spent"]), 73_000, "Current cycle is unchanged")
+    }
+
     func testListCardsShowsStacksAndScope() throws {
         let result = json(run("list_cards", [:], scope: tripScope))
         XCTAssertEqual(result["scope"] as? String, "Stack: Trip")

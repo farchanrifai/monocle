@@ -266,9 +266,10 @@ final class ChatAgent: ChatBackend {
                "period_b": {"type": "string", "enum": ["this_cycle", "this_month", "last_month", "last_30_days", "last_90_days", "year_to_date"]},
                "scope": {"type": "string"}}}},
           {"name": "get_budget_status", "strict": true,
-           "description": "Current budget cycle for one card: limit, spent and remaining, overall and per category.",
+           "description": "Budget cycle for one card: limit, spent and remaining, overall and per category. The current cycle unless cycle is previous.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": [],
-             "properties": {"card": {"type": "string", "description": "Omit for the app_context card."}}}},
+             "properties": {"card": {"type": "string", "description": "Omit for the app_context card."},
+               "cycle": {"type": "string", "enum": ["current", "previous"]}}}},
           {"name": "list_cards", "strict": true,
            "description": "List the user's cards and stacks.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": [], "properties": {}}}
