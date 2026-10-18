@@ -2,7 +2,7 @@
 
 All notable changes to Monocle are documented in this file.
 
-## [Unreleased]
+## [0.9.9] - 2026-10-18
 - Chat: you can ask about last budget cycle ("how did I do on budget last cycle?"), not only the current one.
 
 ## [0.9.8] - 2026-10-18
