@@ -32,7 +32,7 @@ Monocle does not sell or share your data and does not track you across apps or s
   - Frankfurter: currency codes, dates (not personal data). IP address is incidental to the request.
   - Anthropic (opt-in, user's own key): user content (the chat message and the spending context above). Declare "User Content" as collected by a third party only if Apple's review treats the user's own API key flow as developer-routed. The safer answer, if a proxy is added (CHAT_SPEC §8), is to declare User Content and Other Data collected, used for App Functionality, not linked to identity, not used for tracking.
 - **Tracking:** No.
-- **Required-reason APIs / `PrivacyInfo.xcprivacy`:** none exists in the repo yet. Add one before App Store submission and list the required-reason APIs the app actually uses (for example file timestamp and UserDefaults).
+- **Required-reason APIs / `PrivacyInfo.xcprivacy`:** `Monocle/Resources/PrivacyInfo.xcprivacy` (iOS and Mac apps, since 0.9.8): no tracking, no collected data types, UserDefaults with reason `CA92.1`. Re-check it when adding file-timestamp, disk-space or system-boot-time APIs, or a third-party SDK.
 
 # Before publishing
 1. Host this page and set the URL in App Store Connect (Privacy Policy URL).

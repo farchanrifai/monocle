@@ -71,6 +71,7 @@
 		58571F587DB6D0AE8D964E19 /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62059E64D0898BAE71F1C761 /* Bill.swift */; };
 		5A6FE820268F52CCC4934D9C /* DemoWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB9DB74CD829076536EDC947 /* DemoWorkspace.swift */; };
 		5AF7A85ADD4622D3B5C3767B /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C095F291D89DF974579CA6 /* AppEnvironment.swift */; };
+		5C4E296DC284E80DBD7D84C7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 50119405529C63686B76C467 /* PrivacyInfo.xcprivacy */; };
 		5D29416C2734213E56EC7E4C /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC903D25750DE722F4AF1648 /* StockDesignViews.swift */; };
 		5EF3A4D64E89F1E8AA213C64 /* settings.json in Resources */ = {isa = PBXBuildFile; fileRef = DCB89AA16C298D209CE5565F /* settings.json */; };
 		5FD7E297A1285B47858B55DE /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62059E64D0898BAE71F1C761 /* Bill.swift */; };
@@ -89,6 +90,7 @@
 		71FED569A4851E7D5D98CAD3 /* LunaSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B2FE2A19C3B13DCA1DDCEC /* LunaSettingsView.swift */; };
 		72F2BF6F7F8EA4E82F3BE094 /* BudgetStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E9E93F75C999AFA68BB0185 /* BudgetStatusViews.swift */; };
 		77EB8C30826A8260B1DBCF01 /* BackendModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB4BA9DC19AC2A1019BE3D7 /* BackendModelTests.swift */; };
+		7B3B1B5E9059F72C2A751E52 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 50119405529C63686B76C467 /* PrivacyInfo.xcprivacy */; };
 		7B62CC7EFA223F37DDA5D6BE /* MacCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1045F694C31E10BD74EE0CB /* MacCommands.swift */; };
 		7CE7BA610CD5D92DCE00561A /* GoldenFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CDA90B99E89FF5A17837B1 /* GoldenFormatTests.swift */; };
 		7EACFE4FC004200A7C3BC3E2 /* StreamPacerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F5AB7EB2A6E0A3FB280C24E /* StreamPacerTests.swift */; };
@@ -265,6 +267,7 @@
 		48EF97DBB047CA12DF0B3747 /* MonocleMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonocleMacApp.swift; sourceTree = "<group>"; };
 		4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureWidget.swift; sourceTree = "<group>"; };
 		4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingActivityWidget.swift; sourceTree = "<group>"; };
+		50119405529C63686B76C467 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		516DB1D73497124210D8A80B /* ResetDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataView.swift; sourceTree = "<group>"; };
 		528ED8945811020013D20C79 /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
 		554918B2E1D7A5DD8BDB8CFC /* luna-snapshot-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "luna-snapshot-v1.json"; sourceTree = "<group>"; };
@@ -424,6 +427,7 @@
 				65AF43141767E4C3DFD4DBFA /* Assets.xcassets */,
 				EAE6B2EDE434F3EAB4F40462 /* Info.plist */,
 				2679FE721B268DBD7023B84F /* Monocle.entitlements */,
+				50119405529C63686B76C467 /* PrivacyInfo.xcprivacy */,
 				4CCB30DBAF325AA682343FBC /* Monocle.xcdatamodeld */,
 			);
 			path = Resources;
@@ -923,6 +927,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				916F656B6332220A662DDD1E /* Assets.xcassets in Resources */,
+				7B3B1B5E9059F72C2A751E52 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -931,6 +936,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8ACA09A7ADBA775AB124E8FA /* Assets.xcassets in Resources */,
+				5C4E296DC284E80DBD7D84C7 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1308,7 +1314,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 111;
+				CURRENT_PROJECT_VERSION = 112;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1330,7 +1336,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.9.7;
+				MARKETING_VERSION = 0.9.8;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -1438,7 +1444,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 111;
+				CURRENT_PROJECT_VERSION = 112;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1454,7 +1460,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.9.7;
+				MARKETING_VERSION = 0.9.8;
 				MONOCLE_RUN_LARGE_BENCHMARK = 0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;

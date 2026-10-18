@@ -1,6 +1,6 @@
 # monocle — roadmap
 
-Updated: 2026-10-17 (0.9.7). Product requirements are in `product-spec.md`, data decisions in `architecture.md`, chat in `CHAT_SPEC.md`. The root `HANDOFF.md` has the live checkpoint; `CHANGELOG.md` has what shipped in each build.
+Updated: 2026-10-18 (0.9.8). Product requirements are in `product-spec.md`, data decisions in `architecture.md`, chat in `CHAT_SPEC.md`. The root `HANDOFF.md` has the live checkpoint; `CHANGELOG.md` has what shipped in each build.
 
 ## Product goal
 
@@ -26,7 +26,7 @@ Make recording and understanding personal spending pleasant enough to use every 
 - **Chat:** budget tool covers the current cycle only; width creep on the first streamed line; Apple on-device probe at 9/11.
 - **Shortcuts:** Add Expense takes whole rupiah only (changing the `Int` parameter can break saved shortcuts); no payment-method parameter; no Spotlight `IndexedEntity`; Control Center button only opens the app.
 - **Localization:** the app has none; Indonesian would be a whole-app String Catalog project.
-- **Release:** `PrivacyInfo.xcprivacy` missing; `docs/privacy.md` needs a contact line and hosting.
+- **Release:** `docs/privacy.md` needs a contact line and hosting.
 
 ## Deferred
 
