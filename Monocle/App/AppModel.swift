@@ -72,16 +72,35 @@ final class AppModel {
     var settings = PrototypeSettings()
     var showEntry = false
     var showSettings = false
-    var showStackCustomizer = false
+    /// Making a new stack is Pro; managing the current one is free.
+    var showStackCustomizer = false {
+        didSet { if showStackCustomizer, stackCustomizerMode == .create, !requirePro("Stacks are part of Pro.") { showStackCustomizer = false } }
+    }
     var stackCustomizerMode: StackCustomizerMode = .manage
-    var showCSVInterchange = false
+    /// Export is free; opening on Import (tab 1) is Pro.
+    var showCSVInterchange = false {
+        didSet { if showCSVInterchange, csvInterchangeInitialTab == 1, !requirePro("CSV import is part of Pro.") { showCSVInterchange = false } }
+    }
     var csvInterchangeInitialTab = 0
-    var showAnalytics = false
+    var showAnalytics = false {
+        didSet { if showAnalytics, !requirePro("Analytics is part of Pro.") { showAnalytics = false } }
+    }
     var showChat = false
     /// Text for the chat composer, set by `monocle://chat?q=`; ChatView takes it.
     var chatPrefill: String?
     /// Replaced by AppEnvironment with a file-backed session; tests keep this in-memory one.
     var chat = ChatSession()
+    /// The Pro subscription. nil in tests and on the Mac until it ships, which leaves every feature open.
+    @ObservationIgnored var pro: ProStore? {
+        didSet { pro?.onChange = { [weak self] in self?.applyPlan() }; applyPlan() }
+    }
+    var isPro: Bool { pro?.isPro ?? true }
+    /// Why the paywall is open ("" for no particular reason), or nil when closed.
+    var paywall: String?
+    var showPaywall: Bool {
+        get { paywall != nil }
+        set { if !newValue { paywall = nil } }
+    }
     var selectedTab = 0
     var error: String?
     var startupError: String?
@@ -92,7 +111,9 @@ final class AppModel {
     var saveFeedback = 0
     var pendingEntry: Expense?
     var sessionManager: SpendingSessionManager { SpendingSessionManager.shared }
-    var showStartSessionSheet = false
+    var showStartSessionSheet = false {
+        didSet { if showStartSessionSheet, !requirePro("Spending sessions and Live Activities are part of Pro.") { showStartSessionSheet = false } }
+    }
     var sessionSheetName: String = ""
     var sessionSheetBudget: String = ""
     /// How many screens are pushed over Home; the floating bottom bar hides while any is.
@@ -110,7 +131,18 @@ final class AppModel {
     var workspacePreferences = WorkspacePreferences()
     var hiddenCardIDs: Set<UUID> = []
     var alwaysHiddenCardIDs: Set<UUID> = []
-    var customizerTarget: CustomizerTarget? = nil
+    /// A second real card, or any card's look, is Pro.
+    var customizerTarget: CustomizerTarget? = nil {
+        didSet {
+            switch customizerTarget {
+            case .newCard where cards.contains(where: { $0.kind == .real }):
+                if !requirePro(PlanError.cardLimit.localizedDescription) { customizerTarget = nil }
+            case .existing:
+                if !requirePro("Card looks are part of Pro.") { customizerTarget = nil }
+            default: break
+            }
+        }
+    }
     var customizingCard: Card? {
         get {
             if case .existing(let card) = customizerTarget {
@@ -691,7 +723,7 @@ final class AppModel {
     }
 
     func performUIAction(_ action: () throws -> Void) {
-        do { try action() } catch { self.error = error.localizedDescription }
+        do { try action() } catch { report(error) }
     }
 
     func customization(for cardID: UUID) -> CardCustomization {
@@ -705,7 +737,7 @@ final class AppModel {
     func updateCustomization(_ customization: CardCustomization, for cardID: UUID) {
         var proposed = workspacePreferences
         proposed.cardCustomizations[cardID] = customization
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     func setCardHidden(id: UUID, isHidden: Bool) {
@@ -713,7 +745,7 @@ final class AppModel {
         if isHidden { hidden.insert(id) } else { hidden.remove(id) }
         var proposed = workspacePreferences
         proposed.visibleCardIDs = cards.map(\.id).filter { !hidden.contains($0) }
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     func setCardAlwaysHidden(id: UUID, isHidden: Bool) {
@@ -733,7 +765,7 @@ final class AppModel {
             try commitPresentationPreferences(proposed)
             if isHidden, selectedCardID == id { selectedCardID = nil }
             showToast(isHidden ? "Card hidden" : "Card unhidden")
-        } catch { self.error = error.localizedDescription }
+        } catch { report(error) }
     }
 
     func saveStackConfiguration(_ stacks: [Stack], activeStackID: UUID?, alwaysHiddenIDs: Set<UUID>) throws {
@@ -768,17 +800,18 @@ final class AppModel {
                 proposed.filterScope = .allCards
             }
         }
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     func setActiveStack(id: UUID) {
         guard stacks.contains(where: { $0.id == id }) else { return }
         var proposed = workspacePreferences; proposed.activeStackID = id; proposed.filterScope = .activeStack
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     @discardableResult
     func createStack(name: String, icon: String = "rectangle.stack", cardIDs: [UUID] = []) throws -> Stack {
+        guard isPro else { throw PlanError.stacks }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalName = trimmed.isEmpty ? "New Stack" : String(trimmed.prefix(40))
         let stack = Stack(id: UUID(), name: finalName, icon: icon, cardIDs: cardIDs)
@@ -803,7 +836,7 @@ final class AppModel {
         proposed.stacks.removeAll { $0.id == id }
         if proposed.activeStackID == id { proposed.activeStackID = proposed.stacks.first?.id }
         do { try commitPresentationPreferences(proposed); showToast("Stack deleted") }
-        catch { self.error = error.localizedDescription }
+        catch { report(error) }
     }
 
     func moveCardToFront(_ cardID: UUID) {
@@ -818,7 +851,7 @@ final class AppModel {
             proposed.cardOrder = currentOrder
         }
         do { try commitPresentationPreferences(proposed); showToast("Moved to front") }
-        catch { self.error = error.localizedDescription }
+        catch { report(error) }
     }
 
     func reorderCardsInCurrentStack(fromOffsets: IndexSet, toOffset: Int) {
@@ -826,7 +859,7 @@ final class AppModel {
             var cardIDs = stacks[idx].cardIDs
             cardIDs.move(fromOffsets: fromOffsets, toOffset: toOffset)
             var proposed = workspacePreferences; proposed.stacks[idx].cardIDs = cardIDs
-            do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+            do { try commitPresentationPreferences(proposed) } catch { report(error) }
         } else {
             reorderCards(fromOffsets: fromOffsets, toOffset: toOffset)
         }
@@ -836,7 +869,7 @@ final class AppModel {
         var currentOrder = orderedCards.map(\.id)
         currentOrder.move(fromOffsets: fromOffsets, toOffset: toOffset)
         var proposed = workspacePreferences; proposed.cardOrder = currentOrder
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     func persistWorkspacePreferences() {
@@ -855,7 +888,7 @@ final class AppModel {
             if changedScope { memoizedActivities = nil; syncWidgetSnapshot() }
         } catch {
             publishPreferences(durablePreferences)
-            self.error = error.localizedDescription
+            report(error)
         }
     }
 
@@ -1081,6 +1114,10 @@ final class AppModel {
 
     /// Sets a card's budget currency and spending currency. Changing the budget currency converts its budgets at today's rate.
     func setCardCurrencies(budget: String?, spending: String?, for cardID: UUID) async throws {
+        // A card in another currency than the workspace's, or spending in one, is Pro.
+        if !isPro, (budget.map { $0 != reportingCurrency } ?? false) || (spending.map { $0 != (budget ?? reportingCurrency) } ?? false) {
+            throw PlanError.foreignCurrency
+        }
         guard let expenseService else { throw EntryError.corruptStore }
         guard var card = cards.first(where: { $0.id == cardID }) else { throw BackupError.invalid }
         let budget = budget == reportingCurrency ? nil : budget
@@ -1119,7 +1156,7 @@ final class AppModel {
         guard let suggestion = spendingCurrencySuggestion, let card = cards.first(where: { $0.id == suggestion.cardID }) else { return }
         spendingCurrencySuggestion = nil
         do { try await setCardCurrencies(budget: card.currency, spending: suggestion.code, for: card.id) }
-        catch { self.error = error.localizedDescription }
+        catch { report(error) }
     }
 
     /// Suggest a spending currency after the first expense on a card paid in a currency the card doesn't use yet.
@@ -1251,14 +1288,14 @@ final class AppModel {
         order.move(fromOffsets: source, toOffset: destination)
         var proposed = workspacePreferences
         proposed.entryRowOrder = order
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     func setEntryField(_ field: EntryFormField, shown: Bool) {
         var proposed = workspacePreferences
         proposed.hiddenEntryFields.removeAll { $0 == field }
         if !shown { proposed.hiddenEntryFields.append(field) }
-        do { try commitPresentationPreferences(proposed) } catch { self.error = error.localizedDescription }
+        do { try commitPresentationPreferences(proposed) } catch { report(error) }
     }
 
     @discardableResult
@@ -1548,7 +1585,7 @@ final class AppModel {
             showToast(editing ? "Expense updated" : "Expense added")
             return true
         } catch {
-            self.error = error.localizedDescription
+            report(error)
             return false
         }
     }
@@ -1569,7 +1606,7 @@ final class AppModel {
             undoOccurrences = linked
             invalidateExpenseCaches()
             undoExpense = expense; showToast("Expense deleted")
-        } catch { self.error = error.localizedDescription }
+        } catch { report(error) }
     }
     func undoDelete() {
         guard let undoExpense else { return }
@@ -1583,7 +1620,7 @@ final class AppModel {
             if undoExpense?.id == expense.id { undoExpense = nil; undoOccurrences = [] }
             invalidateExpenseCaches(); showToast("Expense restored")
         }
-        catch { self.error = error.localizedDescription }
+        catch { report(error) }
     }
     func saveBill(_ bill: Bill, in cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
@@ -1625,7 +1662,7 @@ final class AppModel {
     func reconcileBills(asOf date: Date = .now, in cardID: UUID? = nil) {
         guard let expenseService else { return }
         do { try expenseService.reconcileBills(asOf: date, in: cardID) }
-        catch { self.error = error.localizedDescription }
+        catch { report(error) }
         invalidateExpenseCaches()
     }
     /// Chat Save: the same write and Live Activity update as the keypad, without the entry sheet.
@@ -1908,5 +1945,39 @@ final class AppModel {
     private func requireState() throws -> any LocalStateStore {
         guard let state else { throw EntryError.corruptStore }
         return state
+    }
+}
+
+// MARK: - Free and Pro
+
+extension AppModel {
+    /// The real card a Free workspace keeps writing to. Chosen once; in UserDefaults so backups can't change it.
+    var keptCardID: UUID? {
+        get { UserDefaults.standard.string(forKey: "keptCardID").flatMap(UUID.init) }
+        set { UserDefaults.standard.set(newValue?.uuidString, forKey: "keptCardID"); applyPlan() }
+    }
+
+    /// A lapsed subscriber with several real cards picks the one to keep (again, if that card is gone).
+    var needsKeptCardChoice: Bool {
+        guard pro != nil, !isPro else { return false }
+        let real = cards.filter { $0.kind == .real }
+        return real.count > Plan.freeCards && !real.contains { $0.id == keptCardID }
+    }
+
+    func applyPlan() {
+        expenseService?.plan = pro.map { Plan(isPro: $0.isPro, keptCardID: keptCardID) }
+    }
+
+    /// Whether a Pro-only screen or action is open; when not, shows the paywall saying why.
+    func requirePro(_ reason: String) -> Bool {
+        if isPro { return true }
+        paywall = reason
+        return false
+    }
+
+    /// A write the plan refused opens the paywall; anything else is an ordinary error message.
+    func report(_ error: Error) {
+        if let plan = error as? PlanError, plan.opensPaywall { paywall = plan.localizedDescription }
+        else { self.error = error.localizedDescription }
     }
 }

@@ -253,7 +253,7 @@ struct CardCustomizerView: View {
                             try model.applyCardCustomizations(names: draftNames, customizations: drafts,
                                                               newCardIDs: Set(newCardIDs), selections: cardCategorySelections)
                             onDismiss()
-                        } catch { model.error = error.localizedDescription }
+                        } catch { model.report(error) }
 
                     }
                     .font(.headline)

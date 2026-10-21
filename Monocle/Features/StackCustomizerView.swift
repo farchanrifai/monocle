@@ -141,7 +141,7 @@ struct StackCustomizerView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         do { try saveChanges(); onDismiss() }
-                        catch { model.error = error.localizedDescription }
+                        catch { model.report(error) }
                     }
                     .font(.headline)
                     .accessibilityIdentifier("saveStackCustomizer")

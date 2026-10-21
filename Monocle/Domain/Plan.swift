@@ -35,7 +35,7 @@ struct Plan: Equatable, Sendable {
 }
 
 enum PlanError: LocalizedError, Equatable {
-    case cardLimit, lockedCard, billLimit, sampleLimit, foreignCurrency
+    case cardLimit, lockedCard, billLimit, sampleLimit, foreignCurrency, stacks
 
     var errorDescription: String? {
         switch self {
@@ -44,6 +44,7 @@ enum PlanError: LocalizedError, Equatable {
         case .billLimit: "Free includes \(Plan.freeBills) active bills. Upgrade to Pro for more, or pause one first."
         case .sampleLimit: "The Sample card is for trying things out. Add this to your card."
         case .foreignCurrency: "Spending in another currency is part of Pro."
+        case .stacks: "Stacks are part of Pro."
         }
     }
 

@@ -139,7 +139,7 @@ extension ChatSession {
         streamingText = nil
         pacer.reset()
         self.agent = agent
-        let outputs = await agent.send(text, scope: scope, now: .now)
+        let outputs = Self.limitQuestions(await agent.send(text, scope: scope, now: .now), isPro: model.isPro)
         // The reply grows out of the thinking bubble: both changes land in one animation, the first text bubble scales up from its tail.
         let firstText = outputs.firstIndex { if case .text = $0 { true } else { false } }
         let reply = outputs.enumerated().map { index, output -> ChatRow in
@@ -160,6 +160,22 @@ extension ChatSession {
             pacer.reset()
             rows += reply
         }
+        return outputs
+    }
+
+    /// Free answers a few questions a day; adding, editing or deleting through chat never counts.
+    /// ponytail: past the limit the on-device answer is computed, then replaced by the notice.
+    static func limitQuestions(_ outputs: [ChatAgent.Output], isPro: Bool, today: String = Day.string(.now),
+                               defaults: UserDefaults = .standard) -> [ChatAgent.Output] {
+        let changes = outputs.contains { switch $0 { case .proposal, .change, .bill: true; default: false } }
+        let answered = outputs.contains { if case .error = $0 { false } else { true } }
+        guard !isPro, !changes, answered else { return outputs }
+        let stored = defaults.string(forKey: "chatQuestions")?.split(separator: ":").map(String.init) ?? []
+        let count = stored.first == today ? Int(stored.last ?? "") ?? 0 : 0
+        guard count < Plan.freeQuestionsPerDay else {
+            return [.notice("Free answers \(Plan.freeQuestionsPerDay) questions a day. Adding expenses here is unlimited; Pro answers everything.")]
+        }
+        defaults.set("\(today):\(count + 1)", forKey: "chatQuestions")
         return outputs
     }
 

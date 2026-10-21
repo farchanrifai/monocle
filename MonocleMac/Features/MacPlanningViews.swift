@@ -232,8 +232,8 @@ struct MacBillsView: View {
                         HStack {
                             VStack(alignment: .leading) { Text(rule.name).font(.headline); Text("Due \(occurrence.dueDay)").foregroundStyle(.secondary) }
                             Spacer(); Text(Money.format(rule.amount)).font(.system(.body, design: .monospaced))
-                            Button("Skip") { do { try model.skipBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glass)
-                            Button("Add") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.error = error.localizedDescription } }.buttonStyle(.glassProminent)
+                            Button("Skip") { do { try model.skipBillOccurrence(occurrence.id) } catch { model.report(error) } }.buttonStyle(.glass)
+                            Button("Add") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.report(error) } }.buttonStyle(.glassProminent)
                         }.padding(12).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
                     }
                 }

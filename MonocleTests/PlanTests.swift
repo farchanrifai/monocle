@@ -94,4 +94,19 @@ final class PlanTests: XCTestCase {
         XCTAssertNoThrow(try service.createCard(named: "Two"))
         for _ in 0...Plan.sampleEntries { try service.save(try expense(on: Card.demo.id)) }
     }
+
+    func testFreeChatAnswersFiveQuestionsADayButEveryProposal() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let answer: [ChatAgent.Output] = [.text("Rp28.000 so far.")]
+        for _ in 0..<Plan.freeQuestionsPerDay {
+            XCTAssertEqual(ChatSession.limitQuestions(answer, isPro: false, today: "2026-10-22", defaults: defaults), answer)
+        }
+        guard case .notice? = ChatSession.limitQuestions(answer, isPro: false, today: "2026-10-22", defaults: defaults).first else { return XCTFail() }
+        let proposal: [ChatAgent.Output] = [.proposal(try expense(on: Card.demo.id))]
+        XCTAssertEqual(ChatSession.limitQuestions(proposal, isPro: false, today: "2026-10-22", defaults: defaults), proposal, "adding is unlimited")
+        XCTAssertEqual(ChatSession.limitQuestions(answer, isPro: true, today: "2026-10-22", defaults: defaults), answer)
+        XCTAssertEqual(ChatSession.limitQuestions(answer, isPro: false, today: "2026-10-23", defaults: defaults), answer, "the count resets daily")
+        let failure: [ChatAgent.Output] = [.error("busy")]
+        XCTAssertEqual(ChatSession.limitQuestions(failure, isPro: false, today: "2026-10-23", defaults: defaults), failure)
+    }
 }

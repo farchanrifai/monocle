@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 struct BillsView: View {
@@ -669,6 +670,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if model.pro != nil { SubscriptionSection(model: model) }
+
                 // MARK: 1. Active Card & Categories
                 Section {
                     if activeCard.kind == .demo, model.cards.count == 1 {
@@ -936,10 +939,16 @@ struct SettingsView: View {
                             SettingsIcon(symbol: "info.circle.fill", color: .gray)
                         }
                     }
+                    Link(destination: AppLinks.privacy) {
+                        Label { Text("Privacy policy") } icon: { SettingsIcon(symbol: "hand.raised.fill", color: .gray) }
+                    }
+                    Link(destination: AppLinks.terms) {
+                        Label { Text("Terms of use") } icon: { SettingsIcon(symbol: "doc.text.fill", color: .gray) }
+                    }
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("Monocle — Multi-card daily expense ledger with Liquid Glass design.")
+                    Text("Monocle keeps your spending on this device.")
                 }
             }
             .navigationTitle("Settings")
@@ -950,6 +959,47 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+/// Pro status, upgrade, restore and offer codes. Apple's own sheets handle managing and redeeming.
+private struct SubscriptionSection: View {
+    let model: AppModel
+    @State private var managing = false
+    @State private var redeeming = false
+    @State private var restoring = false
+
+    var body: some View {
+        Section {
+            if model.isPro {
+                LabeledContent {
+                    Text("Active").foregroundStyle(.secondary)
+                } label: {
+                    Label { Text("Monocle Pro") } icon: { SettingsIcon(symbol: "star.fill", color: MC.red) }
+                }
+                Button("Manage subscription") { managing = true }
+            } else {
+                Button { model.paywall = "" } label: {
+                    Label { Text("Upgrade to Pro") } icon: { SettingsIcon(symbol: "star.fill", color: MC.red) }
+                }
+                .accessibilityIdentifier("upgradeToPro")
+            }
+            Button(restoring ? "Restoring…" : "Restore purchases") {
+                restoring = true
+                Task {
+                    do { try await model.pro?.restore() } catch { model.error = error.localizedDescription }
+                    restoring = false
+                }
+            }
+            .disabled(restoring)
+            Button("Redeem code") { redeeming = true }
+        } header: {
+            Text("Subscription")
+        } footer: {
+            if !model.isPro { Text("Free includes one card, \(Plan.freeBills) bills and \(Plan.freeQuestionsPerDay) chat questions a day.") }
+        }
+        .manageSubscriptionsSheet(isPresented: $managing)
+        .offerCodeRedemption(isPresented: $redeeming) { _ in Task { await model.pro?.refresh() } }
     }
 }
 

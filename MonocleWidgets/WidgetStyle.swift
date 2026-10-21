@@ -24,3 +24,24 @@ enum WMC {
         return "\(Int(value))"
     }
 }
+
+/// Home Screen widgets are Pro. The app writes `isPro` to the app group (ProStore) and reloads timelines on change.
+struct ProGate<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    private var isPro: Bool { UserDefaults(suiteName: WidgetSnapshotStore.appGroupID)?.bool(forKey: "isPro") ?? false }
+
+    var body: some View {
+        if isPro {
+            content
+        } else {
+            VStack(spacing: 4) {
+                Image(systemName: "lock.fill").font(.title3)
+                Text("Monocle Pro").font(.headline)
+                Text("Widgets are part of Pro.").font(.caption).foregroundStyle(.secondary)
+            }
+            .multilineTextAlignment(.center)
+            .widgetURL(URL(string: "monocle://"))
+        }
+    }
+}

@@ -1344,7 +1344,7 @@ private struct BillInspector: View {
     }
 
     private func act(_ work: () throws -> Void) {
-        do { try work() } catch { model.error = error.localizedDescription }
+        do { try work() } catch { model.report(error) }
     }
 }
 

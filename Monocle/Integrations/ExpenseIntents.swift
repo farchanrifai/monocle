@@ -404,6 +404,7 @@ struct StartSpendingSessionIntent: AppIntent {
     }
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        try requireProShortcut()
         let targetCardID = card.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
         let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? "Card"
         let limit = try budgetLimit.flatMap { $0 > 0 ? $0 : nil }
@@ -537,6 +538,7 @@ struct SpendingSummaryIntent: AppIntent {
     }
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        try requireProShortcut()
         let summary = try AskAnswers.summary(period: period, scope: AskAnswers.scopeName(card: card, stack: stack), model: AppEnvironment.shared.model)
         let noun = summary.count == 1 ? "expense" : "expenses"
         return .result(dialog: "\(summary.total.display) spent on \(summary.scope) (\(summary.count) \(noun)).")
@@ -554,6 +556,7 @@ struct BudgetLeftIntent: AppIntent {
     static var parameterSummary: some ParameterSummary { Summary("Budget left on \(\.$card)") }
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        try requireProShortcut()
         let budget = try AskAnswers.budget(card: card?.name, model: AppEnvironment.shared.model)
         guard budget.hasBudget, let remaining = budget.remaining, let limit = budget.limit else {
             return .result(dialog: "\(budget.card) has no budget for this cycle.")
@@ -592,6 +595,7 @@ struct AskMonocleIntent: AppIntent {
     static var parameterSummary: some ParameterSummary { Summary("Ask Monocle \(\.$question)") }
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        try requireProShortcut()
         let model = AppEnvironment.shared.model
         guard ChatSession.unavailableReason == nil else { throw AskError.chatOff }
         let scope = model.chat.scope ?? ChatScopeMenuItems.homeScope(model)
@@ -707,4 +711,15 @@ struct MonocleShortcuts: AppShortcutsProvider {
         )
         #endif
     }
+}
+
+// MARK: - Pro Shortcuts
+
+/// Shortcuts beyond adding expenses are Pro (docs/planning/app-store-release.md).
+struct ProShortcutError: LocalizedError {
+    var errorDescription: String? { "This Shortcut is part of Monocle Pro. Open Monocle to upgrade." }
+}
+
+@MainActor func requireProShortcut() throws {
+    guard AppEnvironment.shared.model.isPro else { throw ProShortcutError() }
 }

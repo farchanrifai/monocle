@@ -38,14 +38,15 @@ struct RootView: View {
                 .tint(MC.red)
                 .sheet(isPresented: $model.showEntry, onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }
-                }) { EntryView(model: model) }
+                }) { EntryView(model: model).proPaywall(model) }
                 .sensoryFeedback(.success, trigger: model.saveFeedback)
                 .alert("Discard the unfinished expense?", isPresented: Binding(get: { model.pendingEntry != nil }, set: { if !$0 { model.pendingEntry = nil } })) {
                     Button("Discard and continue", role: .destructive) { model.discardAndOpenPendingEntry() }
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
                 } message: { Text("You have an unfinished expense from an interruption. Discard it to open this expense.") }
-                .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
-                .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: model.chat) }
+                .sheet(isPresented: $model.showSettings) { SettingsView(model: model).proPaywall(model) }
+                .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: model.chat).proPaywall(model) }
+                .modifier(ProPresentation(model: model))
                 .alert(model.spendingCurrencyQuestion, isPresented: Binding(get: { model.spendingCurrencySuggestion != nil && !model.showEntry },
                                                                              set: { if !$0 { model.spendingCurrencySuggestion = nil } })) {
                     Button("Use it") { Task { await model.acceptSpendingCurrencySuggestion() } }
@@ -63,7 +64,7 @@ struct RootView: View {
                 model.appLock.suspend()
             } else {
                 model.appLock.resume()
-                do { try model.reload() } catch { model.error = error.localizedDescription }
+                do { try model.reload() } catch { model.report(error) }
             }
         }
         .onChange(of: model.draft) { _, _ in model.persistDraft() }

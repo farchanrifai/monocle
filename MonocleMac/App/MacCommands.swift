@@ -265,7 +265,7 @@ final class MacAppState {
 
     private func apply(_ expenses: [Expense]) -> Bool {
         do { for expense in expenses { try model.save(expense) }; return true }
-        catch { model.error = error.localizedDescription; return false }
+        catch { model.report(error); return false }
     }
 
     private func registerSwap(from current: [Expense], to previous: [Expense], undoManager: UndoManager?) {

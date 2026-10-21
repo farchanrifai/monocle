@@ -6,7 +6,7 @@ struct QuickCaptureWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TodaySpendingTimelineProvider()) { entry in
-            QuickCaptureWidgetView(entry: entry)
+            ProGate { QuickCaptureWidgetView(entry: entry) }
                 .containerBackground(for: .widget) {
                     Color(uiColor: .systemBackground)
                 }

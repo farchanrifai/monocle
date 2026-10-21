@@ -55,6 +55,15 @@ final class AppEnvironment {
             #endif
             model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings, appLock: appLock, backups: backups)
             model.chat = ChatSession(fileURL: directory.appendingPathComponent("chat.json"))
+            #if os(iOS)
+            // ponytail: the Mac app stays unrestricted until it ships with universal purchase.
+            var usesPlan = true
+            #if DEBUG
+            // UI runs see every feature unless they test the plan (MONOCLE_TEST_PLAN=1, with -monoclePro YES/NO).
+            if directory.lastPathComponent.hasPrefix("monocle-ui-test-") { usesPlan = ProcessInfo.processInfo.environment["MONOCLE_TEST_PLAN"] == "1" }
+            #endif
+            if usesPlan { model.pro = ProStore() }
+            #endif
             #if DEBUG
             // MONOCLE_DEMO=1: a separate monocle-demo folder, filled once with DemoWorkspace through the normal restore path.
             let demoMarker = directory.appendingPathComponent("demo-seeded")

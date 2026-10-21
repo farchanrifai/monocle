@@ -198,7 +198,7 @@ struct TodaySpendingWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TodaySpendingTimelineProvider()) { entry in
-            TodaySpendingWidgetEntryView(entry: entry)
+            ProGate { TodaySpendingWidgetEntryView(entry: entry) }
                 .containerBackground(for: .widget) {
                     Color(uiColor: .systemBackground)
                 }

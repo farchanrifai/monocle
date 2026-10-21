@@ -200,7 +200,7 @@ struct StackWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: StackTimelineProvider()) { entry in
-            StackWidgetEntryView(entry: entry)
+            ProGate { StackWidgetEntryView(entry: entry) }
                 .containerBackground(for: .widget) {
                     Color(uiColor: .systemBackground)
                 }

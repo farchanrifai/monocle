@@ -101,7 +101,7 @@ struct BudgetsView: View {
                     }
                 }
             }
-            if !model.stacks.isEmpty {
+            if !model.stacks.isEmpty, model.isPro { // stack budgets are Pro
                 Section("Stacks") {
                     ForEach(model.stacks) { stack in
                         Button { picked = .stack(stack.id) } label: {

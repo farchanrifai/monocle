@@ -202,7 +202,7 @@ struct BudgetWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: BudgetTimelineProvider()) { entry in
-            BudgetWidgetEntryView(entry: entry)
+            ProGate { BudgetWidgetEntryView(entry: entry) }
                 .containerBackground(for: .widget) {
                     Color(uiColor: .systemBackground)
                 }

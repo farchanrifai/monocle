@@ -74,7 +74,10 @@ targets:
   MonocleTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [MonocleTests]
+    sources:
+      - MonocleTests
+      - path: Configuration/Monocle.storekit
+        buildPhase: resources
     dependencies:
       - target: Monocle
     settings:
@@ -156,6 +159,8 @@ schemes:
       targets:
         Monocle: all
         MonocleWidgets: all
+    run:
+      storeKitConfiguration: Configuration/Monocle.storekit
     test:
       targets: [MonocleTests, MonocleUITests]
       environmentVariables:
