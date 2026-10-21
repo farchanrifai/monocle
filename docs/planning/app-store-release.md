@@ -54,6 +54,24 @@ Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9
 - Register `com.farchan.monocle`, `com.farchan.monocle.MonocleWidgets`, `group.com.farchan.monocle`; In-App Purchase capability.
 - Create the app record (check the name), subscription group, monthly + yearly products, trial offer.
 
+## Status (2026-10-22)
+
+Done on this branch, no paid account needed (254 iOS + 21 Mac unit tests pass; UI tests not run):
+- **Strip:** Luna and Claude removed; chat is Apple Intelligence only, no opt-in, explains itself when unavailable. `MONOCLE_FAKE_CHAT` drives chat in UI tests.
+- **Worldwide:** Shortcuts and chat amounts follow the card's currency with decimals; onboarding picks the currency (device's first) and scales the Sample card without exchange rates.
+- **Plan:** `Plan` + `ExpenseService.plan` enforce 1 real card, 3 running bills (others frozen: no reconcile, no reminders), 10 user entries on the Sample card (any plan), locked cards after a lapse, Pro-only foreign currency. `AppModel.report` turns refused writes into the paywall.
+- **StoreKit:** `ProStore` (entitlements, updates, restore, app-group cache for widgets), `Configuration/Monocle.storekit` (monthly 2.99 / yearly 29.99, 1-week free trial: placeholders until prices are decided), scheme uses it for Run.
+- **Screens:** `PaywallView` (SubscriptionStoreView + Free vs Pro table, restore, redeem, terms, privacy), `KeptCardPicker` (permanent choice, stored in UserDefaults), `OnboardingView`, Settings ▸ Subscription and About links; "Start your real card" removed.
+- **Gates:** new stacks, stack budgets, CSV import, Analytics, spending sessions, card looks, second card, foreign currencies, Pro Shortcuts (sessions, summary, budget left, Ask), Home Screen widgets, chat after 5 questions a day.
+- **Compliance:** `ITSAppUsesNonExemptEncryption = NO`, deprecation fixed, privacy manifests (app + widgets, `1C8F.1`), `scripts/build-appstore.sh`, `build-ipa.sh` never publishes `release/*`, `docs/privacy.md` rewritten.
+
+Needs the account or the owner:
+- Team signing: `DEVELOPMENT_TEAM`, then `ProStoreTests` StoreKit cases stop skipping (they need a team-signed build).
+- App Store Connect: products with the same IDs (`com.farchan.monocle.pro.monthly` / `.yearly`), group, trial; prices.
+- Contact line, privacy page hosting (`AppLinks.privacy` is a placeholder), support URL, rate-the-app link (needs the app ID).
+- Phone checks: onboarding, paywall purchase in sandbox/TestFlight, downgrade picker, widgets lock, chat limit.
+- Not done yet: `requestReview` prompt; Settings audit for prototype-only items; MARKETING_VERSION 1.0.0 at submission.
+
 ### 1. Strip
 - Remove Luna code, settings, tests and docs references.
 - Remove Claude (`ClaudeClient`, key entry in `ChatSettingsView`); keep `AppleChatAgent` and the shared tool layer. When Claude returns in 1.1 it needs a one-time consent sheet naming Anthropic before the first request (5.1.2(i)).
