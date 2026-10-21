@@ -96,6 +96,7 @@
 		85CEEF28F521F31304E69058 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CD7790B75B1AA86918043C /* CardCustomizerView.swift */; };
 		8934E3DC238F21D7D643E592 /* ChatAgentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7CC8CAA14DB700C397EDA62 /* ChatAgentTests.swift */; };
 		8ACA09A7ADBA775AB124E8FA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DF8F4C883E255C3D2A39FE4E /* Assets.xcassets */; };
+		8C06C311469B291A1B7DEEAC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6D07C0EC0D628A4E2E2D5A31 /* PrivacyInfo.xcprivacy */; };
 		8E048266FD517CE9747C30ED /* ProgressiveBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC2D14B5D09CED02E593194A /* ProgressiveBlur.swift */; };
 		8F2B2BAF7BEBD04DE9D4060B /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E1342FB6670D2531EFD151 /* StackCustomizerView.swift */; };
 		8F577C6F9697132F42A06283 /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A304A5C9F1E9AE13B11353 /* CSVEngine.swift */; };
@@ -273,6 +274,7 @@
 		6A4E58C3EE356F7424731264 /* ExpenseIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseIntents.swift; sourceTree = "<group>"; };
 		6B4A94C4D300D3B1789FDE3F /* CategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryPicker.swift; sourceTree = "<group>"; };
 		6C573062CE2769892729F737 /* CategoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryManager.swift; sourceTree = "<group>"; };
+		6D07C0EC0D628A4E2E2D5A31 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6D5A86158D0715F3E78AB27C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6E5D48F2860CCEE4CCF07F5C /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
 		6E849C001AFB7520162D7A69 /* workspace-v8.monoclebackup */ = {isa = PBXFileReference; path = "workspace-v8.monoclebackup"; sourceTree = "<group>"; };
@@ -399,6 +401,7 @@
 			children = (
 				CE599406EF5472DD7EFA518D /* BudgetWidget.swift */,
 				16F0256595ED4DCE84730517 /* MonocleWidgetsBundle.swift */,
+				6D07C0EC0D628A4E2E2D5A31 /* PrivacyInfo.xcprivacy */,
 				4CDF7EA772B8CE072354DD91 /* QuickCaptureWidget.swift */,
 				8339F3A026D71C9C88AFC132 /* QuickEntryControl.swift */,
 				4D3158436718B7DFE3113A42 /* SpendingActivityWidget.swift */,
@@ -821,6 +824,7 @@
 			buildConfigurationList = 4758EC693DA38AAD40E0C0C0 /* Build configuration list for PBXNativeTarget "MonocleWidgets" */;
 			buildPhases = (
 				6574613ED73C1D3CF2849044 /* Sources */,
+				3FBE5790EDDA4FF9710085EA /* Resources */,
 			);
 			buildRules = (
 			);
@@ -903,6 +907,14 @@
 				5EF3A4D64E89F1E8AA213C64 /* settings.json in Resources */,
 				C22C9EE8BD0785B6EB7F0C18 /* widget.json in Resources */,
 				5500B102BB6A0E7D6E513020 /* workspace-v8.monoclebackup in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3FBE5790EDDA4FF9710085EA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8C06C311469B291A1B7DEEAC /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1370,6 +1382,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monocle/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = monocle;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your spending records.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1546,6 +1559,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monocle/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = monocle;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your spending records.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

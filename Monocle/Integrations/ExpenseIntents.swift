@@ -577,7 +577,7 @@ struct RemoveLastExpenseIntent: AppIntent {
             return .result(dialog: "There's no expense to remove.")
         }
         let label = last.note.isEmpty ? Money.format(last.amount) : "\(Money.format(last.amount)) (\(last.note))"
-        try await requestConfirmation(result: .result(dialog: IntentDialog(stringLiteral: "Remove \(label)?")))
+        try await requestConfirmation(dialog: IntentDialog(stringLiteral: "Remove \(label)?"))
         model.delete(last)
         guard model.undoExpense?.id == last.id else { return .result(dialog: IntentDialog(stringLiteral: model.error ?? "Couldn't remove the expense.")) }
         return .result(dialog: "Removed \(label).")

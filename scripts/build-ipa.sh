@@ -2,6 +2,8 @@
 set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
+# The public SideStore feed must never carry a release build (anyone could install it): keep those local.
+case "$(git rev-parse --abbrev-ref HEAD)" in release/*) SKIP_SIDESTORE_PUBLISH=1 ;; esac
 mkdir -p build/device build/packages
 xcodebuild build -project Monocle.xcodeproj -scheme Monocle -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO
