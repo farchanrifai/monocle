@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import MonocleMac
 
-/// Apple Intelligence chat: every Claude tool schema converts, and (when the model is available on this Mac)
+/// Apple Intelligence chat: every tool schema converts, and (when the model is available on this Mac)
 /// the CHAT_SPEC golden prompts run on-device. The probe prints each reply so it can be compared by eye.
 @MainActor
 final class AppleChatTests: XCTestCase {

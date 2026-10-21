@@ -254,54 +254,16 @@ private struct SettingsNote: View {
     }
 }
 
-/// Opt-in, disclosure and personal API key (CHAT_SPEC §0 rule 6, §9); the iPhone has its own sheet.
+/// Chat runs on Apple Intelligence only; this pane just says whether it can run here.
 private struct ChatSettingsPane: View {
-    @AppStorage("chatEnabled") private var chatEnabled = false
-    @AppStorage("chatBackend") private var backend = "claude"
-    @State private var keyDraft = ""
-    @State private var hasKey = APIKeyStore.read() != nil
-
     var body: some View {
         Form {
             Section {
-                Toggle("Enable AI chat", isOn: $chatEnabled).accessibilityIdentifier("chatEnabledToggle")
-                Picker("Model", selection: $backend) {
-                    Text("Claude").tag("claude")
-                    Text("Apple Intelligence").tag("apple")
-                }
+                LabeledContent("Model", value: "Apple Intelligence")
             } footer: {
-                SettingsNote(backend == "apple"
-                             ? (AppleChatAgent.unavailableReason ?? "Chat runs on this Mac with Apple Intelligence; nothing leaves the device. Expenses are only saved when you click Save.")
-                             : "Your messages, plus the spending data needed to answer them (amounts, dates, notes, category and card names), are sent to Anthropic's Claude. Nothing is sent until you use chat, and expenses are only saved when you click Save.")
-            }
-            if backend == "claude" {
-                Section {
-                    if hasKey {
-                        LabeledContent("Claude API") {
-                            HStack {
-                                Label("Saved in Keychain", systemImage: "checkmark.seal.fill").foregroundStyle(.secondary)
-                                Button("Remove") { APIKeyStore.delete(); hasKey = false }
-                            }
-                        }
-                    } else {
-                        HStack {
-                            SecureField("API key", text: $keyDraft, prompt: Text("sk-ant-…")).labelsHidden()
-                                .accessibilityIdentifier("chatAPIKeyField")
-                                .onSubmit(save)
-                            Button("Save", action: save)
-                                .disabled(keyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
-                    }
-                } header: { Text("API key") } footer: { SettingsNote("Stored in the Keychain on this Mac only. Create one at platform.claude.com.") }
+                SettingsNote(AppleChatAgent.unavailableReason ?? "Chat runs on this Mac with Apple Intelligence; nothing leaves the device. Expenses are only saved when you click Save.")
             }
         }
-    }
-
-    private func save() {
-        let key = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { return }
-        hasKey = APIKeyStore.save(key)
-        keyDraft = ""
     }
 }
 

@@ -517,7 +517,7 @@ enum AskError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .failed(let json): (try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])?["error"] as? String ?? "That didn't work."
-        case .chatOff: "Turn on AI chat and add your API key in Monocle's settings first."
+        case .chatOff: "Ask Monocle needs Apple Intelligence on this iPhone."
         }
     }
 }
@@ -596,7 +596,7 @@ struct AskMonocleIntent: AppIntent {
 
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
         let model = AppEnvironment.shared.model
-        guard UserDefaults.standard.bool(forKey: "chatEnabled"), ChatSession.usesApple || APIKeyStore.read() != nil else { throw AskError.chatOff }
+        guard ChatSession.unavailableReason == nil else { throw AskError.chatOff }
         let scope = model.chat.scope ?? ChatScopeMenuItems.homeScope(model)
         let outputs = await model.chat.send(question, model: model, scope: scope)
         return .result(dialog: IntentDialog(stringLiteral: Self.spoken(outputs)))

@@ -304,21 +304,17 @@ final class MonocleUITests: XCTestCase {
     func testChatComposerIsReallyEmptyAfterSending() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
-        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)", "-chatBackend", "apple"]
+        app.launchEnvironment["MONOCLE_FAKE_CHAT"] = "1"
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["chatButton"].tap()
-        app.buttons["chatSetup"].tap()
-        let toggle = app.switches["chatEnabledToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.tap()
-        app.buttons["Done"].tap()
 
         let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         input.tap()
         input.typeText("first question")
         app.buttons["chatSend"].tap()
-        sleep(2) // the reply (or the on-device error) arrives
+        sleep(2) // the scripted reply arrives
         input.tap()
         input.typeText("x")
         keepScreenshot(app.screenshot())
@@ -339,14 +335,10 @@ final class MonocleUITests: XCTestCase {
     func testChatSendFromTheTopScrollsToTheNewMessage() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
-        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)", "-chatBackend", "apple"]
+        app.launchEnvironment["MONOCLE_FAKE_CHAT"] = "1"
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
         app.buttons["chatButton"].tap()
-        app.buttons["chatSetup"].tap()
-        let toggle = app.switches["chatEnabledToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.tap()
-        app.buttons["Done"].tap()
         let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
 
@@ -374,9 +366,10 @@ final class MonocleUITests: XCTestCase {
     }
 
     @MainActor
-    func testChatOptInFromBottomBarAndCloses() throws {
+    func testChatOpensFromBottomBarAndCloses() throws {
         let app = XCUIApplication()
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["MONOCLE_FAKE_CHAT"] = "1"
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
@@ -390,23 +383,10 @@ final class MonocleUITests: XCTestCase {
         keepScreenshot(app.screenshot())
 
         chat.tap()
-        XCTAssertTrue(app.buttons["chatSetup"].waitForExistence(timeout: 5), "Chat is opt-in")
+        XCTAssertTrue(app.buttons["chatClose"].waitForExistence(timeout: 5))
         XCTAssertFalse(chat.isHittable, "Bottom bar must be hidden behind full-screen chat")
         XCTAssertTrue(app.buttons["Kopi 28rb"].exists, "Empty state offers suggestions")
         keepScreenshot(app.screenshot())
-
-        // Opt in and add a (fake) key; nothing is sent until a message is.
-        app.buttons["chatSetup"].tap()
-        let toggle = app.switches["chatEnabledToggle"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.switches.firstMatch.exists ? toggle.switches.firstMatch.tap() : toggle.tap()
-        let keyField = app.secureTextFields["chatAPIKeyField"]
-        XCTAssertTrue(keyField.waitForExistence(timeout: 3))
-        keyField.tap()
-        keyField.typeText("sk-ant-test")
-        app.buttons["Save key"].tap()
-        keepScreenshot(app.screenshot())
-        app.buttons["Done"].tap()
 
         let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))

@@ -7,10 +7,7 @@ struct MacChatView: View {
     @Bindable var state: MacAppState
     var compact = false
     var close: (() -> Void)? = nil
-    @AppStorage("chatEnabled") private var chatEnabled = false
-    @AppStorage("chatBackend") private var backend = "claude"
-    @State private var savedKey = Self.keyAvailable
-    private var hasKey: Bool { savedKey || backend == "apple" }
+    @State private var unavailable = ChatSession.unavailableReason
     @State private var draft = ""
     @State private var mentionSelection = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
@@ -25,7 +22,7 @@ struct MacChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            if chatEnabled && hasKey {
+            if unavailable == nil {
                 ScrollView {
                     ChatTranscript(model: model, session: session, send: send)
                         .frame(maxWidth: 720)
@@ -49,14 +46,11 @@ struct MacChatView: View {
                 }
             } else {
                 ContentUnavailableView {
-                    Label(chatEnabled ? "Add Your API Key" : "AI Chat Is Off", systemImage: "bubble.left.and.text.bubble.right")
+                    Label("Chat Needs Apple Intelligence", systemImage: "bubble.left.and.text.bubble.right")
                 } description: {
-                    Text(chatEnabled ? "Save your Anthropic API key, or switch Model to Apple Intelligence, in Settings ▸ AI Chat." : "Turn on chat in Settings ▸ AI Chat.")
-                } actions: {
-                    Button("Open Settings…") { state.perform(.settings) }
-                        .buttonStyle(.borderedProminent).tint(MC.red)
-                        .accessibilityIdentifier("chatSetup")
+                    Text(unavailable ?? "")
                 }
+                .accessibilityIdentifier("chatUnavailable")
                 .frame(maxHeight: .infinity)
             }
         }
@@ -67,17 +61,10 @@ struct MacChatView: View {
             if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) }
             inputFocused = true
         }
-        // Back from the Settings window: pick up a newly saved or removed key.
+        // Apple Intelligence can be turned on, or finish downloading, while the app runs.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            savedKey = Self.keyAvailable
+            unavailable = ChatSession.unavailableReason
         }
-    }
-
-    private static var keyAvailable: Bool {
-        #if DEBUG
-        if ChatSession.usesFakeClaude { return true }
-        #endif
-        return APIKeyStore.read() != nil
     }
 
     private var gutter: CGFloat { compact ? 16 : 24 }
@@ -143,7 +130,7 @@ struct MacChatView: View {
     }
 
     private func send(_ input: String) {
-        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !session.isTyping, hasKey else { return }
+        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !session.isTyping, unavailable == nil else { return }
         let session = session, model = model
         let scope = ChatScopeMenuItems.applyMention(in: input, session: session, model: model)
         let row = session.appendUserRow(input.trimmingCharacters(in: .whitespacesAndNewlines), animated: !reduceMotion) { draft = "" }

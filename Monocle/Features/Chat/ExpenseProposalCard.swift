@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full-width confirm card for an expense Claude proposed. Nothing is written until Save.
+/// Full-width confirm card for an expense the assistant proposed. Nothing is written until Save.
 struct ExpenseProposalCard: View {
     let expense: Expense
     let category: ExpenseCategory?
@@ -56,7 +56,7 @@ struct ExpenseProposalCard: View {
     }
 }
 
-/// Confirm card for a recurring bill Claude proposed. Nothing is written until Save.
+/// Confirm card for a recurring bill the assistant proposed. Nothing is written until Save.
 struct BillProposalCard: View {
     let bill: Bill
     let categoryName: String
@@ -106,7 +106,7 @@ struct BillProposalCard: View {
     }
 }
 
-/// Confirm card for Claude's proposed edit or delete of a saved expense. Applied only on tap, with Undo after.
+/// Confirm card for the assistant's proposed edit or delete of a saved expense. Applied only on tap, with Undo after.
 struct ExpenseChangeCard: View {
     let change: ExpenseChange
     /// Category name for an expense, split categories joined.

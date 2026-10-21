@@ -4,7 +4,7 @@ import SwiftUI
 
 enum ProposalState: Equatable, Codable { case pending, saved, discarded, opened, undone }
 
-/// Claude's proposed edit (`updated`) or delete (`updated == nil`) of a saved expense.
+/// The assistant's proposed edit (`updated`) or delete (`updated == nil`) of a saved expense.
 struct ExpenseChange: Codable, Equatable {
     var original: Expense
     var updated: Expense?
@@ -59,7 +59,7 @@ struct ChatRow: Identifiable, Equatable, Codable {
 }
 
 /// The conversation, owned by AppModel so it outlives the chat screen and is wiped with the data it
-/// describes. Saved to chat.json next to the ledger: what the user sees and what Claude remembers, together.
+/// describes. Saved to chat.json next to the ledger (what the user sees; the on-device model's memory lives only in its session).
 @MainActor @Observable
 final class ChatSession {
     var rows: [ChatRow] = [] { didSet { save() } }
@@ -75,8 +75,6 @@ final class ChatSession {
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
-    /// Claude's side of a restored conversation, handed to the agent when it is first created.
-    @ObservationIgnored private(set) var restoredMessages: [[String: Any]] = []
     @ObservationIgnored private let fileURL: URL?
     @ObservationIgnored private var loading = false
 
@@ -86,31 +84,27 @@ final class ChatSession {
         self.fileURL = fileURL
         guard let fileURL, let data = try? Data(contentsOf: fileURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              json["fingerprint"] as? String == ChatAgent.fingerprint,
               let ui = json["ui"], let uiData = try? JSONSerialization.data(withJSONObject: ui),
               let snapshot = try? JSONDecoder().decode(Snapshot.self, from: uiData) else { return }
-        // ponytail: a chat saved under other instructions or tools (no fingerprint, or a different one) starts empty too.
         // ponytail: an unreadable file starts an empty chat and is overwritten on the next change; chat is not ledger data.
         loading = true
         rows = snapshot.rows
         scope = snapshot.scope
-        restoredMessages = json["messages"] as? [[String: Any]] ?? []
         loading = false
     }
 
     func clear() {
         agent?.reset()
-        restoredMessages = []
         scope = nil
         rows = []
     }
 
-    /// Called after every change to rows; the agent has already appended its messages by then.
+    /// Called after every change to rows.
     func save() {
         guard !loading, let fileURL else { return }
         do {
             let ui = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Snapshot(rows: rows, scope: scope)))
-            let json: [String: Any] = ["version": 1, "fingerprint": ChatAgent.fingerprint, "ui": ui, "messages": (agent as? ChatAgent)?.messages ?? restoredMessages]
+            let json: [String: Any] = ["version": 1, "ui": ui]
             try JSONSerialization.data(withJSONObject: json).write(to: fileURL, options: .atomic)
         } catch {
             // ponytail: history is a convenience copy; a failed write never interrupts the chat.
@@ -119,10 +113,15 @@ final class ChatSession {
 }
 
 extension ChatSession {
-    /// Settings ▸ AI Chat ▸ Model: "claude" (default) or "apple" (on-device Apple Intelligence, no key needed).
-    static var usesApple: Bool { UserDefaults.standard.string(forKey: "chatBackend") == "apple" }
+    /// Why chat can't run on this device, or nil when it can. DEBUG UI runs can swap in a scripted backend.
+    static var unavailableReason: String? {
+        #if DEBUG
+        if usesFakeChat { return nil }
+        #endif
+        return AppleChatAgent.unavailableReason
+    }
 
-    /// Sends one user message and appends Claude's reply rows. Returns the reply so the caller can announce it.
+    /// Sends one user message and appends the reply rows. Returns the reply so the caller can announce it.
     @discardableResult
     func send(_ input: String, model: AppModel, scope: AnalyticsFilterScope, appended: ChatRow? = nil) async -> [ChatAgent.Output] {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -131,29 +130,14 @@ extension ChatSession {
         if appended == nil { rows.append(ChatRow(kind: .user(text))) }
         typingID = UUID()
         isTyping = true
-        // Switching backend starts the other model fresh; Claude's history is kept for when it comes back.
-        if Self.usesApple != (agent is AppleChatAgent) {
-            if let claude = agent as? ChatAgent { restoredMessages = claude.messages }
-            agent = nil
-        }
-        // The key is read per request, so changing it in Settings keeps the conversation.
-        let agent = agent ?? (Self.usesApple ? AppleChatAgent(model: model) : ChatAgent(model: model, messages: restoredMessages) { body in
-            #if DEBUG
-            if Self.usesFakeClaude { return try Self.fakeClaude(body) }
-            #endif
-            guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
-            return try await ClaudeClient(apiKey: key).send(body)
-        } stream: { body, onText in
-            guard let key = APIKeyStore.read() else { throw ClaudeClient.ClientError.unauthorized }
-            return try await ClaudeClient(apiKey: key).stream(body, onText: onText)
-        })
+        let agent: any ChatBackend
+        #if DEBUG
+        agent = self.agent ?? (Self.usesFakeChat ? FakeChatAgent(model: model) : AppleChatAgent(model: model))
+        #else
+        agent = self.agent ?? AppleChatAgent(model: model)
+        #endif
         streamingText = nil
         pacer.reset()
-        (agent as? ChatAgent)?.onText = { [weak self] delta in
-            guard let self else { return }
-            streamingText = delta.map { (streamingText ?? "") + $0 }
-            if let streamingText { pacer.set(streamingText) } else { pacer.reset() }
-        }
         self.agent = agent
         let outputs = await agent.send(text, scope: scope, now: .now)
         // The reply grows out of the thinking bubble: both changes land in one animation, the first text bubble scales up from its tail.
@@ -179,7 +163,7 @@ extension ChatSession {
         return outputs
     }
 
-    /// Save, discard or open a proposal card; only Save writes, and Claude hears what the user chose.
+    /// Save, discard or open a proposal card; only Save writes, and the assistant hears what the user chose.
     func resolveProposal(_ id: UUID, _ expense: Expense, as state: ProposalState, model: AppModel) {
         guard let index = rows.firstIndex(where: { $0.id == id }) else { return }
         let summary = "\(Money.format(expense.amount)) \(expense.note.isEmpty ? "" : "\"\(expense.note)\" ")on \(expense.day)"
@@ -264,23 +248,21 @@ extension ChatSession {
 
 #if DEBUG
 extension ChatSession {
-    /// UI-test hook: a scripted Claude that proposes "Kopi 28rb", then confirms. No network, no key.
-    nonisolated static var usesFakeClaude: Bool { ProcessInfo.processInfo.environment["MONOCLE_FAKE_CLAUDE"] != nil }
+    /// UI-test hook: a scripted backend that proposes "Kopi 28rb". No model, no network.
+    nonisolated static var usesFakeChat: Bool { ProcessInfo.processInfo.environment["MONOCLE_FAKE_CHAT"] != nil }
+}
 
-    nonisolated static func fakeClaude(_ body: Data) throws -> Data {
-        let json = try JSONSerialization.jsonObject(with: body) as? [String: Any]
-        let last = (json?["messages"] as? [[String: Any]])?.last?["content"] as? [[String: Any]]
-        let content: [[String: Any]]
-        let stop: String
-        if last?.first?["type"] as? String == "tool_result" {
-            content = [["type": "text", "text": "Click **Save** to add it."]]; stop = "end_turn"
-        } else {
-            content = [["type": "text", "text": "Adding it."],
-                       ["type": "tool_use", "id": "fake1", "name": "propose_expense",
-                        "input": ["amount": 28000, "category": "Food & Drink", "note": "Kopi"]]]
-            stop = "tool_use"
-        }
-        return try JSONSerialization.data(withJSONObject: ["role": "assistant", "content": content, "stop_reason": stop])
+/// Proposes Kopi 28rb through the real ToolExecutor, so the proposal card and Save path are the app's own.
+@MainActor
+final class FakeChatAgent: ChatBackend {
+    private let model: AppModel
+    init(model: AppModel) { self.model = model }
+    func note(_ text: String) {}
+    func reset() {}
+    func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output] {
+        let input = Data(#"{"amount": 28000, "category": "Food & Drink", "note": "Kopi"}"#.utf8)
+        let outcome = ToolExecutor(model: model, scope: scope, now: now).run("propose_expense", input: input)
+        return [.text("Adding it.")] + (outcome.proposal.map { [.proposal($0)] } ?? [.error(outcome.json)])
     }
 }
 #endif

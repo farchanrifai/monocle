@@ -187,14 +187,15 @@ final class IntentTests: XCTestCase {
         _ = try await BudgetLeftIntent().perform()
     }
 
-    func testAskMonocleNeedsChatOnAndNeverSavesAProposal() async throws {
+    func testAskMonocleNeedsAppleIntelligenceAndNeverSavesAProposal() async throws {
         let (_, service, model) = try makeTestModel()
         AppEnvironment.shared.model = model
         AppEnvironment.shared.expenses = service
-        UserDefaults.standard.removeObject(forKey: "chatEnabled")
-        var intent = AskMonocleIntent()
-        intent.question = "how much this month?"
-        do { _ = try await intent.perform(); XCTFail("chat is off") } catch AskError.chatOff {}
+        if ChatSession.unavailableReason != nil {
+            var intent = AskMonocleIntent()
+            intent.question = "how much this month?"
+            do { _ = try await intent.perform(); XCTFail("chat can't run here") } catch AskError.chatOff {}
+        }
 
         let proposal = Expense(amount: 28_000_00, day: "2026-10-13", note: "Kopi", splits: [], source: "chat", createdAt: .now)
         XCTAssertEqual(AskMonocleIntent.spoken([.text("Hi"), .proposal(proposal)]), "Hi I prepared a change. Open Monocle to confirm it.")

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Runs Claude's tool calls on-device (CHAT_SPEC §4). Every amount and total in a result is computed
-/// here by app code; Claude only relays it. Tools speak whole rupiah; the store keeps minor units.
+/// Runs the assistant's tool calls on-device (CHAT_SPEC §4). Every amount and total in a result is computed
+/// here by app code; the model only relays it. Tools speak whole rupiah; the store keeps minor units.
 @MainActor
 struct ToolExecutor {
     struct Outcome {
@@ -95,7 +95,7 @@ struct ToolExecutor {
         let rupiah: Int64
         let display: String
         init(_ minor: Int64) {
-            // ponytail: whole rupiah for Claude; `display` keeps the exact value for CSV-imported cents.
+            // ponytail: whole rupiah for the model; `display` keeps the exact value for CSV-imported cents.
             rupiah = minor / 100
             display = Money.format(minor)
         }

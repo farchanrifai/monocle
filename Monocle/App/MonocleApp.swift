@@ -64,7 +64,6 @@ struct RootView: View {
             } else {
                 model.appLock.resume()
                 do { try model.reload() } catch { model.error = error.localizedDescription }
-                model.lunaBridge.schedule(after: .seconds(1))
             }
         }
         .onChange(of: model.draft) { _, _ in model.persistDraft() }

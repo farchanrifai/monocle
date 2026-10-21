@@ -164,16 +164,6 @@ import XCTest
         }
     }
 
-    func testChatDestinationIsOptIn() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-chatEnabled", "NO"] // argument domain beats the saved toggle
-        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
-        app.launch()
-        app.typeKey("7", modifierFlags: .command)
-        XCTAssertTrue(app.buttons["chatSetup"].waitForExistence(timeout: 3), "Chat stays off until enabled in Settings")
-        XCTAssertFalse(app.textFields["chatInput"].exists)
-    }
-
     func testSettingsUseSidebarPanes() {
         let app = XCUIApplication()
         app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-MacSettingsPane", "general"]
@@ -195,11 +185,11 @@ import XCTest
         }
     }
 
-    func testChatProposesAndSavesWithFakeClaude() {
+    func testChatProposesAndSavesWithFakeChat() {
         let app = XCUIApplication()
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-chatEnabled", "YES"]
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString
-        app.launchEnvironment["MONOCLE_FAKE_CLAUDE"] = "1"
+        app.launchEnvironment["MONOCLE_FAKE_CHAT"] = "1"
         app.launch()
         app.typeKey("7", modifierFlags: .command)
         let input = app.textFields["chatInput"].exists ? app.textFields["chatInput"] : app.textViews["chatInput"]
@@ -207,7 +197,7 @@ import XCTest
         input.click()
         input.typeText("Kopi 28rb\r")
         let save = app.buttons["proposalSave"]
-        XCTAssertTrue(save.waitForExistence(timeout: 5), "Claude's proposal shows a confirm card")
+        XCTAssertTrue(save.waitForExistence(timeout: 5), "The proposal shows a confirm card")
         let shot = XCTAttachment(screenshot: app.windows.firstMatch.screenshot()); shot.name = "Chat"; shot.lifetime = .keepAlways; add(shot)
         save.click()
         XCTAssertTrue(app.staticTexts["Saved"].waitForExistence(timeout: 3))

@@ -116,15 +116,6 @@ final class MonocleMacTests: XCTestCase {
         XCTAssertEqual(options.counts(for: .card, under: ActivityFilter(from: "2026-09-15")), ["Trip": 2])
     }
 
-    func testAPIKeyRoundTripsThroughSandboxedKeychain() throws {
-        try XCTSkipIf(APIKeyStore.read() != nil, "A real key is saved; leave it alone")
-        defer { APIKeyStore.delete() }
-        XCTAssertTrue(APIKeyStore.save("sk-ant-test"))
-        XCTAssertEqual(APIKeyStore.read(), "sk-ant-test")
-        APIKeyStore.delete()
-        XCTAssertNil(APIKeyStore.read())
-    }
-
     @MainActor func testBulkDeleteAndRecategorizeUndoAsOneStep() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

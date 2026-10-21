@@ -170,7 +170,7 @@ struct ChatTranscript: View {
     }
 }
 
-/// Stacks, cards and All Cards; picking one tells Claude (and the transcript) what it now answers about.
+/// Stacks, cards and All Cards; picking one tells the assistant (and the transcript) what it now answers about.
 struct ChatScopeMenuItems: View {
     let model: AppModel
     let session: ChatSession

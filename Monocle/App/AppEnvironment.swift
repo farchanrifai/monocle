@@ -33,12 +33,6 @@ final class AppEnvironment {
             try repository.prepareInitialBudget(settings: settings)
             try SampleCardSeeder.seedIfNeeded(repository: repository, directory: directory)
             #if DEBUG
-            // UI runs get isolated stores; reset chat opt-in too, since Keychain and defaults outlive a run.
-            if directory.lastPathComponent.hasPrefix("monocle-ui-test-") {
-                APIKeyStore.delete()
-                UserDefaults.standard.removeObject(forKey: "chatEnabled")
-                UserDefaults.standard.removeObject(forKey: "chatBackend")
-            }
             if directory.lastPathComponent.hasPrefix("monocle-ui-test-"),
                ProcessInfo.processInfo.environment["MONOCLE_TEST_THREE_CARDS"] == "1",
                try repository.cards().count == 1 {

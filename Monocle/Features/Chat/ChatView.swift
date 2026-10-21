@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full-screen chat (CHAT_SPEC §1). Claude proposes and answers through ChatAgent; only the Save button writes.
+/// Full-screen chat (CHAT_SPEC §1). Apple Intelligence proposes and answers through the shared tools; only the Save button writes.
 struct ChatView: View {
     @Bindable var model: AppModel
     @Bindable var session: ChatSession
@@ -8,11 +8,8 @@ struct ChatView: View {
     @State private var draft = ""
     @State private var sentCount = 0
     @FocusState private var inputFocused: Bool
-    @AppStorage("chatEnabled") private var chatEnabled = false
-    @AppStorage("chatBackend") private var backend = "claude"
-    @State private var savedKey = APIKeyStore.read() != nil
-    private var hasKey: Bool { savedKey || backend == "apple" }
-    @State private var showingSetup = false
+    /// Read when the screen opens: Apple Intelligence can be turned on, or finish downloading, while the app runs.
+    @State private var unavailable = ChatSession.unavailableReason
     @State private var mentionSelection = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @State private var composerHeight: CGFloat = 0
@@ -47,7 +44,7 @@ struct ChatView: View {
             }
             .overlay(alignment: .bottom) {
                 Group {
-                  if chatEnabled && hasKey {
+                  if unavailable == nil {
                     ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
                         .overlay(alignment: .top) {
                             ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
@@ -55,11 +52,13 @@ struct ChatView: View {
                                 .alignmentGuide(.top) { $0[.bottom] + 4 }
                         }
                   } else {
-                    Button(chatEnabled ? "Add your API key" : "Turn on AI chat") { showingSetup = true }
-                        .buttonStyle(.borderedProminent)
-                        .tint(MC.red)
-                        .padding(12)
-                        .accessibilityIdentifier("chatSetup")
+                    Text(unavailable ?? "")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(16)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("chatUnavailable")
                   }
                 }
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
@@ -102,15 +101,10 @@ struct ChatView: View {
         .tint(MC.red)
         .onAppear {
             if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) }
+            unavailable = ChatSession.unavailableReason
             takePrefill()
         }
         .onChange(of: model.chatPrefill) { _, _ in takePrefill() }
-        .sheet(isPresented: $showingSetup, onDismiss: { savedKey = APIKeyStore.read() != nil }) {
-            NavigationStack {
-                ChatSettingsView()
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingSetup = false } } }
-            }
-        }
     }
 
     /// A `monocle://chat?q=` question lands in the composer; the owner taps Send.
@@ -121,7 +115,7 @@ struct ChatView: View {
     }
 
     private func send(_ input: String) {
-        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isTyping, hasKey else { return }
+        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isTyping, unavailable == nil else { return }
         sentCount += 1
         let session = session, model = model
         let scope = ChatScopeMenuItems.applyMention(in: input, session: session, model: model)
