@@ -97,6 +97,10 @@ final class ExpenseService {
     private(set) var committedRevision: UInt64 = 0
     private(set) var projectionRefreshError: String?
     var onCommit: (@MainActor () -> Void)?
+    /// Free/Pro rules. nil leaves every write open (tests, tools); the app sets it from ProStore.
+    var plan: Plan? {
+        didSet { if plan != oldValue, transactionDepth == 0, let snapshot = try? snapshot(preferredID: activeCardID) { publish(snapshot) } }
+    }
     private var categoryRules: [CategoryRule] = []
     private var archivedCategoryIDs: Set<UUID> = []
     private var transactionDepth = 0
@@ -160,9 +164,38 @@ final class ExpenseService {
         bills = active.bills
         billOccurrences = active.occurrences
         projectionRefreshError = nil
-        notifications.reconcile(rules: snapshot.states.values.flatMap(\.bills),
+        notifications.reconcile(rules: runnable(snapshot.states.values.flatMap(\.bills)),
                                 occurrences: snapshot.states.values.flatMap(\.occurrences),
                                 requestAuthorization: requestAuthorization)
+    }
+
+    /// Bills as they run under the plan: frozen ones (locked card, past the Free limit) behave as paused.
+    private func runnable(_ bills: [Bill]) -> [Bill] {
+        guard let plan else { return bills }
+        let frozen = plan.frozenBills(bills, cards: cards)
+        return bills.map { var bill = $0; if frozen.contains(bill.id) { bill.isActive = false }; return bill }
+    }
+
+    /// Throws when the plan keeps this card read-only.
+    private func checkWritable(_ cardID: UUID) throws {
+        if let plan, plan.isLocked(cardID, in: cards) { throw PlanError.lockedCard }
+    }
+
+    /// The Sample card's entry cap and Pro-only foreign currency, for expenses about to be saved on `cardID`.
+    private func checkPlan(_ batch: [Expense], in cardID: UUID) throws {
+        guard let plan else { return }
+        try checkWritable(cardID)
+        let stored = workspaceExpenses[cardID] ?? []
+        if cardID == Card.demo.id {
+            let added = Set(stored.filter { $0.source != "sample" }.map(\.id))
+            let new = batch.filter { $0.source != "sample" && !added.contains($0.id) }.count
+            if new > 0, added.count + new > Plan.sampleEntries { throw PlanError.sampleLimit }
+        }
+        if !plan.isPro {
+            let before = Dictionary(stored.map { ($0.id, $0.originalCurrency) }, uniquingKeysWith: { a, _ in a })
+            // An expense already saved in another currency (from Pro days) can still be edited as it is.
+            if batch.contains(where: { $0.originalCurrency != nil && before[$0.id] != $0.originalCurrency }) { throw PlanError.foreignCurrency }
+        }
     }
 
     func reload() throws {
@@ -186,7 +219,7 @@ final class ExpenseService {
             do { publish(try snapshot(preferredID: activeCardID), requestAuthorization: pendingAuthorization) }
             catch { projectionRefreshError = error.localizedDescription }
         } else {
-            notifications.reconcile(rules: workspaceBills.values.flatMap { $0 },
+            notifications.reconcile(rules: runnable(workspaceBills.values.flatMap { $0 }),
                                     occurrences: workspaceOccurrences.values.flatMap { $0 },
                                     requestAuthorization: pendingAuthorization)
         }
@@ -221,6 +254,7 @@ final class ExpenseService {
 
     func createCard(named name: String, initialCategories: [GlobalCategory]? = nil) throws -> Card {
         guard !isBlocked else { throw BackupError.recoveryRequired }
+        if let plan, !plan.isPro, cards.filter({ $0.kind == .real }).count >= Plan.freeCards { throw PlanError.cardLimit }
         let card = try store.createCard(named: name, initialCategories: initialCategories)
         if transactionDepth == 0 {
             cards.append(card)
@@ -238,12 +272,14 @@ final class ExpenseService {
 
     func activateCategory(_ category: GlobalCategory, in cardID: UUID) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
+        try checkWritable(cardID)
         try store.activateCategory(category, in: cardID)
         didCommit()
     }
 
     func deactivateCategory(_ categoryID: UUID, in cardID: UUID) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
+        try checkWritable(cardID)
         try store.deactivateCategory(categoryID, in: cardID)
         didCommit()
     }
@@ -260,6 +296,7 @@ final class ExpenseService {
 
     func renameCard(id: UUID, to name: String) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
+        try checkWritable(id)
         try store.renameCard(id: id, to: name)
         didCommit()
     }
@@ -267,6 +304,7 @@ final class ExpenseService {
     /// Saves a card's currency and Paid with defaults; its name and look have their own commands.
     func updateCard(_ profile: Card) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
+        try checkWritable(profile.id)
         try profile.validate()
         try store.updateCard(profile)
         didCommit()
@@ -297,8 +335,13 @@ final class ExpenseService {
         let targetID = cardID ?? bill.cardID
         var bill = bill
         bill.cardID = targetID
+        try checkWritable(targetID)
         let cats = try store.categories(in: targetID)
         let prior = try store.bills(in: targetID).first { $0.id == bill.id }
+        if let plan, !plan.isPro, bill.isActive, prior?.isActive != true {
+            let running = runnable(workspaceBills.values.flatMap { $0 }).filter { $0.isActive && $0.id != bill.id }
+            if running.count >= Plan.freeBills { throw PlanError.billLimit }
+        }
         let existing = try store.billOccurrences(in: targetID)
         var retired: [UUID] = []
         if let prior {
@@ -338,6 +381,7 @@ final class ExpenseService {
 
     func deleteBill(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
+        try checkWritable(cardID ?? activeCardID)
         try store.deleteBill(id, in: cardID ?? activeCardID)
         didCommit()
     }
@@ -350,7 +394,7 @@ final class ExpenseService {
         for targetID in targets {
             let currentBills = try store.bills(in: targetID)
             let existing = try store.billOccurrences(in: targetID)
-            for bill in currentBills where bill.isActive {
+            for bill in runnable(currentBills) where bill.isActive {
                 let result = BillReconciliationEngine.reconcile(rule: bill, existingOccurrences: existing, asOf: date)
                 if !result.newOccurrences.isEmpty || !result.retiredOccurrenceIDs.isEmpty { results.append((targetID, result)) }
             }
@@ -375,6 +419,7 @@ final class ExpenseService {
                                in cardID: UUID? = nil) throws -> Expense {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? activeCardID
+        try checkWritable(targetID)
         guard var occurrence = try store.billOccurrences(in: targetID).first(where: { $0.id == occurrenceID }) else {
             throw BillError.occurrenceNotFound
         }
@@ -400,6 +445,7 @@ final class ExpenseService {
     func skipBillOccurrence(_ occurrenceID: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? activeCardID
+        try checkWritable(targetID)
         guard var occurrence = try store.billOccurrences(in: targetID).first(where: { $0.id == occurrenceID }) else {
             throw BillError.occurrenceNotFound
         }
@@ -420,6 +466,7 @@ final class ExpenseService {
         let targetID = cardID ?? expense.cardID ?? activeCardID
         var expense = expense
         expense.cardID = targetID
+        try checkPlan([expense], in: targetID)
         let cats = transactionDepth == 0 && targetID == activeCardID ? categories : try store.categories(in: targetID)
         try expense.validate(categories: cats)
         try validateAdmission(replacing: [expense], in: targetID)
@@ -459,6 +506,7 @@ final class ExpenseService {
             try value.validate(categories: cats)
             return value
         }
+        try checkPlan(normalized, in: targetID)
         try validateAdmission(replacing: normalized, in: targetID)
         try performTransaction {
             try store.saveExpenses(normalized, in: targetID)
@@ -468,6 +516,7 @@ final class ExpenseService {
     func save(_ budget: BudgetVersion, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? budget.cardID ?? activeCardID
+        try checkWritable(targetID)
         var budget = budget
         budget.cardID = targetID
         try budget.validate(categories: try store.categories(in: targetID))
@@ -483,6 +532,7 @@ final class ExpenseService {
     func saveCategory(_ category: ExpenseCategory, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? activeCardID
+        try checkWritable(targetID)
         let category = try category.validated(against: store.categories(in: targetID))
         try store.saveCategory(category, in: targetID)
         didCommit()
@@ -491,6 +541,7 @@ final class ExpenseService {
     func deleteCategory(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? activeCardID
+        try checkWritable(targetID)
         guard try !store.expenses(in: targetID).contains(where: { $0.splits.contains(where: { $0.categoryID == id }) }),
               try !store.bills(in: targetID).contains(where: { $0.categoryID == id }),
               try !store.budgets(in: targetID).contains(where: { $0.categoryLimits.contains(where: { $0.categoryID == id }) }) else {
@@ -530,6 +581,7 @@ final class ExpenseService {
     func delete(_ id: UUID, in cardID: UUID? = nil) throws {
         guard !isBlocked else { throw BackupError.recoveryRequired }
         let targetID = cardID ?? activeCardID
+        try checkWritable(targetID)
         // Capture the complete affected occurrence state before the commit, so failures still mean no deletion.
         var resultingOccurrences = try store.billOccurrences(in: targetID)
         let deletedAt = Date.now
