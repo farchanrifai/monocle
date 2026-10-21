@@ -513,17 +513,15 @@ final class ExpenseService {
     }
 
     @discardableResult
-    func record(amountInRupiah: Int64, categoryID: UUID, note: String? = nil, date: Date = .now,
+    func record(minorAmount: Int64, categoryID: UUID, note: String? = nil, date: Date = .now,
                 id: UUID = UUID(), source: String = "shortcut", in cardID: UUID? = nil) throws -> Expense {
         let targetID = cardID ?? activeCardID
-        guard amountInRupiah > 0 else { throw EntryError.invalidAmount }
-        let multiplication = amountInRupiah.multipliedReportingOverflow(by: 100)
-        guard !multiplication.overflow, multiplication.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
+        guard minorAmount > 0, minorAmount <= Money.maximum else { throw EntryError.invalidAmount }
         let cats = targetID == activeCardID ? categories : try store.categories(in: targetID)
         guard cats.contains(where: { $0.id == categoryID }), !archivedCategoryIDs.contains(categoryID) else { throw EntryError.missingCategory }
-        let expense = Expense(id: id, amount: multiplication.partialValue, day: Day.string(date),
+        let expense = Expense(id: id, amount: minorAmount, day: Day.string(date),
             note: note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
-            splits: [.init(categoryID: categoryID, amount: multiplication.partialValue)],
+            splits: [.init(categoryID: categoryID, amount: minorAmount)],
             source: source, createdAt: date, cardID: targetID)
         try save(expense, in: targetID)
         return expense

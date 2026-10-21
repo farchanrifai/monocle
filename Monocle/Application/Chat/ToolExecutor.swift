@@ -1,7 +1,7 @@
 import Foundation
 
 /// Runs the assistant's tool calls on-device (CHAT_SPEC §4). Every amount and total in a result is computed
-/// here by app code; the model only relays it. Tools speak whole rupiah; the store keeps minor units.
+/// here by app code; the model only relays it. Tools speak major units of the card's currency; the store keeps minor units.
 @MainActor
 struct ToolExecutor {
     struct Outcome {
@@ -67,17 +67,17 @@ struct ToolExecutor {
 
     enum GroupBy: String, Decodable { case category, day, card }
 
-    struct SplitPart: Decodable { let category: String; let amount: Int64 }
+    struct SplitPart: Decodable { let category: String; let amount: Decimal }
     struct ProposeInput: Decodable {
-        let amount: Int64; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String?
+        let amount: Decimal; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String?
         var paid_with: String?
     }
-    struct EditInput: Decodable { let id: String; var amount: Int64?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
+    struct EditInput: Decodable { let id: String; var amount: Decimal?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
     struct DeleteInput: Decodable { let id: String }
     enum Frequency: String, Decodable { case monthly, weekly, yearly }
     enum RecordMode: String, Decodable { case automatic, confirm }
     struct BillInput: Decodable {
-        let name: String; let amount: Int64; let category: String; let frequency: Frequency
+        let name: String; let amount: Decimal; let category: String; let frequency: Frequency
         var day: Int?; var weekday: Int?; var month: Int?; var record: RecordMode?; var reminder: Bool?; var card: String?
     }
     struct ListBillsInput: Decodable { var scope: String? }
@@ -92,12 +92,20 @@ struct ToolExecutor {
     // MARK: - Outputs
 
     struct Amount: Encodable, Equatable {
-        let rupiah: Int64
+        /// Major units, exact (28000, 4.5).
+        let value: Decimal
         let display: String
         init(_ minor: Int64) {
-            // ponytail: whole rupiah for the model; `display` keeps the exact value for CSV-imported cents.
-            rupiah = minor / 100
+            value = Decimal(minor) / 100
             display = Money.format(minor)
+        }
+    }
+
+    /// The model's major-unit amount in minor units of `card`'s currency.
+    private func minor(_ major: Decimal, on card: Card, what: String = "Amount") throws -> Int64 {
+        let code = model.currency(ofCard: card.id)
+        do { return try Money.minor(fromMajor: major, code: code) } catch {
+            throw ToolError(message: "\(what) must be above 0 in \(code), for example \(Money.fractionDigits(code) > 0 ? "4.50" : "28000").")
         }
     }
 
@@ -124,15 +132,12 @@ struct ToolExecutor {
     // MARK: - Tools
 
     private func proposeExpense(_ input: ProposeInput) throws -> Outcome {
-        guard input.amount > 0, input.amount <= Money.maximum / 100 else {
-            throw ToolError(message: "Amount must be whole rupiah above 0, for example 28000.")
-        }
         let card = try input.card.map { try card(named: $0) } ?? targetCard()
+        let minor = try minor(input.amount, on: card)
         let day = input.day ?? Day.string(now)
         guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
         let categories = try model.activeCategories(in: card.id)
-        let minor = input.amount * 100
-        guard let splits = try splits(total: minor, category: input.category, split: input.split, in: categories) else {
+        guard let splits = try splits(total: minor, category: input.category, split: input.split, on: card, in: categories) else {
             throw ToolError(message: "Give a category, or a split of two or more categories.")
         }
         let note = (input.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -154,14 +159,9 @@ struct ToolExecutor {
     private func proposeEdit(_ input: EditInput) throws -> Outcome {
         let (original, card) = try savedExpense(input.id)
         var updated = original
-        if let amount = input.amount {
-            guard amount > 0, amount <= Money.maximum / 100 else {
-                throw ToolError(message: "Amount must be whole rupiah above 0, for example 28000.")
-            }
-            updated.amount = amount * 100
-        }
+        if let amount = input.amount { updated.amount = try minor(amount, on: card) }
         let categories = try model.activeCategories(in: card.id)
-        if let splits = try splits(total: updated.amount, category: input.category, split: input.split, in: categories) {
+        if let splits = try splits(total: updated.amount, category: input.category, split: input.split, on: card, in: categories) {
             updated.splits = splits
         } else if input.amount != nil {
             guard original.splits.count == 1 else {
@@ -190,13 +190,12 @@ struct ToolExecutor {
     }
 
     /// One category, or a split whose parts add up to `total` (minor units). nil when neither was given.
-    private func splits(total: Int64, category name: String?, split: [SplitPart]?, in categories: [ExpenseCategory]) throws -> [Split]? {
+    private func splits(total: Int64, category name: String?, split: [SplitPart]?, on card: Card, in categories: [ExpenseCategory]) throws -> [Split]? {
         if let split, !split.isEmpty {
             guard name == nil else { throw ToolError(message: "Give either category or split, not both.") }
             guard split.count >= 2 else { throw ToolError(message: "A split needs two or more categories; use category for one.") }
             let parts = try split.map { part -> Split in
-                guard part.amount > 0, part.amount <= Money.maximum / 100 else { throw ToolError(message: "Each split amount must be whole rupiah above 0.") }
-                return Split(categoryID: try category(named: part.category, in: categories).id, amount: part.amount * 100)
+                Split(categoryID: try category(named: part.category, in: categories).id, amount: try minor(part.amount, on: card, what: "Each split amount"))
             }
             guard Set(parts.map(\.categoryID)).count == parts.count else { throw ToolError(message: "Each category can appear once in a split.") }
             let sum = try Money.checkedSum(parts.map(\.amount))
@@ -209,10 +208,8 @@ struct ToolExecutor {
     }
 
     private func proposeBill(_ input: BillInput) throws -> Outcome {
-        guard input.amount > 0, input.amount <= Money.maximum / 100 else {
-            throw ToolError(message: "Amount must be whole rupiah above 0, for example 186000.")
-        }
         let card = try input.card.map { try card(named: $0) } ?? targetCard()
+        let amount = try minor(input.amount, on: card)
         let categories = try model.activeCategories(in: card.id)
         let category = try category(named: input.category, in: categories)
         let today = Day.calendar.dateComponents([.day, .weekday, .month], from: now)
@@ -222,7 +219,7 @@ struct ToolExecutor {
         case .weekly: .weekly(weekday: input.weekday ?? today.weekday ?? 1)
         case .yearly: .yearly(month: input.month ?? today.month ?? 1, day: input.day ?? today.day ?? 1)
         }
-        let rule = Bill(cardID: card.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: input.amount * 100,
+        let rule = Bill(cardID: card.id, name: input.name.trimmingCharacters(in: .whitespacesAndNewlines), amount: amount,
                             categoryID: category.id, recurrence: recurrence,
                             recordingMode: input.record == .automatic ? .automatic : .pending, hasReminder: input.reminder ?? true)
         do { try rule.validate(categories: categories) } catch {

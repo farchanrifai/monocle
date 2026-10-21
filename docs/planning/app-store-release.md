@@ -60,10 +60,8 @@ Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9
 - Remove the SideStore publish step from this branch's release path.
 
 ### 1b. Worldwide
-- First-launch reporting currency from `Locale.current.currency`, not hard-coded `IDR` (`Money.reportingCurrency`, `WorkspacePreferences.reportingCurrency`).
-- Shortcuts: Add Expense `amount: Int` → decimal; "Budget Limit (IDR)" → reporting currency. No public users yet, so breaking saved shortcuts costs nothing now and something after launch.
-- CSV header "Amount (IDR)", "28k" examples and the Sample card follow the reporting currency.
-- Manual entry accepts minor units for 2-decimal currencies.
+- Done: Shortcuts Add Expense and spending-session budget take decimals in the card's currency (`Money.minor(fromMajor:)`); chat tools take major units with decimals and Apple chat parses "$4.50" / "4,50 €" / "28rb" per currency; manual entry already did; Shortcut field label "Amount"; chat suggestion follows the reporting currency.
+- With onboarding (2b): first-launch reporting currency from `Locale.current.currency`; Sample card amounts scaled to that currency.
 - English-only listing is fine; localization later.
 
 ### 2. StoreKit 2

@@ -11,7 +11,10 @@ struct ChatTranscript: View {
     let session: ChatSession
     var send: (String) -> Void
 
-    private static let suggestions = ["Kopi 28rb", "How much did I spend this month?", "Am I over budget?"]
+    /// The first one adds an expense in the reporting currency's usual shorthand.
+    private static var suggestions: [String] {
+        [Money.reportingCurrency == "IDR" ? "Kopi 28rb" : "Coffee 5", "How much did I spend this month?", "Am I over budget?"]
+    }
     private var rows: [ChatRow] { session.rows }
 
     var body: some View {

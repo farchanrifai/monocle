@@ -27,7 +27,7 @@ final class IntentTests: XCTestCase {
         XCTAssertEqual(ShortcutInputField.card.displayName, "Card / Account")
         XCTAssertEqual(ShortcutInputField.category.displayName, "Category")
         XCTAssertEqual(ShortcutInputField.note.displayName, "Short Note")
-        XCTAssertEqual(ShortcutInputField.amount.displayName, "Amount (IDR)")
+        XCTAssertEqual(ShortcutInputField.amount.displayName, "Amount")
         XCTAssertFalse(ShortcutInputField.card.systemImage.isEmpty)
         XCTAssertFalse(ShortcutInputField.category.systemImage.isEmpty)
     }
@@ -169,8 +169,8 @@ final class IntentTests: XCTestCase {
         AppEnvironment.shared.expenses = service
         let card = try store.cards()[0]
         let category = try XCTUnwrap(model.activeCategories(for: card.id).first)
-        try service.record(amountInRupiah: 28_000, categoryID: category.id, note: "Kopi", in: card.id)
-        try service.record(amountInRupiah: 12_000, categoryID: category.id, note: "Roti", in: card.id)
+        try service.record(minorAmount: 28_000_00, categoryID: category.id, note: "Kopi", in: card.id)
+        try service.record(minorAmount: 12_000_00, categoryID: category.id, note: "Roti", in: card.id)
 
         let summary = try AskAnswers.summary(period: .thisMonth, scope: AskAnswers.scopeName(card: CardEntity(card), stack: nil), model: model)
         XCTAssertEqual(summary.count, 2)

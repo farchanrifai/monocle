@@ -53,6 +53,18 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(try repo.expenses(in: travel.id).count, before, "Proposals never write")
     }
 
+    func testProposeReadsDecimalsInTheCardsCurrency() throws {
+        var usd = travel!; usd.currency = "USD"
+        try repo.updateCard(usd)
+        try model.reload()
+        let outcome = run("propose_expense", ["amount": 4.5, "category": "Transport", "note": "Bus"], scope: tripScope)
+        XCTAssertFalse(outcome.isError, outcome.json)
+        XCTAssertEqual(outcome.proposal?.amount, 450)
+        let split = run("propose_expense", ["amount": 10, "split": [["category": "Transport", "amount": 2.25], ["category": "Food & Drink", "amount": 7.75]]], scope: tripScope)
+        XCTAssertEqual(split.proposal?.splits.map(\.amount), [225, 775], split.json)
+        XCTAssertTrue(run("propose_expense", ["amount": 0.001, "category": "Transport"], scope: tripScope).isError, "rounds to zero")
+    }
+
     func testProposeRejectsBadInputWithUsableMessages() throws {
         XCTAssertTrue(run("propose_expense", ["amount": 0, "category": "Transport"]).isError)
         XCTAssertTrue(run("propose_expense", ["amount": Money.maximum, "category": "Transport"]).isError)
@@ -352,7 +364,7 @@ final class ChatToolTests: XCTestCase {
         (try? JSONSerialization.jsonObject(with: Data(outcome.json.utf8))) as? [String: Any] ?? [:]
     }
 
-    private func rupiah(_ amount: Any?) -> Int64? { ((amount as? [String: Any])?["rupiah"] as? NSNumber)?.int64Value }
+    private func rupiah(_ amount: Any?) -> Int64? { ((amount as? [String: Any])?["value"] as? NSNumber)?.int64Value }
 
     private func category(_ name: String, in card: Card) throws -> ExpenseCategory {
         try XCTUnwrap(try repo.categories(in: card.id).first { $0.name == name })

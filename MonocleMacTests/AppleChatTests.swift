@@ -17,15 +17,20 @@ final class AppleChatTests: XCTestCase {
         }
     }
 
-    func testRupiahParsing() {
-        XCTAssertEqual(AppleChatAgent.rupiah("28rb"), 28_000)
-        XCTAssertEqual(AppleChatAgent.rupiah("100k"), 100_000)
-        XCTAssertEqual(AppleChatAgent.rupiah("1,5jt"), 1_500_000)
-        XCTAssertEqual(AppleChatAgent.rupiah("2 juta"), 2_000_000)
-        XCTAssertEqual(AppleChatAgent.rupiah("Rp28.000"), 28_000)
-        XCTAssertEqual(AppleChatAgent.rupiah("50000"), 50_000)
-        XCTAssertNil(AppleChatAgent.rupiah("kopi"))
-        XCTAssertNil(AppleChatAgent.rupiah("0k"))
+    func testAmountParsing() {
+        XCTAssertEqual(AppleChatAgent.amount("28rb"), 28_000)
+        XCTAssertEqual(AppleChatAgent.amount("100k"), 100_000)
+        XCTAssertEqual(AppleChatAgent.amount("1,5jt"), 1_500_000)
+        XCTAssertEqual(AppleChatAgent.amount("2 juta"), 2_000_000)
+        XCTAssertEqual(AppleChatAgent.amount("Rp28.000"), 28_000)
+        XCTAssertEqual(AppleChatAgent.amount("50000"), 50_000)
+        XCTAssertNil(AppleChatAgent.amount("kopi"))
+        XCTAssertNil(AppleChatAgent.amount("0k"))
+        XCTAssertEqual(AppleChatAgent.amount("$4.50", code: "USD"), Decimal(string: "4.5"))
+        XCTAssertEqual(AppleChatAgent.amount("1,234.5", code: "USD"), Decimal(string: "1234.5"))
+        XCTAssertEqual(AppleChatAgent.amount("4,50 €", code: "EUR"), Decimal(string: "4.5"))
+        XCTAssertEqual(AppleChatAgent.amount("1.234", code: "EUR"), 1_234, "three digits after the separator group thousands")
+        XCTAssertEqual(AppleChatAgent.amount("12", code: "USD"), 12)
     }
 
     func testDoneClaimsBesideAPendingCardAreDropped() {

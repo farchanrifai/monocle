@@ -41,16 +41,16 @@ enum ChatAgent {
         <app_context>
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
         Scope: \(scope) (cards: \(cards.joined(separator: ", "))).
-        New expenses go to card: \(card?.name ?? "none — ask the user").
+        New expenses go to card: \(card?.name ?? "none — ask the user"), currency \(card.map { model.currency(ofCard: $0.id) } ?? Money.reportingCurrency).
         \(lastPeriod.map { "Period of your last answer: \($0). A follow-up that names no period (\"what categories?\", \"and transport?\") uses it, not this_month.\n" } ?? "")        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")</app_context>
         """
     }
 
     static let systemPrompt = """
-    You are the assistant inside Monocle, a personal expense tracker. Currency is Indonesian Rupiah (IDR).
+    You are the assistant inside Monocle, a personal expense tracker. Amounts are in the currency app_context names.
     Understand English and Bahasa Indonesia (for example "28k", "28rb", "1,5jt", "kemarin", "bulan lalu") and reply in the user's language.
     Each user turn starts with <app_context> facts from the app: today's date, the active scope, the card new expenses go to, and its categories.
-    To add an expense, call propose_expense with the amount in whole rupiah. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense.
+    To add an expense, call propose_expense with the amount in that currency. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense.
     For a recurring payment (subscription, rent, "tiap bulan"), call propose_bill instead of propose_expense; the user confirms it the same way.
     Pick the closest existing category. For one purchase across categories ("50rb, 30rb makan 20rb belanja") use split instead of category. If the amount is missing or unclear, ask one short question instead of guessing.
     Never calculate totals, averages, differences or percentages yourself; use query_expenses, get_summary, compare_periods or get_budget_status and quote their numbers, using each amount's display text.
@@ -68,11 +68,11 @@ enum ChatAgent {
            "description": "Propose ONE expense for the user to confirm in the app. Does not save. Call once per expense.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["amount", "note"],
              "properties": {
-               "amount": {"type": "integer", "description": "Whole rupiah, e.g. 28rb -> 28000, 1,5jt -> 1500000."},
+               "amount": {"type": "number", "description": "In the card's currency, e.g. 28rb -> 28000, 1,5jt -> 1500000, $4.50 -> 4.5."},
                "category": {"type": "string", "description": "One of the category names from app_context. Omit when giving split."},
                "split": {"type": "array", "description": "Two or more parts of ONE purchase; amounts must add up to amount.",
                  "items": {"type": "object", "additionalProperties": false, "required": ["category", "amount"],
-                   "properties": {"category": {"type": "string"}, "amount": {"type": "integer", "description": "Whole rupiah."}}}},
+                   "properties": {"category": {"type": "string"}, "amount": {"type": "number", "description": "Same currency as amount."}}}},
                "note": {"type": "string", "description": "Short name of what was bought, from the user's words, e.g. Kopi, Bensin, Lunch."},
                "day": {"type": "string", "description": "yyyy-MM-dd. Omit for today."},
                "card": {"type": "string", "description": "Card name. Omit for the app_context card."},
@@ -82,11 +82,11 @@ enum ChatAgent {
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["id"],
              "properties": {
                "id": {"type": "string", "description": "The expense id from query_expenses."},
-               "amount": {"type": "integer", "description": "New amount in whole rupiah."},
+               "amount": {"type": "number", "description": "New amount in the card's currency."},
                "category": {"type": "string", "description": "New single category name."},
                "split": {"type": "array", "description": "New split replacing the categories; parts must add up to the (new) amount.",
                  "items": {"type": "object", "additionalProperties": false, "required": ["category", "amount"],
-                   "properties": {"category": {"type": "string"}, "amount": {"type": "integer", "description": "Whole rupiah."}}}},
+                   "properties": {"category": {"type": "string"}, "amount": {"type": "number", "description": "Same currency as amount."}}}},
                "note": {"type": "string"},
                "day": {"type": "string", "description": "New date, yyyy-MM-dd."}}}},
           {"name": "propose_delete", "strict": true,
@@ -98,7 +98,7 @@ enum ChatAgent {
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["name", "amount", "category", "frequency", "day"],
              "properties": {
                "name": {"type": "string", "description": "Short name, e.g. Netflix. Max 40 characters."},
-               "amount": {"type": "integer", "description": "Whole rupiah per payment."},
+               "amount": {"type": "number", "description": "Per payment, in the card's currency."},
                "category": {"type": "string", "description": "One of the category names from app_context."},
                "frequency": {"type": "string", "enum": ["monthly", "weekly", "yearly"]},
                "day": {"type": "integer", "description": "Day of month 1-31 (monthly, yearly), e.g. tanggal 5 -> 5. Today's day if the user gave none; ignored for weekly."},

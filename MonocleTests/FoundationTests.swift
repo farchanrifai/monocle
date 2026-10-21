@@ -110,13 +110,13 @@ final class FoundationTests: XCTestCase {
         let store = TestExpenseStore()
         let service = try ExpenseService(store: store)
         let id = UUID()
-        try service.record(amountInRupiah: 28_000, categoryID: ExpenseCategory.defaults[0].id, note: "Coffee", date: Date(timeIntervalSinceReferenceDate: 1_000), id: id)
-        try service.record(amountInRupiah: 32_000, categoryID: ExpenseCategory.defaults[0].id, note: "Coffee", date: Date(timeIntervalSinceReferenceDate: 1_000), id: id)
+        try service.record(minorAmount: 28_000_00, categoryID: ExpenseCategory.defaults[0].id, note: "Coffee", date: Date(timeIntervalSinceReferenceDate: 1_000), id: id)
+        try service.record(minorAmount: 32_000_00, categoryID: ExpenseCategory.defaults[0].id, note: "Coffee", date: Date(timeIntervalSinceReferenceDate: 1_000), id: id)
         XCTAssertEqual(service.expenses.count, 1)
         XCTAssertEqual(service.expenses.first?.amount, 3_200_000)
         XCTAssertEqual(service.expenses.first?.note, "Coffee")
-        XCTAssertThrowsError(try service.record(amountInRupiah: 0, categoryID: ExpenseCategory.defaults[0].id))
-        XCTAssertThrowsError(try service.record(amountInRupiah: 28_000, categoryID: UUID()))
+        XCTAssertThrowsError(try service.record(minorAmount: 0, categoryID: ExpenseCategory.defaults[0].id))
+        XCTAssertThrowsError(try service.record(minorAmount: 28_000_00, categoryID: UUID()))
         XCTAssertEqual(service.expenses.count, 1)
     }
 
@@ -139,7 +139,7 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(try service.record(text: "Coffee 28k").splits.first?.categoryID, rule.categoryID)
         service.configure(categoryRules: [rule], archivedCategoryIDs: [rule.categoryID])
         XCTAssertThrowsError(try service.record(text: "Coffee 28k"))
-        XCTAssertThrowsError(try service.record(amountInRupiah: 28_000, categoryID: rule.categoryID))
+        XCTAssertThrowsError(try service.record(minorAmount: 28_000_00, categoryID: rule.categoryID))
     }
 
     func testAppLockUsesPrivacyShieldThenHonorsTimeout() async {
@@ -409,13 +409,13 @@ extension FoundationTests {
         let targetCatID = secondCardCats[0].id
 
         // Record targeting the second card explicitly
-        let exp1 = try service.record(amountInRupiah: 45_000, categoryID: targetCatID, note: "Dinner abroad", in: secondCard.id)
+        let exp1 = try service.record(minorAmount: 45_000_00, categoryID: targetCatID, note: "Dinner abroad", in: secondCard.id)
         XCTAssertEqual(exp1.cardID, secondCard.id)
         XCTAssertEqual(exp1.amount, 4_500_000)
 
         // Record with nil card targets default active card
         let defaultCatID = ExpenseCategory.defaults[0].id
-        let exp2 = try service.record(amountInRupiah: 20_000, categoryID: defaultCatID, note: "Coffee", in: nil)
+        let exp2 = try service.record(minorAmount: 20_000_00, categoryID: defaultCatID, note: "Coffee", in: nil)
         XCTAssertEqual(exp2.cardID, service.activeCardID)
         XCTAssertEqual(exp2.amount, 2_000_000)
 

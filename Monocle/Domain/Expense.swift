@@ -149,7 +149,7 @@ enum EntryError: LocalizedError {
     case invalidAmount, missingCategory, invalidDate, splitMismatch, duplicateSplitCategory, ambiguousAmount, corruptStore, aggregateOverflow
     var errorDescription: String? {
         switch self {
-        case .invalidAmount: "Enter an amount greater than zero, in whole rupiah."
+        case .invalidAmount: "Enter an amount greater than zero."
         case .missingCategory: "Choose a category before adding."
         case .invalidDate: "Choose a valid expense date."
         case .splitMismatch: "Your category splits must equal the total."
@@ -193,6 +193,14 @@ enum Money {
         let minor = rounded * 100
         guard minor > 0, minor <= Decimal(maximum) else { throw EntryError.invalidAmount }
         return NSDecimalNumber(decimal: minor).int64Value
+    }
+
+    /// A major-unit amount from Shortcuts or chat (28000, 4.5) in minor units, rounded to the currency's decimals.
+    static func minor(fromMajor major: Decimal, code: String? = nil) throws -> Int64 {
+        var value = major, rounded = Decimal()
+        NSDecimalRound(&rounded, &value, fractionDigits(code ?? reportingCurrency), .plain)
+        guard rounded > 0, rounded * 100 <= Decimal(maximum) else { throw EntryError.invalidAmount }
+        return NSDecimalNumber(decimal: rounded * 100).int64Value
     }
 
     /// ISO 4217 shape: three uppercase ASCII letters.
@@ -254,7 +262,7 @@ enum Money {
         return NSDecimalNumber(decimal: rounded).int64Value
     }
 
-    /// Locale-independent reversible CSV/historical-edit representation, in rupiah.
+    /// Locale-independent reversible CSV/historical-edit representation, in major units.
     static func exactDigits(_ amount: Int64) -> String {
         let whole = amount / 100
         let fraction = abs(amount % 100)
@@ -262,7 +270,7 @@ enum Money {
         return fraction == 0 ? String(whole) : "\(prefix).\(String(format: "%02d", fraction))"
     }
 
-    /// CSV accepts exact cents; manual capture remains whole rupiah through `parse`.
+    /// CSV accepts exact cents; manual capture goes through `parse`, at the currency's decimals.
     static func parseExact(_ input: String) throws -> Int64 {
         guard input.range(of: "^[0-9]+(?:\\.[0-9]{1,2})?$", options: .regularExpression) != nil,
               let amount = Decimal(string: input, locale: Locale(identifier: "en_US_POSIX")),

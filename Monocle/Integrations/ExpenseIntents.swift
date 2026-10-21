@@ -177,7 +177,7 @@ struct AddExpenseIntent: AppIntent {
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
     static var supportedModes: IntentModes { .background }
 
-    @Parameter(title: "Amount", requestValueDialog: IntentDialog("How much?")) var amount: Int?
+    @Parameter(title: "Amount", requestValueDialog: IntentDialog("How much?")) var amount: Double?
     @Parameter(title: "Category", requestValueDialog: IntentDialog("Which category?")) var category: ExpenseCategoryEntity?
     @Parameter(title: "Card", requestValueDialog: IntentDialog("Which card?")) var card: CardEntity?
     @Parameter(title: "Short Note", requestValueDialog: IntentDialog("Short note (optional)?")) var note: String?
@@ -298,7 +298,8 @@ struct AddExpenseIntent: AppIntent {
         }
 
         let finalNote = resolvedNote ?? ""
-        let expense = try service.record(amountInRupiah: Int64(validAmount), categoryID: categoryID, note: finalNote, date: date ?? .now, in: targetCardID)
+        let minor = try Money.minor(fromMajor: Decimal(validAmount), code: AppEnvironment.shared.model.currency(ofCard: targetCardID))
+        let expense = try service.record(minorAmount: minor, categoryID: categoryID, note: finalNote, date: date ?? .now, in: targetCardID)
         let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? targetCard.name
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: targetCategory.symbol, cardID: targetCardID)
         return .result(
@@ -393,7 +394,7 @@ struct StartSpendingSessionIntent: AppIntent {
 
     @Parameter(title: "Session Name", default: "Shopping Session") var name: String
     @Parameter(title: "Card") var card: CardEntity?
-    @Parameter(title: "Budget Limit (IDR)") var budgetLimit: Int?
+    @Parameter(title: "Budget Limit") var budgetLimit: Double?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Start \(\.$name)") {
@@ -405,12 +406,8 @@ struct StartSpendingSessionIntent: AppIntent {
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
         let targetCardID = card.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
         let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? "Card"
-        var limit: Int64?
-        if let budgetLimit, budgetLimit > 0 {
-            let converted = Int64(budgetLimit).multipliedReportingOverflow(by: 100)
-            guard !converted.overflow, converted.partialValue <= Money.maximum else { throw EntryError.invalidAmount }
-            limit = converted.partialValue
-        }
+        let limit = try budgetLimit.flatMap { $0 > 0 ? $0 : nil }
+            .map { try Money.minor(fromMajor: Decimal($0), code: AppEnvironment.shared.model.currency(ofCard: targetCardID)) }
         SpendingSessionManager.shared.startSession(name: name, cardName: cardName, cardID: targetCardID, budgetLimit: limit)
         return .result(dialog: "Started spending session '\(name)' on \(cardName).")
     }

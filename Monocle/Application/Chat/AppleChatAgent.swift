@@ -109,8 +109,10 @@ final class AppleChatAgent: ChatBackend {
 
     private func runTool(_ name: String, _ input: String) -> String {
         guard let executor else { return #"{"error": "No active turn."}"# }
-        // Amounts arrive as the user wrote them ("100rb"); app code turns them into whole rupiah for ToolExecutor.
-        var json = (try? JSONSerialization.jsonObject(with: Data(input.utf8))).map(Self.clean) as? [String: Any]
+        // Amounts arrive as the user wrote them ("100rb", "4.50"); app code turns them into numbers for ToolExecutor.
+        // ponytail: parsed in the target card's currency even when the call names another card.
+        let code = (try? executor.targetCard()).map { executor.model.currency(ofCard: $0.id) } ?? Money.reportingCurrency
+        var json = (try? JSONSerialization.jsonObject(with: Data(input.utf8))).map { Self.clean($0, code: code) } as? [String: Any]
         // The model echoes the current card as scope/card; the default means the same and avoids a stack/card name clash.
         if (json?["scope"] as? String).map(Self.folded) == Self.folded(executor.scope.title) { json?["scope"] = nil }
         if let card = json?["card"] as? String, (try? executor.targetCard()).map({ Self.folded($0.name) }) == Self.folded(card) { json?["card"] = nil }
@@ -128,32 +130,44 @@ final class AppleChatAgent: ChatBackend {
     private static func folded(_ s: String) -> String { s.trimmingCharacters(in: .whitespaces).lowercased() }
 
     /// Tolerates what the small model gets wrong in a predictable way: category next to a split (the split wins).
-    private static func clean(_ value: Any) -> Any {
-        guard var object = convertAmounts(value) as? [String: Any] else { return value }
+    private static func clean(_ value: Any, code: String) -> Any {
+        guard var object = convertAmounts(value, code: code) as? [String: Any] else { return value }
         if (object["split"] as? [Any])?.count ?? 0 >= 2 { object["category"] = nil }
         return object
     }
 
-    private static func convertAmounts(_ value: Any) -> Any {
-        if let array = value as? [Any] { return array.map(convertAmounts) }
+    private static func convertAmounts(_ value: Any, code: String) -> Any {
+        if let array = value as? [Any] { return array.map { convertAmounts($0, code: code) } }
         guard var object = value as? [String: Any] else { return value }
         for (key, child) in object {
-            if key == "amount", let text = child as? String { object[key] = rupiah(text) ?? text } else { object[key] = convertAmounts(child) }
+            if key == "amount", let text = child as? String { object[key] = amount(text, code: code).map(NSDecimalNumber.init(decimal:)) ?? text }
+            else { object[key] = convertAmounts(child, code: code) }
         }
         return object
     }
 
-    /// "28rb", "100k", "1,5jt", "2 juta", "Rp28.000" → whole rupiah. nil when it isn't an amount.
-    static func rupiah(_ text: String) -> Int64? {
+    /// "28rb", "100k", "1,5jt", "2 juta", "Rp28.000", "$4.50", "4,50 €" → major units of `code`. nil when it isn't an amount.
+    static func amount(_ text: String, code: String = "IDR") -> Decimal? {
         var s = text.lowercased().replacingOccurrences(of: " ", with: "")
-        if s.hasPrefix("rp") { s = String(s.dropFirst(2)).trimmingCharacters(in: CharacterSet(charactersIn: ".")) }
-        for (suffix, scale) in [("ribu", 1e3), ("rb", 1e3), ("k", 1e3), ("juta", 1e6), ("jt", 1e6)] where s.hasSuffix(suffix) {
-            guard let number = Double(s.dropLast(suffix.count).replacingOccurrences(of: ",", with: ".")), number > 0 else { return nil }
-            return Int64((number * scale).rounded())
+        for affix in ["rp", code.lowercased(), Money.symbol(code).lowercased()] where !affix.isEmpty {
+            if s.hasPrefix(affix) { s = String(s.dropFirst(affix.count)) }
+            if s.hasSuffix(affix) { s = String(s.dropLast(affix.count)) }
         }
-        // ponytail: without a suffix, dots and commas are thousands separators (IDR has no cents in chat).
+        s = s.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        for (suffix, scale) in [("ribu", 1e3), ("rb", 1e3), ("k", 1e3), ("juta", 1e6), ("jt", 1e6)] where s.hasSuffix(suffix) {
+            guard let number = Decimal(string: s.dropLast(suffix.count).replacingOccurrences(of: ",", with: "."), locale: Locale(identifier: "en_US_POSIX")),
+                  number > 0 else { return nil }
+            return number * Decimal(scale)
+        }
         guard !s.isEmpty, s.allSatisfy({ $0.isNumber || $0 == "." || $0 == "," }) else { return nil }
-        return Int64(s.filter(\.isNumber))
+        // A last separator followed by one or two digits is the decimal point, where the currency has decimals;
+        // every other dot or comma groups thousands ("Rp28.000", "1,234.50", "1.234,50").
+        var digits = s.filter(\.isNumber)
+        if Money.fractionDigits(code) > 0, let last = s.lastIndex(where: { $0 == "." || $0 == "," }), (1...2).contains(s.distance(from: last, to: s.endIndex) - 1) {
+            let fraction = String(s[s.index(after: last)...])
+            digits = s[..<last].filter(\.isNumber) + "." + fraction
+        }
+        return Decimal(string: digits, locale: Locale(identifier: "en_US_POSIX"))
     }
 
     /// The subset of JSON Schema ChatAgent.tools uses (object, array, enum, string, integer, boolean).

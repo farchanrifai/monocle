@@ -354,7 +354,7 @@ enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Hashable, 
         case .card: return "Card / Account"
         case .category: return "Category"
         case .note: return "Short Note"
-        case .amount: return "Amount (IDR)"
+        case .amount: return "Amount"
         }
     }
 
