@@ -95,6 +95,8 @@ final class AppModel {
         didSet { pro?.onChange = { [weak self] in self?.applyPlan() }; applyPlan() }
     }
     var isPro: Bool { pro?.isPro ?? true }
+    /// Set at launch from `needsOnboarding`; onboarding clears it once its last step is done.
+    var showOnboarding = false
     /// Why the paywall is open ("" for no particular reason), or nil when closed.
     var paywall: String?
     var showPaywall: Bool {
@@ -1979,5 +1981,61 @@ extension AppModel {
     func report(_ error: Error) {
         if let plan = error as? PlanError, plan.opensPaywall { paywall = plan.localizedDescription }
         else { self.error = error.localizedDescription }
+    }
+}
+
+// MARK: - Onboarding
+
+extension AppModel {
+    /// First launch: no real card yet. A restored backup with real cards skips the rest.
+    var needsOnboarding: Bool {
+        !UserDefaults.standard.bool(forKey: "onboarded") && !cards.contains { $0.kind == .real }
+    }
+
+    /// The workspace currency on a fresh install, without exchange rates: only the Sample card's made-up
+    /// entries and budget exist, so they are scaled to look plausible rather than converted.
+    func setUpCurrency(_ new: String) throws {
+        guard let expenseService, Money.isCurrencyCode(new), new != reportingCurrency else { return }
+        guard !cards.contains(where: { $0.kind == .real }) else { throw EntryError.corruptStore }
+        let factor = Money.roughRate(from: reportingCurrency, to: new)
+        func scale(_ minor: Int64) throws -> Int64 { try Money.minor(fromMajor: Decimal(minor) / 100 * factor, code: new) }
+        let sample = Card.demo.id
+        let expenses = try expenseService.expenses(for: sample).map { expense -> Expense in
+            var value = expense
+            value.amount = try scale(expense.amount)
+            value.splits = try Self.rescale(expense.splits, from: expense.amount, to: value.amount)
+            return value
+        }
+        let budgets = try expenseService.budgets(for: sample).map { version -> BudgetVersion in
+            var value = version
+            value.overallLimit = try scale(version.overallLimit)
+            value.categoryLimits = try version.categoryLimits.map { .init(categoryID: $0.categoryID, limit: try scale($0.limit)) }
+            return value
+        }
+        var proposed = workspacePreferences
+        proposed.reportingCurrency = new
+        var proposedSettings = settings
+        proposedSettings.budget = try scale(settings.budget)
+        try performWorkspaceCommand {
+            try expenseService.saveExpenses(expenses, in: sample)
+            for version in budgets { try expenseService.save(version, in: sample) }
+            try requireState().saveWorkspacePreferences(proposed)
+            try requireState().saveSettings(proposedSettings)
+        }
+        publishPreferences(proposed)
+        settings = proposedSettings
+        invalidateExpenseCaches()
+    }
+
+    /// Onboarding's last step: the user's real card, opened, and whether the Sample card stays on Home.
+    func finishOnboarding(cardName: String, keepSample: Bool) throws {
+        let name = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let card = try createCard(named: name.isEmpty ? "My card" : String(name.prefix(40)))
+        _ = selectCard(card.id)
+        if !keepSample {
+            hiddenCardIDs.insert(Card.demo.id)
+            persistWorkspacePreferences()
+        }
+        UserDefaults.standard.set(true, forKey: "onboarded")
     }
 }

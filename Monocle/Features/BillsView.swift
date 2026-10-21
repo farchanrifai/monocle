@@ -674,23 +674,7 @@ struct SettingsView: View {
 
                 // MARK: 1. Active Card & Categories
                 Section {
-                    if activeCard.kind == .demo, model.cards.count == 1 {
-                        NavigationLink {
-                            RealCardOnboardingView(model: model)
-                        } label: {
-                            LabeledContent {
-                                Text("Sample")
-                                    .foregroundStyle(.secondary)
-                            } label: {
-                                Label {
-                                    Text("Start your real card")
-                                } icon: {
-                                    SettingsIcon(symbol: "sparkles", color: MC.red)
-                                }
-                            }
-                        }
-                        .accessibilityIdentifier("startRealBook")
-                    } else if activeCard.kind == .real {
+                    if activeCard.kind == .real {
                         NavigationLink {
                             RenameCardView(model: model, card: activeCard)
                         } label: {
@@ -1028,40 +1012,6 @@ private struct RenameCardView: View {
     }
 }
 
-private struct RealCardOnboardingView: View {
-    let model: AppModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var name = "My expenses"
-    @State private var confirm = false
-    @State private var error: String?
-
-    var body: some View {
-        Form {
-            Section {
-                TextField("Card name", text: $name).accessibilityIdentifier("realBookName")
-            } header: {
-                Text("Your real card")
-            } footer: {
-                Text("This keeps your categories and settings, removes sample entries and unfinished drafts, and creates a safety backup first. It cannot happen by accident.")
-            }
-            Section {
-                Button("Start empty real card", role: .destructive) { confirm = true }
-                    .accessibilityIdentifier("confirmRealBook")
-            }
-        }
-        .navigationTitle("Start real card").navigationBarTitleDisplayMode(.inline)
-        .alert("Start an empty real card?", isPresented: $confirm) {
-            Button("Start empty card", role: .destructive) {
-                do { try model.startEmptyRealCard(named: name); dismiss() }
-                catch { self.error = error.localizedDescription }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { Text("Sample entries and any unfinished draft will be removed. Your categories and settings stay in place, and a safety backup is created first.") }
-        .alert("Could not start real card", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("OK") { error = nil }
-        } message: { Text(error ?? "") }
-    }
-}
 
 struct AppLockSettingsView: View {
     let model: AppModel

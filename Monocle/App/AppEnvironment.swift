@@ -64,6 +64,11 @@ final class AppEnvironment {
             #endif
             if usesPlan { model.pro = ProStore() }
             #endif
+            var onboards = model.needsOnboarding
+            #if DEBUG
+            if directory.lastPathComponent.hasPrefix("monocle-ui-test-") { onboards = ProcessInfo.processInfo.environment["MONOCLE_TEST_ONBOARDING"] == "1" }
+            #endif
+            model.showOnboarding = onboards
             #if DEBUG
             // MONOCLE_DEMO=1: a separate monocle-demo folder, filled once with DemoWorkspace through the normal restore path.
             let demoMarker = directory.appendingPathComponent("demo-seeded")

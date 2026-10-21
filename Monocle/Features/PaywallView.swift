@@ -134,14 +134,17 @@ extension View {
     }
 }
 
-/// The root's paywall and, after a lapse, the kept-card picker (kept out of RootView's long modifier chain).
+/// The root's paywall, onboarding and, after a lapse, the kept-card picker (kept out of RootView's long modifier chain).
 struct ProPresentation: ViewModifier {
     let model: AppModel
     func body(content: Content) -> some View {
         content
             .proPaywall(model)
-            .fullScreenCover(isPresented: Binding(get: { model.needsKeptCardChoice && !model.showPaywall }, set: { _ in })) {
+            .fullScreenCover(isPresented: Binding(get: { model.needsKeptCardChoice && !model.showPaywall && !model.showOnboarding }, set: { _ in })) {
                 KeptCardPicker(model: model)
+            }
+            .fullScreenCover(isPresented: Binding(get: { model.showOnboarding }, set: { model.showOnboarding = $0 })) {
+                OnboardingView(model: model)
             }
     }
 }

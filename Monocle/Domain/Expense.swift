@@ -195,6 +195,17 @@ enum Money {
         return NSDecimalNumber(decimal: minor).int64Value
     }
 
+    /// Rough units per US dollar, only to scale the Sample card's made-up amounts into a new workspace's currency.
+    static let roughPerUSD: [String: Decimal] = [
+        "IDR": 16_000, "JPY": 150, "KRW": 1_400, "VND": 25_000, "INR": 85, "THB": 35, "PHP": 57, "MYR": 4.5, "CNY": 7.2,
+        "HKD": 7.8, "TWD": 32, "SGD": 1.35, "AUD": 1.5, "NZD": 1.7, "CAD": 1.4, "GBP": 0.8, "EUR": 0.92, "CHF": 0.88,
+        "SEK": 10.5, "NOK": 10.7, "DKK": 6.9, "PLN": 4, "CZK": 23, "HUF": 360, "TRY": 34, "ILS": 3.7, "AED": 3.67,
+        "SAR": 3.75, "MXN": 18, "BRL": 5.5, "CLP": 950, "COP": 4_100, "ARS": 950, "ZAR": 18, "EGP": 48, "NGN": 1_500,
+        "PKR": 280, "BDT": 120, "LKR": 300,
+    ]
+    /// ponytail: unknown currencies count as dollar-sized; good enough for sample data, never for real money.
+    static func roughRate(from: String, to: String) -> Decimal { (roughPerUSD[to] ?? 1) / (roughPerUSD[from] ?? 1) }
+
     /// A major-unit amount from Shortcuts or chat (28000, 4.5) in minor units, rounded to the currency's decimals.
     static func minor(fromMajor major: Decimal, code: String? = nil) throws -> Int64 {
         var value = major, rounded = Decimal()
