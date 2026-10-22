@@ -70,7 +70,8 @@ Needs the account or the owner:
 - App Store Connect: products with the same IDs (`com.farchan.monocle.pro.monthly` / `.yearly`), group, trial; prices.
 - Contact line, privacy page hosting (`AppLinks.privacy` is a placeholder), support URL, rate-the-app link (needs the app ID).
 - Phone checks: onboarding, paywall purchase in sandbox/TestFlight, downgrade picker, widgets lock, chat limit.
-- Not done yet: `requestReview` prompt; Settings audit for prototype-only items; MARKETING_VERSION 1.0.0 at submission.
+- Done 2026-10-22: rating prompt (`ReviewPrompt`, once per version after 10 saves); unused `RecentsView` with its "PROTOTYPE 01" label removed.
+- Not done yet: iOS/Mac UI test run; simulator screenshots of paywall, onboarding steps and kept-card picker; MARKETING_VERSION 1.0.0 at submission.
 
 ### 1. Strip
 - Remove Luna code, settings, tests and docs references.

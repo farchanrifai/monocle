@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 @main
@@ -40,6 +41,7 @@ struct RootView: View {
                     if !model.draftNeedsConfirmation { model.discardDraft() }
                 }) { EntryView(model: model).proPaywall(model) }
                 .sensoryFeedback(.success, trigger: model.saveFeedback)
+                .modifier(ReviewPrompt(model: model))
                 .alert("Discard the unfinished expense?", isPresented: Binding(get: { model.pendingEntry != nil }, set: { if !$0 { model.pendingEntry = nil } })) {
                     Button("Discard and continue", role: .destructive) { model.discardAndOpenPendingEntry() }
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
@@ -143,5 +145,26 @@ private struct AppLockView: View {
         }
         .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(MC.paper)
         .accessibilityIdentifier("appLockScreen")
+    }
+}
+
+/// Asks for an App Store rating once per version, after the 10th expense saved in this app. The system
+/// decides whether the prompt actually shows (at most three times a year).
+private struct ReviewPrompt: ViewModifier {
+    let model: AppModel
+    @Environment(\.requestReview) private var requestReview
+    @AppStorage("savesTowardReview") private var saves = 0
+    @AppStorage("reviewRequestedVersion") private var requestedVersion = ""
+
+    func body(content: Content) -> some View {
+        content.onChange(of: model.saveFeedback) {
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+            guard requestedVersion != version else { return }
+            saves += 1
+            guard saves >= 10 else { return }
+            requestedVersion = version
+            saves = 0
+            Task { try? await Task.sleep(for: .seconds(1)); requestReview() } // after the save sheet closes
+        }
     }
 }
