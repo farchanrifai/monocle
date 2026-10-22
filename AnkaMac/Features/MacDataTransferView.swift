@@ -74,7 +74,7 @@ struct MacDataTransferView: View {
                     }.width(55)
                     TableColumn("Row") { Text("\($0.rowNumber)") }.width(45)
                     TableColumn("Status") { row in Text(row.errorMessage ?? (row.isDuplicate ? "Duplicate" : "Ready")) }
-                    TableColumn("Amount") { row in Text(row.parsedExpense.map { Money.format($0.amount) } ?? "—").font(.system(.body, design: .monospaced)) }
+                    TableColumn("Amount") { row in Text(row.parsedExpense.map { Money.format($0.amount) } ?? "—").font(.system(.body)) }
                     TableColumn("Note") { Text($0.parsedExpense?.note ?? "") }
                 }.frame(minHeight: 160)
                 Button("Import Selected", action: importCSV).buttonStyle(.borderedProminent)

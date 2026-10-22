@@ -32,7 +32,7 @@ struct MacExpenseForm: View {
                     Text(model.draft.currency ?? model.reportingCurrency).font(.title3.weight(.medium)).foregroundStyle(.secondary)
                     TextField("0", text: amountText)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 34, weight: .semibold, design: .rounded)).monospacedDigit()
+                        .font(.system(size: 34, weight: .semibold)).monospacedDigit()
                         .focused($focus, equals: .amount)
                         .accessibilityLabel("Amount")
                         .accessibilityIdentifier("expenseAmount")

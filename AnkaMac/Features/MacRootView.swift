@@ -464,7 +464,7 @@ struct SummaryTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
-            Text(value).font(.system(.title2, design: .monospaced, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+            Text(value).font(.system(.title2, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6)
             Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .background(MacTheme.panel, in: RoundedRectangle(cornerRadius: 12))
@@ -511,7 +511,7 @@ private struct MacCardView: View {
             HStack { Image(systemName: "circle.grid.cross.fill"); Spacer(); Text("ANKA").font(.caption2.bold()) }
             Spacer()
             Text(card.name).font(.title3.bold())
-            Text(Money.format(model.spent(for: card.id), code: model.currency(of: card))).font(.system(.headline, design: .monospaced))
+            Text(Money.format(model.spent(for: card.id), code: model.currency(of: card))).font(.system(.headline))
         }
             .offset(x: tilt.width * 4, y: tilt.height * 4) // text floats above the face for depth
             .foregroundStyle(CardPalette.resolvedTextColor(for: customization)).padding(16).frame(width: Self.size.width, height: Self.size.height)
@@ -695,7 +695,7 @@ private struct MacActivityTable: View {
                 TableColumn("Note", value: \.title) { Text($0.title) }.width(min: 60, ideal: 180)
                 TableColumn("Category", value: \.category) { Text($0.category) }.width(min: 50, ideal: 120)
                 TableColumn("Card", value: \.card) { Text($0.card) }.width(min: 50, ideal: 120)
-                TableColumn("Amount", value: \.amountMinor) { Text($0.expense.paidText).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 130)
+                TableColumn("Amount", value: \.amountMinor) { Text($0.expense.paidText).font(.system(.body)) }.width(min: 90, ideal: 130)
             }
             .contextMenu(forSelectionType: Expense.ID.self) { ids in
                 let picked = expenses(ids)
@@ -1190,7 +1190,7 @@ private struct InspectorHeader: View {
                 }
             }
             if let amount {
-                Text(Money.format(amount)).font(.system(.title, design: .monospaced, weight: .semibold)).textSelection(.enabled)
+                Text(Money.format(amount)).font(.system(.title, weight: .semibold)).textSelection(.enabled)
             }
         }.padding(.vertical, 4)
     }
@@ -1245,7 +1245,7 @@ private struct ExpenseInspector: View {
                     ForEach(Array(expense.splits.enumerated()), id: \.offset) { _, split in
                         let part = model.category(split.categoryID)
                         LabeledContent {
-                            Text(Money.format(split.amount)).font(.system(.body, design: .monospaced))
+                            Text(Money.format(split.amount)).font(.system(.body))
                         } label: {
                             Label(part?.name ?? "No category", systemImage: part?.symbol ?? "questionmark.circle")
                         }
@@ -1287,7 +1287,7 @@ private struct MultiExpenseInspector: View {
             Section("By Category") {
                 ForEach(byCategory, id: \.id) { entry in
                     LabeledContent {
-                        Text(Money.format(entry.total)).font(.system(.body, design: .monospaced))
+                        Text(Money.format(entry.total)).font(.system(.body))
                     } label: {
                         Label(entry.category?.name ?? "No category", systemImage: entry.category?.symbol ?? "questionmark.circle")
                     }

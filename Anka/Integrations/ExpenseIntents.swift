@@ -161,7 +161,7 @@ struct ExpenseReceiptSnippetView: View {
             Spacer(minLength: 8)
 
             Text(Money.format(expense.amount))
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .bold))
                 .monospacedDigit()
         }
         .padding(.horizontal, 16)

@@ -136,7 +136,7 @@ private struct CardBackReportView: View {
                         .tracking(0.5)
 
                     Text(compactMoney(metrics.dailyAverage))
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .font(.system(size: 11, weight: .heavy))
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
@@ -168,7 +168,7 @@ private struct CardBackReportView: View {
                     if let activeBudget {
                         let remaining = activeBudget.overallLimit - metrics.totalSpend
                         Text(compactMoney(remaining))
-                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                            .font(.system(size: 11, weight: .heavy))
                             .foregroundStyle(remaining >= 0 ? Color.green : Color.red)
                             .lineLimit(1)
 

@@ -75,7 +75,7 @@ struct StackWidgetEntryView: View {
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(WMC.formatIDR(stack.totalSpent))
-                    .font(.system(size: 19, weight: .bold, design: .monospaced))
+                    .font(.system(size: 19, weight: .bold))
                     .minimumScaleFactor(0.65)
                     .lineLimit(1)
             }
@@ -124,7 +124,7 @@ struct StackWidgetEntryView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(stack.totalSpent))
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .font(.system(size: 18, weight: .bold))
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
                 }

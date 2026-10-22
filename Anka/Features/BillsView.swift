@@ -65,7 +65,7 @@ struct BillsView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         Eyebrow(text: "Estimated Monthly Total")
                         Text(monthlyCommitment.map { Money.format($0) } ?? "Exceeds supported total")
-                            .font(.system(size: 34, weight: .medium, design: .monospaced))
+                            .font(.system(size: 34, weight: .medium))
                             .tracking(-1)
                             .minimumScaleFactor(0.7)
                             .lineLimit(1)
@@ -241,7 +241,7 @@ struct BillsView: View {
                 }
                 Spacer()
                 Text(Money.format(rule.amount))
-                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 20, weight: .semibold))
             }
 
             Divider()
@@ -330,7 +330,7 @@ struct BillsView: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(Money.format(rule.amount))
-                        .font(.system(size: 16, weight: .medium, design: .monospaced))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.primary)
                     Image(systemName: "chevron.right")
                         .font(.caption2)
@@ -355,7 +355,7 @@ struct BillsView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
                 Text(Money.format(rule.amount))
-                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .font(.system(size: 15, weight: .medium))
                 if rule.recordingMode == .automatic {
                     Text("Auto-adds").font(.caption2).foregroundStyle(.secondary)
                 } else {

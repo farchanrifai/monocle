@@ -178,7 +178,7 @@ struct CSVInterchangeView: View {
             Section("Preview (First 3 Rows)") {
                 let previewLines = csvContent.split(separator: "\r\n", maxSplits: 4).prefix(4).joined(separator: "\n")
                 Text(previewLines.isEmpty ? "No expenses to export" : previewLines)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(5)
             }

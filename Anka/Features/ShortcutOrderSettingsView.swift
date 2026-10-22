@@ -24,7 +24,7 @@ struct ShortcutOrderSettingsView: View {
                             ForEach(Array(currentOrder.enumerated()), id: \.element.id) { index, field in
                                 HStack(spacing: 6) {
                                     Text("\(index + 1)")
-                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(.white)
                                         .frame(width: 18, height: 18)
                                         .background(fieldColor(for: field), in: Circle())

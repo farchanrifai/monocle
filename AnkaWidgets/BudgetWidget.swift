@@ -74,7 +74,7 @@ struct BudgetWidgetEntryView: View {
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(WMC.formatIDR(budget.remaining))
-                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .font(.system(size: 18, weight: .bold))
                     .minimumScaleFactor(0.65)
                     .lineLimit(1)
             }
@@ -115,7 +115,7 @@ struct BudgetWidgetEntryView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(budget.remaining))
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
+                        .font(.system(size: 20, weight: .bold))
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
                 }
@@ -142,7 +142,7 @@ struct BudgetWidgetEntryView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(budget.dailyPaceRemaining))
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
                     Text("for \(budget.daysRemaining) days left")
                         .font(.caption2)
@@ -156,7 +156,7 @@ struct BudgetWidgetEntryView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(entry.snapshot.todaySpending.totalSpent))
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
                 }
             }
@@ -170,7 +170,7 @@ struct BudgetWidgetEntryView: View {
             Image(systemName: "banknote")
         } currentValueLabel: {
             Text("\(Int(budget.percentage * 100))%")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.system(size: 10, weight: .bold))
         }
         .gaugeStyle(.accessoryCircular)
     }

@@ -331,9 +331,9 @@ struct CardHomeView: View {
         case .light, .signal:
             return .system(size: 22, weight: .bold)
         case .ledger:
-            return .system(size: 22, weight: .semibold, design: .serif)
+            return .system(size: 22, weight: .semibold)
         case .instrument:
-            return .system(size: 22, weight: .bold, design: .monospaced)
+            return .system(size: 22, weight: .bold)
         }
     }
 
@@ -1445,7 +1445,7 @@ struct CardPresentationView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.primary)
                 Text(Money.format(model.sessionManager.sessionSpent))
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(MC.red)
             }
 

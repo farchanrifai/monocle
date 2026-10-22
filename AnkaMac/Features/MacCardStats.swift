@@ -45,7 +45,7 @@ private struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
-            Text(value).font(mono ? .system(.title3, design: .monospaced, weight: .semibold) : .title3.weight(.semibold))
+            Text(value).font(mono ? .system(.title3, weight: .semibold) : .title3.weight(.semibold))
                 .lineLimit(1).minimumScaleFactor(0.6)
             if let progress {
                 ProgressView(value: min(1, max(0, progress))).tint(over ? MC.red : nil).controlSize(.small)

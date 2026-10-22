@@ -16,8 +16,8 @@ private struct BudgetTable: View {
                 let over = line.limit.map { line.spent > $0 } == true
                 GridRow {
                     Text(line.name).lineLimit(1)
-                    Text(Money.format(line.spent, code: currency)).font(.system(.body, design: .monospaced)).foregroundStyle(over ? MC.red : .primary)
-                    Text(line.limit.map { Money.format($0, code: currency) } ?? "—").font(.system(.body, design: .monospaced))
+                    Text(Money.format(line.spent, code: currency)).font(.system(.body)).foregroundStyle(over ? MC.red : .primary)
+                    Text(line.limit.map { Money.format($0, code: currency) } ?? "—").font(.system(.body))
                     ProgressView(value: min(1, Double(line.spent) / Double(max(1, line.limit ?? fallbackLimit))))
                         .tint(over ? MC.red : nil).frame(minWidth: 160, maxWidth: .infinity)
                     if let onEdit {
@@ -196,7 +196,7 @@ struct MacBillsView: View {
             ForEach(model.bills) { bill in
                 HStack(spacing: 20) {
                     Text(bill.name).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                    Text(Money.format(bill.amount)).font(.system(.body, design: .monospaced)).frame(width: 150, alignment: .leading)
+                    Text(Money.format(bill.amount)).font(.system(.body)).frame(width: 150, alignment: .leading)
                     Text(bill.recurrence.title).frame(width: 150, alignment: .leading)
                     Text(bill.recordingMode == .automatic ? "Automatic" : "Confirm").frame(width: 90, alignment: .leading)
                     Image(systemName: bill.isActive ? "checkmark.circle.fill" : "pause.circle").frame(width: 50, alignment: .leading)
@@ -231,7 +231,7 @@ struct MacBillsView: View {
                     if let rule = model.bills.first(where: { $0.id == occurrence.billRuleID }) {
                         HStack {
                             VStack(alignment: .leading) { Text(rule.name).font(.headline); Text("Due \(occurrence.dueDay)").foregroundStyle(.secondary) }
-                            Spacer(); Text(Money.format(rule.amount)).font(.system(.body, design: .monospaced))
+                            Spacer(); Text(Money.format(rule.amount)).font(.system(.body))
                             Button("Skip") { do { try model.skipBillOccurrence(occurrence.id) } catch { model.report(error) } }.buttonStyle(.glass)
                             Button("Add") { do { _ = try model.confirmBillOccurrence(occurrence.id) } catch { model.report(error) } }.buttonStyle(.glassProminent)
                         }.padding(12).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))

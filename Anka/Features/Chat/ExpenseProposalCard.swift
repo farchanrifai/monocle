@@ -15,7 +15,7 @@ struct ExpenseProposalCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("New expense").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Text(Money.format(expense.amount)).font(.system(.title, design: .rounded, weight: .semibold))
+            Text(Money.format(expense.amount)).font(.system(.title, weight: .semibold))
             VStack(alignment: .leading, spacing: 6) {
                 if let splitLabel { Label(splitLabel, systemImage: "square.split.2x1") }
                 else { Label(category?.name ?? "No category", systemImage: category?.symbol ?? "questionmark.circle") }
@@ -70,7 +70,7 @@ struct BillProposalCard: View {
             Text("New bill").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(bill.name).font(.headline)
-                Text(Money.format(bill.amount)).font(.system(.title, design: .rounded, weight: .semibold))
+                Text(Money.format(bill.amount)).font(.system(.title, weight: .semibold))
             }
             VStack(alignment: .leading, spacing: 6) {
                 Label(bill.recurrence.title, systemImage: "repeat")
@@ -132,7 +132,7 @@ struct ExpenseChangeCard: View {
                 }
                 .font(.subheadline).foregroundStyle(.secondary)
             } else {
-                Text(Money.format(change.original.amount)).font(.system(.title, design: .rounded, weight: .semibold))
+                Text(Money.format(change.original.amount)).font(.system(.title, weight: .semibold))
                     .strikethrough(state == .saved)
                 VStack(alignment: .leading, spacing: 6) {
                     Label(categoryName(change.original), systemImage: "tag")
@@ -176,12 +176,12 @@ struct ExpenseChangeCard: View {
     @ViewBuilder
     private func amount(_ old: Expense, _ new: Expense) -> some View {
         if old.amount == new.amount {
-            Text(Money.format(new.amount)).font(.system(.title, design: .rounded, weight: .semibold))
+            Text(Money.format(new.amount)).font(.system(.title, weight: .semibold))
         } else {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(Money.format(old.amount)).strikethrough().foregroundStyle(.secondary).font(.title3)
                 Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary).accessibilityLabel("to")
-                Text(Money.format(new.amount)).font(.system(.title, design: .rounded, weight: .semibold))
+                Text(Money.format(new.amount)).font(.system(.title, weight: .semibold))
             }
             .accessibilityElement(children: .combine)
         }

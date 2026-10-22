@@ -334,7 +334,7 @@ private struct AnalyticsReportView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Eyebrow(text: "\(selectedHorizon.rawValue) spending")
                     Text(Money.format(metrics.totalSpend))
-                        .font(.system(size: 34, weight: .bold, design: .monospaced))
+                        .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(Color.primary)
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)

@@ -127,7 +127,7 @@ struct BudgetsView: View {
         return VStack(alignment: .leading, spacing: 14) {
             Eyebrow(text: status.remaining < 0 ? "Over budget" : (status.isGoal ? "Left until \(Day.title(Day.string(lastDay)))" : "Left this cycle"))
             Text((status.approximate ? "≈ " : "") + Money.format(abs(status.remaining), code: status.currency))
-                .font(.system(size: 37, weight: .medium, design: .monospaced)).tracking(-1.5).minimumScaleFactor(0.6).lineLimit(1)
+                .font(.system(size: 37, weight: .medium)).tracking(-1.5).minimumScaleFactor(0.6).lineLimit(1)
             ProgressView(value: min(1, status.fraction)).tint(MC.red)
             HStack {
                 Text("\(Money.format(status.spent, code: status.currency)) spent")

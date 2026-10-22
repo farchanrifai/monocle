@@ -139,7 +139,7 @@ struct EntryView: View {
                 }
             }
             Text(Money.format(amount, currency: false))
-                .font(.system(size: amountSize, weight: .regular, design: .monospaced)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
+                .font(.system(size: amountSize, weight: .regular)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
                 .foregroundStyle(amount == 0 ? .secondary : .primary)
                 .contentTransition(.numericText())
                 .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: amount)
@@ -244,7 +244,7 @@ struct EntryView: View {
                 } label: {
                     Group {
                         if key == "delete.left" { Image(systemName: key).font(.title2) }
-                        else { Text(key).font(.system(size: key == "000" ? 21 : 29, weight: .regular, design: .rounded)) }
+                        else { Text(key).font(.system(size: key == "000" ? 21 : 29, weight: .regular)) }
                     }.frame(maxWidth: .infinity).frame(height: rowHeight).contentShape(Rectangle())
                 }.buttonStyle(PressFeedbackStyle()).accessibilityLabel(key == "delete.left" ? "Delete digit" : key)
                     .accessibilityIdentifier("key-\(key)")

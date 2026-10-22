@@ -34,7 +34,7 @@ struct SpendingActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(WMC.formatIDR(context.state.currentSpent))
-                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(WMC.red)
                         Text("\(context.state.itemCount) \(context.state.itemCount == 1 ? "item" : "items")")
                             .font(.caption2)
@@ -88,11 +88,11 @@ struct SpendingActivityWidget: Widget {
                     .foregroundStyle(WMC.red)
             } compactTrailing: {
                 Text(WMC.compactIDR(context.state.currentSpent))
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(WMC.red)
             } minimal: {
                 Text(WMC.compactIDR(context.state.currentSpent))
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(WMC.red)
             }
             .widgetURL(URL(string: "anka://session"))
@@ -133,7 +133,7 @@ private struct LockScreenLiveActivityView: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(context.state.currentSpent))
-                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                        .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(WMC.red)
                 }
 

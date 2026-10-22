@@ -113,7 +113,7 @@ struct TransactionDetailView: View {
 
             // Formatted Amount
             Text(expense.paidText)
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(size: 36, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(Color.primary)
                 .accessibilityIdentifier("transactionDetailAmount")
