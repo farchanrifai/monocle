@@ -18,6 +18,10 @@ targets:
   Monocle:
     type: application
     platform: iOS
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     sources: [Monocle]
     info:
       path: Monocle/Resources/Info.plist
@@ -51,6 +55,10 @@ targets:
   MonocleWidgets:
     type: app-extension
     platform: iOS
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     sources:
       - path: MonocleWidgets
         excludes:

@@ -859,6 +859,7 @@
 					};
 					73AFF616301102E5C5194738 = {
 						DevelopmentTeam = "";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
 					};
 					7D7BE9ACD99661B8014A0105 = {
 						DevelopmentTeam = "";
@@ -868,6 +869,7 @@
 					};
 					910E2A70E2B296D3802A981B = {
 						DevelopmentTeam = "";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
 					};
 				};
 			};
