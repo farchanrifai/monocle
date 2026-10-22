@@ -130,7 +130,7 @@ private struct LockScreenLiveActivityView: View {
             HStack(alignment: .lastTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("SESSION SPENT")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(context.state.currentSpent))
                         .font(.system(size: 24, weight: .bold, design: .monospaced))

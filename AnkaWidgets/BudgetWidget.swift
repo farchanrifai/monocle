@@ -71,7 +71,7 @@ struct BudgetWidgetEntryView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("REMAINING")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(WMC.formatIDR(budget.remaining))
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
@@ -112,7 +112,7 @@ struct BudgetWidgetEntryView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("REMAINING BUDGET")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(budget.remaining))
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
@@ -139,7 +139,7 @@ struct BudgetWidgetEntryView: View {
             VStack(alignment: .leading, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("DAILY PACE")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(budget.dailyPaceRemaining))
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))
@@ -153,7 +153,7 @@ struct BudgetWidgetEntryView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("SPENT TODAY")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(entry.snapshot.todaySpending.totalSpent))
                         .font(.system(size: 14, weight: .semibold, design: .monospaced))

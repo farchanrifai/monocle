@@ -72,7 +72,7 @@ struct StackWidgetEntryView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("STACK SPENT")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(WMC.formatIDR(stack.totalSpent))
                     .font(.system(size: 19, weight: .bold, design: .monospaced))
@@ -121,7 +121,7 @@ struct StackWidgetEntryView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TOTAL STACK SPEND")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
                     Text(WMC.formatIDR(stack.totalSpent))
                         .font(.system(size: 18, weight: .bold, design: .monospaced))
@@ -142,7 +142,7 @@ struct StackWidgetEntryView: View {
             // Right Column: Cards in stack
             VStack(alignment: .leading, spacing: 8) {
                 Text("CARDS IN STACK")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
 
                 if stack.cardNames.isEmpty {

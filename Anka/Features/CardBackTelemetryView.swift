@@ -65,11 +65,11 @@ private struct CardBackReportView: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(technicalTag)
-                        .font(.system(size: tagSize, weight: .bold, design: .monospaced))
+                        .font(.system(size: tagSize, weight: .bold))
                         .foregroundStyle(.white.opacity(0.65))
                         .tracking(1.2)
                     Text(card.name.uppercased())
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                        .font(.system(size: 13, weight: .black))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                 }
@@ -85,7 +85,7 @@ private struct CardBackReportView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.caption2.weight(.bold))
                         Text("FLIP")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10, weight: .bold))
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
@@ -106,20 +106,20 @@ private struct CardBackReportView: View {
                 // Compartment 1: Cycle & Pace
                 VStack(alignment: .leading, spacing: 4) {
                     Text("CYCLE & PACE")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
 
                     HStack(spacing: 4) {
                         paceIndicatorDot
                         Text(paceText)
-                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                            .font(.system(size: 11, weight: .heavy))
                             .foregroundStyle(.white)
                             .lineLimit(1)
                     }
 
                     Text("\(daysRemaining)D REMAINING")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.75))
                 }
                 .padding(8)
@@ -131,7 +131,7 @@ private struct CardBackReportView: View {
                 // Compartment 2: Daily Burn & Target
                 VStack(alignment: .leading, spacing: 4) {
                     Text("DAILY BURN")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
 
@@ -143,12 +143,12 @@ private struct CardBackReportView: View {
                     if let activeBudget {
                         let targetDaily = (try? Money.checkedScale(activeBudget.overallLimit, numerator: 1, denominator: max(1, metrics.totalDaysInPeriod))) ?? 0
                         Text("TARGET \(compactMoney(targetDaily))")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.75))
                             .lineLimit(1)
                     } else {
                         Text("NO BUDGET")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.5))
                     }
                 }
@@ -161,7 +161,7 @@ private struct CardBackReportView: View {
                 // Compartment 3: Remaining / Limit
                 VStack(alignment: .leading, spacing: 4) {
                     Text("REMAINING")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
 
@@ -173,16 +173,16 @@ private struct CardBackReportView: View {
                             .lineLimit(1)
 
                         Text("OF \(compactMoney(activeBudget.overallLimit))")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.75))
                             .lineLimit(1)
                     } else {
                         Text("UNCAPPED")
-                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                            .font(.system(size: 11, weight: .heavy))
                             .foregroundStyle(.white)
 
                         Text("NO LIMIT")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.5))
                     }
                 }
@@ -202,12 +202,12 @@ private struct CardBackReportView: View {
 
                 if let next = nextUpcomingBill {
                     Text("NEXT BILL: \(next.name.uppercased()) · \(formatDueDay(next.dueDay)) (\(compactMoney(next.amount)))")
-                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .font(.system(size: 9.5, weight: .bold))
                         .foregroundStyle(.white.opacity(0.9))
                         .lineLimit(1)
                 } else {
                     Text("NO PENDING BILLS THIS CYCLE")
-                        .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 9.5, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.65))
                         .lineLimit(1)
                 }
@@ -234,7 +234,7 @@ private struct CardBackReportView: View {
                         Image(systemName: "chart.xyaxis.line")
                             .font(.caption.weight(.bold))
                         Text("TRENDS & ANALYTICS")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10, weight: .bold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -255,7 +255,7 @@ private struct CardBackReportView: View {
                         Image(systemName: "paintbrush")
                             .font(.caption.weight(.bold))
                         Text("ARTWORK")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10, weight: .bold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)

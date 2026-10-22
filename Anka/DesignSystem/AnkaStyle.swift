@@ -6,7 +6,7 @@ enum MC {
     static let paper = Color(uiColor: .systemGroupedBackground)
     static let surface = Color(uiColor: .secondarySystemGroupedBackground)
     static let line = Color.primary.opacity(0.10)
-    static func label(_ size: CGFloat = 10) -> Font { .system(size: size, weight: .medium, design: .monospaced) }
+    static func label(_ size: CGFloat = 10) -> Font { .system(size: size, weight: .medium) }
 }
 
 struct Eyebrow: View {

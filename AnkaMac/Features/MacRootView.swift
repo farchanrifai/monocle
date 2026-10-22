@@ -691,7 +691,7 @@ private struct MacActivityTable: View {
     var body: some View {
         Table(rows, selection: selection, sortOrder: $sortOrder) {
                 // Small minimums so sidebar + all columns + inspector fit the 1000pt minimum window.
-                TableColumn("Date", value: \.day) { Text($0.day).font(.system(.body, design: .monospaced)) }.width(min: 90, ideal: 110)
+                TableColumn("Date", value: \.day) { Text($0.day).font(.body) }.width(min: 90, ideal: 110)
                 TableColumn("Note", value: \.title) { Text($0.title) }.width(min: 60, ideal: 180)
                 TableColumn("Category", value: \.category) { Text($0.category) }.width(min: 50, ideal: 120)
                 TableColumn("Card", value: \.card) { Text($0.card) }.width(min: 50, ideal: 120)

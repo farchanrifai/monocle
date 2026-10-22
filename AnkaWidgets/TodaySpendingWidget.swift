@@ -60,7 +60,7 @@ struct TodaySpendingWidgetEntryView: View {
                     .foregroundStyle(WMC.red)
                 Spacer()
                 Text("TODAY")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
             }
 
@@ -68,7 +68,7 @@ struct TodaySpendingWidgetEntryView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("TOTAL SPENT")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(WMC.formatIDR(today.totalSpent))
                     .font(.system(size: 20, weight: .bold, design: .monospaced))
@@ -109,7 +109,7 @@ struct TodaySpendingWidgetEntryView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("SPENT TODAY")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.secondary)
                         Text(WMC.formatIDR(today.totalSpent))
                             .font(.system(size: 20, weight: .bold, design: .monospaced))
@@ -132,7 +132,7 @@ struct TodaySpendingWidgetEntryView: View {
             // Right: Recent transactions list
             VStack(alignment: .leading, spacing: 8) {
                 Text("RECENT ACTIVITIES")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
 
                 if today.recentTransactions.isEmpty {
