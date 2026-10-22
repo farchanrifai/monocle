@@ -316,6 +316,8 @@ final class MonocleUITests: XCTestCase {
         app.buttons["chatSend"].tap()
         sleep(2) // the scripted reply arrives
         input.tap()
+        // The reply's expense card can take the first tap while it settles; tap again until the field has focus.
+        if !((input.value(forKey: "hasKeyboardFocus") as? Bool) ?? false) { sleep(1); input.tap() }
         input.typeText("x")
         keepScreenshot(app.screenshot())
         XCTAssertEqual(input.value as? String, "x", "the field must not bring back the sent message")
@@ -1367,6 +1369,7 @@ final class MonocleUITests: XCTestCase {
     @MainActor
     func testInteractiveCardPullDismissAndVelocityRelease() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString // isolated store: no onboarding, no plan
         app.launch()
 
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'stack-book-'"))
@@ -1580,6 +1583,7 @@ final class MonocleUITests: XCTestCase {
     @MainActor
     func testOptionsCollapsibleMenuAndHomePlatter() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MONOCLE_TEST_RUN"] = UUID().uuidString // isolated store: no onboarding, no plan
         app.launch()
 
         // 1. Verify Home Screen Native Platter, Stacks Indicator & Navigation Bar

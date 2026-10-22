@@ -15,36 +15,8 @@ struct PaywallView: View {
     let reason: String
     @Environment(\.dismiss) private var dismiss
 
-    /// Mirrors docs/planning/app-store-release.md ▸ Free and Pro.
-    private static let rows: [(feature: String, free: String, pro: String)] = [
-        ("Cards", "1 card", "Unlimited, plus Stacks"),
-        ("Bills", "3 active", "Unlimited"),
-        ("Other currencies", "—", "With exchange rates"),
-        ("Analytics", "Month totals", "Trends and comparisons"),
-        ("Widgets and Live Activities", "—", "All"),
-        ("Shortcuts", "Add Expense", "All"),
-        ("Chat questions", "\(Plan.freeQuestionsPerDay) a day", "Unlimited"),
-        ("Card looks", "Default", "Full customizer"),
-        ("CSV", "Export", "Import too"),
-    ]
-
     var body: some View {
-        SubscriptionStoreView(productIDs: ProStore.productIDs) {
-            VStack(spacing: 14) {
-                Image(systemName: "creditcard.and.123")
-                    .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(MC.red)
-                Text("Monocle Pro").font(.largeTitle.bold())
-                if !reason.isEmpty {
-                    Text(reason).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
-                comparison
-                Text("Backup, export and App Lock are always free.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 24)
-        }
+        SubscriptionStoreView(productIDs: ProStore.productIDs) { PaywallHeader(reason: reason) }
         .subscriptionStoreButtonLabel(.multiline)
         .storeButton(.visible, for: .restorePurchases, .redeemCode)
         .subscriptionStorePolicyDestination(url: AppLinks.terms, for: .termsOfService)
@@ -57,6 +29,41 @@ struct PaywallView: View {
             }
         }
         .accessibilityIdentifier("paywall")
+    }
+}
+
+/// The paywall's top: what Pro adds, as a Free vs Pro table.
+struct PaywallHeader: View {
+    let reason: String
+
+    /// Mirrors docs/planning/app-store-release.md ▸ Free and Pro.
+    private static let rows: [(feature: String, free: String, pro: String)] = [
+        ("Cards", "1", "Unlimited + Stacks"),
+        ("Bills", "3", "Unlimited"),
+        ("Currencies", "Yours", "Any, with rates"),
+        ("Analytics", "Totals", "Trends"),
+        ("Widgets", "—", "All + Live Activities"),
+        ("Shortcuts", "Add Expense", "All"),
+        ("Chat", "\(Plan.freeQuestionsPerDay) a day", "Unlimited"),
+        ("Card looks", "Default", "Customizer"),
+        ("CSV", "Export", "Import too"),
+    ]
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "creditcard.and.123")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(MC.red)
+            Text("Monocle Pro").font(.largeTitle.bold())
+            if !reason.isEmpty {
+                Text(reason).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            comparison
+            Text("Backup, export and App Lock are always free.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
     }
 
     private var comparison: some View {
@@ -92,7 +99,7 @@ struct KeptCardPicker: View {
             List(cards) { card in
                 Button { choice = card.id } label: {
                     HStack {
-                        Text(card.name).foregroundStyle(.primary)
+                        Text(card.name).foregroundStyle(Color.primary)
                         Spacer()
                         if choice == card.id { Image(systemName: "checkmark").foregroundStyle(MC.red) }
                     }
@@ -119,7 +126,8 @@ struct KeptCardPicker: View {
             } message: { Text("You can't change this later. Upgrading to Pro unlocks every card again.") }
             .proPaywall(model)
         }
-        .onAppear { choice = choice ?? model.activeCardID }
+        // Preselect the card in use, else the first real one (the Sample card isn't a choice).
+        .onAppear { choice = choice ?? (cards.contains { $0.id == model.activeCardID } ? model.activeCardID : cards.first?.id) }
         .interactiveDismissDisabled()
     }
 }
@@ -129,7 +137,16 @@ extension View {
     /// since a sheet can only present from the topmost view.
     func proPaywall(_ model: AppModel) -> some View {
         sheet(isPresented: Binding(get: { model.showPaywall }, set: { model.showPaywall = $0 })) {
+            #if DEBUG
+            // A simctl launch has no StoreKit products, so Apple's sheet hides the header; this shows it alone.
+            if ProcessInfo.processInfo.environment["MONOCLE_SHOW_PAYWALL"] == "header" {
+                ScrollView { PaywallHeader(reason: model.paywall ?? "") }
+            } else {
+                PaywallView(model: model, reason: model.paywall ?? "")
+            }
+            #else
             PaywallView(model: model, reason: model.paywall ?? "")
+            #endif
         }
     }
 }

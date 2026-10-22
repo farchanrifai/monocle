@@ -70,6 +70,11 @@ final class AppEnvironment {
             #endif
             model.showOnboarding = onboards
             #if DEBUG
+            // Screenshot hooks: MONOCLE_SHOW_PAYWALL=1 opens the paywall; MONOCLE_ONBOARDING_STEP picks the step.
+            if ProcessInfo.processInfo.environment["MONOCLE_SHOW_PAYWALL"] != nil { model.paywall = PlanError.cardLimit.localizedDescription }
+            if let step = ProcessInfo.processInfo.environment["MONOCLE_ONBOARDING_STEP"] { model.showOnboarding = step != "none" }
+            #endif
+            #if DEBUG
             // MONOCLE_DEMO=1: a separate monocle-demo folder, filled once with DemoWorkspace through the normal restore path.
             let demoMarker = directory.appendingPathComponent("demo-seeded")
             if directory.lastPathComponent == "monocle-demo", !FileManager.default.fileExists(atPath: demoMarker.path) {

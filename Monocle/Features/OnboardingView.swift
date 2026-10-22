@@ -3,8 +3,13 @@ import SwiftUI
 /// First launch: what Monocle does → the workspace currency → the user's card (or a backup) → the Pro trial.
 struct OnboardingView: View {
     let model: AppModel
-    private enum Step { case welcome, currency, card, trial }
-    @State private var step = Step.welcome
+    private enum Step: String { case welcome, currency, card, trial }
+    @State private var step: Step = {
+        #if DEBUG
+        if let name = ProcessInfo.processInfo.environment["MONOCLE_ONBOARDING_STEP"], let step = Step(rawValue: name) { return step }
+        #endif
+        return .welcome
+    }()
     @State private var currency = Locale.current.currency?.identifier ?? "USD"
     @State private var cardName = "My card"
     @State private var keepSample = true

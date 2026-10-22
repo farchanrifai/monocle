@@ -71,7 +71,10 @@ Needs the account or the owner:
 - Contact line, privacy page hosting (`AppLinks.privacy` is a placeholder), support URL, rate-the-app link (needs the app ID).
 - Phone checks: onboarding, paywall purchase in sandbox/TestFlight, downgrade picker, widgets lock, chat limit.
 - Done 2026-10-22: rating prompt (`ReviewPrompt`, once per version after 10 saves); unused `RecentsView` with its "PROTOTYPE 01" label removed.
-- Not done yet: iOS/Mac UI test run; simulator screenshots of paywall, onboarding steps and kept-card picker; MARKETING_VERSION 1.0.0 at submission.
+- Done 2026-10-22: UI tests. Mac 9/9 pass. iOS 44/46: the two failures (`testRecoveredDraftCanBeDiscardedToOpenAnotherTransaction`, `testTransactionPageLiquidGlassAddButtonAndPlatter`) fail on `main` too. Three release-caused failures fixed (two tests lacked an isolated store, so onboarding covered Home; the chat test now waits for focus after the reply's expense card).
+- Done 2026-10-22: simulator screenshots of onboarding (all steps), paywall header and kept-card picker; table labels shortened, picker preselects the card in use. DEBUG hooks `MONOCLE_SHOW_PAYWALL=1|header`, `MONOCLE_ONBOARDING_STEP=welcome|currency|card|trial|none`. The real paywall shows "Subscription Unavailable" until products load (Xcode Run with the .storekit file, or App Store Connect).
+- Check on the phone: after chat replies with an expense card, the first tap on the composer may not focus it (the UI test needed a second tap).
+- Not done yet: MARKETING_VERSION 1.0.0 at submission.
 
 ### 1. Strip
 - Remove Luna code, settings, tests and docs references.
