@@ -25,11 +25,11 @@ if ! kill -0 "$recording_pid" 2>/dev/null; then
 ' >&2
   exit 1
 fi
-xcodebuild test -project Monocle.xcodeproj -scheme Monocle \
+xcodebuild test -project Anka.xcodeproj -scheme Anka \
   -destination "platform=iOS Simulator,id=$simulator_id" \
   -derivedDataPath "$project_root/build/DerivedData" \
   -resultBundlePath "$output_dir/Motion.xcresult" \
-  -only-testing:MonocleUITests/MonocleUITests/testAppleWalletCardOpeningAndClosingAnimation \
+  -only-testing:AnkaUITests/AnkaUITests/testAppleWalletCardOpeningAndClosingAnimation \
   CODE_SIGNING_ALLOWED=NO
 stop_recording
 mkdir -p "$output_dir/frames"

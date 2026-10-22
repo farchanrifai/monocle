@@ -1,0 +1,1676 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		012C54C1A713E9D7EEF53CC8 /* AnkaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 447576FB9F25463CC682BB0C /* AnkaUITests.swift */; };
+		01D476B9EAD0F8DD6708A790 /* SpendingActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D5F86343DB3773F3E111849 /* SpendingActivityWidget.swift */; };
+		0218BCE496BC7DFEE89B6EE2 /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A553D653EE556330E214CA66 /* CardArtworkStore.swift */; };
+		03E10A7B78B5791C0DDFEE53 /* settings.json in Resources */ = {isa = PBXBuildFile; fileRef = 54554F487D8191C247F0E6DE /* settings.json */; };
+		06E5CCCB88C4E8CFCF1C6636 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF3D9D8FF8D3B65FF67A420 /* AppModel.swift */; };
+		0E3183F73D6F2E7E24ABD54D /* MacCardStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 565DE1132896A26BD1E64189 /* MacCardStats.swift */; };
+		0E36B3A6B9B28DF866281E1B /* BottomNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE00E610ABFCEF0FFC677B15 /* BottomNavigation.swift */; };
+		11CFB8CA94BC6B859D03C46D /* ChatChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78126CAF8F4F05EB99A0430 /* ChatChartView.swift */; };
+		1369CF2D25118631199401C1 /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1E857A73C3192178FB6E1D /* ChatBubble.swift */; };
+		13C92570460FFB65613256D4 /* widget.json in Resources */ = {isa = PBXBuildFile; fileRef = C9C7539B94CCA689DB9DADA8 /* widget.json */; };
+		142632A248E93A9919FB0CFA /* DemoWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 951E2E7EEE8482A3DBB85A31 /* DemoWorkspace.swift */; };
+		147B4E78331E4DE755A13913 /* BackendCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D2E798051C5C14F3926BC0 /* BackendCommandTests.swift */; };
+		165D9AC8DFFBF760D3F634ED /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F3B77D2193FE960B81156B /* Expense.swift */; };
+		1814C9469A157A69EA08851B /* AppleChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E82C7936894BCC41B655A8 /* AppleChatAgent.swift */; };
+		1AFA3675CB4156B1E2436400 /* ProgressiveBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = C084195E82AC6F0A615E6BE4 /* ProgressiveBlur.swift */; };
+		1D3EA163F16515C6E1618B09 /* CSVInterchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 043B2B3176E2463A6B39CB34 /* CSVInterchangeView.swift */; };
+		1D422A83E98A93BB3B0D633C /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A220E47142C13B942FE2C7 /* CSVEngine.swift */; };
+		1EEBAC9D2E9B3DDB0B74A7C9 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77C6E5EAAA25A575E4A44532 /* MacSettingsView.swift */; };
+		1F2B4ED04D183198B44685E5 /* BudgetStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B333A284B2D35D99D6F5461 /* BudgetStatusViews.swift */; };
+		201E49A67B0CFEA54C46BCEF /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E6B5D09556375D28B070795 /* BillNotificationService.swift */; };
+		20A53692C1596DB9013A5D66 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FB394D0358BB7EB2DA92A6FB /* PrivacyInfo.xcprivacy */; };
+		22F410B120728FE1C0810C22 /* workspace-v8.ankabackup in Resources */ = {isa = PBXBuildFile; fileRef = 265CF17CC90DFD833FE61E06 /* workspace-v8.ankabackup */; };
+		2326B3BFC4FF05343FA391F3 /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894D448A918438DCC11E1A06 /* ExpenseIntents.swift */; };
+		2464B82E15D769375A22E40D /* Anka.storekit in Resources */ = {isa = PBXBuildFile; fileRef = EC86E583E32E2D7D8363FF13 /* Anka.storekit */; };
+		247504FB4E25BF8BF1BA39B8 /* StreamPacerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521DBDAC318241F4C557019B /* StreamPacerTests.swift */; };
+		2495A983892E7AA6305144CB /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77A904A91E1A7EE195E4298 /* StockDesignViews.swift */; };
+		265701CD0B437058E4545DE9 /* CardCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04481E73B9BF119D25DC530 /* CardCustomizerView.swift */; };
+		292C749ABC10C9A0BE14D5D1 /* EntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC0D3603319F798AE078C3A /* EntryView.swift */; };
+		2AFA8D2861D51C9A2C8342F4 /* StockDesignViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77A904A91E1A7EE195E4298 /* StockDesignViews.swift */; };
+		2BDC2DFE4C8234E555507714 /* AnkaStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 671B761B1B19CF4D016B5B52 /* AnkaStyle.swift */; };
+		2D04DD38346BF015A1A7A1C7 /* CardBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D639838E251D1AF01AEFC4 /* CardBackup.swift */; };
+		325C4FEFAAAE45E4A8585473 /* SpendingSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61964E91C27AD029A673DD7 /* SpendingSessionManager.swift */; };
+		37CA95D1B4D4B1CA4CBDEC1B /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AF46BDE83EE2BF210EF7E1 /* CategoryValidation.swift */; };
+		3BE461E3C989F30129E2D915 /* MultiCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B74B9C4B6055618701CDFA4 /* MultiCardTests.swift */; };
+		3E7DDDF172438C3105DAFA1B /* ExpenseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B5D517682DDB619284C561 /* ExpenseRepository.swift */; };
+		3ED879F7A7652C4DCF023E11 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E9E144D9270214D95D2753 /* AnalyticsEngine.swift */; };
+		43A6279F6C5173D24A55043B /* BackendFinancialTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C47764F00E13CA55F0DE4C5D /* BackendFinancialTests.swift */; };
+		44812CB1389DF053BB2ABEDF /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E82AAE9DBA508D28009E219 /* ChatSession.swift */; };
+		44F0B0D38A8497B4FBBC2D2D /* MacPlanningViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1593B2B2986D4B78480C94DB /* MacPlanningViews.swift */; };
+		44F74FE318A3523CA17EA58C /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AF46BDE83EE2BF210EF7E1 /* CategoryValidation.swift */; };
+		45283F528EF8BD8461582912 /* CardArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A553D653EE556330E214CA66 /* CardArtworkStore.swift */; };
+		464AC435C2D640EECF6D6408 /* CardBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D639838E251D1AF01AEFC4 /* CardBackup.swift */; };
+		476EBF6327100EB91829B0E2 /* AppleChatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A55B1158456FCB914AC01015 /* AppleChatTests.swift */; };
+		488D5E4F5A3BBE24D328298C /* BudgetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BF02C6D5F2A075E5522A41 /* BudgetsView.swift */; };
+		490F23AD2A6F83BB5C84A6CA /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE624A9ACAD312C4573F36A /* ToolExecutor.swift */; };
+		49536C78C2D21181787AB16C /* AnkaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94BBDDF7FEF50F253EBF03D /* AnkaApp.swift */; };
+		496A90F3F172CE79937625DB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3E2FCF25FFAAD7CEF8412000 /* PrivacyInfo.xcprivacy */; };
+		49913AB986DAC2F74405383A /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC7668F0CD9DD55671CBB829 /* MacRootView.swift */; };
+		49F34686FBC8C1576840F496 /* QuickCaptureWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1D503D642BFC38D0683FB6 /* QuickCaptureWidget.swift */; };
+		4A5538A34E69BA187B91133F /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F78E32A5011861CDEE34B2 /* TransactionDetailView.swift */; };
+		4C425330F10DCA52E3849858 /* ExpenseRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B5D517682DDB619284C561 /* ExpenseRepository.swift */; };
+		4E710F2B8D858723B1E5337E /* Anka.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 98B77BCE649CE74F828DF5C7 /* Anka.xcdatamodeld */; };
+		5143F4A801ACC7F3AD7C9CBA /* Anka.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 98B77BCE649CE74F828DF5C7 /* Anka.xcdatamodeld */; };
+		55B9061BC7505379613E5101 /* StackWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8670EB0521E6156E87F7CD2 /* StackWidget.swift */; };
+		56AD268947CE43AEDCFA937F /* MacDataTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FD1A185B830E7807F88CD0 /* MacDataTransferView.swift */; };
+		57F7DDCBEAC2E7291B929950 /* WidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6121136E52818F663734629 /* WidgetStyle.swift */; };
+		583BC0B058F67BCBF6D6E27A /* ResetDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72228C8E740738AD8E7287A5 /* ResetDataView.swift */; };
+		5AB4ECC0ABD4AAB4225A1D96 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E82AAE9DBA508D28009E219 /* ChatSession.swift */; };
+		5BA4743C92D49A73C35D02B0 /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF75BBA4E9F0943A02C3BB9B /* ChatAgent.swift */; };
+		5DD05520377D1C23E381F613 /* CardHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AB2D6A0048A1604939C3920 /* CardHomeView.swift */; };
+		5DF115FAEDDE3DE294FB83FD /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731DFA717BF1B3D7D92C0CF2 /* PaywallView.swift */; };
+		5E2F8B8D8F01519DD59686F1 /* ExchangeRates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88861089DC8B98D8CD50538F /* ExchangeRates.swift */; };
+		5F026CEB03E88D45FE7D2812 /* BudgetReportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC9DA751B2EE35C4D8021BA /* BudgetReportTests.swift */; };
+		5FABC6A6A69FE1832F733476 /* ExpenseIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894D448A918438DCC11E1A06 /* ExpenseIntents.swift */; };
+		61DA11C295F86F7ED58256DB /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E6B5D09556375D28B070795 /* BillNotificationService.swift */; };
+		622816984CC6C2E97BBA0BB4 /* BackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A86DEB7D050E04ECDF5B5D26 /* BackupTests.swift */; };
+		6463612DE5EBF5D7A378BA9A /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF3D9D8FF8D3B65FF67A420 /* AppModel.swift */; };
+		649FF938C8F8B56B30BCD7BB /* GlobalHotKeyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51343D06C33759C43C88B312 /* GlobalHotKeyController.swift */; };
+		69BC6AADC874AF4A41C98CD5 /* TodaySpendingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8974A49C378654D45CC19E9D /* TodaySpendingWidget.swift */; };
+		6A247CCD4A19A858654188C8 /* WidgetSnapshotUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DC8C2130FA94C182BFCD51 /* WidgetSnapshotUpdater.swift */; };
+		6AF1675E4A49429D24E38458 /* ChatTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219E58E4E4DC7B281FA73513 /* ChatTranscript.swift */; };
+		6B30D91E0CFA81840F3A36FB /* GoldenFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A08F7FE752C7FB6B237FBF /* GoldenFormatTests.swift */; };
+		6DA23460905BD46AAE253193 /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4547FEB3B72E5D3D0C45EDC /* CardBackTelemetryView.swift */; };
+		70CD027246B4E4D0259A8F7C /* CategoryAndLocaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E5257BC26C79EFB53AA1AB /* CategoryAndLocaleTests.swift */; };
+		71F92FEFBD310D9EFE708943 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD1A4ADC0B1DBE7371369E67 /* ChatView.swift */; };
+		72E9C308DD006221AB02FA6B /* PaidWithSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27766DC6332E791EAE0F349E /* PaidWithSettingsView.swift */; };
+		7383F1E55BEB69E1197580D4 /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B9687495171E9A9CF11808 /* ProStore.swift */; };
+		74B11951A0E8F2DD067334DE /* AnkaMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD64C073C50B386705B8825 /* AnkaMacUITests.swift */; };
+		7726B1AF2D1B06CBED7E3EE3 /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = F686233D99DF5C8E88FD99F9 /* Bill.swift */; };
+		7B7426662C61173F82A60C34 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 246FC81FBD1798A261A9B126 /* AppEnvironment.swift */; };
+		7C0E2B83BA483C9DC8E7FD4C /* EntryDismissalGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF2D199BC17FB7D93D81B4C /* EntryDismissalGuard.swift */; };
+		7C8118027FF065B7678A1EC6 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D434EE9EE9E6A457B89F124 /* AppLock.swift */; };
+		81920C031B288A11437E5EB9 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045E49152461FF9525E374EC /* AnalyticsView.swift */; };
+		848E4B330D19C2AAF7818FDC /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF32A12A7069117133CE9333 /* WidgetSnapshotTests.swift */; };
+		88AE7F32EFEC045942A8AB03 /* AnkaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D15A45DE9A9CF04DF665BF95 /* AnkaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8918B39CE79C3763ECD9DAFD /* BudgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E00842997009D77F8C53AA0 /* BudgetStatus.swift */; };
+		8CF8EDEF0462E2BA9953600B /* ChatAgentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC09C2C7F32177A3DF5F5466 /* ChatAgentTests.swift */; };
+		914245BC0B9531909CBC2D5F /* ExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47866A435379248380BF8080 /* ExpenseService.swift */; };
+		91E44ACFB23CAB2681EF6964 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E5B7A5374F80B7AD8242AF6F /* Assets.xcassets */; };
+		9424337DD90751CF5EE8F2B5 /* FoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77BA8A337F8E01882A83F1AD /* FoundationTests.swift */; };
+		984842505AA9C30CC983EF7C /* ChatToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3052F165EE8624A86A6F5458 /* ChatToolTests.swift */; };
+		99BAA89E15A7038354355EBB /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B80275C638DB507253E43DB /* BudgetWidget.swift */; };
+		9BA29D9200A5B581E6759BB3 /* Plan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94220FCC9FD3987D4A0D67 /* Plan.swift */; };
+		9E5E3088F7507879EC153A79 /* MacChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA66CD2094263D63C7DA9831 /* MacChatView.swift */; };
+		A2DE4A24DC492703AEB28D75 /* CategoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4420B55EEB35561AEC321AF /* CategoryManager.swift */; };
+		A51548DB40398565217D9155 /* MacActivityFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57D8064B0D662829E4D335B6 /* MacActivityFilter.swift */; };
+		A63FE6F1D5A487C463C22799 /* AppleChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E82C7936894BCC41B655A8 /* AppleChatAgent.swift */; };
+		A64D9218A2D94D6163C9C58F /* ChatTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219E58E4E4DC7B281FA73513 /* ChatTranscript.swift */; };
+		AA6218D39421D751D3FFD70C /* MacExpenseForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E92B4A22DA2C4DCE9D008B8 /* MacExpenseForm.swift */; };
+		AC7DFC75202F693EE81B9832 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FB394D0358BB7EB2DA92A6FB /* PrivacyInfo.xcprivacy */; };
+		AD077F33686A09844EDD0AF6 /* LocalStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669BB419AFC8E10CA9ED7B9C /* LocalStateStore.swift */; };
+		AD0EB464B980BD8518269A05 /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F3B77D2193FE960B81156B /* Expense.swift */; };
+		AD869F8FFDCB979076B60CDC /* Bill.swift in Sources */ = {isa = PBXBuildFile; fileRef = F686233D99DF5C8E88FD99F9 /* Bill.swift */; };
+		AF727E3267B7CA962EF8C9AF /* DemoWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 951E2E7EEE8482A3DBB85A31 /* DemoWorkspace.swift */; };
+		B0EC9B9761B8875163BB32E1 /* ProStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F650A6D57161D912230E928 /* ProStoreTests.swift */; };
+		B336D5DEF58CF345111E3ABA /* BackendPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0EA0FC76C0E21F8F122D44 /* BackendPersistenceTests.swift */; };
+		B40B3A91EFF5E6A1A6D13674 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 246FC81FBD1798A261A9B126 /* AppEnvironment.swift */; };
+		B41B7C5ACE72FE7FECED110D /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 588C8254D199E9A9588FEF89 /* BackupView.swift */; };
+		B610CBBFE2C730342619702B /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C902A747725B5408D32504 /* ExpenseProposalCard.swift */; };
+		B67B996068A21111B2777CA3 /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF75BBA4E9F0943A02C3BB9B /* ChatAgent.swift */; };
+		B684C1C34A8361BCE370F648 /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7B9687495171E9A9CF11808 /* ProStore.swift */; };
+		B849F39CC201961A0AB7AB4F /* AnkaWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2725D09F9D6EEC5C2CB7E4FE /* AnkaWidgetsBundle.swift */; };
+		B9066441B8497315E8845D87 /* BackendDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ED1D0835F8B343EC0259E6 /* BackendDiagnostics.swift */; };
+		B9545ED75C44987B8AFEF7A8 /* draft.json in Resources */ = {isa = PBXBuildFile; fileRef = 24D90C7A2EC453E6DCB44869 /* draft.json */; };
+		B9AAF86B681EFC31081BC1EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E0304584DCF38A5171AC4966 /* Assets.xcassets */; };
+		B9E9937867E2458C8D38923E /* CSVEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A220E47142C13B942FE2C7 /* CSVEngine.swift */; };
+		BCAA37C4967051551F7F8DC8 /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49107BC865C69E60F20A777 /* BillReconciliationEngine.swift */; };
+		BCE2105B13D035F6DC362306 /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1E857A73C3192178FB6E1D /* ChatBubble.swift */; };
+		BFDC2BEF0AC6F20ED4D3D386 /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6ACCF888C1657D6AC04832 /* BillsView.swift */; };
+		C13FAEC76E92245BFF3F398E /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E6B1996E1F28DC37839F06 /* CardCustomization.swift */; };
+		C8CAADED1D901FC6B93B96E9 /* BillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51CCC95E2FC44521CAF29ADB /* BillTests.swift */; };
+		C950D64F7CF64CE502655A34 /* BudgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E00842997009D77F8C53AA0 /* BudgetStatus.swift */; };
+		C955C5865F2C51FAB590B3CE /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D434EE9EE9E6A457B89F124 /* AppLock.swift */; };
+		CA3FDCCC4ECA4D30E3D1B9F1 /* preferences.json in Resources */ = {isa = PBXBuildFile; fileRef = 6F8F189C2DA0AC92D16C3CEE /* preferences.json */; };
+		CAF57A073B6E22AE9D2B64DA /* SampleCardSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F9025831A9DF1A24C73E66 /* SampleCardSeeder.swift */; };
+		CBAD7593B06A9B866A8CF24A /* AnkaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39495A3742D68D25ECCBC599 /* AnkaTests.swift */; };
+		CE35190DA6D81FC5F96115AD /* ShortcutOrderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D599D09C088C6445C20B499 /* ShortcutOrderSettingsView.swift */; };
+		CEE69138F757AD1753A30A14 /* IntentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB3E75B28875B17D4911446 /* IntentTests.swift */; };
+		D001CB4DA830675C1882A2ED /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6D954EA9DC4FB8424FF35 /* WidgetSnapshotStore.swift */; };
+		D1B284AE5AD654E7CE2E5B5D /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A135838FCFB15981D02F5C8 /* BackupService.swift */; };
+		D44BE4C08C55AA408653D086 /* SampleCardSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F9025831A9DF1A24C73E66 /* SampleCardSeeder.swift */; };
+		D7AEBBE2F9C9204A2469FA9C /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2F3472DAA5D8DDA8500580 /* ChatInputBar.swift */; };
+		D7BF0C5FAB6ABE3C30E95A22 /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAE624A9ACAD312C4573F36A /* ToolExecutor.swift */; };
+		D8879E537A0FF45FC50C34C1 /* OnboardingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7982879B528110EBA0680997 /* OnboardingTests.swift */; };
+		DC5ADF074B052759A89D8B26 /* PlatformIntegrationShims.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5683A9AEBB109074D40161 /* PlatformIntegrationShims.swift */; };
+		DD645C03D1B9149A8309B7F3 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A16FE800E7581D0FCD7F7E /* WidgetSnapshot.swift */; };
+		DDEE0EBFDED0B3061FB0627C /* ExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47866A435379248380BF8080 /* ExpenseService.swift */; };
+		DED40DC30A53DAE916209970 /* BackendSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34FA1416CD29857796E490C /* BackendSessionTests.swift */; };
+		DF07249849BB9DD435147800 /* AnkaMacTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 782C9CA63D14922FA188EB23 /* AnkaMacTests.swift */; };
+		E2D6B6D0A96196866122167D /* BackendDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22ED1D0835F8B343EC0259E6 /* BackendDiagnostics.swift */; };
+		E4A61ADF785F2BB74B9153D4 /* AnalyticsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E9E144D9270214D95D2753 /* AnalyticsEngine.swift */; };
+		E4C9A08A27942CAEE0D34216 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A16FE800E7581D0FCD7F7E /* WidgetSnapshot.swift */; };
+		E4CC989DDFE1D28DDA6E68EB /* BackendBackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A002F63F13E89C01E0681B /* BackendBackupTests.swift */; };
+		E5C219EB0880993DB7B41749 /* AnkaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA06646C179EAF9004C453C /* AnkaMacApp.swift */; };
+		E652FD94DB3D2996A1ED7356 /* BudgetStatusViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B333A284B2D35D99D6F5461 /* BudgetStatusViews.swift */; };
+		E6F197CB9644B135CCE3E67B /* PlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76DEB9B855F02C4713F06FE4 /* PlanTests.swift */; };
+		E9C77E2349714711F1D519CE /* RecentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 638D5E6C125D255483F7DFAD /* RecentsView.swift */; };
+		E9ECD338815ACEB90CC4749E /* LocalStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669BB419AFC8E10CA9ED7B9C /* LocalStateStore.swift */; };
+		EA2FCE6938DE498C91BB3B70 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C902A747725B5408D32504 /* ExpenseProposalCard.swift */; };
+		EB056E124D6853973A347C39 /* QuickEntryControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF809F13F316EE0EA3F81B48 /* QuickEntryControl.swift */; };
+		EBD9F518857A5BDC9F9653FB /* CurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F7A5BA6032126DC170A20F /* CurrencyTests.swift */; };
+		EF1E05F3BB8D7FB9EE41B4E3 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D4262A14D7FE5EF0B885EF /* OnboardingView.swift */; };
+		F30C782A29092AAAB77D66B2 /* CardCustomization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E6B1996E1F28DC37839F06 /* CardCustomization.swift */; };
+		F361339CFD9907C4C7E24277 /* ExchangeRates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88861089DC8B98D8CD50538F /* ExchangeRates.swift */; };
+		F4206858AEBC0D788DBB86F5 /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49107BC865C69E60F20A777 /* BillReconciliationEngine.swift */; };
+		F454EC9F6744CCA4DA4A6723 /* ChatChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78126CAF8F4F05EB99A0430 /* ChatChartView.swift */; };
+		F623C6DA7336E683D797ABFB /* Plan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94220FCC9FD3987D4A0D67 /* Plan.swift */; };
+		F65860767106DA536B94D53B /* CSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EEB64CFE8122703B39BF980 /* CSVTests.swift */; };
+		F73D2FA9950EC6872BC5CDCF /* ProgressiveBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = C084195E82AC6F0A615E6BE4 /* ProgressiveBlur.swift */; };
+		F7F17059B66D59FBA6483DDF /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34552273B88F0F41D8042762 /* CategoryPicker.swift */; };
+		F82CA2614970A8A7EDB8F0E6 /* BackendModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC8FB69027EADEC5373B956 /* BackendModelTests.swift */; };
+		F942B981E5DD0A53CEE0B8A1 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A135838FCFB15981D02F5C8 /* BackupService.swift */; };
+		FA0D1CFB4EC5B8B5D9F42D0C /* MacCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F048A6E3C6EAC1E28344C0F /* MacCommands.swift */; };
+		FC29F1455F5E687F7C39768F /* AnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D29A935351B7C443036B0E8E /* AnalyticsTests.swift */; };
+		FC49031CE1F907C325278206 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A6D954EA9DC4FB8424FF35 /* WidgetSnapshotStore.swift */; };
+		FD6CC3771A16ABB65763BC5D /* StackCustomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D402D0F381ED92465CC50E /* StackCustomizerView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		54FB4364A73A29B01B35FFA6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0713A12194436E56B53E8A2F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E5BCD7F24906B9EA5EFE3DE9;
+			remoteInfo = AnkaMac;
+		};
+		B1C87484B81EB9F31737A750 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0713A12194436E56B53E8A2F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A871D25F6A3541D7B349DF3;
+			remoteInfo = AnkaWidgets;
+		};
+		BE189ECCAF54DA1C86F9E875 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0713A12194436E56B53E8A2F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F10F575FCDC5B1C928B0D86B;
+			remoteInfo = Anka;
+		};
+		F85A8EE9B09B7573CF484532 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0713A12194436E56B53E8A2F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F10F575FCDC5B1C928B0D86B;
+			remoteInfo = Anka;
+		};
+		FCF53B838776337E54B494D6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0713A12194436E56B53E8A2F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E5BCD7F24906B9EA5EFE3DE9;
+			remoteInfo = AnkaMac;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9932ECE507F46D8744E3616B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				88AE7F32EFEC045942A8AB03 /* AnkaWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		043B2B3176E2463A6B39CB34 /* CSVInterchangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVInterchangeView.swift; sourceTree = "<group>"; };
+		045E49152461FF9525E374EC /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
+		04ACCFF7D8425AC7A7912220 /* AnkaV3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AnkaV3.xcdatamodel; sourceTree = "<group>"; };
+		0DC9DA751B2EE35C4D8021BA /* BudgetReportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetReportTests.swift; sourceTree = "<group>"; };
+		0EEB64CFE8122703B39BF980 /* CSVTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVTests.swift; sourceTree = "<group>"; };
+		1593B2B2986D4B78480C94DB /* MacPlanningViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlanningViews.swift; sourceTree = "<group>"; };
+		1B635D5A66013B081363789F /* AnkaV2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AnkaV2.xcdatamodel; sourceTree = "<group>"; };
+		1D5F86343DB3773F3E111849 /* SpendingActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingActivityWidget.swift; sourceTree = "<group>"; };
+		219E58E4E4DC7B281FA73513 /* ChatTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTranscript.swift; sourceTree = "<group>"; };
+		22ED1D0835F8B343EC0259E6 /* BackendDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendDiagnostics.swift; sourceTree = "<group>"; };
+		246FC81FBD1798A261A9B126 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		24D90C7A2EC453E6DCB44869 /* draft.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = draft.json; sourceTree = "<group>"; };
+		265CF17CC90DFD833FE61E06 /* workspace-v8.ankabackup */ = {isa = PBXFileReference; path = "workspace-v8.ankabackup"; sourceTree = "<group>"; };
+		2725D09F9D6EEC5C2CB7E4FE /* AnkaWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaWidgetsBundle.swift; sourceTree = "<group>"; };
+		27766DC6332E791EAE0F349E /* PaidWithSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidWithSettingsView.swift; sourceTree = "<group>"; };
+		27A220E47142C13B942FE2C7 /* CSVEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVEngine.swift; sourceTree = "<group>"; };
+		28E82C7936894BCC41B655A8 /* AppleChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatAgent.swift; sourceTree = "<group>"; };
+		29D402D0F381ED92465CC50E /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
+		2A135838FCFB15981D02F5C8 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
+		2AC0D3603319F798AE078C3A /* EntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryView.swift; sourceTree = "<group>"; };
+		2B74B9C4B6055618701CDFA4 /* MultiCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiCardTests.swift; sourceTree = "<group>"; };
+		3052F165EE8624A86A6F5458 /* ChatToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatToolTests.swift; sourceTree = "<group>"; };
+		31A002F63F13E89C01E0681B /* BackendBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendBackupTests.swift; sourceTree = "<group>"; };
+		31F3B77D2193FE960B81156B /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
+		32DC8C2130FA94C182BFCD51 /* WidgetSnapshotUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotUpdater.swift; sourceTree = "<group>"; };
+		34552273B88F0F41D8042762 /* CategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryPicker.swift; sourceTree = "<group>"; };
+		36030428E1D082C59A1249C9 /* AnkaUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnkaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		37A16FE800E7581D0FCD7F7E /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
+		39495A3742D68D25ECCBC599 /* AnkaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaTests.swift; sourceTree = "<group>"; };
+		3B333A284B2D35D99D6F5461 /* BudgetStatusViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetStatusViews.swift; sourceTree = "<group>"; };
+		3E2FCF25FFAAD7CEF8412000 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		40E6B1996E1F28DC37839F06 /* CardCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomization.swift; sourceTree = "<group>"; };
+		447576FB9F25463CC682BB0C /* AnkaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaUITests.swift; sourceTree = "<group>"; };
+		47866A435379248380BF8080 /* ExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseService.swift; sourceTree = "<group>"; };
+		4C8B1BC63F8EE185F04C75FE /* Anka.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Anka.entitlements; sourceTree = "<group>"; };
+		4DC8FB69027EADEC5373B956 /* BackendModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendModelTests.swift; sourceTree = "<group>"; };
+		4E82AAE9DBA508D28009E219 /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
+		4EF511BE043B0DA55F7E978B /* Anka.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Anka.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		51343D06C33759C43C88B312 /* GlobalHotKeyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKeyController.swift; sourceTree = "<group>"; };
+		51CCC95E2FC44521CAF29ADB /* BillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillTests.swift; sourceTree = "<group>"; };
+		521DBDAC318241F4C557019B /* StreamPacerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamPacerTests.swift; sourceTree = "<group>"; };
+		54554F487D8191C247F0E6DE /* settings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = settings.json; sourceTree = "<group>"; };
+		565DE1132896A26BD1E64189 /* MacCardStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCardStats.swift; sourceTree = "<group>"; };
+		57D8064B0D662829E4D335B6 /* MacActivityFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacActivityFilter.swift; sourceTree = "<group>"; };
+		588C8254D199E9A9588FEF89 /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
+		5AB2D6A0048A1604939C3920 /* CardHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardHomeView.swift; sourceTree = "<group>"; };
+		5B80275C638DB507253E43DB /* BudgetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetWidget.swift; sourceTree = "<group>"; };
+		638D5E6C125D255483F7DFAD /* RecentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentsView.swift; sourceTree = "<group>"; };
+		63ACF7E08CC2D443B1B2A24E /* AnkaMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkaMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		669BB419AFC8E10CA9ED7B9C /* LocalStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStateStore.swift; sourceTree = "<group>"; };
+		671B761B1B19CF4D016B5B52 /* AnkaStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaStyle.swift; sourceTree = "<group>"; };
+		68E9E144D9270214D95D2753 /* AnalyticsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEngine.swift; sourceTree = "<group>"; };
+		6A1D503D642BFC38D0683FB6 /* QuickCaptureWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureWidget.swift; sourceTree = "<group>"; };
+		6E00842997009D77F8C53AA0 /* BudgetStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetStatus.swift; sourceTree = "<group>"; };
+		6E6B5D09556375D28B070795 /* BillNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillNotificationService.swift; sourceTree = "<group>"; };
+		6E92B4A22DA2C4DCE9D008B8 /* MacExpenseForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacExpenseForm.swift; sourceTree = "<group>"; };
+		6F048A6E3C6EAC1E28344C0F /* MacCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCommands.swift; sourceTree = "<group>"; };
+		6F8F189C2DA0AC92D16C3CEE /* preferences.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = preferences.json; sourceTree = "<group>"; };
+		72228C8E740738AD8E7287A5 /* ResetDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataView.swift; sourceTree = "<group>"; };
+		731DFA717BF1B3D7D92C0CF2 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		74D639838E251D1AF01AEFC4 /* CardBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBackup.swift; sourceTree = "<group>"; };
+		76DEB9B855F02C4713F06FE4 /* PlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanTests.swift; sourceTree = "<group>"; };
+		77BA8A337F8E01882A83F1AD /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
+		77C6E5EAAA25A575E4A44532 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
+		77E5257BC26C79EFB53AA1AB /* CategoryAndLocaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryAndLocaleTests.swift; sourceTree = "<group>"; };
+		782C9CA63D14922FA188EB23 /* AnkaMacTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaMacTests.swift; sourceTree = "<group>"; };
+		7982879B528110EBA0680997 /* OnboardingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingTests.swift; sourceTree = "<group>"; };
+		7D434EE9EE9E6A457B89F124 /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		7D599D09C088C6445C20B499 /* ShortcutOrderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutOrderSettingsView.swift; sourceTree = "<group>"; };
+		81A6D954EA9DC4FB8424FF35 /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotStore.swift; sourceTree = "<group>"; };
+		82CC324BA154A586FDD074E8 /* AnkaMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnkaMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		88861089DC8B98D8CD50538F /* ExchangeRates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRates.swift; sourceTree = "<group>"; };
+		894D448A918438DCC11E1A06 /* ExpenseIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseIntents.swift; sourceTree = "<group>"; };
+		8974A49C378654D45CC19E9D /* TodaySpendingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodaySpendingWidget.swift; sourceTree = "<group>"; };
+		8FA06646C179EAF9004C453C /* AnkaMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaMacApp.swift; sourceTree = "<group>"; };
+		91AF46BDE83EE2BF210EF7E1 /* CategoryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryValidation.swift; sourceTree = "<group>"; };
+		951E2E7EEE8482A3DBB85A31 /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
+		9A1E857A73C3192178FB6E1D /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
+		9D94220FCC9FD3987D4A0D67 /* Plan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plan.swift; sourceTree = "<group>"; };
+		9EF2D199BC17FB7D93D81B4C /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
+		9F650A6D57161D912230E928 /* ProStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreTests.swift; sourceTree = "<group>"; };
+		A34FA1416CD29857796E490C /* BackendSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSessionTests.swift; sourceTree = "<group>"; };
+		A553D653EE556330E214CA66 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
+		A55B1158456FCB914AC01015 /* AppleChatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatTests.swift; sourceTree = "<group>"; };
+		A5FD1A185B830E7807F88CD0 /* MacDataTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDataTransferView.swift; sourceTree = "<group>"; };
+		A6C902A747725B5408D32504 /* ExpenseProposalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseProposalCard.swift; sourceTree = "<group>"; };
+		A77A904A91E1A7EE195E4298 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
+		A86DEB7D050E04ECDF5B5D26 /* BackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
+		A9150254E6C552E70C6C3E5E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		AA0EA0FC76C0E21F8F122D44 /* BackendPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendPersistenceTests.swift; sourceTree = "<group>"; };
+		AB2F3472DAA5D8DDA8500580 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
+		AC09C2C7F32177A3DF5F5466 /* ChatAgentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAgentTests.swift; sourceTree = "<group>"; };
+		AE6ACCF888C1657D6AC04832 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
+		AF32A12A7069117133CE9333 /* WidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotTests.swift; sourceTree = "<group>"; };
+		B6FCD9E60E788F7055BC4626 /* AnkaMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnkaMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B78126CAF8F4F05EB99A0430 /* ChatChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatChartView.swift; sourceTree = "<group>"; };
+		BBB3E75B28875B17D4911446 /* IntentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentTests.swift; sourceTree = "<group>"; };
+		BE00E610ABFCEF0FFC677B15 /* BottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomNavigation.swift; sourceTree = "<group>"; };
+		BE5683A9AEBB109074D40161 /* PlatformIntegrationShims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformIntegrationShims.swift; sourceTree = "<group>"; };
+		C084195E82AC6F0A615E6BE4 /* ProgressiveBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressiveBlur.swift; sourceTree = "<group>"; };
+		C3F7A5BA6032126DC170A20F /* CurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyTests.swift; sourceTree = "<group>"; };
+		C3F9025831A9DF1A24C73E66 /* SampleCardSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleCardSeeder.swift; sourceTree = "<group>"; };
+		C47764F00E13CA55F0DE4C5D /* BackendFinancialTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendFinancialTests.swift; sourceTree = "<group>"; };
+		C7B9687495171E9A9CF11808 /* ProStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStore.swift; sourceTree = "<group>"; };
+		C8451AD4FE1701B45AA322EA /* AnkaV4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AnkaV4.xcdatamodel; sourceTree = "<group>"; };
+		C9C7539B94CCA689DB9DADA8 /* widget.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = widget.json; sourceTree = "<group>"; };
+		CA66CD2094263D63C7DA9831 /* MacChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacChatView.swift; sourceTree = "<group>"; };
+		CC7668F0CD9DD55671CBB829 /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
+		CD1A4ADC0B1DBE7371369E67 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		CDF3D9D8FF8D3B65FF67A420 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		CE1ABBE42CFB558520BF0FC1 /* AnkaTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnkaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF75BBA4E9F0943A02C3BB9B /* ChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAgent.swift; sourceTree = "<group>"; };
+		CF809F13F316EE0EA3F81B48 /* QuickEntryControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickEntryControl.swift; sourceTree = "<group>"; };
+		D04481E73B9BF119D25DC530 /* CardCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomizerView.swift; sourceTree = "<group>"; };
+		D15A45DE9A9CF04DF665BF95 /* AnkaWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AnkaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D29A935351B7C443036B0E8E /* AnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsTests.swift; sourceTree = "<group>"; };
+		D49107BC865C69E60F20A777 /* BillReconciliationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillReconciliationEngine.swift; sourceTree = "<group>"; };
+		D61964E91C27AD029A673DD7 /* SpendingSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingSessionManager.swift; sourceTree = "<group>"; };
+		D6D4262A14D7FE5EF0B885EF /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		D6E50D86888DACD81E5E549D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E0304584DCF38A5171AC4966 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E1A08F7FE752C7FB6B237FBF /* GoldenFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldenFormatTests.swift; sourceTree = "<group>"; };
+		E2B5D517682DDB619284C561 /* ExpenseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseRepository.swift; sourceTree = "<group>"; };
+		E4420B55EEB35561AEC321AF /* CategoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryManager.swift; sourceTree = "<group>"; };
+		E4547FEB3B72E5D3D0C45EDC /* CardBackTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBackTelemetryView.swift; sourceTree = "<group>"; };
+		E5B7A5374F80B7AD8242AF6F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E6121136E52818F663734629 /* WidgetStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
+		E6D2E798051C5C14F3926BC0 /* BackendCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendCommandTests.swift; sourceTree = "<group>"; };
+		E8C58A72C0CBF6A6F071CAD9 /* AnkaMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnkaMac.entitlements; sourceTree = "<group>"; };
+		EAD64C073C50B386705B8825 /* AnkaMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaMacUITests.swift; sourceTree = "<group>"; };
+		EAE624A9ACAD312C4573F36A /* ToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
+		EC86E583E32E2D7D8363FF13 /* Anka.storekit */ = {isa = PBXFileReference; path = Anka.storekit; sourceTree = "<group>"; };
+		EE7D55BFC8DD8F806108ADD2 /* AnkaV5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AnkaV5.xcdatamodel; sourceTree = "<group>"; };
+		F2F78E32A5011861CDEE34B2 /* TransactionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionDetailView.swift; sourceTree = "<group>"; };
+		F4BF02C6D5F2A075E5522A41 /* BudgetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetsView.swift; sourceTree = "<group>"; };
+		F686233D99DF5C8E88FD99F9 /* Bill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bill.swift; sourceTree = "<group>"; };
+		F8670EB0521E6156E87F7CD2 /* StackWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackWidget.swift; sourceTree = "<group>"; };
+		F94BBDDF7FEF50F253EBF03D /* AnkaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaApp.swift; sourceTree = "<group>"; };
+		FB394D0358BB7EB2DA92A6FB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		FC1B967EC2EC9123772737B6 /* AnkaV1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AnkaV1.xcdatamodel; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		01976B2F19C075F95F79DAF9 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				F94BBDDF7FEF50F253EBF03D /* AnkaApp.swift */,
+				246FC81FBD1798A261A9B126 /* AppEnvironment.swift */,
+				CDF3D9D8FF8D3B65FF67A420 /* AppModel.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		17D015D5D0C008760E69A1C7 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				A553D653EE556330E214CA66 /* CardArtworkStore.swift */,
+				951E2E7EEE8482A3DBB85A31 /* DemoWorkspace.swift */,
+				E2B5D517682DDB619284C561 /* ExpenseRepository.swift */,
+				669BB419AFC8E10CA9ED7B9C /* LocalStateStore.swift */,
+				C3F9025831A9DF1A24C73E66 /* SampleCardSeeder.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		2777295A0B88790360CFE454 /* Application */ = {
+			isa = PBXGroup;
+			children = (
+				7D434EE9EE9E6A457B89F124 /* AppLock.swift */,
+				22ED1D0835F8B343EC0259E6 /* BackendDiagnostics.swift */,
+				2A135838FCFB15981D02F5C8 /* BackupService.swift */,
+				88861089DC8B98D8CD50538F /* ExchangeRates.swift */,
+				47866A435379248380BF8080 /* ExpenseService.swift */,
+				C7B9687495171E9A9CF11808 /* ProStore.swift */,
+				5F9F551C99231D5680B6CC91 /* Chat */,
+			);
+			path = Application;
+			sourceTree = "<group>";
+		};
+		2D479775F345115FAD196120 /* Integrations */ = {
+			isa = PBXGroup;
+			children = (
+				6E6B5D09556375D28B070795 /* BillNotificationService.swift */,
+				894D448A918438DCC11E1A06 /* ExpenseIntents.swift */,
+				F7BD40F025948FEBCE809E4A /* Widgets */,
+			);
+			path = Integrations;
+			sourceTree = "<group>";
+		};
+		342248EE01E3997531542C9A /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				EC86E583E32E2D7D8363FF13 /* Anka.storekit */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		3D1FD721EDBED3DABABC6D65 /* AnkaMacUITests */ = {
+			isa = PBXGroup;
+			children = (
+				EAD64C073C50B386705B8825 /* AnkaMacUITests.swift */,
+			);
+			path = AnkaMacUITests;
+			sourceTree = "<group>";
+		};
+		51D7463ECDB82D6AAA1246E3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4C8B1BC63F8EE185F04C75FE /* Anka.entitlements */,
+				E0304584DCF38A5171AC4966 /* Assets.xcassets */,
+				D6E50D86888DACD81E5E549D /* Info.plist */,
+				FB394D0358BB7EB2DA92A6FB /* PrivacyInfo.xcprivacy */,
+				98B77BCE649CE74F828DF5C7 /* Anka.xcdatamodeld */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		5F9F551C99231D5680B6CC91 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				28E82C7936894BCC41B655A8 /* AppleChatAgent.swift */,
+				CF75BBA4E9F0943A02C3BB9B /* ChatAgent.swift */,
+				4E82AAE9DBA508D28009E219 /* ChatSession.swift */,
+				EAE624A9ACAD312C4573F36A /* ToolExecutor.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		6FFC932A2BF93FC1C566AF40 /* AnkaTests */ = {
+			isa = PBXGroup;
+			children = (
+				D29A935351B7C443036B0E8E /* AnalyticsTests.swift */,
+				39495A3742D68D25ECCBC599 /* AnkaTests.swift */,
+				31A002F63F13E89C01E0681B /* BackendBackupTests.swift */,
+				E6D2E798051C5C14F3926BC0 /* BackendCommandTests.swift */,
+				C47764F00E13CA55F0DE4C5D /* BackendFinancialTests.swift */,
+				4DC8FB69027EADEC5373B956 /* BackendModelTests.swift */,
+				AA0EA0FC76C0E21F8F122D44 /* BackendPersistenceTests.swift */,
+				A34FA1416CD29857796E490C /* BackendSessionTests.swift */,
+				A86DEB7D050E04ECDF5B5D26 /* BackupTests.swift */,
+				51CCC95E2FC44521CAF29ADB /* BillTests.swift */,
+				0DC9DA751B2EE35C4D8021BA /* BudgetReportTests.swift */,
+				77E5257BC26C79EFB53AA1AB /* CategoryAndLocaleTests.swift */,
+				AC09C2C7F32177A3DF5F5466 /* ChatAgentTests.swift */,
+				3052F165EE8624A86A6F5458 /* ChatToolTests.swift */,
+				0EEB64CFE8122703B39BF980 /* CSVTests.swift */,
+				C3F7A5BA6032126DC170A20F /* CurrencyTests.swift */,
+				77BA8A337F8E01882A83F1AD /* FoundationTests.swift */,
+				E1A08F7FE752C7FB6B237FBF /* GoldenFormatTests.swift */,
+				BBB3E75B28875B17D4911446 /* IntentTests.swift */,
+				2B74B9C4B6055618701CDFA4 /* MultiCardTests.swift */,
+				7982879B528110EBA0680997 /* OnboardingTests.swift */,
+				76DEB9B855F02C4713F06FE4 /* PlanTests.swift */,
+				9F650A6D57161D912230E928 /* ProStoreTests.swift */,
+				521DBDAC318241F4C557019B /* StreamPacerTests.swift */,
+				AF32A12A7069117133CE9333 /* WidgetSnapshotTests.swift */,
+				DA5EB8C9BEF9A4150758F9D9 /* Fixtures */,
+			);
+			path = AnkaTests;
+			sourceTree = "<group>";
+		};
+		7A46E24DD9E720DB03AC7F9F /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				045E49152461FF9525E374EC /* AnalyticsView.swift */,
+				588C8254D199E9A9588FEF89 /* BackupView.swift */,
+				AE6ACCF888C1657D6AC04832 /* BillsView.swift */,
+				BE00E610ABFCEF0FFC677B15 /* BottomNavigation.swift */,
+				3B333A284B2D35D99D6F5461 /* BudgetStatusViews.swift */,
+				F4BF02C6D5F2A075E5522A41 /* BudgetsView.swift */,
+				E4547FEB3B72E5D3D0C45EDC /* CardBackTelemetryView.swift */,
+				D04481E73B9BF119D25DC530 /* CardCustomizerView.swift */,
+				5AB2D6A0048A1604939C3920 /* CardHomeView.swift */,
+				E4420B55EEB35561AEC321AF /* CategoryManager.swift */,
+				34552273B88F0F41D8042762 /* CategoryPicker.swift */,
+				043B2B3176E2463A6B39CB34 /* CSVInterchangeView.swift */,
+				9EF2D199BC17FB7D93D81B4C /* EntryDismissalGuard.swift */,
+				2AC0D3603319F798AE078C3A /* EntryView.swift */,
+				D6D4262A14D7FE5EF0B885EF /* OnboardingView.swift */,
+				27766DC6332E791EAE0F349E /* PaidWithSettingsView.swift */,
+				731DFA717BF1B3D7D92C0CF2 /* PaywallView.swift */,
+				638D5E6C125D255483F7DFAD /* RecentsView.swift */,
+				72228C8E740738AD8E7287A5 /* ResetDataView.swift */,
+				7D599D09C088C6445C20B499 /* ShortcutOrderSettingsView.swift */,
+				29D402D0F381ED92465CC50E /* StackCustomizerView.swift */,
+				A77A904A91E1A7EE195E4298 /* StockDesignViews.swift */,
+				F2F78E32A5011861CDEE34B2 /* TransactionDetailView.swift */,
+				EA54D4268C637DCD9068B277 /* Chat */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		85F7BD07F09BF384902D9F73 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				57D8064B0D662829E4D335B6 /* MacActivityFilter.swift */,
+				565DE1132896A26BD1E64189 /* MacCardStats.swift */,
+				CA66CD2094263D63C7DA9831 /* MacChatView.swift */,
+				A5FD1A185B830E7807F88CD0 /* MacDataTransferView.swift */,
+				6E92B4A22DA2C4DCE9D008B8 /* MacExpenseForm.swift */,
+				1593B2B2986D4B78480C94DB /* MacPlanningViews.swift */,
+				CC7668F0CD9DD55671CBB829 /* MacRootView.swift */,
+				77C6E5EAAA25A575E4A44532 /* MacSettingsView.swift */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		88175D9905A7048B676EB02B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4EF511BE043B0DA55F7E978B /* Anka.app */,
+				82CC324BA154A586FDD074E8 /* AnkaMac.app */,
+				63ACF7E08CC2D443B1B2A24E /* AnkaMacTests.xctest */,
+				B6FCD9E60E788F7055BC4626 /* AnkaMacUITests.xctest */,
+				CE1ABBE42CFB558520BF0FC1 /* AnkaTests.xctest */,
+				36030428E1D082C59A1249C9 /* AnkaUITests.xctest */,
+				D15A45DE9A9CF04DF665BF95 /* AnkaWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		97090C2208DBAAD5C26F0B24 /* Anka */ = {
+			isa = PBXGroup;
+			children = (
+				01976B2F19C075F95F79DAF9 /* App */,
+				2777295A0B88790360CFE454 /* Application */,
+				FE121762C4A22655DCCCAB31 /* DesignSystem */,
+				FFBC21C02A3B0EA2A6658B2F /* Domain */,
+				7A46E24DD9E720DB03AC7F9F /* Features */,
+				2D479775F345115FAD196120 /* Integrations */,
+				17D015D5D0C008760E69A1C7 /* Persistence */,
+				51D7463ECDB82D6AAA1246E3 /* Resources */,
+			);
+			path = Anka;
+			sourceTree = "<group>";
+		};
+		9931BD28C9E582BACE9B2739 = {
+			isa = PBXGroup;
+			children = (
+				97090C2208DBAAD5C26F0B24 /* Anka */,
+				C1D5410BD8C1D5721A35F6DE /* AnkaMac */,
+				BCA644035DCF8667F6577F9A /* AnkaMacTests */,
+				3D1FD721EDBED3DABABC6D65 /* AnkaMacUITests */,
+				6FFC932A2BF93FC1C566AF40 /* AnkaTests */,
+				E345D064BC95CAD6527D1F83 /* AnkaUITests */,
+				F2B4CD2FB181475BC404C4F0 /* AnkaWidgets */,
+				342248EE01E3997531542C9A /* Configuration */,
+				88175D9905A7048B676EB02B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BCA644035DCF8667F6577F9A /* AnkaMacTests */ = {
+			isa = PBXGroup;
+			children = (
+				782C9CA63D14922FA188EB23 /* AnkaMacTests.swift */,
+				A55B1158456FCB914AC01015 /* AppleChatTests.swift */,
+			);
+			path = AnkaMacTests;
+			sourceTree = "<group>";
+		};
+		C1D5410BD8C1D5721A35F6DE /* AnkaMac */ = {
+			isa = PBXGroup;
+			children = (
+				DC77A65AE211D6C7DE6F0962 /* App */,
+				85F7BD07F09BF384902D9F73 /* Features */,
+				D140E298A2DC4E4CFCA3870F /* Resources */,
+			);
+			path = AnkaMac;
+			sourceTree = "<group>";
+		};
+		D140E298A2DC4E4CFCA3870F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E8C58A72C0CBF6A6F071CAD9 /* AnkaMac.entitlements */,
+				E5B7A5374F80B7AD8242AF6F /* Assets.xcassets */,
+				A9150254E6C552E70C6C3E5E /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		DA5EB8C9BEF9A4150758F9D9 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				24D90C7A2EC453E6DCB44869 /* draft.json */,
+				6F8F189C2DA0AC92D16C3CEE /* preferences.json */,
+				54554F487D8191C247F0E6DE /* settings.json */,
+				C9C7539B94CCA689DB9DADA8 /* widget.json */,
+				265CF17CC90DFD833FE61E06 /* workspace-v8.ankabackup */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
+		DC77A65AE211D6C7DE6F0962 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				8FA06646C179EAF9004C453C /* AnkaMacApp.swift */,
+				51343D06C33759C43C88B312 /* GlobalHotKeyController.swift */,
+				6F048A6E3C6EAC1E28344C0F /* MacCommands.swift */,
+				BE5683A9AEBB109074D40161 /* PlatformIntegrationShims.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E345D064BC95CAD6527D1F83 /* AnkaUITests */ = {
+			isa = PBXGroup;
+			children = (
+				447576FB9F25463CC682BB0C /* AnkaUITests.swift */,
+			);
+			path = AnkaUITests;
+			sourceTree = "<group>";
+		};
+		EA54D4268C637DCD9068B277 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				9A1E857A73C3192178FB6E1D /* ChatBubble.swift */,
+				B78126CAF8F4F05EB99A0430 /* ChatChartView.swift */,
+				AB2F3472DAA5D8DDA8500580 /* ChatInputBar.swift */,
+				219E58E4E4DC7B281FA73513 /* ChatTranscript.swift */,
+				CD1A4ADC0B1DBE7371369E67 /* ChatView.swift */,
+				A6C902A747725B5408D32504 /* ExpenseProposalCard.swift */,
+				C084195E82AC6F0A615E6BE4 /* ProgressiveBlur.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		F2B4CD2FB181475BC404C4F0 /* AnkaWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				2725D09F9D6EEC5C2CB7E4FE /* AnkaWidgetsBundle.swift */,
+				5B80275C638DB507253E43DB /* BudgetWidget.swift */,
+				3E2FCF25FFAAD7CEF8412000 /* PrivacyInfo.xcprivacy */,
+				6A1D503D642BFC38D0683FB6 /* QuickCaptureWidget.swift */,
+				CF809F13F316EE0EA3F81B48 /* QuickEntryControl.swift */,
+				1D5F86343DB3773F3E111849 /* SpendingActivityWidget.swift */,
+				F8670EB0521E6156E87F7CD2 /* StackWidget.swift */,
+				8974A49C378654D45CC19E9D /* TodaySpendingWidget.swift */,
+				E6121136E52818F663734629 /* WidgetStyle.swift */,
+			);
+			path = AnkaWidgets;
+			sourceTree = "<group>";
+		};
+		F7BD40F025948FEBCE809E4A /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				D61964E91C27AD029A673DD7 /* SpendingSessionManager.swift */,
+				37A16FE800E7581D0FCD7F7E /* WidgetSnapshot.swift */,
+				81A6D954EA9DC4FB8424FF35 /* WidgetSnapshotStore.swift */,
+				32DC8C2130FA94C182BFCD51 /* WidgetSnapshotUpdater.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		FE121762C4A22655DCCCAB31 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				671B761B1B19CF4D016B5B52 /* AnkaStyle.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		FFBC21C02A3B0EA2A6658B2F /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				68E9E144D9270214D95D2753 /* AnalyticsEngine.swift */,
+				F686233D99DF5C8E88FD99F9 /* Bill.swift */,
+				D49107BC865C69E60F20A777 /* BillReconciliationEngine.swift */,
+				6E00842997009D77F8C53AA0 /* BudgetStatus.swift */,
+				74D639838E251D1AF01AEFC4 /* CardBackup.swift */,
+				40E6B1996E1F28DC37839F06 /* CardCustomization.swift */,
+				91AF46BDE83EE2BF210EF7E1 /* CategoryValidation.swift */,
+				27A220E47142C13B942FE2C7 /* CSVEngine.swift */,
+				31F3B77D2193FE960B81156B /* Expense.swift */,
+				9D94220FCC9FD3987D4A0D67 /* Plan.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A871D25F6A3541D7B349DF3 /* AnkaWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEFCBCA8D57BBDF66C9F88D8 /* Build configuration list for PBXNativeTarget "AnkaWidgets" */;
+			buildPhases = (
+				564212B207077ECC9A230DF3 /* Sources */,
+				4FFCDDFC549B2E85147A546D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AnkaWidgets;
+			packageProductDependencies = (
+			);
+			productName = AnkaWidgets;
+			productReference = D15A45DE9A9CF04DF665BF95 /* AnkaWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		4C5711D9585154CFB1E155EC /* AnkaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0CA3AE816184914EA650F52F /* Build configuration list for PBXNativeTarget "AnkaTests" */;
+			buildPhases = (
+				0359F0DD3EDF5AFECF81C325 /* Sources */,
+				030CD8F257DFEA06ECF99734 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BBF69B71465BA10B56433207 /* PBXTargetDependency */,
+			);
+			name = AnkaTests;
+			packageProductDependencies = (
+			);
+			productName = AnkaTests;
+			productReference = CE1ABBE42CFB558520BF0FC1 /* AnkaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		94BB7642803FA39845AA0A06 /* AnkaMacUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AFB7323DB7C0F0F31D694A05 /* Build configuration list for PBXNativeTarget "AnkaMacUITests" */;
+			buildPhases = (
+				176949B76AC3AC5F29D462AF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E5A63A80FCD7F19601A07DD4 /* PBXTargetDependency */,
+			);
+			name = AnkaMacUITests;
+			packageProductDependencies = (
+			);
+			productName = AnkaMacUITests;
+			productReference = B6FCD9E60E788F7055BC4626 /* AnkaMacUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E5BCD7F24906B9EA5EFE3DE9 /* AnkaMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D19D6365977B57D5377CF5F2 /* Build configuration list for PBXNativeTarget "AnkaMac" */;
+			buildPhases = (
+				6B19AE2B7FA345798E44DDF6 /* Sources */,
+				609ED2B31DC45708A3D6AF3E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AnkaMac;
+			packageProductDependencies = (
+			);
+			productName = AnkaMac;
+			productReference = 82CC324BA154A586FDD074E8 /* AnkaMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E60AA7CB44E71930813F764D /* AnkaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4959B9506F092F5504861C74 /* Build configuration list for PBXNativeTarget "AnkaUITests" */;
+			buildPhases = (
+				A67E7D3424ABDA6626766D42 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B4B096BF8ADC9F1163515F5B /* PBXTargetDependency */,
+			);
+			name = AnkaUITests;
+			packageProductDependencies = (
+			);
+			productName = AnkaUITests;
+			productReference = 36030428E1D082C59A1249C9 /* AnkaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		EDCD29FD6E551576C3AA9520 /* AnkaMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9B256E34BB9344260C61EC3B /* Build configuration list for PBXNativeTarget "AnkaMacTests" */;
+			buildPhases = (
+				9C749826021E881DC6D35EF7 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0C37FC540A21128BA5A08A89 /* PBXTargetDependency */,
+			);
+			name = AnkaMacTests;
+			packageProductDependencies = (
+			);
+			productName = AnkaMacTests;
+			productReference = 63ACF7E08CC2D443B1B2A24E /* AnkaMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F10F575FCDC5B1C928B0D86B /* Anka */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2E46B646C80F2FC87303074E /* Build configuration list for PBXNativeTarget "Anka" */;
+			buildPhases = (
+				753F82AFF5790909BB2AEA3C /* Sources */,
+				9E9EC9887C2662A42046D377 /* Resources */,
+				9932ECE507F46D8744E3616B /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				199B1F1CF9E180D06F7D0C85 /* PBXTargetDependency */,
+			);
+			name = Anka;
+			packageProductDependencies = (
+			);
+			productName = Anka;
+			productReference = 4EF511BE043B0DA55F7E978B /* Anka.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0713A12194436E56B53E8A2F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0A871D25F6A3541D7B349DF3 = {
+						DevelopmentTeam = "";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
+					};
+					4C5711D9585154CFB1E155EC = {
+						DevelopmentTeam = "";
+					};
+					94BB7642803FA39845AA0A06 = {
+						DevelopmentTeam = "";
+						TestTargetID = E5BCD7F24906B9EA5EFE3DE9;
+					};
+					E5BCD7F24906B9EA5EFE3DE9 = {
+						DevelopmentTeam = "";
+					};
+					E60AA7CB44E71930813F764D = {
+						DevelopmentTeam = "";
+						TestTargetID = F10F575FCDC5B1C928B0D86B;
+					};
+					EDCD29FD6E551576C3AA9520 = {
+						DevelopmentTeam = "";
+					};
+					F10F575FCDC5B1C928B0D86B = {
+						DevelopmentTeam = "";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
+					};
+				};
+			};
+			buildConfigurationList = 2E76A37F8B3C09001ED2158D /* Build configuration list for PBXProject "Anka" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 9931BD28C9E582BACE9B2739;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 88175D9905A7048B676EB02B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F10F575FCDC5B1C928B0D86B /* Anka */,
+				0A871D25F6A3541D7B349DF3 /* AnkaWidgets */,
+				4C5711D9585154CFB1E155EC /* AnkaTests */,
+				E60AA7CB44E71930813F764D /* AnkaUITests */,
+				E5BCD7F24906B9EA5EFE3DE9 /* AnkaMac */,
+				EDCD29FD6E551576C3AA9520 /* AnkaMacTests */,
+				94BB7642803FA39845AA0A06 /* AnkaMacUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		030CD8F257DFEA06ECF99734 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2464B82E15D769375A22E40D /* Anka.storekit in Resources */,
+				B9545ED75C44987B8AFEF7A8 /* draft.json in Resources */,
+				CA3FDCCC4ECA4D30E3D1B9F1 /* preferences.json in Resources */,
+				03E10A7B78B5791C0DDFEE53 /* settings.json in Resources */,
+				13C92570460FFB65613256D4 /* widget.json in Resources */,
+				22F410B120728FE1C0810C22 /* workspace-v8.ankabackup in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FFCDDFC549B2E85147A546D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				496A90F3F172CE79937625DB /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		609ED2B31DC45708A3D6AF3E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				91E44ACFB23CAB2681EF6964 /* Assets.xcassets in Resources */,
+				20A53692C1596DB9013A5D66 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E9EC9887C2662A42046D377 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B9AAF86B681EFC31081BC1EA /* Assets.xcassets in Resources */,
+				AC7DFC75202F693EE81B9832 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0359F0DD3EDF5AFECF81C325 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC29F1455F5E687F7C39768F /* AnalyticsTests.swift in Sources */,
+				CBAD7593B06A9B866A8CF24A /* AnkaTests.swift in Sources */,
+				E4CC989DDFE1D28DDA6E68EB /* BackendBackupTests.swift in Sources */,
+				147B4E78331E4DE755A13913 /* BackendCommandTests.swift in Sources */,
+				43A6279F6C5173D24A55043B /* BackendFinancialTests.swift in Sources */,
+				F82CA2614970A8A7EDB8F0E6 /* BackendModelTests.swift in Sources */,
+				B336D5DEF58CF345111E3ABA /* BackendPersistenceTests.swift in Sources */,
+				DED40DC30A53DAE916209970 /* BackendSessionTests.swift in Sources */,
+				622816984CC6C2E97BBA0BB4 /* BackupTests.swift in Sources */,
+				C8CAADED1D901FC6B93B96E9 /* BillTests.swift in Sources */,
+				5F026CEB03E88D45FE7D2812 /* BudgetReportTests.swift in Sources */,
+				F65860767106DA536B94D53B /* CSVTests.swift in Sources */,
+				70CD027246B4E4D0259A8F7C /* CategoryAndLocaleTests.swift in Sources */,
+				8CF8EDEF0462E2BA9953600B /* ChatAgentTests.swift in Sources */,
+				984842505AA9C30CC983EF7C /* ChatToolTests.swift in Sources */,
+				EBD9F518857A5BDC9F9653FB /* CurrencyTests.swift in Sources */,
+				9424337DD90751CF5EE8F2B5 /* FoundationTests.swift in Sources */,
+				6B30D91E0CFA81840F3A36FB /* GoldenFormatTests.swift in Sources */,
+				CEE69138F757AD1753A30A14 /* IntentTests.swift in Sources */,
+				3BE461E3C989F30129E2D915 /* MultiCardTests.swift in Sources */,
+				D8879E537A0FF45FC50C34C1 /* OnboardingTests.swift in Sources */,
+				E6F197CB9644B135CCE3E67B /* PlanTests.swift in Sources */,
+				B0EC9B9761B8875163BB32E1 /* ProStoreTests.swift in Sources */,
+				247504FB4E25BF8BF1BA39B8 /* StreamPacerTests.swift in Sources */,
+				848E4B330D19C2AAF7818FDC /* WidgetSnapshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		176949B76AC3AC5F29D462AF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				74B11951A0E8F2DD067334DE /* AnkaMacUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		564212B207077ECC9A230DF3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B849F39CC201961A0AB7AB4F /* AnkaWidgetsBundle.swift in Sources */,
+				99BAA89E15A7038354355EBB /* BudgetWidget.swift in Sources */,
+				49F34686FBC8C1576840F496 /* QuickCaptureWidget.swift in Sources */,
+				EB056E124D6853973A347C39 /* QuickEntryControl.swift in Sources */,
+				01D476B9EAD0F8DD6708A790 /* SpendingActivityWidget.swift in Sources */,
+				55B9061BC7505379613E5101 /* StackWidget.swift in Sources */,
+				69BC6AADC874AF4A41C98CD5 /* TodaySpendingWidget.swift in Sources */,
+				DD645C03D1B9149A8309B7F3 /* WidgetSnapshot.swift in Sources */,
+				FC49031CE1F907C325278206 /* WidgetSnapshotStore.swift in Sources */,
+				57F7DDCBEAC2E7291B929950 /* WidgetStyle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B19AE2B7FA345798E44DDF6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4A61ADF785F2BB74B9153D4 /* AnalyticsEngine.swift in Sources */,
+				5143F4A801ACC7F3AD7C9CBA /* Anka.xcdatamodeld in Sources */,
+				E5C219EB0880993DB7B41749 /* AnkaMacApp.swift in Sources */,
+				7B7426662C61173F82A60C34 /* AppEnvironment.swift in Sources */,
+				C955C5865F2C51FAB590B3CE /* AppLock.swift in Sources */,
+				6463612DE5EBF5D7A378BA9A /* AppModel.swift in Sources */,
+				1814C9469A157A69EA08851B /* AppleChatAgent.swift in Sources */,
+				B9066441B8497315E8845D87 /* BackendDiagnostics.swift in Sources */,
+				F942B981E5DD0A53CEE0B8A1 /* BackupService.swift in Sources */,
+				AD869F8FFDCB979076B60CDC /* Bill.swift in Sources */,
+				201E49A67B0CFEA54C46BCEF /* BillNotificationService.swift in Sources */,
+				F4206858AEBC0D788DBB86F5 /* BillReconciliationEngine.swift in Sources */,
+				8918B39CE79C3763ECD9DAFD /* BudgetStatus.swift in Sources */,
+				E652FD94DB3D2996A1ED7356 /* BudgetStatusViews.swift in Sources */,
+				B9E9937867E2458C8D38923E /* CSVEngine.swift in Sources */,
+				0218BCE496BC7DFEE89B6EE2 /* CardArtworkStore.swift in Sources */,
+				464AC435C2D640EECF6D6408 /* CardBackup.swift in Sources */,
+				F30C782A29092AAAB77D66B2 /* CardCustomization.swift in Sources */,
+				44F74FE318A3523CA17EA58C /* CategoryValidation.swift in Sources */,
+				5BA4743C92D49A73C35D02B0 /* ChatAgent.swift in Sources */,
+				BCE2105B13D035F6DC362306 /* ChatBubble.swift in Sources */,
+				11CFB8CA94BC6B859D03C46D /* ChatChartView.swift in Sources */,
+				5AB4ECC0ABD4AAB4225A1D96 /* ChatSession.swift in Sources */,
+				A64D9218A2D94D6163C9C58F /* ChatTranscript.swift in Sources */,
+				142632A248E93A9919FB0CFA /* DemoWorkspace.swift in Sources */,
+				5E2F8B8D8F01519DD59686F1 /* ExchangeRates.swift in Sources */,
+				AD0EB464B980BD8518269A05 /* Expense.swift in Sources */,
+				5FABC6A6A69FE1832F733476 /* ExpenseIntents.swift in Sources */,
+				B610CBBFE2C730342619702B /* ExpenseProposalCard.swift in Sources */,
+				4C425330F10DCA52E3849858 /* ExpenseRepository.swift in Sources */,
+				DDEE0EBFDED0B3061FB0627C /* ExpenseService.swift in Sources */,
+				649FF938C8F8B56B30BCD7BB /* GlobalHotKeyController.swift in Sources */,
+				E9ECD338815ACEB90CC4749E /* LocalStateStore.swift in Sources */,
+				A51548DB40398565217D9155 /* MacActivityFilter.swift in Sources */,
+				0E3183F73D6F2E7E24ABD54D /* MacCardStats.swift in Sources */,
+				9E5E3088F7507879EC153A79 /* MacChatView.swift in Sources */,
+				FA0D1CFB4EC5B8B5D9F42D0C /* MacCommands.swift in Sources */,
+				56AD268947CE43AEDCFA937F /* MacDataTransferView.swift in Sources */,
+				AA6218D39421D751D3FFD70C /* MacExpenseForm.swift in Sources */,
+				44F0B0D38A8497B4FBBC2D2D /* MacPlanningViews.swift in Sources */,
+				49913AB986DAC2F74405383A /* MacRootView.swift in Sources */,
+				1EEBAC9D2E9B3DDB0B74A7C9 /* MacSettingsView.swift in Sources */,
+				9BA29D9200A5B581E6759BB3 /* Plan.swift in Sources */,
+				DC5ADF074B052759A89D8B26 /* PlatformIntegrationShims.swift in Sources */,
+				7383F1E55BEB69E1197580D4 /* ProStore.swift in Sources */,
+				F73D2FA9950EC6872BC5CDCF /* ProgressiveBlur.swift in Sources */,
+				CAF57A073B6E22AE9D2B64DA /* SampleCardSeeder.swift in Sources */,
+				2AFA8D2861D51C9A2C8342F4 /* StockDesignViews.swift in Sources */,
+				490F23AD2A6F83BB5C84A6CA /* ToolExecutor.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		753F82AFF5790909BB2AEA3C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3ED879F7A7652C4DCF023E11 /* AnalyticsEngine.swift in Sources */,
+				81920C031B288A11437E5EB9 /* AnalyticsView.swift in Sources */,
+				4E710F2B8D858723B1E5337E /* Anka.xcdatamodeld in Sources */,
+				49536C78C2D21181787AB16C /* AnkaApp.swift in Sources */,
+				2BDC2DFE4C8234E555507714 /* AnkaStyle.swift in Sources */,
+				B40B3A91EFF5E6A1A6D13674 /* AppEnvironment.swift in Sources */,
+				7C8118027FF065B7678A1EC6 /* AppLock.swift in Sources */,
+				06E5CCCB88C4E8CFCF1C6636 /* AppModel.swift in Sources */,
+				A63FE6F1D5A487C463C22799 /* AppleChatAgent.swift in Sources */,
+				E2D6B6D0A96196866122167D /* BackendDiagnostics.swift in Sources */,
+				D1B284AE5AD654E7CE2E5B5D /* BackupService.swift in Sources */,
+				B41B7C5ACE72FE7FECED110D /* BackupView.swift in Sources */,
+				7726B1AF2D1B06CBED7E3EE3 /* Bill.swift in Sources */,
+				61DA11C295F86F7ED58256DB /* BillNotificationService.swift in Sources */,
+				BCAA37C4967051551F7F8DC8 /* BillReconciliationEngine.swift in Sources */,
+				BFDC2BEF0AC6F20ED4D3D386 /* BillsView.swift in Sources */,
+				0E36B3A6B9B28DF866281E1B /* BottomNavigation.swift in Sources */,
+				C950D64F7CF64CE502655A34 /* BudgetStatus.swift in Sources */,
+				1F2B4ED04D183198B44685E5 /* BudgetStatusViews.swift in Sources */,
+				488D5E4F5A3BBE24D328298C /* BudgetsView.swift in Sources */,
+				1D422A83E98A93BB3B0D633C /* CSVEngine.swift in Sources */,
+				1D3EA163F16515C6E1618B09 /* CSVInterchangeView.swift in Sources */,
+				45283F528EF8BD8461582912 /* CardArtworkStore.swift in Sources */,
+				6DA23460905BD46AAE253193 /* CardBackTelemetryView.swift in Sources */,
+				2D04DD38346BF015A1A7A1C7 /* CardBackup.swift in Sources */,
+				C13FAEC76E92245BFF3F398E /* CardCustomization.swift in Sources */,
+				265701CD0B437058E4545DE9 /* CardCustomizerView.swift in Sources */,
+				5DD05520377D1C23E381F613 /* CardHomeView.swift in Sources */,
+				A2DE4A24DC492703AEB28D75 /* CategoryManager.swift in Sources */,
+				F7F17059B66D59FBA6483DDF /* CategoryPicker.swift in Sources */,
+				37CA95D1B4D4B1CA4CBDEC1B /* CategoryValidation.swift in Sources */,
+				B67B996068A21111B2777CA3 /* ChatAgent.swift in Sources */,
+				1369CF2D25118631199401C1 /* ChatBubble.swift in Sources */,
+				F454EC9F6744CCA4DA4A6723 /* ChatChartView.swift in Sources */,
+				D7AEBBE2F9C9204A2469FA9C /* ChatInputBar.swift in Sources */,
+				44812CB1389DF053BB2ABEDF /* ChatSession.swift in Sources */,
+				6AF1675E4A49429D24E38458 /* ChatTranscript.swift in Sources */,
+				71F92FEFBD310D9EFE708943 /* ChatView.swift in Sources */,
+				AF727E3267B7CA962EF8C9AF /* DemoWorkspace.swift in Sources */,
+				7C0E2B83BA483C9DC8E7FD4C /* EntryDismissalGuard.swift in Sources */,
+				292C749ABC10C9A0BE14D5D1 /* EntryView.swift in Sources */,
+				F361339CFD9907C4C7E24277 /* ExchangeRates.swift in Sources */,
+				165D9AC8DFFBF760D3F634ED /* Expense.swift in Sources */,
+				2326B3BFC4FF05343FA391F3 /* ExpenseIntents.swift in Sources */,
+				EA2FCE6938DE498C91BB3B70 /* ExpenseProposalCard.swift in Sources */,
+				3E7DDDF172438C3105DAFA1B /* ExpenseRepository.swift in Sources */,
+				914245BC0B9531909CBC2D5F /* ExpenseService.swift in Sources */,
+				AD077F33686A09844EDD0AF6 /* LocalStateStore.swift in Sources */,
+				EF1E05F3BB8D7FB9EE41B4E3 /* OnboardingView.swift in Sources */,
+				72E9C308DD006221AB02FA6B /* PaidWithSettingsView.swift in Sources */,
+				5DF115FAEDDE3DE294FB83FD /* PaywallView.swift in Sources */,
+				F623C6DA7336E683D797ABFB /* Plan.swift in Sources */,
+				B684C1C34A8361BCE370F648 /* ProStore.swift in Sources */,
+				1AFA3675CB4156B1E2436400 /* ProgressiveBlur.swift in Sources */,
+				E9C77E2349714711F1D519CE /* RecentsView.swift in Sources */,
+				583BC0B058F67BCBF6D6E27A /* ResetDataView.swift in Sources */,
+				D44BE4C08C55AA408653D086 /* SampleCardSeeder.swift in Sources */,
+				CE35190DA6D81FC5F96115AD /* ShortcutOrderSettingsView.swift in Sources */,
+				325C4FEFAAAE45E4A8585473 /* SpendingSessionManager.swift in Sources */,
+				FD6CC3771A16ABB65763BC5D /* StackCustomizerView.swift in Sources */,
+				2495A983892E7AA6305144CB /* StockDesignViews.swift in Sources */,
+				D7BF0C5FAB6ABE3C30E95A22 /* ToolExecutor.swift in Sources */,
+				4A5538A34E69BA187B91133F /* TransactionDetailView.swift in Sources */,
+				E4C9A08A27942CAEE0D34216 /* WidgetSnapshot.swift in Sources */,
+				D001CB4DA830675C1882A2ED /* WidgetSnapshotStore.swift in Sources */,
+				6A247CCD4A19A858654188C8 /* WidgetSnapshotUpdater.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9C749826021E881DC6D35EF7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DF07249849BB9DD435147800 /* AnkaMacTests.swift in Sources */,
+				476EBF6327100EB91829B0E2 /* AppleChatTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A67E7D3424ABDA6626766D42 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				012C54C1A713E9D7EEF53CC8 /* AnkaUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0C37FC540A21128BA5A08A89 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E5BCD7F24906B9EA5EFE3DE9 /* AnkaMac */;
+			targetProxy = 54FB4364A73A29B01B35FFA6 /* PBXContainerItemProxy */;
+		};
+		199B1F1CF9E180D06F7D0C85 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0A871D25F6A3541D7B349DF3 /* AnkaWidgets */;
+			targetProxy = B1C87484B81EB9F31737A750 /* PBXContainerItemProxy */;
+		};
+		B4B096BF8ADC9F1163515F5B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F10F575FCDC5B1C928B0D86B /* Anka */;
+			targetProxy = BE189ECCAF54DA1C86F9E875 /* PBXContainerItemProxy */;
+		};
+		BBF69B71465BA10B56433207 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F10F575FCDC5B1C928B0D86B /* Anka */;
+			targetProxy = F85A8EE9B09B7573CF484532 /* PBXContainerItemProxy */;
+		};
+		E5A63A80FCD7F19601A07DD4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E5BCD7F24906B9EA5EFE3DE9 /* AnkaMac */;
+			targetProxy = FCF53B838776337E54B494D6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1925B65F1F4E4D9414C8D610 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Anka/Resources/Anka.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Anka/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = anka;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your spending records.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.anka;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		1C41AA4B4DBD54AAA5FD969A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AnkaMac/Resources/AnkaMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AnkaMac/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.anka.mac;
+				PRODUCT_MODULE_NAME = AnkaMac;
+				PRODUCT_NAME = Anka;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		20BC4FD6144325464E3E9B0A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Anka.app/Anka";
+			};
+			name = Debug;
+		};
+		3B6F978B9320C28F172FE11A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AnkaWidgets/AnkaWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AnkaWidgets/Info.plist;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.anka.AnkaWidgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		458134ED565DF794FD328C0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ANKA_RUN_LARGE_BENCHMARK = 0;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 113;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.9.9;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		60266BF66FAD2B143F1BC8BC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaMacTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Anka.app/Contents/MacOS/Anka";
+			};
+			name = Debug;
+		};
+		6E3315DA33693EE2F2328CDE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Anka;
+			};
+			name = Debug;
+		};
+		849496872E2872C810027694 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ANKA_RUN_LARGE_BENCHMARK = 0;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 113;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.9.9;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		8F4B415A3B85575AD9B66F54 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaMacUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = AnkaMac;
+			};
+			name = Release;
+		};
+		ABABDE030422DB78B0D9EC75 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Anka;
+			};
+			name = Release;
+		};
+		AE9C6EAA030FDBA33FE8D0AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaMacTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Anka.app/Contents/MacOS/Anka";
+			};
+			name = Release;
+		};
+		D9DBD1958B1A5154BA76904C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaMacUITests;
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = AnkaMac;
+			};
+			name = Debug;
+		};
+		E67DC730A21217CA1A8015CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.AnkaTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Anka.app/Anka";
+			};
+			name = Release;
+		};
+		E703ADD247D02815FE1E09E1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AnkaMac/Resources/AnkaMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AnkaMac/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.anka.mac;
+				PRODUCT_MODULE_NAME = AnkaMac;
+				PRODUCT_NAME = Anka;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		EB9C235A7425B559FEF0FE3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Anka/Resources/Anka.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Anka/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = anka;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock your spending records.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.anka;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		EC13C5B882722A3CA07DEEAF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AnkaWidgets/AnkaWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AnkaWidgets/Info.plist;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.farchan.anka.AnkaWidgets;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0CA3AE816184914EA650F52F /* Build configuration list for PBXNativeTarget "AnkaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				20BC4FD6144325464E3E9B0A /* Debug */,
+				E67DC730A21217CA1A8015CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2E46B646C80F2FC87303074E /* Build configuration list for PBXNativeTarget "Anka" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1925B65F1F4E4D9414C8D610 /* Debug */,
+				EB9C235A7425B559FEF0FE3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		2E76A37F8B3C09001ED2158D /* Build configuration list for PBXProject "Anka" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				458134ED565DF794FD328C0B /* Debug */,
+				849496872E2872C810027694 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4959B9506F092F5504861C74 /* Build configuration list for PBXNativeTarget "AnkaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6E3315DA33693EE2F2328CDE /* Debug */,
+				ABABDE030422DB78B0D9EC75 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9B256E34BB9344260C61EC3B /* Build configuration list for PBXNativeTarget "AnkaMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60266BF66FAD2B143F1BC8BC /* Debug */,
+				AE9C6EAA030FDBA33FE8D0AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AFB7323DB7C0F0F31D694A05 /* Build configuration list for PBXNativeTarget "AnkaMacUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9DBD1958B1A5154BA76904C /* Debug */,
+				8F4B415A3B85575AD9B66F54 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BEFCBCA8D57BBDF66C9F88D8 /* Build configuration list for PBXNativeTarget "AnkaWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3B6F978B9320C28F172FE11A /* Debug */,
+				EC13C5B882722A3CA07DEEAF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D19D6365977B57D5377CF5F2 /* Build configuration list for PBXNativeTarget "AnkaMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1C41AA4B4DBD54AAA5FD969A /* Debug */,
+				E703ADD247D02815FE1E09E1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		98B77BCE649CE74F828DF5C7 /* Anka.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				FC1B967EC2EC9123772737B6 /* AnkaV1.xcdatamodel */,
+				1B635D5A66013B081363789F /* AnkaV2.xcdatamodel */,
+				04ACCFF7D8425AC7A7912220 /* AnkaV3.xcdatamodel */,
+				C8451AD4FE1701B45AA322EA /* AnkaV4.xcdatamodel */,
+				EE7D55BFC8DD8F806108ADD2 /* AnkaV5.xcdatamodel */,
+			);
+			currentVersion = EE7D55BFC8DD8F806108ADD2 /* AnkaV5.xcdatamodel */;
+			path = Anka.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
+	};
+	rootObject = 0713A12194436E56B53E8A2F /* Project object */;
+}

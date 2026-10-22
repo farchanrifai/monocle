@@ -46,24 +46,24 @@ jobs:
               raise SystemExit('No available iOS 26+ iPhone simulator')
           selected = max(candidates)[2]
           with open(os.environ['GITHUB_ENV'], 'a') as output:
-              output.write(f'MONOCLE_SIMULATOR={selected}\n')
+              output.write(f'ANKA_SIMULATOR={selected}\n')
           PY
       - name: Unit, SQLite migration, recovery and large-fixture checks
         shell: bash
         env:
-          MONOCLE_RUN_LARGE_BENCHMARK: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          ANKA_RUN_LARGE_BENCHMARK: ${{ github.event_name == 'schedule' && '1' || '0' }}
         run: |
           set -o pipefail
-          xcodebuild test -project Monocle.xcodeproj -scheme Monocle \
-            -destination "platform=iOS Simulator,id=$MONOCLE_SIMULATOR" \
+          xcodebuild test -project Anka.xcodeproj -scheme Anka \
+            -destination "platform=iOS Simulator,id=$ANKA_SIMULATOR" \
             -derivedDataPath build/ci/DerivedData -resultBundlePath build/ci/Backend.xcresult \
-            -only-testing:MonocleTests -parallel-testing-enabled NO \
-            CODE_SIGNING_ALLOWED=NO MONOCLE_RUN_LARGE_BENCHMARK="$MONOCLE_RUN_LARGE_BENCHMARK" | tee build/ci/tests.log
+            -only-testing:AnkaTests -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO ANKA_RUN_LARGE_BENCHMARK="$ANKA_RUN_LARGE_BENCHMARK" | tee build/ci/tests.log
       - name: Build the device app and widget extension
         shell: bash
         run: |
           set -o pipefail
-          xcodebuild build -project Monocle.xcodeproj -scheme Monocle -configuration Release \
+          xcodebuild build -project Anka.xcodeproj -scheme Anka -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/ci/DeviceDerivedData \
             CODE_SIGNING_ALLOWED=NO | tee build/ci/device-build.log
       - name: Retain verification evidence

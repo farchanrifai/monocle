@@ -10,7 +10,7 @@ xcuserdata/
 *.xcarchive
 *.mobileprovision
 *.p12
-*.monoclebackup
+*.ankabackup
 *.xcresult
 .env
 .env.*

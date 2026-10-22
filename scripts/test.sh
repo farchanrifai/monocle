@@ -8,6 +8,6 @@ if [ "$#" -ne 1 ]; then
   exit 2
 fi
 mkdir -p build
-xcodebuild test -project Monocle.xcodeproj -scheme Monocle \
+xcodebuild test -project Anka.xcodeproj -scheme Anka \
   -destination "platform=iOS Simulator,id=$1" -derivedDataPath build/DerivedData \
   -resultBundlePath "build/Tests-$(date +%Y%m%d-%H%M%S).xcresult" CODE_SIGNING_ALLOWED=NO

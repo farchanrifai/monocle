@@ -15,7 +15,7 @@
 
 ## Testing Without Taking Over the Screen
 
-- Mac UI tests (`MonocleMacUITests`) drive the real mouse and keyboard. Do not run them unless the user says they're away or asks for them.
-- Default verification: Mac unit tests (`-only-testing:MonocleMacTests`), iOS simulator tests, and builds.
+- Mac UI tests (`AnkaMacUITests`) drive the real mouse and keyboard. Do not run them unless the user says they're away or asks for them.
+- Default verification: Mac unit tests (`-only-testing:AnkaMacTests`), iOS simulator tests, and builds.
 - For checks in the running app, use a background computer-use tool (cmux Computer Use, Codex computer use) that does not move the cursor or steal focus. Otherwise render views to images inside unit tests.
 - When UI tests were skipped, say so in the report.

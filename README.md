@@ -1,4 +1,4 @@
-# monocle
+# anka
 
 A personal expense tracker for iPhone, with a native Mac app planned later.
 
@@ -13,7 +13,7 @@ The [backend audit](docs/audit/2026-10-04-backend.md) and [implementation plan](
 
 ## Run locally
 
-Open `Monocle.xcodeproj`, select the **Monocle** scheme and an available iPhone simulator, and Run. Minimum deployment target: iOS 26.0. Development verified with Xcode 27.0 / iOS 26.5 simulator runtime.
+Open `Anka.xcodeproj`, select the **Anka** scheme and an available iPhone simulator, and Run. Minimum deployment target: iOS 26.0. Development verified with Xcode 27.0 / iOS 26.5 simulator runtime.
 
 The Xcode project is committed so opening it requires no project-generation tool. After changing `project.yml`, regenerate it with `xcodegen generate` (validated with XcodeGen 2.46.0). No third-party runtime packages are used.
 
@@ -29,7 +29,7 @@ The IPA script builds an **unsigned arm64 device app**, packaged for SideStore t
 
 ## Wireless SideStore updates
 
-`scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/`, publishes it to the public `farchanrifai/monocle-releases` repository, and updates Monocle's entry in its shared SideStore source. Prior IPA files and other apps' feed entries are preserved. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package.
+`scripts/build-ipa.sh "Release notes"` builds the IPA, preserves a copy in `/Users/farchan/Library/Mobile Documents/com~apple~CloudDocs/Monocle-codex/`, publishes it to the public `farchanrifai/monocle-releases` repository, and updates Anka's entry in its shared SideStore source. Prior IPA files and other apps' feed entries are preserved. Set `SKIP_SIDESTORE_PUBLISH=1` for an intentionally local-only package.
 
 Add the printed `sidestore://source?...` link to SideStore once. Later builds appear as updates automatically; keep the bundle identifier unchanged and increment both the version (`MARKETING_VERSION`) and the build number before each IPA build: SideStore only offers an update when the version string changes.
 

@@ -1,11 +1,11 @@
-# Monocle privacy policy
+# Anka privacy policy
 
 Last updated: 2026-10-22. Draft for the owner to host; replace the contact line before publishing.
 
-Monocle keeps your spending on your device. There is no account, no sign-in, no analytics or advertising SDK, and no Monocle server.
+Anka keeps your spending on your device. There is no account, no sign-in, no analytics or advertising SDK, and no Anka server.
 
 ## What stays on your device
-Cards, expenses, categories, budgets, bills, settings, backups and the chat history. Chat runs on Apple Intelligence on your iPhone; your messages and spending never leave the device for it. Face ID / passcode app lock is handled by the system; Monocle never sees your biometrics.
+Cards, expenses, categories, budgets, bills, settings, backups and the chat history. Chat runs on Apple Intelligence on your iPhone; your messages and spending never leave the device for it. Face ID / passcode app lock is handled by the system; Anka never sees your biometrics.
 
 ## The one network request the app makes
 
@@ -14,13 +14,13 @@ Cards, expenses, categories, budgets, bills, settings, backups and the chat hist
 | Exchange rates | You record or view an expense in a currency other than your reporting currency | Two currency codes and a date range, e.g. `JPY` to `IDR`, 2026-10-01 to 2026-10-13. Nothing about your expenses. | Frankfurter (`api.frankfurter.dev`, European Central Bank reference rates). Like any web request it also sees your IP address. |
 
 ## Purchases
-Monocle Pro is an Apple subscription. Apple handles payment; Monocle only learns from the App Store whether your Apple Account has an active subscription. Manage or cancel it in Settings ▸ Apple Account ▸ Subscriptions.
+Anka Pro is an Apple subscription. Apple handles payment; Anka only learns from the App Store whether your Apple Account has an active subscription. Manage or cancel it in Settings ▸ Apple Account ▸ Subscriptions.
 
 ## Backups
-Backups you export are files you control. Monocle doesn't upload them anywhere.
+Backups you export are files you control. Anka doesn't upload them anywhere.
 
 ## Sharing, selling, tracking
-Monocle does not collect, sell or share your data and does not track you across apps or sites.
+Anka does not collect, sell or share your data and does not track you across apps or sites.
 
 ## Contact
 <owner contact here>

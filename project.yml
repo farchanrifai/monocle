@@ -1,4 +1,4 @@
-name: Monocle
+name: Anka
 options:
   bundleIdPrefix: com.farchan
   deploymentTarget:
@@ -13,33 +13,33 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     MARKETING_VERSION: '0.9.9'
     CURRENT_PROJECT_VERSION: '113'
-    MONOCLE_RUN_LARGE_BENCHMARK: '0'
+    ANKA_RUN_LARGE_BENCHMARK: '0'
 targets:
-  Monocle:
+  Anka:
     type: application
     platform: iOS
     attributes:
       SystemCapabilities:
         com.apple.ApplicationGroups.iOS:
           enabled: 1
-    sources: [Monocle]
+    sources: [Anka]
     info:
-      path: Monocle/Resources/Info.plist
+      path: Anka/Resources/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UTExportedTypeDeclarations:
-          - UTTypeIdentifier: com.farchan.monocle.backup
-            UTTypeDescription: Monocle workspace backup
+          - UTTypeIdentifier: com.farchan.anka.backup
+            UTTypeDescription: Anka workspace backup
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification:
-              public.filename-extension: [monoclebackup]
+              public.filename-extension: [ankabackup, monoclebackup]
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
-        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.monocle
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.anka
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: monocle
+        INFOPLIST_KEY_CFBundleDisplayName: anka
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
@@ -49,10 +49,10 @@ targets:
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_ENTITLEMENTS: Monocle/Resources/Monocle.entitlements
+        CODE_SIGN_ENTITLEMENTS: Anka/Resources/Anka.entitlements
     dependencies:
-      - target: MonocleWidgets
-  MonocleWidgets:
+      - target: AnkaWidgets
+  AnkaWidgets:
     type: app-extension
     platform: iOS
     attributes:
@@ -60,14 +60,14 @@ targets:
         com.apple.ApplicationGroups.iOS:
           enabled: 1
     sources:
-      - path: MonocleWidgets
+      - path: AnkaWidgets
         excludes:
           - Info.plist
           - "*.entitlements"
-      - path: Monocle/Integrations/Widgets/WidgetSnapshot.swift
-      - path: Monocle/Integrations/Widgets/WidgetSnapshotStore.swift
+      - path: Anka/Integrations/Widgets/WidgetSnapshot.swift
+      - path: Anka/Integrations/Widgets/WidgetSnapshotStore.swift
     info:
-      path: MonocleWidgets/Info.plist
+      path: AnkaWidgets/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -76,107 +76,107 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
-        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.monocle.MonocleWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.anka.AnkaWidgets
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
-        CODE_SIGN_ENTITLEMENTS: MonocleWidgets/MonocleWidgets.entitlements
-  MonocleTests:
+        CODE_SIGN_ENTITLEMENTS: AnkaWidgets/AnkaWidgets.entitlements
+  AnkaTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - MonocleTests
-      - path: Configuration/Monocle.storekit
+      - AnkaTests
+      - path: Configuration/Anka.storekit
         buildPhase: resources
     dependencies:
-      - target: Monocle
+      - target: Anka
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-  MonocleUITests:
+  AnkaUITests:
     type: bundle.ui-testing
     platform: iOS
-    sources: [MonocleUITests]
+    sources: [AnkaUITests]
     dependencies:
-      - target: Monocle
+      - target: Anka
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-  MonocleMac:
+  AnkaMac:
     type: application
     platform: macOS
     sources:
-      - path: Monocle/Domain
-      - path: Monocle/Application
-      - path: Monocle/Persistence
-      - path: Monocle/App/AppModel.swift
-      - path: Monocle/App/AppEnvironment.swift
-      - path: Monocle/Integrations/ExpenseIntents.swift
-      - path: Monocle/Integrations/BillNotificationService.swift
-      - path: Monocle/Resources/Monocle.xcdatamodeld
-      - path: Monocle/Resources/PrivacyInfo.xcprivacy
-      - path: Monocle/Features/Chat/ChatBubble.swift
-      - path: Monocle/Features/Chat/ProgressiveBlur.swift
-      - path: Monocle/Features/Chat/ChatTranscript.swift
-      - path: Monocle/Features/Chat/ExpenseProposalCard.swift
-      - path: Monocle/Features/Chat/ChatChartView.swift
-      - path: Monocle/Features/StockDesignViews.swift
-      - path: Monocle/Features/BudgetStatusViews.swift
-      - path: MonocleMac
+      - path: Anka/Domain
+      - path: Anka/Application
+      - path: Anka/Persistence
+      - path: Anka/App/AppModel.swift
+      - path: Anka/App/AppEnvironment.swift
+      - path: Anka/Integrations/ExpenseIntents.swift
+      - path: Anka/Integrations/BillNotificationService.swift
+      - path: Anka/Resources/Anka.xcdatamodeld
+      - path: Anka/Resources/PrivacyInfo.xcprivacy
+      - path: Anka/Features/Chat/ChatBubble.swift
+      - path: Anka/Features/Chat/ProgressiveBlur.swift
+      - path: Anka/Features/Chat/ChatTranscript.swift
+      - path: Anka/Features/Chat/ExpenseProposalCard.swift
+      - path: Anka/Features/Chat/ChatChartView.swift
+      - path: Anka/Features/StockDesignViews.swift
+      - path: Anka/Features/BudgetStatusViews.swift
+      - path: AnkaMac
     info:
-      path: MonocleMac/Resources/Info.plist
+      path: AnkaMac/Resources/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        CFBundleDisplayName: monocle
+        CFBundleDisplayName: anka
         LSApplicationCategoryType: public.app-category.finance
         NSHumanReadableCopyright: Copyright © 2026 Farchan. All rights reserved.
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.monocle.mac
-        PRODUCT_NAME: Monocle
-        PRODUCT_MODULE_NAME: MonocleMac
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.anka.mac
+        PRODUCT_NAME: Anka
+        PRODUCT_MODULE_NAME: AnkaMac
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
-        CODE_SIGN_ENTITLEMENTS: MonocleMac/Resources/MonocleMac.entitlements
+        CODE_SIGN_ENTITLEMENTS: AnkaMac/Resources/AnkaMac.entitlements
         MACOSX_DEPLOYMENT_TARGET: '26.0'
         ENABLE_HARDENED_RUNTIME: YES
-  MonocleMacTests:
+  AnkaMacTests:
     type: bundle.unit-test
     platform: macOS
-    sources: [MonocleMacTests]
+    sources: [AnkaMacTests]
     dependencies:
-      - target: MonocleMac
+      - target: AnkaMac
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         MACOSX_DEPLOYMENT_TARGET: '26.0'
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Monocle.app/Contents/MacOS/Monocle
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Anka.app/Contents/MacOS/Anka
         BUNDLE_LOADER: $(TEST_HOST)
-  MonocleMacUITests:
+  AnkaMacUITests:
     type: bundle.ui-testing
     platform: macOS
-    sources: [MonocleMacUITests]
+    sources: [AnkaMacUITests]
     dependencies:
-      - target: MonocleMac
+      - target: AnkaMac
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         MACOSX_DEPLOYMENT_TARGET: '26.0'
 schemes:
-  Monocle:
+  Anka:
     build:
       targets:
-        Monocle: all
-        MonocleWidgets: all
+        Anka: all
+        AnkaWidgets: all
     run:
-      storeKitConfiguration: Configuration/Monocle.storekit
+      storeKitConfiguration: Configuration/Anka.storekit
     test:
-      targets: [MonocleTests, MonocleUITests]
+      targets: [AnkaTests, AnkaUITests]
       environmentVariables:
-        MONOCLE_RUN_LARGE_BENCHMARK: $(MONOCLE_RUN_LARGE_BENCHMARK)
-  MonocleMac:
+        ANKA_RUN_LARGE_BENCHMARK: $(ANKA_RUN_LARGE_BENCHMARK)
+  AnkaMac:
     build:
       targets:
-        MonocleMac: all
+        AnkaMac: all
     test:
-      targets: [MonocleMacTests, MonocleMacUITests]
+      targets: [AnkaMacTests, AnkaMacUITests]
