@@ -2029,8 +2029,16 @@ extension AppModel {
 
     /// Onboarding's last step: the user's real card, opened, and whether the Sample card stays on Home.
     func finishOnboarding(cardName: String, keepSample: Bool) throws {
-        let name = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let card = try createCard(named: name.isEmpty ? "My card" : String(name.prefix(40)))
+        let trimmed = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty ? "My card" : String(trimmed.prefix(40))
+        // Onboarding shown again (e.g. after an interruption) reuses the card it made instead of hitting the Free limit.
+        let card: Card
+        if let existing = cards.first(where: { $0.kind == .real }) {
+            if existing.name != name { try renameCard(id: existing.id, to: name) }
+            card = existing
+        } else {
+            card = try createCard(named: name)
+        }
         _ = selectCard(card.id)
         if !keepSample {
             hiddenCardIDs.insert(Card.demo.id)

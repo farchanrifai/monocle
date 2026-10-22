@@ -135,8 +135,8 @@ struct KeptCardPicker: View {
 extension View {
     /// Presents the paywall from this view when the model asks for it. Attach to the root and to each sheet,
     /// since a sheet can only present from the topmost view.
-    func proPaywall(_ model: AppModel) -> some View {
-        sheet(isPresented: Binding(get: { model.showPaywall }, set: { model.showPaywall = $0 })) {
+    func proPaywall(_ model: AppModel, when topmost: Bool = true) -> some View {
+        sheet(isPresented: Binding(get: { topmost && model.showPaywall }, set: { model.showPaywall = $0 })) {
             #if DEBUG
             // A simctl launch has no StoreKit products, so Apple's sheet hides the header; this shows it alone.
             if ProcessInfo.processInfo.environment["MONOCLE_SHOW_PAYWALL"] == "header" {
@@ -156,7 +156,9 @@ struct ProPresentation: ViewModifier {
     let model: AppModel
     func body(content: Content) -> some View {
         content
-            .proPaywall(model)
+            // Only when nothing covers the root: a second presenter for the same paywall makes SwiftUI tear down
+            // and rebuild the presented screen (onboarding restarted at its first step).
+            .proPaywall(model, when: !model.showOnboarding && !model.needsKeptCardChoice && !model.showSettings && !model.showEntry && !model.showChat)
             .fullScreenCover(isPresented: Binding(get: { model.needsKeptCardChoice && !model.showPaywall && !model.showOnboarding }, set: { _ in })) {
                 KeptCardPicker(model: model)
             }

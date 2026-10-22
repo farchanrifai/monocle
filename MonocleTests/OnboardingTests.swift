@@ -46,4 +46,13 @@ final class OnboardingTests: XCTestCase {
         XCTAssertFalse(model.needsOnboarding)
         XCTAssertThrowsError(try model.setUpCurrency("EUR"), "the no-rates shortcut is only for a workspace without real data")
     }
+
+    func testFinishingAgainOnFreeReusesTheCardInsteadOfHittingTheLimit() throws {
+        model.pro = ProStore(defaults: try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString)), listen: false)
+        XCTAssertFalse(model.isPro)
+        try model.finishOnboarding(cardName: "Daily", keepSample: true)
+        try model.finishOnboarding(cardName: "Everyday", keepSample: true)
+        let real = model.cards.filter { $0.kind == .real }
+        XCTAssertEqual(real.map(\.name), ["Everyday"])
+    }
 }
