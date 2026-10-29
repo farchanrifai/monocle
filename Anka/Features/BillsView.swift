@@ -435,7 +435,7 @@ struct BillEditor: View {
 
                     HStack {
                         Text("Rp").foregroundStyle(.secondary)
-                        TextField("Amount (whole IDR)", text: $amountText)
+                        TextField("Amount", text: $amountText.groupedAmount())
                             .keyboardType(.numberPad)
                             .focused($focusedField, equals: .amount)
                             .accessibilityIdentifier("billAmountField")
@@ -587,7 +587,7 @@ struct BillEditor: View {
     private func loadExistingRule() {
         if let rule = existingRule {
             name = rule.name
-            amountText = String(rule.amount / 100)
+            amountText = Money.format(rule.amount, currency: false)
             selectedCategoryID = rule.categoryID
             recordingMode = rule.recordingMode
             hasReminder = rule.hasReminder

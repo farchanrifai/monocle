@@ -159,7 +159,7 @@ struct BudgetEditor: View {
     @State private var totalUntil = Date.now
 
     private func resolveInput(_ input: String, preserving previous: Int64?) throws -> Int64 {
-        if let previous, input == Money.exactDigits(previous) { return previous }
+        if let previous, input == Money.format(previous, currency: false) { return previous }
         return try Money.parse(input)
     }
     private var changingStartDay: Bool { startDay != budget.startDay }
@@ -186,7 +186,7 @@ struct BudgetEditor: View {
                                  : "The budget repeats every cycle.")
                 }
                 Section("Overall budget · \(model.currency(ofCard: cardID))") {
-                    TextField("4500000", text: $amount).keyboardType(.numberPad)
+                    TextField(Money.format(450_000_000, currency: false), text: $amount.groupedAmount(code: model.currency(ofCard: cardID))).keyboardType(.numberPad)
                 }
                 if !isTotal { Section {
                     Picker("Day of month", selection: $startDay) {
@@ -212,7 +212,7 @@ struct BudgetEditor: View {
                         TextField(category.name + " · no limit", text: Binding(
                             get: { categoryAmounts[category.id] ?? "" },
                             set: { categoryAmounts[category.id] = $0 }
-                        )).keyboardType(.numberPad)
+                        ).groupedAmount(code: model.currency(ofCard: cardID))).keyboardType(.numberPad)
                     }
                 } header: { Text("Category limits · optional")
                 } footer: {
@@ -242,13 +242,13 @@ struct BudgetEditor: View {
                 }
                 .onAppear {
                     originalBudget = budget
-                    amount = Money.exactDigits(budget.overallLimit)
+                    amount = Money.format(budget.overallLimit, currency: false)
                     startDay = budget.startDay
                     isTotal = budget.totalUntilDay != nil
                     totalUntil = budget.totalUntilDay.flatMap { Day.date($0) }
                         ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now
                     categoryAmounts = Dictionary(uniqueKeysWithValues: categories.map { category in
-                        (category.id, budget.limit(for: category.id).map { Money.exactDigits($0) } ?? "")
+                        (category.id, budget.limit(for: category.id).map { Money.format($0, currency: false) } ?? "")
                     })
                 }
         }

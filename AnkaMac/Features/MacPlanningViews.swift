@@ -126,9 +126,9 @@ private struct BudgetEditor: View {
     init(model: AppModel, cardID: UUID, close: @escaping () -> Void) {
         self.model = model; self.cardID = cardID; self.close = close
         let budget_ = model.budgetPeriod(for: cardID).budget
-        _amount = State(initialValue: Money.digits(budget_.overallLimit))
+        _amount = State(initialValue: Money.format(budget_.overallLimit, currency: false))
         _startDay = State(initialValue: budget_.startDay)
-        _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: budget_.categoryLimits.map { ($0.categoryID, Money.digits($0.limit)) }))
+        _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: budget_.categoryLimits.map { ($0.categoryID, Money.format($0.limit, currency: false)) }))
         _isTotal = State(initialValue: budget_.totalUntilDay != nil)
         _totalUntil = State(initialValue: budget_.totalUntilDay.flatMap { Day.date($0) }
             ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now)
@@ -142,7 +142,7 @@ private struct BudgetEditor: View {
                     Text("Monthly").tag(false)
                     Text("Total until").tag(true)
                 }.pickerStyle(.segmented)
-                TextField("Overall limit (\(model.currency(ofCard: cardID)))", text: $amount)
+                TextField("Overall limit (\(model.currency(ofCard: cardID)))", text: $amount.groupedAmount(code: model.currency(ofCard: cardID)))
                 if isTotal {
                     DatePicker("Last day", selection: $totalUntil, in: model.budgetPeriod(for: cardID).cycle.start..., displayedComponents: .date)
                     Text("One amount from \(Day.title(Day.string(model.budgetPeriod(for: cardID).cycle.start))) through the last day. Use it for a trip or a goal.")
@@ -153,7 +153,7 @@ private struct BudgetEditor: View {
                 }
                 Section("Categories") {
                     ForEach(model.activeCategories(for: cardID)) { category in
-                        TextField(category.name, text: Binding(get: { categoryAmounts[category.id] ?? "" }, set: { categoryAmounts[category.id] = $0 }))
+                        TextField(category.name, text: Binding(get: { categoryAmounts[category.id] ?? "" }, set: { categoryAmounts[category.id] = $0 }).groupedAmount(code: model.currency(ofCard: cardID)))
                     }
                 }
             }.formStyle(.grouped)
@@ -262,7 +262,7 @@ private struct BillEditor: View {
     init(model: AppModel, bill: Bill?, close: @escaping () -> Void) {
         self.model = model; original = bill; self.close = close
         _name = State(initialValue: bill?.name ?? "")
-        _amount = State(initialValue: bill.map { Money.digits($0.amount) } ?? "")
+        _amount = State(initialValue: bill.map { Money.format($0.amount, currency: false) } ?? "")
         _categoryID = State(initialValue: bill?.categoryID ?? model.activeCategories.first?.id)
         _recurrence = State(initialValue: bill?.recurrence ?? .monthly(day: 1))
         _mode = State(initialValue: bill?.recordingMode ?? .pending)
@@ -276,7 +276,7 @@ private struct BillEditor: View {
             Text(original == nil ? "New Bill" : "Edit Bill").font(.title2.bold())
             Form {
                 TextField("Name", text: $name)
-                TextField("Amount", text: $amount)
+                TextField("Amount", text: $amount.groupedAmount())
                 Picker("Category", selection: $categoryID) { ForEach(model.activeCategories) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) } }
                 Picker("Repeat", selection: Binding(get: { recurrence.title.hasPrefix("Monthly") ? 0 : recurrence.title.hasPrefix("Weekly") ? 1 : 2 }, set: { value in
                     recurrence = value == 0 ? .monthly(day: 1) : value == 1 ? .weekly(weekday: 2) : .yearly(month: 1, day: 1)

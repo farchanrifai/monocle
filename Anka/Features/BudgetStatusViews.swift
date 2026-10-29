@@ -67,3 +67,11 @@ struct BudgetCyclesChart: View {
         .accessibilityValue(results.map { "\(label($0)): spent \(Money.format($0.spent, code: currency)) of \(Money.format($0.limit, code: currency))" }.joined(separator: ". "))
     }
 }
+
+extension Binding where Value == String {
+    /// Amount text that regroups thousands as it is typed (`Money.groupedInput`); `Money.parse` reads it back.
+    func groupedAmount(code: String? = nil) -> Binding<String> {
+        Binding(get: { Money.groupedInput(wrappedValue, code: code) },
+                set: { wrappedValue = Money.groupedInput($0, code: code) })
+    }
+}

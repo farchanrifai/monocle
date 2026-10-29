@@ -736,7 +736,7 @@ struct StackCustomizerView: View {
             guard let idx else { return }
             workingStacks[idx].capLimit = on ? (cardSum ?? 1_000_000 * 100) : nil
         })
-        let capText = Binding(get: { stack.capLimit.map(Money.exactDigits) ?? "" }, set: { text in
+        let capText = Binding(get: { stack.capLimit.map { Money.format($0, currency: false) } ?? "" }, set: { text in
             guard let idx, let value = try? Money.parse(text) else { return }
             workingStacks[idx].capLimit = value
         })

@@ -1571,7 +1571,7 @@ struct CardPresentationView: View {
             Form {
                 Section("Session Info") {
                     TextField("Session Name (e.g. Shopping Trip)", text: $model.sessionSheetName)
-                    TextField("Budget Limit in IDR (optional)", text: $model.sessionSheetBudget)
+                    TextField("Budget limit (optional)", text: $model.sessionSheetBudget.groupedAmount())
                         .keyboardType(.numberPad)
                 }
 
