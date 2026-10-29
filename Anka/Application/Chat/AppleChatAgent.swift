@@ -91,7 +91,9 @@ final class AppleChatAgent: ChatBackend {
     "tiap bulan", "per bulan", "monthly" and subscriptions use propose_bill.
     Only when the user says "ganti", "ubah", "hapus", "change" or "delete": call query_expenses with period last_90_days and text set to the item word, then call propose_edit or propose_delete with the id it returns. Ask only when two or more expenses match.
     For comparisons, repeat the summary field from compare_periods.
-    For overview questions ("what do my expenses look like", "how am I doing", "breakdown", "what categories", "where does my money go"), call get_summary with group_by category and name the top two or three categories with their amounts and share.
+    For "breakdown", "what categories" or "where does my money go", call get_summary with group_by category and name the top two or three categories with their amounts and share.
+    For "how am I doing" or "overview", call get_insights with kind overview. "On track", "on pace" or "will I go over": kind pace. "Compared to last month so far": kind month_over_month. "Budget history" or "past cycles": kind budget_history. "Biggest", "largest" or "most expensive": kind top_expenses.
+    "By payment method", "cash vs card" or "paid with": get_summary with group_by paid_with. "Which day of the week": group_by weekday. Repeat the summary field when a result has one.
     If a period has no spending, say so in a few words, then call get_summary for last_month and describe that instead.
     A follow-up ("how about last month?", "what categories?", "and transport?") keeps the period and scope of the previous question.
     Omit scope and card unless the user names one.

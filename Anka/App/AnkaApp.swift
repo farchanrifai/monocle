@@ -61,13 +61,14 @@ struct RootView: View {
         }
         .preferredColorScheme(model.preferredColorScheme)
         #if DEBUG
-        // Screenshot hook: ANKA_SCREEN=entry|settings|chat|customize opens that screen on launch.
+        // Screenshot hook: ANKA_SCREEN=entry|settings|chat|chat-demo|customize opens that screen on launch.
         .task {
             switch ProcessInfo.processInfo.environment["ANKA_SCREEN"] {
             case "entry": model.openEntry(for: model.activeCardID)
             case "settings": model.showSettings = true
             case "chat": model.showChat = true
             case "customize": if let card = model.orderedCards.last { model.customizerTarget = .existing(card) }
+            case "chat-demo": fillDemoChat(model); model.showChat = true
             default: break
             }
         }
@@ -179,4 +180,35 @@ private struct ReviewPrompt: ViewModifier {
             Task { try? await Task.sleep(for: .seconds(1)); requestReview() } // after the save sheet closes
         }
     }
+
 }
+
+#if DEBUG
+/// Every chat widget, from the real tools over the current data: for checking the chat layout and for screenshots.
+@MainActor func fillDemoChat(_ model: AppModel) {
+    let card = model.orderedCards.last
+    let cardScope = card.map { AnalyticsFilterScope.card(id: $0.id, name: $0.name) } ?? .allCards
+    let asks: [(String, String, [String: Any], AnalyticsFilterScope)] = [
+        ("How am I doing this month?", "get_insights", ["kind": "overview"], .allCards),
+        ("Where does my money go?", "get_summary", ["period": "this_month", "group_by": "category"], .allCards),
+        ("Am I on pace?", "get_insights", ["kind": "pace"], cardScope),
+        ("Compared to last month so far?", "get_insights", ["kind": "month_over_month"], .allCards),
+        ("Biggest expenses this month", "get_insights", ["kind": "top_expenses"], .allCards),
+        ("Cash vs card?", "get_summary", ["period": "this_month", "group_by": "paid_with"], .allCards),
+        ("Which day of the week do I spend most?", "get_summary", ["period": "last_90_days", "group_by": "weekday"], .allCards),
+        ("Daily spending", "get_summary", ["period": "this_month", "group_by": "day"], .allCards),
+        ("This month vs last month", "compare_periods", ["period_a": "last_month", "period_b": "this_month"], .allCards),
+        ("Am I over budget?", "get_budget_status", [:], cardScope),
+        ("Budget history", "get_insights", ["kind": "budget_history"], cardScope),
+    ]
+    var rows: [ChatRow] = []
+    for (question, tool, input, scope) in asks {
+        rows.append(ChatRow(kind: .user(question)))
+        let data = (try? JSONSerialization.data(withJSONObject: input)) ?? Data()
+        let outcome = ToolExecutor(model: model, scope: scope).run(tool, input: data)
+        if let chart = outcome.chart { rows.append(ChatRow(kind: .chart(chart))) }
+        else { rows.append(ChatRow(kind: .notice(outcome.isError ? outcome.json : "No chart for this data."))) }
+    }
+    model.chat.rows = rows
+}
+#endif

@@ -13,13 +13,20 @@ struct ChatChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(chart.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(chart.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if let caption = chart.caption { Text(caption).font(.subheadline.weight(.semibold)) }
+            }
             switch chart.style {
             case .donut: donut
             case .bars: bars
             case .trend: trend
             case .comparison: comparison
             case .budget: budget
+            case .stats: stats
+            case .pace: lines(primary: "Spent", secondary: chart.series.count > 1 ? "Budget" : nil, dashedSecondary: true)
+            case .cumulative: lines(primary: chart.series.last ?? "This month", secondary: chart.series.first ?? "Last month", dashedSecondary: false)
+            case .ranking: ranking
             }
         }
         .padding(16)
@@ -29,7 +36,8 @@ struct ChatChartView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(chart.title)
-        .accessibilityValue(chart.items.map { "\($0.label) \(Money.format($0.value))" }.joined(separator: ", "))
+        .accessibilityValue(chart.style == .stats ? (chart.stats ?? []).map { "\($0.label) \($0.value)" }.joined(separator: ", ")
+                            : chart.items.filter { $0.isFuture != true }.map { "\($0.label) \(Money.format($0.value))" }.joined(separator: ", "))
     }
 
     // MARK: - Donut
@@ -98,10 +106,20 @@ struct ChatChartView: View {
     // MARK: - Trend (per day)
 
     private var trend: some View {
-        Chart(Array(chart.items.enumerated()), id: \.offset) { _, item in
-            BarMark(x: .value("Day", Day.date(item.label) ?? .now, unit: .day), y: .value("Spent", Self.rupiah(item.value)))
-                .foregroundStyle(MC.red)
-                .cornerRadius(2)
+        Chart {
+            ForEach(Array(chart.items.enumerated()), id: \.offset) { _, item in
+                BarMark(x: .value("Day", Day.date(item.label) ?? .now, unit: .day), y: .value("Spent", Self.rupiah(item.value)))
+                    .foregroundStyle(MC.red)
+                    .cornerRadius(2)
+            }
+            if let average = chart.average, average > 0 {
+                RuleMark(y: .value("Average", Self.rupiah(average)))
+                    .foregroundStyle(Color.secondary)
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .annotation(position: .top, alignment: .trailing) {
+                        Text("avg \(Money.format(average))").font(.caption2).foregroundStyle(.secondary)
+                    }
+            }
         }
         .chartYAxis {
             AxisMarks(position: .leading) { value in
@@ -143,6 +161,89 @@ struct ChatChartView: View {
         Text(change == 0 ? "±0" : "\(change > 0 ? "+" : "−")\(Money.format(abs(change)))")
             .font(.caption2.weight(.semibold)).monospacedDigit()
             .foregroundStyle(change > 0 ? MC.red : change < 0 ? .green : .secondary)
+    }
+
+    // MARK: - Stats (overview tiles)
+
+    private var stats: some View {
+        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
+            let tiles = chart.stats ?? []
+            ForEach(Array(stride(from: 0, to: tiles.count, by: 2)), id: \.self) { start in
+                GridRow {
+                    ForEach(tiles[start..<min(start + 2, tiles.count)], id: \.label) { tile in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(tile.value).font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                            Text(tile.label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.chatTrack.opacity(0.6), in: .rect(cornerRadius: 14, style: .continuous))
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 260)
+    }
+
+    // MARK: - Lines (pace against the budget, this month against last)
+
+    /// Running totals: the primary line stops at today, the secondary one (budget or last month) spans the period.
+    private func lines(primary: String, secondary: String?, dashedSecondary: Bool) -> some View {
+        let isDay = Day.date(chart.items.first?.label ?? "") != nil
+        func x(_ item: ChatChart.Item, _ index: Int) -> PlottableValue<Int> { .value("Day", isDay ? index + 1 : Int(item.label) ?? index + 1) }
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 14) {
+                Label { Text(primary) } icon: { Capsule().fill(MC.red).frame(width: 12, height: 3) }
+                if let secondary { Label { Text(secondary) } icon: { Capsule().fill(Color.secondary.opacity(0.6)).frame(width: 12, height: 3) } }
+            }
+            .font(.caption2).foregroundStyle(.secondary)
+            Chart {
+                ForEach(Array(chart.items.enumerated()), id: \.offset) { index, item in
+                    if secondary != nil, let reference = item.reference {
+                        LineMark(x: x(item, index), y: .value("Amount", Self.rupiah(reference)), series: .value("Series", "secondary"))
+                            .foregroundStyle(Color.secondary.opacity(0.6))
+                            .lineStyle(StrokeStyle(lineWidth: 2, dash: dashedSecondary ? [5, 4] : []))
+                    }
+                    if item.isFuture != true {
+                        LineMark(x: x(item, index), y: .value("Amount", Self.rupiah(item.value)), series: .value("Series", "primary"))
+                            .foregroundStyle(MC.red)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5))
+                            .interpolationMethod(.monotone)
+                    }
+                }
+            }
+            .chartXAxis { AxisMarks(values: .automatic(desiredCount: 5)) }
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine()
+                    AxisValueLabel { if let amount = value.as(Double.self) { Text(amount, format: .number.notation(.compactName)) } }
+                }
+            }
+            .frame(height: 150)
+        }
+    }
+
+    // MARK: - Ranking (biggest expenses)
+
+    private var ranking: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(Array(chart.items.enumerated()), id: \.offset) { index, item in
+                HStack(spacing: 10) {
+                    Text("\(index + 1)")
+                        .font(.caption.weight(.bold)).monospacedDigit()
+                        .frame(width: 22, height: 22)
+                        .background(index == 0 ? MC.red.opacity(0.18) : Color.chatTrack, in: Circle())
+                        .foregroundStyle(index == 0 ? MC.red : .secondary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.label).font(.subheadline.weight(.medium)).lineLimit(1)
+                        if let detail = item.detail { Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
+                    }
+                    Spacer(minLength: 8)
+                    Text(Money.format(item.value)).font(.subheadline.weight(.semibold)).monospacedDigit()
+                }
+            }
+        }
+        .frame(minWidth: 260)
     }
 
     // MARK: - Budget

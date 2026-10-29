@@ -147,6 +147,53 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(Set((json(byCard)["groups"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }), ["Daily", "Tokyo Travel"])
     }
 
+    func testSummaryByPaidWithAndWeekday() throws {
+        let byWeekday = run("get_summary", ["period": "this_month", "group_by": "weekday", "scope": "all_cards"])
+        let days = try XCTUnwrap(json(byWeekday)["groups"] as? [[String: Any]])
+        XCTAssertEqual(days.count, 7, "Every weekday is listed, empty ones too")
+        XCTAssertEqual(days.reduce(Int64(0)) { $0 + (rupiah($1["amount"]) ?? 0) }, 225_000)
+        XCTAssertEqual(byWeekday.chart?.style, .bars)
+
+        let byPaidWith = run("get_summary", ["period": "this_month", "group_by": "paid_with", "scope": "all_cards"])
+        let groups = try XCTUnwrap(json(byPaidWith)["groups"] as? [[String: Any]])
+        XCTAssertEqual(groups.map { $0["name"] as? String }, ["Not set"])
+        XCTAssertEqual(rupiah(groups.first?["amount"]), 225_000)
+        XCTAssertEqual(run("get_summary", ["period": "this_month", "group_by": "day"]).chart?.average, 15_000_00, "225k over 15 days")
+    }
+
+    func testInsightsOverviewPaceMonthAndTop() throws {
+        let overview = run("get_insights", ["kind": "overview", "scope": "all_cards"])
+        let result = json(overview)
+        XCTAssertEqual(rupiah(result["total"]), 225_000)
+        XCTAssertEqual(result["count"] as? Int, 4)
+        XCTAssertEqual(result["top_category"] as? String, "Food & Drink")
+        XCTAssertEqual(overview.chart?.style, .stats)
+        XCTAssertEqual(overview.chart?.stats?.first?.value, Money.format(225_000_00))
+
+        let month = run("get_insights", ["kind": "month_over_month", "scope": "card:Daily"])
+        XCTAssertEqual(rupiah(json(month)["this_month_so_far"]), 73_000)
+        XCTAssertEqual(rupiah(json(month)["last_month_total"]), 60_000)
+        XCTAssertEqual(month.chart?.style, .cumulative)
+
+        let top = run("get_insights", ["kind": "top_expenses", "scope": "all_cards"])
+        let rows = try XCTUnwrap(json(top)["rows"] as? [[String: Any]])
+        XCTAssertEqual(rows.first?["note"] as? String, "Sushi dinner")
+        XCTAssertEqual(top.chart?.items.map(\.value), [120_000_00, 45_000_00, 32_000_00, 28_000_00])
+
+        XCTAssertNil(json(run("get_insights", ["kind": "pace", "scope": "card:Daily"]))["budget"], "No budget, no pace line")
+        try repo.save(BudgetVersion.initial(overallLimit: 300_000_00, startDay: 1, date: now, cardID: daily.id), in: daily.id)
+        try model.reload()
+        let pace = run("get_insights", ["kind": "pace", "scope": "card:Daily"])
+        XCTAssertEqual(rupiah(json(pace)["budget"]), 300_000)
+        XCTAssertEqual(pace.chart?.style, .pace)
+        XCTAssertEqual(pace.chart?.items.last(where: { $0.isFuture != true })?.value, 73_000_00)
+
+        let history = run("get_insights", ["kind": "budget_history", "scope": "card:Daily"])
+        XCTAssertEqual(json(history)["has_budget"] as? Bool, true)
+        XCTAssertEqual(history.chart?.style, .budget)
+        XCTAssertEqual(history.chart?.items.first?.value, 73_000_00, "Newest cycle first")
+    }
+
     func testComparePeriodsComputesDeltas() throws {
         let result = json(run("compare_periods", ["period_a": "last_month", "period_b": "this_month", "scope": "card:Daily"]))
         XCTAssertEqual(rupiah(result["total_a"]), 60_000)

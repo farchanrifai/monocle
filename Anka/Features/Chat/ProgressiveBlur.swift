@@ -17,7 +17,8 @@ struct ProgressiveBlur: View {
         }
         Rectangle()
             .fill(.ultraThinMaterial)
-            .overlay(tint.opacity(0.52))
+            // Mostly canvas: the material alone reads grey over a black canvas, so the bars stood out as lighter bands.
+            .overlay(tint.opacity(0.85))
             .mask { LinearGradient(stops: stops, startPoint: edge == .top ? .top : .bottom, endPoint: edge == .top ? .bottom : .top) }
             .frame(height: total)
             .allowsHitTesting(false)

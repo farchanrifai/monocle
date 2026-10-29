@@ -35,6 +35,7 @@ struct ToolExecutor {
             case "get_summary": return try summary(decode(input))
             case "compare_periods": return try compare(decode(input))
             case "get_budget_status": return try budgetStatus(decode(input))
+            case "get_insights": return try insights(decode(input))
             case "list_cards": return try Outcome(json: Self.encode(cardList()))
             default: throw ToolError(message: "Unknown tool \(name).")
             }
@@ -65,7 +66,10 @@ struct ToolExecutor {
         }
     }
 
-    enum GroupBy: String, Decodable { case category, day, card }
+    enum GroupBy: String, Decodable { case category, day, card, paidWith = "paid_with", weekday }
+    enum InsightKind: String, Decodable {
+        case overview, pace, monthOverMonth = "month_over_month", budgetHistory = "budget_history", topExpenses = "top_expenses"
+    }
 
     struct SplitPart: Decodable { let category: String; let amount: Decimal }
     struct ProposeInput: Decodable {
@@ -88,6 +92,7 @@ struct ToolExecutor {
     struct SummaryInput: Decodable { let period: Period; var groupBy: GroupBy?; var scope: String? }
     struct CompareInput: Decodable { let periodA: Period; let periodB: Period; var scope: String? }
     struct BudgetInput: Decodable { var card: String?; var cycle: String? }
+    struct InsightsInput: Decodable { let kind: InsightKind; var period: Period?; var scope: String? }
 
     // MARK: - Outputs
 
@@ -126,6 +131,16 @@ struct ToolExecutor {
         let card: String; let hasBudget: Bool; var cycleStart: String?; var cycleEnd: String?
         var limit: Amount?; var spent: Amount?; var remaining: Amount?; var categories: [CategoryBudgetStatus] = []
     }
+    struct OverviewResult: Encodable {
+        let period: String; let start: String; let end: String; let scope: String; let total: Amount; let count: Int
+        let dailyAverage: Amount; var projected: Amount?; var peakDay: String?; var peakDayAmount: Amount?
+        var topCategory: String?; var topCategoryAmount: Amount?; var pace: String?
+    }
+    struct PaceResult: Encodable { let start: String; let end: String; let scope: String; let spent: Amount; var budget: Amount?; var projected: Amount?; var pace: String?; let summary: String }
+    struct MonthResult: Encodable { let scope: String; let thisMonthSoFar: Amount; let lastMonthSameDay: Amount; let lastMonthTotal: Amount; let summary: String }
+    struct CycleRow: Encodable { let cycle: String; let limit: Amount; let spent: Amount; let over: Bool }
+    struct HistoryResult: Encodable { let scope: String; let hasBudget: Bool; let cycles: [CycleRow] }
+    struct TopResult: Encodable { let period: String; let start: String; let end: String; let scope: String; let rows: [Row] }
     struct StackInfo: Encodable { let name: String; let cards: [String] }
     struct CardList: Encodable { let scope: String; let defaultCard: String?; let cards: [String]; let stacks: [StackInfo] }
 
@@ -317,6 +332,11 @@ struct ToolExecutor {
             groups = report.cardPoints.map { Group(name: $0.cardName, amount: Amount($0.amount), share: Self.percent($0.percentage), count: $0.transactionCount) }
         case .day:
             groups = report.dailyPoints.filter { $0.amount > 0 }.map { Group(name: $0.day, amount: Amount($0.amount), share: nil, count: $0.transactionCount) }
+        case .paidWith, .weekday:
+            let total = max(report.metrics.totalSpend, 1)
+            groups = buckets(report, by: input.groupBy ?? .category).map {
+                Group(name: $0.name, amount: Amount($0.amount), share: Self.percent(Double($0.amount) / Double(total)), count: $0.count)
+            }
         }
         let result = SummaryResult(period: input.period.horizon.rawValue, start: report.range.startDay, end: report.range.endDay,
                                    scope: Self.label(target), total: Amount(report.metrics.totalSpend),
@@ -325,7 +345,9 @@ struct ToolExecutor {
         let chart: ChatChart = switch input.groupBy ?? .category {
         case .category: ChatChart(categories: report.categoryPoints, title: title)
         case .card: ChatChart(style: .bars, title: title, items: report.cardPoints.map { .init(label: $0.cardName, value: $0.amount) })
-        case .day: ChatChart(style: .trend, title: title, items: report.dailyPoints.filter { !$0.isFuture }.map { .init(label: $0.day, value: $0.amount) })
+        case .day: ChatChart(style: .trend, title: title, items: report.dailyPoints.filter { !$0.isFuture }.map { .init(label: $0.day, value: $0.amount) },
+                             average: report.metrics.dailyAverage)
+        case .paidWith, .weekday: ChatChart(style: .bars, title: title, items: buckets(report, by: input.groupBy ?? .category).map { .init(label: $0.name, value: $0.amount) })
         }
         return Outcome(json: try Self.encode(result), chart: report.metrics.totalSpend > 0 ? chart : nil)
     }
@@ -387,6 +409,133 @@ struct ToolExecutor {
         let items = [ChatChart.Item(label: "Overall", value: spent, reference: period.budget.overallLimit)]
             + period.budget.categoryLimits.map { .init(label: names[$0.categoryID] ?? "Unknown", value: spentByCategory[$0.categoryID] ?? 0, reference: $0.limit) }
         return Outcome(json: try Self.encode(result), chart: ChatChart(style: .budget, title: "Budget \(Self.rangeLabel(Day.string(period.cycle.start), Day.string(lastDay))) · \(card.name)", items: items))
+    }
+
+    /// Expenses in the report's range, grouped by how they were paid or by weekday (in calendar order, empty days kept).
+    private func buckets(_ report: AnalyticsReport, by group: GroupBy) -> [(name: String, amount: Int64, count: Int)] {
+        let expenses = AnalyticsEngine.filterExpenses(report.data.expenses, startDay: report.range.startDay, endDay: report.range.endDay)
+        if group == .weekday {
+            let calendar = Day.calendar
+            let symbols = calendar.shortWeekdaySymbols
+            let order = (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 }
+            var sums = Array(repeating: (amount: Int64(0), count: 0), count: 7)
+            for expense in expenses {
+                guard let date = Day.date(expense.day) else { continue }
+                let index = calendar.component(.weekday, from: date) - 1
+                sums[index].amount += expense.amount; sums[index].count += 1
+            }
+            return order.map { (symbols[$0], sums[$0].amount, sums[$0].count) }
+        }
+        var sums: [String: (amount: Int64, count: Int)] = [:]
+        for expense in expenses {
+            let name = model.paymentMethod(expense.paidWithID)?.name ?? "Not set"
+            sums[name, default: (0, 0)].amount += expense.amount
+            sums[name, default: (0, 0)].count += 1
+        }
+        return sums.map { ($0.key, $0.value.amount, $0.value.count) }.sorted { $0.amount > $1.amount }
+    }
+
+    private func insights(_ input: InsightsInput) throws -> Outcome {
+        let target = try resolveScope(input.scope)
+        switch input.kind {
+        case .overview:
+            let period = input.period ?? .thisMonth
+            let report = try report(period, scope: target)
+            let m = report.metrics
+            var result = OverviewResult(period: period.horizon.rawValue, start: report.range.startDay, end: report.range.endDay,
+                                        scope: Self.label(target), total: Amount(m.totalSpend), count: m.transactionCount,
+                                        dailyAverage: Amount(m.dailyAverage), pace: m.paceStatus?.label)
+            var stats = [ChatChart.Stat(label: "Spent", value: Money.format(m.totalSpend)),
+                         .init(label: "Expenses", value: "\(m.transactionCount)"),
+                         .init(label: "Daily average", value: Money.format(m.dailyAverage))]
+            if let projected = m.projectedPeriodTotal, m.daysElapsed < m.totalDaysInPeriod {
+                result.projected = Amount(projected)
+                stats.append(.init(label: "Projected", value: Money.format(projected)))
+            }
+            if let peak = m.highestSpendDay, peak.amount > 0 {
+                result.peakDay = peak.day; result.peakDayAmount = Amount(peak.amount)
+                stats.append(.init(label: "Peak day · \(Day.title(peak.day))", value: Money.format(peak.amount)))
+            }
+            if let top = m.topCategory {
+                result.topCategory = top.name; result.topCategoryAmount = Amount(top.amount)
+                stats.append(.init(label: "Top · \(top.name)", value: Money.format(top.amount)))
+            }
+            let chart = ChatChart(style: .stats, title: "\(Self.rangeLabel(report.range.startDay, report.range.endDay)) · \(target.title)",
+                                  items: [], stats: stats, caption: m.paceStatus?.label)
+            return Outcome(json: try Self.encode(result), chart: m.transactionCount > 0 ? chart : nil)
+
+        case .pace:
+            let report = try report(.thisCycle, scope: target)
+            let m = report.metrics
+            let budget = report.dailyPoints.last?.targetCumulativeAmount
+            let summary = budget.map { "Spent \(Money.format(m.totalSpend)) of \(Money.format($0)) so far; \(m.paceStatus?.label ?? "no pace yet")." }
+                ?? "Spent \(Money.format(m.totalSpend)) so far. This scope has no budget for the cycle, so there is no pace line."
+            let result = PaceResult(start: report.range.startDay, end: report.range.endDay, scope: Self.label(target), spent: Amount(m.totalSpend),
+                                    budget: budget.map(Amount.init), projected: m.projectedPeriodTotal.map(Amount.init), pace: m.paceStatus?.label, summary: summary)
+            let items = report.dailyPoints.map {
+                ChatChart.Item(label: $0.day, value: $0.cumulativeAmount ?? 0, reference: $0.targetCumulativeAmount, isFuture: $0.isFuture ? true : nil)
+            }
+            let chart = ChatChart(style: .pace, title: "\(Self.rangeLabel(report.range.startDay, report.range.endDay)) · \(target.title)",
+                                  items: items, series: budget == nil ? ["Spent"] : ["Spent", "Budget"], caption: m.paceStatus?.label)
+            return Outcome(json: try Self.encode(result), chart: items.isEmpty ? nil : chart)
+
+        case .monthOverMonth:
+            let report = try report(.thisMonth, scope: target)
+            let points = report.monthPoints
+            let today = points.last { $0.currentPeriodCumulative != nil }
+            let soFar = today?.currentPeriodCumulative ?? 0
+            let sameDay = today?.previousPeriodCumulative ?? 0
+            let lastTotal = points.last { $0.previousPeriodCumulative != nil }?.previousPeriodCumulative ?? 0
+            let change = soFar - sameDay
+            let summary = "This month so far \(Money.format(soFar)), \(change == 0 ? "the same as" : "\(Money.format(abs(change))) \(change > 0 ? "more than" : "less than")") last month by the same day (\(Money.format(sameDay))). Last month ended at \(Money.format(lastTotal))."
+            let result = MonthResult(scope: Self.label(target), thisMonthSoFar: Amount(soFar), lastMonthSameDay: Amount(sameDay),
+                                     lastMonthTotal: Amount(lastTotal), summary: summary)
+            let items = points.map {
+                ChatChart.Item(label: "\($0.dayIndex)", value: $0.currentPeriodCumulative ?? 0, reference: $0.previousPeriodCumulative,
+                               isFuture: $0.currentPeriodCumulative == nil ? true : nil)
+            }
+            let chart = ChatChart(style: .cumulative, title: "This month vs last · \(target.title)", items: items, series: ["Last month", "This month"])
+            return Outcome(json: try Self.encode(result), chart: soFar > 0 || lastTotal > 0 ? chart : nil)
+
+        case .budgetHistory:
+            let subject: BudgetSubject
+            switch target {
+            case .card(let id, _): subject = .card(id)
+            case .stack(let id, _): subject = .stack(id)
+            case .allCards:
+                let card = try targetCard()
+                subject = .card(card.id)
+            }
+            let cycles = model.budgetCycles(subject, now: now)
+            let result = HistoryResult(scope: Self.label(target), hasBudget: !cycles.isEmpty,
+                                       cycles: cycles.map { CycleRow(cycle: $0.cycle.label, limit: Amount($0.limit), spent: Amount($0.spent), over: $0.isOver) })
+            let chart = ChatChart(style: .budget, title: "Budget, cycle by cycle · \(target.isAllCards ? (try? targetCard().name) ?? "" : target.title)",
+                                  items: cycles.reversed().map { .init(label: $0.cycle.label + ($0.isCurrent ? " · now" : ""), value: $0.spent, reference: $0.limit) })
+            return Outcome(json: try Self.encode(result), chart: cycles.isEmpty ? nil : chart)
+
+        case .topExpenses:
+            let period = input.period ?? .thisMonth
+            let report = try report(period, scope: target)
+            guard let service = model.expenseService else { throw EntryError.corruptStore }
+            var names: [UUID: String] = [:], cardNames: [UUID: String] = [:]
+            for card in model.cards(in: target) {
+                cardNames[card.id] = card.name
+                for category in try service.categories(for: card.id) { names[category.id] = category.name }
+            }
+            let top = AnalyticsEngine.filterExpenses(report.data.expenses, startDay: report.range.startDay, endDay: report.range.endDay)
+                .sorted { $0.amount > $1.amount }.prefix(5)
+            let rows = top.map { expense in
+                Row(id: expense.id.uuidString, day: expense.day, amount: Amount(expense.amount),
+                    category: expense.splits.compactMap { names[$0.categoryID] }.joined(separator: ", "),
+                    note: expense.note, card: expense.cardID.flatMap { cardNames[$0] } ?? "")
+            }
+            let result = TopResult(period: period.horizon.rawValue, start: report.range.startDay, end: report.range.endDay, scope: Self.label(target), rows: rows)
+            let items = zip(top, rows).map { expense, row in
+                ChatChart.Item(label: row.note.isEmpty ? row.category : row.note, value: expense.amount, detail: "\(Day.title(row.day)) · \(row.category)")
+            }
+            let chart = ChatChart(style: .ranking, title: "Biggest expenses · \(Self.rangeLabel(report.range.startDay, report.range.endDay))", items: items)
+            return Outcome(json: try Self.encode(result), chart: items.isEmpty ? nil : chart)
+        }
     }
 
     /// "1–31 Oct 2026", "1 Sep – 12 Oct 2026" or a span across years: what a chart title shows instead of a period keyword.

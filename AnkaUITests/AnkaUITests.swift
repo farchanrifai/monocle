@@ -406,7 +406,7 @@ final class AnkaUITests: XCTestCase {
         chat.tap()
         XCTAssertTrue(app.buttons["chatClose"].waitForExistence(timeout: 5))
         XCTAssertFalse(chat.isHittable, "Bottom bar must be hidden behind full-screen chat")
-        XCTAssertTrue(app.buttons["Kopi 28rb"].exists, "Empty state offers suggestions")
+        XCTAssertTrue(app.buttons["Add Kopi 28rb"].exists, "Empty state offers suggestions")
         keepScreenshot(app.screenshot())
 
         let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
@@ -414,7 +414,8 @@ final class AnkaUITests: XCTestCase {
         input.tap()
         input.typeText("draft only")
         XCTAssertTrue(app.keyboards.firstMatch.exists)
-        app.buttons["Kopi 28rb"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: -4)).tap()
+        // An empty part of the transcript: a fixed multiple above the suggestions now lands under the top bar.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.16)).tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3), "Tapping the transcript dismisses the keyboard")
 
         // The subtitle is a scope menu; switching adds a notice and keeps the Home filter untouched.
@@ -1722,5 +1723,6 @@ final class AnkaUITests: XCTestCase {
         // 6. Reset back to Card First preset
         app.buttons["presetCardFirst"].tap()
     }
+
 
 }

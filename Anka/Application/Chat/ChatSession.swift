@@ -12,27 +12,40 @@ struct ExpenseChange: Codable, Equatable {
 
 /// A chart under a chat answer, built by ToolExecutor from AnalyticsReport: every number is app-computed.
 struct ChatChart: Codable, Equatable {
-    enum Style: String, Codable { case donut, bars, trend, comparison, budget }
+    enum Style: String, Codable { case donut, bars, trend, comparison, budget, stats, pace, cumulative, ranking }
     struct Item: Codable, Equatable {
         var label: String
-        /// Minor units. Comparison: the later period. Budget: spent.
+        /// Minor units. Comparison and cumulative: the later period. Budget: spent. Pace: spent so far.
         var value: Int64
-        /// Comparison: the earlier period. Budget: the limit.
+        /// Comparison and cumulative: the earlier period. Budget: the limit. Pace: the budget line.
         var reference: Int64? = nil
+        /// Ranking: the line under the label (day · category).
+        var detail: String? = nil
+        /// Pace and cumulative: a day still to come, where only the reference line draws.
+        var isFuture: Bool? = nil
     }
+    /// One tile of an overview: an app-formatted value and its label.
+    struct Stat: Codable, Equatable { var label: String; var value: String }
     var style: Style
     var title: String
     var items: [Item]
-    /// Comparison only: [earlier, later] period names.
+    /// Comparison and cumulative: [earlier, later] period names.
     var series: [String] = []
+    /// Stats only.
+    var stats: [Stat]? = nil
+    /// Trend: the daily average, drawn as a line across the bars.
+    var average: Int64? = nil
+    /// A one-line takeaway under the title, like "12% under budget pace".
+    var caption: String? = nil
 
     /// Charts saved before ChatChart existed were category donuts.
     init(categories points: [CategorySpendPoint], title: String) {
         self.init(style: .donut, title: title, items: points.map { Item(label: $0.categoryName, value: $0.amount) })
     }
 
-    init(style: Style, title: String, items: [Item], series: [String] = []) {
+    init(style: Style, title: String, items: [Item], series: [String] = [], stats: [Stat]? = nil, average: Int64? = nil, caption: String? = nil) {
         self.style = style; self.title = title; self.items = items; self.series = series
+        self.stats = stats; self.average = average; self.caption = caption
     }
 }
 

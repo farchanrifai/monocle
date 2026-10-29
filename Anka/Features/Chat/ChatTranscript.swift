@@ -14,11 +14,11 @@ struct ChatTranscript: View {
     /// Where a tapped suggestion goes. The phone fills the composer so the owner can edit before sending; nil sends it (Mac pane).
     var fill: ((String) -> Void)? = nil
 
-    /// The first adds an expense, the second splits one across categories (the agent's colon form), both in the reporting currency's usual shorthand.
+    /// An expense, a split (the agent's colon form), both in the reporting currency's usual shorthand, and the overview insight.
     private static var suggestions: [(symbol: String, text: String)] {
         [("plus.circle", "Add " + (Money.reportingCurrency == "IDR" ? "Kopi 28rb" : "Coffee 5")),
          ("square.split.2x1", Money.reportingCurrency == "IDR" ? "Add pasar 50rb: 30rb makan, 20rb belanja" : "Add groceries 50: 30 food, 20 household"),
-         ("chart.pie", "Expenses by category this month")]
+         ("gauge.with.needle", "How am I doing this month?")]
     }
     private var rows: [ChatRow] { session.rows }
 

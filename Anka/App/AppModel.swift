@@ -853,7 +853,7 @@ final class AppModel {
             currentOrder.insert(cardID, at: 0)
             proposed.cardOrder = currentOrder
         }
-        do { try commitPresentationPreferences(proposed); showToast("Moved to back") }
+        do { try commitPresentationPreferences(proposed) }
         catch { report(error) }
     }
 
@@ -1021,10 +1021,10 @@ final class AppModel {
     }
 
     /// Running and past cycles, oldest first.
-    func budgetCycles(_ subject: BudgetSubject, count: Int = 6) -> [BudgetCycleResult] {
+    func budgetCycles(_ subject: BudgetSubject, count: Int = 6, now: Date = .now) -> [BudgetCycleResult] {
         switch subject {
-        case .card(let id): budgetCardInput(id).map { BudgetReport.cardHistory($0, count: count) } ?? []
-        case .stack(let id): budgetStackInput(id).map { BudgetReport.stackHistory($0, count: count) } ?? []
+        case .card(let id): budgetCardInput(id).map { BudgetReport.cardHistory($0, count: count, now: now) } ?? []
+        case .stack(let id): budgetStackInput(id).map { BudgetReport.stackHistory($0, count: count, now: now) } ?? []
         }
     }
 
