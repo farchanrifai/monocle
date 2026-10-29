@@ -28,6 +28,8 @@ targets:
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # ProMotion: without this, iPhone caps the app's own animations and drags at 60 Hz.
+        CADisableMinimumFrameDurationOnPhone: true
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.farchan.anka.backup
             UTTypeDescription: Anka workspace backup
