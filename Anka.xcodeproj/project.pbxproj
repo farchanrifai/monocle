@@ -80,6 +80,7 @@
 		6AF1675E4A49429D24E38458 /* ChatTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219E58E4E4DC7B281FA73513 /* ChatTranscript.swift */; };
 		6B30D91E0CFA81840F3A36FB /* GoldenFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A08F7FE752C7FB6B237FBF /* GoldenFormatTests.swift */; };
 		6DA23460905BD46AAE253193 /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4547FEB3B72E5D3D0C45EDC /* CardBackTelemetryView.swift */; };
+		6DBD07348A76622D2E001268 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9529A85290AF0C4A9DDD4BA4 /* SettingsView.swift */; };
 		70CD027246B4E4D0259A8F7C /* CategoryAndLocaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E5257BC26C79EFB53AA1AB /* CategoryAndLocaleTests.swift */; };
 		71F92FEFBD310D9EFE708943 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD1A4ADC0B1DBE7371369E67 /* ChatView.swift */; };
 		72E9C308DD006221AB02FA6B /* PaidWithSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27766DC6332E791EAE0F349E /* PaidWithSettingsView.swift */; };
@@ -305,6 +306,7 @@
 		8FA06646C179EAF9004C453C /* AnkaMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkaMacApp.swift; sourceTree = "<group>"; };
 		91AF46BDE83EE2BF210EF7E1 /* CategoryValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryValidation.swift; sourceTree = "<group>"; };
 		951E2E7EEE8482A3DBB85A31 /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
+		9529A85290AF0C4A9DDD4BA4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9A1E857A73C3192178FB6E1D /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
 		9D94220FCC9FD3987D4A0D67 /* Plan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plan.swift; sourceTree = "<group>"; };
 		9EF2D199BC17FB7D93D81B4C /* EntryDismissalGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDismissalGuard.swift; sourceTree = "<group>"; };
@@ -511,6 +513,7 @@
 				731DFA717BF1B3D7D92C0CF2 /* PaywallView.swift */,
 				638D5E6C125D255483F7DFAD /* RecentsView.swift */,
 				72228C8E740738AD8E7287A5 /* ResetDataView.swift */,
+				9529A85290AF0C4A9DDD4BA4 /* SettingsView.swift */,
 				7D599D09C088C6445C20B499 /* ShortcutOrderSettingsView.swift */,
 				29D402D0F381ED92465CC50E /* StackCustomizerView.swift */,
 				A77A904A91E1A7EE195E4298 /* StockDesignViews.swift */,
@@ -1115,6 +1118,7 @@
 				E9C77E2349714711F1D519CE /* RecentsView.swift in Sources */,
 				583BC0B058F67BCBF6D6E27A /* ResetDataView.swift in Sources */,
 				D44BE4C08C55AA408653D086 /* SampleCardSeeder.swift in Sources */,
+				6DBD07348A76622D2E001268 /* SettingsView.swift in Sources */,
 				CE35190DA6D81FC5F96115AD /* ShortcutOrderSettingsView.swift in Sources */,
 				325C4FEFAAAE45E4A8585473 /* SpendingSessionManager.swift in Sources */,
 				FD6CC3771A16ABB65763BC5D /* StackCustomizerView.swift in Sources */,

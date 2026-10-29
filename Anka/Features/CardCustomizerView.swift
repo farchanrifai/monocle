@@ -25,9 +25,11 @@ struct CardCustomizerView: View {
     @State private var photoError: String? = nil
     @State private var cardCategorySelections: [UUID: Set<UUID>]
     @State private var editingCategoriesForCardID: UUID? = nil
+    @State private var pane: Pane = .look
+
+    private enum Pane: String, CaseIterable { case look = "Look", details = "Details" }
 
     private let previewSideInset: CGFloat = 28
-    private let swatchWidth: CGFloat = 96
 
     init(
         model: AppModel,
@@ -147,26 +149,36 @@ struct CardCustomizerView: View {
     var body: some View {
         NavigationStack {
           VStack(spacing: 0) {
-            // Live preview stays put while the controls scroll under it.
+            // The live card, its name and the pane switch stay put; the controls scroll under them.
             cardCarousel
                 .padding(.top, 8)
-                .padding(.bottom, 4)
-            Form {
-                if currentCardID == placeholderID {
-                    Section {
-                        placeholderControlsSection
+            if currentCardID != placeholderID {
+                VStack(spacing: 10) {
+                    nameField
+                    Picker("Section", selection: $pane) {
+                        ForEach(Pane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
-                    .listRowBackground(Color.clear)
-                } else {
-                    nameSection
-                    styleSection
-                    colorSection
-                    photoSection
-                    textToneSection
-                    categoriesSection
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("customizerPane")
                 }
+                .padding(.horizontal, 20).padding(.bottom, 8)
             }
-            .contentMargins(.top, 8, for: .scrollContent)
+            ScrollView {
+                VStack(spacing: 22) {
+                    if currentCardID == placeholderID {
+                        placeholderControlsSection.padding(.top, 8)
+                    } else if pane == .look {
+                        designSection
+                        colorSection
+                        photoSection
+                        textToneSection
+                    } else {
+                        detailsSection
+                    }
+                }
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+            }
+            .scrollEdgeEffectStyle(.soft, for: .top)
           }
           .background(Color(uiColor: .systemGroupedBackground))
             .scrollDismissesKeyboard(.interactively)
@@ -174,20 +186,20 @@ struct CardCustomizerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("Cancel", systemImage: "xmark") {
                         onDismiss()
                     }
                     .accessibilityIdentifier("cancelCardCustomization")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(role: .confirm) {
                         do {
                             try model.applyCardCustomizations(names: finalNames(), customizations: drafts,
                                                               newCardIDs: Set(newCardIDs), selections: cardCategorySelections)
                             onDismiss()
                         } catch { model.report(error) }
-                    }
-                    .font(.headline)
+                    } label: { Image(systemName: "checkmark") }
+                    .accessibilityLabel("Save")
                     .accessibilityIdentifier("saveCardCustomization")
                 }
             }
@@ -283,11 +295,13 @@ struct CardCustomizerView: View {
     // MARK: - Card Carousel
     private var cardCarousel: some View {
         VStack(spacing: 12) {
+          ScrollViewReader { reader in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
+                // With the neighbours scaled to 92%, this gap leaves about 6 pt of the next card in view.
+                HStack(spacing: 8) {
                     ForEach(customizerCards) { card in
                         previewCard(for: card)
-                            .containerRelativeFrame(.horizontal) { width, _ in max(240, width - previewSideInset * 2) }
+                            .containerRelativeFrame(.horizontal) { width, _ in max(240, width) }
                             .scrollTransition(.interactive) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
@@ -305,7 +319,7 @@ struct CardCustomizerView: View {
                     }
 
                     placeholderCard
-                        .containerRelativeFrame(.horizontal) { width, _ in max(240, width - previewSideInset * 2) }
+                        .containerRelativeFrame(.horizontal) { width, _ in max(240, width) }
                         .scrollTransition(.interactive) { content, phase in
                             content
                                 .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
@@ -320,6 +334,11 @@ struct CardCustomizerView: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $activeCardID)
             .scrollClipDisabled()
+            // Ideal height: the cards take their full width at the card aspect instead of shrinking to leave room below.
+            .fixedSize(horizontal: false, vertical: true)
+            // The bound position alone opened on the first card; start on the card being customized.
+            .onAppear { reader.scrollTo(currentCardID, anchor: .center) }
+          }
 
             pageIndicator
         }
@@ -477,7 +496,7 @@ struct CardCustomizerView: View {
 
             Spacer(minLength: 0)
 
-            Text(Money.format(total))
+            Text(Money.format(total, code: isNewDraft ? nil : model.currency(of: card)))
                 .font(.title.bold())
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
@@ -520,44 +539,50 @@ struct CardCustomizerView: View {
         }
     }
 
-    // MARK: - Name
-    private var nameSection: some View {
-        Section("Name") {
-            HStack(spacing: 8) {
-                TextField("Card Name", text: currentName)
-                    .focused($isNameFieldFocused)
-                    .submitLabel(.done)
-                    .accessibilityIdentifier("cardNameInlineTextField")
+    // MARK: - Sections
 
-                if !currentName.wrappedValue.isEmpty {
-                    Button {
-                        currentName.wrappedValue = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear name")
-                    .accessibilityIdentifier("cardNameInlineClearButton")
-                }
-            }
+    /// A titled rounded panel, the one container every control group uses.
+    private func panel<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.footnote.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase)
+                .padding(.horizontal, 6)
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: .rect(cornerRadius: 22, style: .continuous))
         }
     }
 
-    // MARK: - Style
-    private var styleSection: some View {
-        Section("Style") {
-            ScrollView(.horizontal, showsIndicators: false) {
-                let rowHeight = swatchWidth * CardStackMetrics.aspect + 26
-                LazyHGrid(rows: [GridItem(.fixed(rowHeight), spacing: 12), GridItem(.fixed(rowHeight))], spacing: 12) {
-                    ForEach(StockCardDesign.allCases) { design in
-                        stockSwatch(design)
-                    }
+    private var nameField: some View {
+        HStack(spacing: 8) {
+            TextField("Card name", text: currentName)
+                .font(.body.weight(.medium))
+                .focused($isNameFieldFocused)
+                .submitLabel(.done)
+                .accessibilityIdentifier("cardNameInlineTextField")
+            if !currentName.wrappedValue.isEmpty && isNameFieldFocused {
+                Button {
+                    currentName.wrappedValue = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear name")
+                .accessibilityIdentifier("cardNameInlineClearButton")
+            } else {
+                Image(systemName: "pencil").foregroundStyle(.tertiary).accessibilityHidden(true)
             }
-            .listRowInsets(EdgeInsets())
+        }
+        .padding(.horizontal, 16).frame(minHeight: 46)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: .capsule)
+    }
+
+    private var designSection: some View {
+        panel("Designs") {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 14) {
+                ForEach(StockCardDesign.allCases) { design in stockSwatch(design) }
+            }
+            .padding(14)
         }
     }
 
@@ -568,42 +593,31 @@ struct CardCustomizerView: View {
         }()
 
         return Button {
-            currentDraft.wrappedValue.style = .stock(design)
+            withAnimation(.snappy(duration: 0.2)) { currentDraft.wrappedValue.style = .stock(design) }
         } label: {
             VStack(spacing: 6) {
                 StockDesignBackgroundView(design: design)
-                    .frame(width: swatchWidth, height: swatchWidth * CardStackMetrics.aspect)
+                    .aspectRatio(1 / CardStackMetrics.aspect, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: isSelected ? 2.5 : 0.5)
+                            .strokeBorder(isSelected ? MC.red : Color.primary.opacity(0.1), lineWidth: isSelected ? 2.5 : 0.5)
                     )
-                    .overlay(alignment: .topTrailing) {
-                        if isSelected {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(Color.accentColor)
-                                .background(Circle().fill(Color.white))
-                                .padding(5)
-                        }
-                    }
-
+                    .padding(isSelected ? 0 : 1.5)
                 Text(design.displayName)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.primary)
+                    .font(.caption2.weight(isSelected ? .semibold : .medium))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
-                    .frame(width: swatchWidth)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedbackStyle())
         .accessibilityLabel(design.displayName)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("stockDesign-\(design.id)")
     }
 
-    // MARK: - Color
     private var colorSection: some View {
-        Section("Color") {
+        panel("Colors") {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(CardPalette.standard) { item in
@@ -613,141 +627,143 @@ struct CardCustomizerView: View {
                             }
                             return false
                         }()
-
                         Button {
-                            currentDraft.wrappedValue.style = .palette(index: item.id)
+                            withAnimation(.snappy(duration: 0.2)) { currentDraft.wrappedValue.style = .palette(index: item.id) }
                         } label: {
                             Circle()
                                 .fill(item.color)
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Circle()
-                                        .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
-                                )
-                                .overlay {
-                                    if isSelected {
-                                        Image(systemName: "checkmark")
-                                            .font(.headline.bold())
-                                            .foregroundStyle(CardPalette.isDark(hex: item.hex) ? .white : .black)
-                                    }
-                                }
+                                .frame(width: 40, height: 40)
+                                .overlay(Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
+                                .padding(3)
+                                .overlay(Circle().strokeBorder(isSelected ? MC.red : .clear, lineWidth: 2.5))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(item.name)
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .accessibilityIdentifier("paletteColor-\(item.id)")
                     }
+                    // Any color: the system well opens the full picker.
+                    ColorPicker("Custom color", selection: Binding(
+                        get: {
+                            if case .customColor(let hex) = currentDraft.wrappedValue.style {
+                                return CardPalette.color(fromHex: hex)
+                            }
+                            return customColor
+                        },
+                        set: { newColor in
+                            customColor = newColor
+                            currentDraft.wrappedValue.style = .customColor(hex: CardPalette.hexString(from: newColor))
+                        }
+                    ), supportsOpacity: false)
+                    .labelsHidden()
+                    .frame(width: 46, height: 46)
+                    .accessibilityIdentifier("customColorPicker")
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(14)
             }
-            .listRowInsets(EdgeInsets())
-
-            ColorPicker("Custom Color", selection: Binding(
-                get: {
-                    if case .customColor(let hex) = currentDraft.wrappedValue.style {
-                        return CardPalette.color(fromHex: hex)
-                    }
-                    return customColor
-                },
-                set: { newColor in
-                    customColor = newColor
-                    currentDraft.wrappedValue.style = .customColor(hex: CardPalette.hexString(from: newColor))
-                }
-            ), supportsOpacity: false)
-            .accessibilityIdentifier("customColorPicker")
         }
     }
 
-    // MARK: - Text Tone
+    private var photoSection: some View {
+        panel("Photo") {
+            VStack(alignment: .leading, spacing: 12) {
+                if case .customPhoto(let filename) = currentDraft.wrappedValue.style,
+                   let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
+                    HStack(spacing: 14) {
+                        Image(uiImage: image)
+                            .resizable().aspectRatio(contentMode: .fill)
+                            .frame(width: 84, height: 84 * CardStackMetrics.aspect)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        VStack(alignment: .leading, spacing: 8) {
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                                Label("Replace photo", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            .accessibilityIdentifier("replacePhotoPicker")
+                            Button(role: .destructive) {
+                                currentDraft.wrappedValue.style = .palette(index: 0)
+                            } label: {
+                                Label("Remove photo", systemImage: "trash")
+                            }
+                            .accessibilityIdentifier("removePhoto")
+                        }
+                        .font(.subheadline.weight(.medium))
+                    }
+                } else {
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        Label("Choose from Photos", systemImage: "photo.badge.plus").font(.body.weight(.medium))
+                    }
+                    .accessibilityIdentifier("choosePhotoPicker")
+                }
+                if isProcessingPhoto { ProgressView("Preparing image…").font(.caption) }
+                if let photoError { Text(photoError).font(.caption).foregroundStyle(.red) }
+            }
+            .padding(16)
+        }
+    }
+
     private var textToneSection: some View {
-        Section("Text") {
-            Picker("Text Tone", selection: currentDraft.textTone) {
+        panel("Text") {
+            Picker("Text tone", selection: currentDraft.textTone) {
                 Text("Auto").tag(CardTextTone.auto)
                 Text("Light").tag(CardTextTone.light)
                 Text("Dark").tag(CardTextTone.dark)
             }
             .pickerStyle(.segmented)
+            .padding(14)
             .accessibilityIdentifier("cardTextTonePicker")
         }
     }
 
-    // MARK: - Categories
-    private var categoriesSection: some View {
-        Section("Categories") {
-            Button {
-                editingCategoriesForCardID = currentCardID
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "tag.fill")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(MC.ink)
-                        .frame(width: 32, height: 32)
-                        .background(MC.ink.opacity(0.08), in: Circle())
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Active Categories")
-                            .foregroundStyle(Color.primary)
-                        let count = (cardCategorySelections[currentCardID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
-                        Text("\(count) of \(model.globalCategories.count) active on this card")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.tertiary)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("cardCategoriesButton")
+    /// One row of the Details panel: icon tile, title, value, chevron.
+    private func detailRow(_ title: LocalizedStringKey, _ symbol: String, _ color: Color, value: String) -> some View {
+        HStack(spacing: 12) {
+            SettingsIcon(symbol: symbol, color: color)
+            Text(title).foregroundStyle(Color.primary)
+            Spacer(minLength: 8)
+            Text(value).foregroundStyle(.secondary).lineLimit(1)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
         }
+        .padding(.horizontal, 16).frame(minHeight: 52)
+        .contentShape(Rectangle())
     }
 
-    // MARK: - Photo
-    private var photoSection: some View {
-        Section("Photo") {
-            if case .customPhoto(let filename) = currentDraft.wrappedValue.style,
-               let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 120)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                    Label("Replace Photo", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .accessibilityIdentifier("replacePhotoPicker")
-
-                Button(role: .destructive) {
-                    currentDraft.wrappedValue.style = .palette(index: 0)
-                } label: {
-                    Label("Remove Photo", systemImage: "trash")
-                }
-                .accessibilityIdentifier("removePhoto")
-            } else {
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                    Label("Choose from Photos", systemImage: "photo.badge.plus")
-                }
-                .accessibilityIdentifier("choosePhotoPicker")
-
-                if isProcessingPhoto {
-                    ProgressView("Preparing image...")
-                        .font(.caption)
-                }
-
-                if let photoError {
-                    Text(photoError)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+    private var detailsSection: some View {
+        let isNew = newCardIDs.contains(currentCardID)
+        let card = model.cards.first { $0.id == currentCardID }
+        let activeCount = (cardCategorySelections[currentCardID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
+        return VStack(alignment: .leading, spacing: 8) {
+            panel("This card") {
+                VStack(spacing: 0) {
+                    Button { editingCategoriesForCardID = currentCardID } label: {
+                        detailRow("Categories", "tag.fill", .orange, value: "\(activeCount) of \(model.globalCategories.count)")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("cardCategoriesButton")
+                    if let card, !isNew {
+                        Divider().padding(.leading, 56)
+                        NavigationLink {
+                            PaymentMethodsView(model: model, cardID: card.id)
+                        } label: {
+                            detailRow("Paid with", "creditcard.and.123", .mint, value: model.paymentMethod(card.defaultPaidWithID)?.name ?? "None")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("cardPaidWith")
+                        Divider().padding(.leading, 56)
+                        NavigationLink {
+                            CurrencySettingsView(model: model, cardID: card.id, showsReporting: false)
+                        } label: {
+                            detailRow("Currency", "banknote.fill", .green,
+                                      value: card.spendingCurrency.map { $0 == model.currency(of: card) ? $0 : "\(model.currency(of: card)) · spend \($0)" } ?? model.currency(of: card))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("cardCurrency")
+                    }
                 }
             }
+            Text(isNew ? "Paid with and currency can be set once the card is saved."
+                       : "Categories save with the card. Paid with and currency apply as soon as you change them.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
         }
     }
 

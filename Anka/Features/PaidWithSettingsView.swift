@@ -3,26 +3,27 @@ import SwiftUI
 /// Paid with labels: an optional answer to "what paid for this?". Never a balance.
 struct PaymentMethodsView: View {
     @Bindable var model: AppModel
-    let cardID: UUID
+    /// With a card, the screen also picks that card's default; from Settings it only manages the labels.
+    let cardID: UUID?
     @State private var editing: PaymentMethod?
 
     private var card: Card? { model.cards.first { $0.id == cardID } }
     private var defaultTitle: String { "Default for \(card?.name ?? "this card")" }
     private var defaultSelection: Binding<UUID?> {
         Binding(get: { card?.defaultPaidWithID },
-                set: { id in model.performUIAction { try model.setDefaultPaidWith(id, for: cardID) } })
+                set: { id in if let cardID { model.performUIAction { try model.setDefaultPaidWith(id, for: cardID) } } })
     }
 
     var body: some View {
         Form {
-            Section {
+            if card != nil { Section {
                 Picker(defaultTitle, selection: defaultSelection) {
                     Text("None").tag(UUID?.none)
                     ForEach(model.paymentMethods) { method in Text(method.name).tag(UUID?.some(method.id)) }
                 }.accessibilityIdentifier("defaultPaidWith")
             } footer: {
                 Text("New expenses on this card start with this label. You can change it on each expense.")
-            }
+            } }
             Section {
                 ForEach(model.paymentMethods) { method in
                     Button { editing = method } label: {
@@ -79,7 +80,10 @@ private struct PaymentMethodEditor: View {
 /// Workspace reporting currency, and the active card's budget and spending currencies.
 struct CurrencySettingsView: View {
     @Bindable var model: AppModel
-    let cardID: UUID
+    /// The card whose budget and spending currencies to show; nil shows only the reporting currency.
+    let cardID: UUID?
+    /// Off inside the card customizer, where the screen is about that card.
+    var showsReporting = true
     @State private var pendingReporting: String?
     @State private var working = false
     @State private var error: String?
@@ -92,14 +96,14 @@ struct CurrencySettingsView: View {
 
     var body: some View {
         Form {
-            Section {
+            if showsReporting { Section {
                 Picker("Reporting currency", selection: Binding(get: { model.reportingCurrency }, set: { pendingReporting = $0 })) {
                     ForEach(choices, id: \.self) { Text($0).tag($0) }
                 }.disabled(working).accessibilityIdentifier("reportingCurrency")
             } footer: {
                 Text("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day and makes a safety backup first.")
-            }
-            if let card {
+            } }
+            if let card, let cardID {
                 Section {
                     Picker("Budget currency", selection: Binding(get: { model.currency(of: card) }, set: { code in
                         run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: cardID) }

@@ -466,6 +466,13 @@ final class AnkaUITests: XCTestCase {
         add(attachment)
     }
 
+    /// Settings is a lazy list: rows below the fold exist only once scrolled near.
+    @discardableResult
+    private func scrolledTo(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        for _ in 0..<6 where !(element.exists && element.isHittable) { app.swipeUp() }
+        return element
+    }
+
     private func openSettings(_ app: XCUIApplication) {
         if app.buttons["homeSettings"].exists && app.buttons["homeSettings"].isHittable {
             app.buttons["homeSettings"].tap()
@@ -540,7 +547,7 @@ final class AnkaUITests: XCTestCase {
         app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString
         app.launch()
         openSettings(app)
-        app.buttons["backupSettings"].tap()
+        scrolledTo(app.buttons["backupSettings"], in: app).tap()
         XCTAssertTrue(app.buttons["exportBackup"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["importBackup"].exists)
         let screen = XCTAttachment(screenshot: app.screenshot())
@@ -557,7 +564,7 @@ final class AnkaUITests: XCTestCase {
         app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString
         app.launch()
         openSettings(app)
-        app.buttons["backupSettings"].tap()
+        scrolledTo(app.buttons["backupSettings"], in: app).tap()
         app.buttons["exportBackup"].tap()
         XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
         app.buttons["Save"].tap()
@@ -634,20 +641,16 @@ final class AnkaUITests: XCTestCase {
         app.launch()
         openSettings(app)
 
-        let autoToggle = app.switches["autoAppearanceToggle"]
-        if !autoToggle.waitForExistence(timeout: 2) { app.swipeUp() }
-        XCTAssertTrue(autoToggle.waitForExistence(timeout: 5))
-        XCTAssertEqual(autoToggle.value as? String, "0")
-
-        // The picker sits below the toggle; the lazy Form only loads it once scrolled into view.
-        let picker = app.segmentedControls["appearanceModePicker"]
+        // One menu picker: System follows iOS, Light and Dark pin it.
+        let picker = app.buttons["appearancePicker"]
         for _ in 0..<3 where !picker.isHittable { app.swipeUp() }
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        picker.buttons["Dark"].tap()
-
-        // Turn on auto switch
-        autoToggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        XCTAssertEqual(autoToggle.value as? String, "1")
+        picker.tap()
+        app.buttons["Dark"].tap()
+        XCTAssertTrue(picker.label.contains("Dark"))
+        picker.tap()
+        app.buttons["System"].tap()
+        XCTAssertTrue(picker.label.contains("System"))
 
         // Dismiss settings
         app.buttons["Done"].tap()
@@ -689,10 +692,8 @@ final class AnkaUITests: XCTestCase {
 
         // Verify Customizer view is displayed
         XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.segmentedControls["cardCustomizerTabPicker"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls["customizerPane"].waitForExistence(timeout: 5))
 
-        // Switch to Stock designs
-        app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
 
         let customizerSheetShot = app.screenshot()
         add(XCTAttachment(screenshot: customizerSheetShot))
@@ -815,12 +816,14 @@ final class AnkaUITests: XCTestCase {
 
         // Verify active card is horizontally center-aligned and neighboring card peeks subtly
         let windowWidth = app.windows.element(boundBy: 0).frame.width
-        let activeCardFrame = previews.element(boundBy: 0).frame
+        // The carousel opens on the card being customized, which need not be the first.
+        let frames = previews.allElementsBoundByIndex.map(\.frame) + [app.buttons["customizerPlaceholderCard"].frame]
+        let activeCardFrame = frames.min { abs($0.midX - windowWidth / 2) < abs($1.midX - windowWidth / 2) } ?? .zero
         let leadingSpace = activeCardFrame.minX
         let trailingSpace = windowWidth - activeCardFrame.maxX
         XCTAssertEqual(leadingSpace, trailingSpace, accuracy: 3.0, "Active card in customizer carousel must be center-aligned")
 
-        let neighboringCardFrame = previews.element(boundBy: 1).frame
+        let neighboringCardFrame = frames.filter { $0.minX > activeCardFrame.maxX }.min { $0.minX < $1.minX } ?? .zero
         let peek = windowWidth - neighboringCardFrame.minX
         XCTAssertLessThanOrEqual(peek, 30.0, "Neighboring card peek should be subtle, not excessive")
         XCTAssertGreaterThanOrEqual(peek, 5.0, "Neighboring card should still peek slightly into view")
@@ -835,8 +838,6 @@ final class AnkaUITests: XCTestCase {
         let secondCardShot = app.screenshot()
         add(XCTAttachment(screenshot: secondCardShot))
 
-        // Switch to Stock tab
-        app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
 
         // Select Sunset Heat
         let sunset = app.buttons["stockDesign-sunsetHeat"]
@@ -871,14 +872,10 @@ final class AnkaUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Customize Card"].waitForExistence(timeout: 5))
 
-        // 2. Find and tap the card name button on the active card
-        let nameButton = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'cardNameButton-'")).element(boundBy: 0)
-        XCTAssertTrue(nameButton.waitForExistence(timeout: 5))
-        nameButton.tap()
-
-        // 3. Verify inline TextField appears
+        // 2-3. The name field sits under the carousel; tap it to rename
         let inlineTextField = app.textFields["cardNameInlineTextField"]
         XCTAssertTrue(inlineTextField.waitForExistence(timeout: 5))
+        inlineTextField.tap()
 
         // Take a screenshot of the inline card rename in progress
         let renameShot = app.screenshot()
@@ -891,10 +888,8 @@ final class AnkaUITests: XCTestCase {
         }
         inlineTextField.typeText("Groceries")
 
-        // 5. Commit inline rename via checkmark button
-        let commitButton = app.buttons["cardNameInlineCommitButton"]
-        XCTAssertTrue(commitButton.waitForExistence(timeout: 5))
-        commitButton.tap()
+        // 5. Return commits the name
+        inlineTextField.typeText("\n")
 
         // 6. Verify the card name is updated in the preview
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
@@ -945,8 +940,7 @@ final class AnkaUITests: XCTestCase {
             if commitBtn.waitForExistence(timeout: 2) { commitBtn.tap() }
         }
 
-        // 4. Select Stock tab and pick Aurora design
-        app.segmentedControls["cardCustomizerTabPicker"].buttons["Stock"].tap()
+        // 4. Pick the Aurora design
         let aurora = app.buttons["stockDesign-auroraBorealis"]
         XCTAssertTrue(aurora.waitForExistence(timeout: 5))
         aurora.tap()
@@ -1664,7 +1658,7 @@ final class AnkaUITests: XCTestCase {
         settingsBtn.tap()
 
         // 2. Tap "Reset data" in Settings
-        let resetLink = app.buttons["resetDataSettings"]
+        let resetLink = scrolledTo(app.buttons["resetDataSettings"], in: app)
         XCTAssertTrue(resetLink.waitForExistence(timeout: 5))
         resetLink.tap()
 
@@ -1728,4 +1722,5 @@ final class AnkaUITests: XCTestCase {
         // 6. Reset back to Card First preset
         app.buttons["presetCardFirst"].tap()
     }
+
 }
