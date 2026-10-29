@@ -1128,7 +1128,7 @@ final class AnkaUITests: XCTestCase {
     }
 
     @MainActor
-    func testCardReorderingAndBringToFront() throws {
+    func testCardReorderingAndMoveToBack() throws {
         let app = XCUIApplication()
         app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
@@ -1143,9 +1143,9 @@ final class AnkaUITests: XCTestCase {
             let secondCard = cards.element(boundBy: 1)
             secondCard.press(forDuration: 1.0)
 
-            let bringToFrontButton = app.buttons["Bring to Front"]
-            if bringToFrontButton.waitForExistence(timeout: 3) {
-                bringToFrontButton.tap()
+            let moveToBackButton = app.buttons["Move to Back"]
+            if moveToBackButton.waitForExistence(timeout: 3) {
+                moveToBackButton.tap()
                 Thread.sleep(forTimeInterval: 0.5)
             }
         }
@@ -1421,16 +1421,16 @@ final class AnkaUITests: XCTestCase {
         XCTAssertTrue(app.buttons["homeLogo"].exists, "Header must maintain anka logo during long-press")
 
         // Context menu items must exist
-        let bringToFront = app.buttons["Bring to Front"]
+        let moveToBack = app.buttons["Move to Back"]
         let flip = app.buttons["Flip"]
         let customize = app.buttons["Customize card"]
 
-        XCTAssertTrue(bringToFront.waitForExistence(timeout: 5))
+        XCTAssertTrue(moveToBack.waitForExistence(timeout: 5))
         XCTAssertTrue(flip.exists)
         XCTAssertTrue(customize.exists)
 
         // Context menu must be anchored to the card, NOT stuck at the bottom of the screen
-        let menuFrame = bringToFront.frame
+        let menuFrame = moveToBack.frame
         XCTAssertLessThan(menuFrame.minY, 650, "Context menu must anchor adjacent to the card, not at the bottom of the screen")
         XCTAssertGreaterThan(menuFrame.minY, thirdCardFrame.minY, "Context menu must appear below card top edge")
 

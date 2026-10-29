@@ -26,16 +26,16 @@ struct PaymentMethodsView: View {
             Section {
                 ForEach(model.paymentMethods) { method in
                     Button { editing = method } label: {
-                        Label(method.name, systemImage: method.kind.symbol).foregroundStyle(.primary)
+                        Label { Text(method.name).foregroundStyle(.primary) } icon: { SettingsIcon(symbol: method.kind.symbol, color: .mint) }
                     }
                 }
-                Button("Add label", systemImage: "plus") { editing = PaymentMethod(name: "") }
+                Button { editing = PaymentMethod(name: "") } label: { Label { Text("Add label") } icon: { SettingsIcon(symbol: "plus", color: .gray) } }
                     .accessibilityIdentifier("addPaymentMethod")
             } header: { Text("Labels") } footer: {
-                Text("Paid with records how you paid, like BCA debit or Cash. Anka never tracks balances.")
+                Text("Paid with records how you paid, like BCA debit or Cash. Anka never tracks what is left on them.")
             }
         }
-        .navigationTitle("Paid with")
+        .navigationTitle("Paid with").navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editing) { method in PaymentMethodEditor(model: model, method: method) }
     }
 }
@@ -118,7 +118,7 @@ struct CurrencySettingsView: View {
             if working { Section { HStack { ProgressView(); Text("Converting…") } } }
             if let error { Section { Text(error).foregroundStyle(MC.red) } }
         }
-        .navigationTitle("Currency")
+        .navigationTitle("Currency").navigationBarTitleDisplayMode(.inline)
         .alert("Change reporting currency to \(pendingReporting ?? "")?", isPresented: Binding(get: { pendingReporting != nil }, set: { if !$0 { pendingReporting = nil } })) {
             Button("Convert") {
                 let code = pendingReporting; pendingReporting = nil
@@ -139,7 +139,7 @@ struct CurrencySettingsView: View {
     }
 }
 
-/// Which optional fields the Add Expense form shows.
+/// Which optional fields the Add sheet shows.
 struct EntryFormSettingsView: View {
     @Bindable var model: AppModel
 
@@ -154,6 +154,6 @@ struct EntryFormSettingsView: View {
             } footer: {
                 Text("Amount, card and category are always shown. A hidden field still appears when an expense already has a value for it. A hidden date means today.")
             }
-        }.navigationTitle("Add Expense form")
+        }.navigationTitle("Add sheet fields").navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -23,7 +23,7 @@ struct ChatChartView: View {
             }
         }
         .padding(16)
-        .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 20, style: .continuous))
+        .background(Color.chatSurface, in: .rect(cornerRadius: 20, style: .continuous))
         // Hug the content (the donut legend) up to a readable width, left-aligned like the reply under it.
         .frame(maxWidth: 480, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,7 +73,7 @@ struct ChatChartView: View {
         let fraction = max > 0 ? Swift.min(CGFloat(Double(value) / Double(max)), 1) : 0
         return GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.12))
+                Capsule().fill(Color.chatTrack)
                 Capsule().fill(color).frame(width: value > 0 ? Swift.max(proxy.size.width * fraction, height) : 0)
             }
         }

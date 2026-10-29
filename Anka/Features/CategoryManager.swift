@@ -41,6 +41,7 @@ struct CategoryManager: View {
                 byCardView
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("Categories")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -119,7 +120,7 @@ struct CategoryManager: View {
                     }
                 }
             } header: {
-                Text("Global Catalog (\(model.globalCategories.count))")
+                Text("All categories (\(model.globalCategories.count))")
             } footer: {
                 Text("Tap any category to change its name, icon, card activations, or default availability for future cards.")
             }
@@ -168,7 +169,7 @@ struct CategoryManager: View {
                 }
                 .pickerStyle(.menu)
             } header: {
-                Text("Selected Card")
+                Text("Card")
             }
 
             Section {
@@ -218,7 +219,7 @@ struct CategoryManager: View {
                     }
                 }
             } header: {
-                Text("Card Categories")
+                Text("Categories on this card")
             } footer: {
                 Text("Deactivating a category hides it when logging new expenses on this card. Past expenses in this category are kept.")
             }

@@ -123,58 +123,79 @@ struct CardGesturesModifier: ViewModifier {
     let displayedCardsCount: Int
     let onFlip: () -> Void
     let onCustomize: () -> Void
-    let onMoveToFront: () -> Void
+    let onMoveToBack: () -> Void
     let onDragAmountChanged: (CGFloat) -> Void
     let onDragCardIDChanged: (UUID?) -> Void
     let onDragEnded: (DragGesture.Value) -> Void
     let onSwipeOffsetChanged: (CGFloat) -> Void
     let onSwipingCardIDChanged: (UUID?) -> Void
+    /// Past this, letting go sends the card to the back. A flick counts from its predicted end.
+    private static let moveDistance: CGFloat = 45
+
+    /// Picked once per drag: vertical fans the stack, horizontal carries the card like drag and drop.
+    @State private var axis: Axis?
+    /// Whether the card is past the move distance, so crossing it ticks once each way.
+    @State private var armed = false
+
+    /// Screen coordinates: the card moves under the finger, and in its own space each move would shrink the next
+    /// translation, which made both drags stutter.
+    private var stackDrag: some Gesture {
+        DragGesture(minimumDistance: 7, coordinateSpace: .global)
+            .onChanged { value in
+                if axis == nil {
+                    let horizontal = abs(value.translation.width) > abs(value.translation.height)
+                    // The back card has nowhere further back to go, so it only fans.
+                    axis = horizontal && index > 0 ? .horizontal : .vertical
+                    if axis == .horizontal {
+                        // Lift: the card scales up a touch as it comes off the stack.
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.7)) { onSwipingCardIDChanged(card.id) }
+                    } else { onDragCardIDChanged(card.id) }
+                }
+                if axis == .horizontal {
+                    onSwipeOffsetChanged(value.translation.width)
+                    let past = abs(value.translation.width) > Self.moveDistance
+                    if past != armed {
+                        armed = past
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                } else {
+                    let amount = value.translation.height > 0
+                        ? pow(value.translation.height, 0.92) * 0.95 : value.translation.height * 0.72
+                    onDragAmountChanged(amount)
+                }
+            }
+            .onEnded { value in
+                defer { axis = nil; armed = false }
+                guard axis == .horizontal else { return onDragEnded(value) }
+                let travel = value.translation.width
+                let moves = abs(travel) > Self.moveDistance || abs(value.predictedEndTranslation.width) > Self.moveDistance * 3
+                if moves { onMoveToBack() }
+                guard !reduceMotion, travel != 0 else {
+                    onSwipeOffsetChanged(0)
+                    onSwipingCardIDChanged(nil)
+                    return
+                }
+                // The finger's speed carries into the spring (relative to the distance left), so a throw overshoots
+                // and swings home instead of easing in flat.
+                let velocity = min(max(value.velocity.width / -travel, -10), 10)
+                withAnimation(.interpolatingSpring(mass: 1, stiffness: 154, damping: 15.3, initialVelocity: velocity)) {
+                    onSwipeOffsetChanged(0)
+                    onSwipingCardIDChanged(nil)
+                }
+            }
+    }
 
     func body(content: Content) -> some View {
         content
             .allowsHitTesting(!expanded || isSelected)
-            .gesture(
-                !expanded ?
-                DragGesture(minimumDistance: 7)
-                    .onChanged { value in
-                        guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                        onDragCardIDChanged(card.id)
-                        let amount = value.translation.height > 0
-                            ? pow(value.translation.height, 0.92) * 0.95 : value.translation.height * 0.72
-                        onDragAmountChanged(amount)
-                    }
-                    .onEnded { value in
-                        onDragEnded(value)
-                    }
-                : nil
-            )
-            .simultaneousGesture(
-                (index > 0 && !expanded) ?
-                DragGesture(minimumDistance: 20)
-                    .onChanged { value in
-                        if value.translation.width > 12 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
-                            onSwipeOffsetChanged(min(70, value.translation.width))
-                            onSwipingCardIDChanged(card.id)
-                        }
-                    }
-                    .onEnded { value in
-                        if value.translation.width > 45 && abs(value.translation.width) > abs(value.translation.height) * 1.3 {
-                            onMoveToFront()
-                        }
-                        withAnimation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75)) {
-                            onSwipeOffsetChanged(0)
-                            onSwipingCardIDChanged(nil)
-                        }
-                    }
-                : nil
-            )
+            .gesture(!expanded ? stackDrag : nil)
             .contextMenu {
                 if !expanded {
                     if displayedCardsCount > 1 && index > 0 {
                         Button {
-                            onMoveToFront()
+                            onMoveToBack()
                         } label: {
-                            Label("Bring to Front", systemImage: "arrow.up.to.line")
+                            Label("Move to Back", systemImage: "arrow.up.to.line")
                         }
                     }
                     Button {
@@ -264,6 +285,19 @@ struct WalletStackLayout: Layout {
     }
 }
 
+/// Unsaved appearance drafts from the card customizer, so Home shows edits behind the sheet.
+/// Empty unless the customizer is open; cancel or swipe-dismiss clears it and Home falls back to the saved look.
+private struct CardAppearancePreviewKey: EnvironmentKey {
+    static let defaultValue: [UUID: CardCustomization] = [:]
+}
+
+extension EnvironmentValues {
+    var cardAppearancePreview: [UUID: CardCustomization] {
+        get { self[CardAppearancePreviewKey.self] }
+        set { self[CardAppearancePreviewKey.self] = newValue }
+    }
+}
+
 /// Main home screen presenting an Apple Wallet-style stacked card deck with durable multi-card persistence.
 struct CardHomeView: View {
     @Bindable var model: AppModel
@@ -299,6 +333,7 @@ struct CardHomeView: View {
     @State private var swipingCardID: UUID? = nil
     @State private var swipeOffset: CGFloat = 0.0
     @State private var selectedExpenseForDetail: Expense? = nil
+    @State private var appearancePreview: [UUID: CardCustomization] = [:]
 
     private var stackKey: String {
         "\(model.filterScope.rawValue)-\(model.activeStackID?.uuidString ?? "all")"
@@ -338,7 +373,7 @@ struct CardHomeView: View {
     }
 
     private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
-        let toolbarHeight: CGFloat = 52
+        let toolbarHeight = HomeMetrics.barHeight
         // Shorten the full fade from 88 pt to 66 pt (25%), ending closer to the toolbar.
         let featherHeight: CGFloat = 22
         let totalHeight = safeAreaTop + toolbarHeight + featherHeight
@@ -436,14 +471,16 @@ struct CardHomeView: View {
                 model.showStackCustomizer = false
             }
         }
-        .sheet(item: $model.customizerTarget) { target in
+        .environment(\.cardAppearancePreview, appearancePreview)
+        .sheet(item: $model.customizerTarget, onDismiss: { appearancePreview = [:] }) { target in
             switch target {
             case .existing(let card):
                 CardCustomizerView(
                     model: model,
                     initialCard: card,
                     cards: visible.isEmpty ? model.unhiddenCards : visible,
-                    isCreatingNewCard: false
+                    isCreatingNewCard: false,
+                    previewOverrides: $appearancePreview
                 ) {
                     model.customizerTarget = nil
                 }
@@ -452,7 +489,8 @@ struct CardHomeView: View {
                     model: model,
                     initialCard: visible.first ?? model.unhiddenCards.first,
                     cards: visible.isEmpty ? model.unhiddenCards : visible,
-                    isCreatingNewCard: true
+                    isCreatingNewCard: true,
+                    previewOverrides: $appearancePreview
                 ) {
                     model.customizerTarget = nil
                 }
@@ -549,14 +587,13 @@ struct CardHomeView: View {
             optionsMenu
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, 8)
-        .frame(height: 52)
+        .frame(height: HomeMetrics.barHeight)
     }
 
     private func home(width: CGFloat, height: CGFloat) -> some View {
         let cardWidth = width - 40
-        let cardHeight = cardWidth * 0.63
-        let step = cardWidth * 0.152
+        let cardHeight = cardWidth * CardStackMetrics.aspect
+        let step = cardWidth * CardStackMetrics.peek
         let restingHeight = CGFloat(max(0, displayedCards.count - 1)) * step + cardHeight
 
         return ScrollView {
@@ -591,7 +628,7 @@ struct CardHomeView: View {
                     .blur(radius: expanded && !reduceMotion ? 10 : 0)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 68)
+            .padding(.top, HomeMetrics.contentTop)
         }
         .scrollClipDisabled()
         .scrollIndicators(.hidden)
@@ -629,7 +666,7 @@ struct CardHomeView: View {
 
     private func detail(_ card: Card, width: CGFloat) -> some View {
         let heroWidth = width - 32
-        let heroHeight = heroWidth * 0.63
+        let heroHeight = heroWidth * CardStackMetrics.aspect
         let progress = min(max(dismissAmount / 280, 0), 1)
 
         return ScrollView {
@@ -648,7 +685,7 @@ struct CardHomeView: View {
                     .allowsHitTesting(expanded && dismissAmount == 0)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 64)
+            .padding(.top, HomeMetrics.contentTop)
         }
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, value in
@@ -704,6 +741,9 @@ struct CardHomeView: View {
         let posY = target.midY + otherOffset + (isSelected && expanded && !reduceMotion ? dismissAmount : 0)
 
         cardInteractiveView(card: card, index: index, target: target, isSelected: isSelected)
+            // A carried card leans with the drag, pivoting at its bottom edge, and sits a little lifted.
+            .rotationEffect(.degrees(swipingCardID == card.id ? Double(swipeOffset / max(target.width, 1)) * 9 : 0), anchor: .bottom)
+            .scaleEffect(swipingCardID == card.id ? 1.03 : 1)
             .shadow(
                 color: isSelected && expanded
                     ? Color.black.opacity(colorScheme == .dark ? 0.38 : 0.16)
@@ -771,11 +811,11 @@ struct CardHomeView: View {
                     toggleFlip(for: card.id)
                 },
                 onCustomize: { openCustomizer(for: card) },
-                onMoveToFront: {
+                onMoveToBack: {
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                        model.moveCardToFront(card.id)
+                    withAnimation(.spring(response: 0.355, dampingFraction: 0.82)) {
+                        model.moveCardToBack(card.id)
                     }
                 },
                 onDragAmountChanged: { val in dragAmount = val },
@@ -871,9 +911,208 @@ struct CardHomeView: View {
         }
     }
 
+/// The expense list under the stack. Equatable on its rows, so a card drag, which re-renders Home every frame, skips the whole list.
+private struct ActivityList: View, @MainActor Equatable {
+    static let rowHeight: CGFloat = 56
+    let activities: [Expense]
+    let showCardLabel: Bool
+    let model: AppModel
+    let ink: Color
+    let select: (Expense) -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.activities == rhs.activities && lhs.showCardLabel == rhs.showCardLabel && lhs.ink == rhs.ink
+    }
+
+    var body: some View {
+        List {
+            ForEach(activities) { expense in
+                row(expense)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(MC.surface)
+            }
+        }
+        .listStyle(.plain)
+        .scrollDisabled(true)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, Self.rowHeight)
+        .environment(\.defaultMinListHeaderHeight, 0)
+        .listSectionSpacing(.custom(0))
+        .frame(height: CGFloat(activities.count) * Self.rowHeight)
+        .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func row(_ expense: Expense) -> some View {
+        Button {
+            select(expense)
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2.5) {
+                    Text(model.title(expense))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ink)
+                        .lineLimit(1)
+                    Text(showCardLabel && expense.cardID != nil ? "\(expense.day) · \(model.cards.first(where: { $0.id == expense.cardID })?.name ?? "")" : expense.day)
+                        .font(.system(size: 11.5, weight: .regular))
+                        .foregroundStyle(ink.opacity(0.55))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(expense.paidText)
+                        .font(.system(size: 13.5, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(ink)
+                    if let note = expense.reportingNote {
+                        Text(note).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .frame(height: Self.rowHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                model.edit(expense)
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(Color.blue)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                model.delete(expense)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(showCardLabel && expense.cardID != nil
+            ? "\(model.title(expense)), \(expense.day) · \(model.cards.first(where: { $0.id == expense.cardID })?.name ?? ""), \(Money.format(expense.amount))"
+            : "\(model.title(expense)), \(expense.day), \(Money.format(expense.amount))")
+        .accessibilityIdentifier("expense-\(expense.note)")
+        .contextMenu {
+            Button("Edit", systemImage: "pencil") {
+                model.edit(expense)
+            }
+            Button("Repeat", systemImage: "repeat") {
+                model.repeatExpense(expense)
+            }
+            Button("Delete", systemImage: "trash", role: .destructive) {
+                model.delete(expense)
+            }
+        }
+    }
+}
+
+/// The card's printed side: name, number, total and count. Equatable on what it shows, so fanning and cycling
+/// the stack, which re-render every card each frame, only move it. Model reads inside still refresh it on data changes.
+private struct CardFaceText: View, @MainActor Equatable {
+    let card: Card
+    let index: Int
+    let showsFlip: Bool
+    let textStyle: Color
+    let amountFont: Font
+    let model: AppModel
+    /// The per-card totals come from unobserved caches; a new revision is what tells this view they changed.
+    let revision: UInt64
+    let onFlip: () -> Void
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.card == rhs.card && lhs.index == rhs.index && lhs.showsFlip == rhs.showsFlip
+            && lhs.textStyle == rhs.textStyle && lhs.amountFont == rhs.amountFont && lhs.revision == rhs.revision
+    }
+
+    var body: some View {
+        let cardExpenses = model.expenses(for: card.id)
+        let total = model.spent(for: card.id)
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                Text(card.name)
+                    .font(.system(size: 16, weight: .semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+
+                HStack(spacing: 6) {
+                    if showsFlip {
+                        Button {
+                            onFlip()
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(textStyle)
+                                .padding(5)
+                                .background(textStyle.opacity(0.12), in: Circle())
+                        }
+                        .buttonStyle(CardDeckButtonStyle())
+                        .accessibilityLabel("Flip card")
+                        .accessibilityIdentifier("cardFlipButton")
+                    }
+
+                    Text(String(format: "%02d", index + 1))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(textStyle.opacity(0.8))
+                }
+            }
+            .frame(minHeight: 28, alignment: .top)
+
+            Spacer(minLength: 0)
+
+            Text(Money.format(total, code: model.currency(of: card)))
+                .font(amountFont)
+                .monospacedDigit()
+                .minimumScaleFactor(0.65)
+            if let other = model.secondaryCurrency(of: card),
+               let approx = model.approximate(total, from: model.currency(of: card), to: other) {
+                Text("≈ \(Money.format(approx, code: other))")
+                    .font(.caption.monospacedDigit())
+                    .opacity(0.8)
+            }
+            Text("\(cardExpenses.count) EXPENSES")
+                .font(.system(size: 11, weight: .medium).monospaced())
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .foregroundStyle(textStyle)
+    }
+}
+
+/// Card background art. Value inputs only, so SwiftUI skips it while the card moves.
+private struct CardArtwork: View {
+    let customization: CardCustomization
+    let fallbackColorIndex: Int
+
+    var body: some View {
+        switch customization.style {
+        case .palette(let index):
+            CardPalette.color(for: index)
+        case .customColor(let hex):
+            CardPalette.color(fromHex: hex)
+        case .stock(let design):
+            StockDesignBackgroundView(design: design)
+        case .customPhoto(let filename):
+            if let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                CardPalette.color(for: fallbackColorIndex)
+            }
+        }
+    }
+}
+
 // MARK: - Isolated 3D Card Presentation
 struct CardPresentationView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.cardAppearancePreview) private var appearancePreview
     let card: Card
     let index: Int
     let isCurrent: Bool
@@ -973,67 +1212,20 @@ struct CardPresentationView: View {
     }
 
     private func cardFrontView(tiltShiftX: CGFloat, tiltShiftY: CGFloat) -> some View {
-        let cardExpenses = model.expenses(for: card.id)
-        let total = model.spent(for: card.id)
-        let customization = model.customization(for: card.id)
-        let textStyle = CardPalette.resolvedTextColor(for: customization)
+        let customization = appearancePreview[card.id] ?? model.customization(for: card.id)
 
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                Text(card.name)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-
-                HStack(spacing: 6) {
-                    if isCurrent && expanded {
-                        Button {
-                            onFlip()
-                        } label: {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(textStyle)
-                                .padding(5)
-                                .background(textStyle.opacity(0.12), in: Circle())
-                        }
-                        .buttonStyle(CardDeckButtonStyle())
-                        .accessibilityLabel("Flip card")
-                        .accessibilityIdentifier("cardFlipButton")
-                    }
-
-                    Text(String(format: "%02d", index + 1))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(textStyle.opacity(0.8))
+        return CardFaceText(card: card, index: index, showsFlip: isCurrent && expanded,
+                            textStyle: CardPalette.resolvedTextColor(for: customization),
+                            amountFont: amountFont, model: model, revision: model.dataRevision, onFlip: onFlip)
+            .equatable()
+            .background(
+                ZStack {
+                    CardArtwork(customization: customization, fallbackColorIndex: card.colorIndex)
+                    specularSheen(shiftX: tiltShiftX, shiftY: tiltShiftY)
                 }
-            }
-            .frame(minHeight: 28, alignment: .top)
-
-            Spacer(minLength: 0)
-
-            Text(Money.format(total, code: model.currency(of: card)))
-                .font(amountFont)
-                .monospacedDigit()
-                .minimumScaleFactor(0.65)
-            if let other = model.secondaryCurrency(of: card),
-               let approx = model.approximate(total, from: model.currency(of: card), to: other) {
-                Text("≈ \(Money.format(approx, code: other))")
-                    .font(.caption.monospacedDigit())
-                    .opacity(0.8)
-            }
-            Text("\(cardExpenses.count) EXPENSES")
-                .font(.system(size: 11, weight: .medium).monospaced())
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .foregroundStyle(textStyle)
-        .background(
-            ZStack {
-                cardBackground(for: customization, card: card)
-                specularSheen(shiftX: tiltShiftX, shiftY: tiltShiftY)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
     }
 
     @ViewBuilder
@@ -1050,26 +1242,6 @@ struct CardPresentationView: View {
             )
             .blendMode(.screen)
             .allowsHitTesting(false)
-        }
-    }
-
-    @ViewBuilder
-    private func cardBackground(for customization: CardCustomization, card: Card) -> some View {
-        switch customization.style {
-        case .palette(let index):
-            CardPalette.color(for: index)
-        case .customColor(let hex):
-            CardPalette.color(fromHex: hex)
-        case .stock(let design):
-            StockDesignBackgroundView(design: design)
-        case .customPhoto(let filename):
-            if let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                CardPalette.color(for: card.colorIndex)
-            }
         }
     }
 }
@@ -1134,91 +1306,8 @@ struct CardPresentationView: View {
                 .padding(.horizontal, 20)
                 .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             } else {
-                List {
-                    ForEach(activities) { row in
-                        activityRow(row, showCardLabel: cardID == nil, isPlatter: true)
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(MC.surface)
-                    }
-                }
-                .listStyle(.plain)
-                .scrollDisabled(true)
-                .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, activityRowHeight)
-                .environment(\.defaultMinListHeaderHeight, 0)
-                .listSectionSpacing(.custom(0))
-                .frame(height: CGFloat(activities.count) * activityRowHeight)
-                .background(MC.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            }
-        }
-    }
-
-    private let activityRowHeight: CGFloat = 56
-
-    private func activityRow(_ expense: Expense, showCardLabel: Bool, isPlatter: Bool = false) -> some View {
-        Button {
-            selectedExpenseForDetail = expense
-        } label: {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2.5) {
-                    Text(model.title(expense))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(ink)
-                        .lineLimit(1)
-                    Text(showCardLabel && expense.cardID != nil ? "\(expense.day) · \(model.cards.first(where: { $0.id == expense.cardID })?.name ?? "")" : expense.day)
-                        .font(.system(size: 11.5, weight: .regular))
-                        .foregroundStyle(ink.opacity(0.55))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(expense.paidText)
-                        .font(.system(size: 13.5, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(ink)
-                    if let note = expense.reportingNote {
-                        Text(note).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, isPlatter ? 16 : 0)
-            .frame(height: isPlatter ? activityRowHeight : 46)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                model.edit(expense)
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            .tint(Color.blue)
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                model.delete(expense)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(showCardLabel && expense.cardID != nil
-            ? "\(model.title(expense)), \(expense.day) · \(model.cards.first(where: { $0.id == expense.cardID })?.name ?? ""), \(Money.format(expense.amount))"
-            : "\(model.title(expense)), \(expense.day), \(Money.format(expense.amount))")
-        .accessibilityIdentifier("expense-\(expense.note)")
-        .contextMenu {
-            Button("Edit", systemImage: "pencil") {
-                model.edit(expense)
-            }
-            Button("Repeat", systemImage: "repeat") {
-                model.repeatExpense(expense)
-            }
-            Button("Delete", systemImage: "trash", role: .destructive) {
-                model.delete(expense)
+                ActivityList(activities: activities, showCardLabel: cardID == nil, model: model, ink: ink) { selectedExpenseForDetail = $0 }
+                    .equatable()
             }
         }
     }
@@ -1355,14 +1444,15 @@ struct CardPresentationView: View {
             }
             .accessibilityIdentifier("homeSettings")
         } label: {
+            // Sized like a system toolbar glass button: 44 pt circle, dots about 20 pt wide.
+            // Glass sits on the label: on the Menu it wrapped the label's intrinsic size and rendered at about 37 pt.
             Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(ink)
-                .frame(width: 38, height: 38)
+                .frame(width: HomeMetrics.hitTarget, height: HomeMetrics.hitTarget)
+                .glassEffect(.regular.interactive(), in: .circle)
                 .contentShape(Circle())
         }
-        .buttonStyle(PressFeedbackStyle())
-        .glassEffect(.regular.interactive(), in: .circle)
         .accessibilityLabel("Options")
         .accessibilityIdentifier("bookOptionsMenu")
     }

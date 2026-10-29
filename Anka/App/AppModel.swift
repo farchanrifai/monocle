@@ -841,7 +841,8 @@ final class AppModel {
         catch { report(error) }
     }
 
-    func moveCardToFront(_ cardID: UUID) {
+    /// First in order is the back of the stack: only its title strip shows.
+    func moveCardToBack(_ cardID: UUID) {
         var proposed = workspacePreferences
         if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
             var cardIDs = stacks[idx].cardIDs.filter { $0 != cardID }
@@ -852,7 +853,7 @@ final class AppModel {
             currentOrder.insert(cardID, at: 0)
             proposed.cardOrder = currentOrder
         }
-        do { try commitPresentationPreferences(proposed); showToast("Moved to front") }
+        do { try commitPresentationPreferences(proposed); showToast("Moved to back") }
         catch { report(error) }
     }
 

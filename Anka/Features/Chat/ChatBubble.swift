@@ -67,7 +67,7 @@ struct ChatBubble<Content: View>: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .foregroundStyle(isUser ? Color.white : Color.primary)
-            .background(BubbleShape(isUser: isUser, hasTail: hasTail).fill(isUser ? MC.red : Color.secondary.opacity(0.16)))
+            .background(BubbleShape(isUser: isUser, hasTail: hasTail).fill(isUser ? MC.red : Color.chatSurface))
             .modifier(GrowIn(active: growing, anchor: isUser ? .bottomTrailing : .bottomLeading))
             .transition(rowID != nil ? .identity : .opacity)
             .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)

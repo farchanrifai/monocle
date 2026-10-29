@@ -9,6 +9,24 @@ enum MC {
     static func label(_ size: CGFloat = 10) -> Font { .system(size: size, weight: .medium) }
 }
 
+/// Home card stack geometry, shared by the stack, the detail hero and the open/close animation.
+enum CardStackMetrics {
+    /// Card height as a fraction of its width.
+    static let aspect: CGFloat = 0.60
+    /// Visible strip of each card behind the front one, as a fraction of card width.
+    static let peek: CGFloat = 0.125
+}
+
+/// Home top chrome, sized like the system navigation bar.
+enum HomeMetrics {
+    /// Standard iOS navigation bar content height.
+    static let barHeight: CGFloat = 44
+    /// Minimum tappable size of a toolbar button.
+    static let hitTarget: CGFloat = 44
+    /// Scroll content inset below the safe area: the bar plus a 12 pt gap.
+    static let contentTop: CGFloat = barHeight + 12
+}
+
 struct Eyebrow: View {
     let text: String
     var body: some View {

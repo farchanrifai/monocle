@@ -667,171 +667,87 @@ struct SettingsView: View {
             ?? model.settings.card
     }
 
+    /// Icon badge + title, with an optional trailing value. One look for every settings row.
+    @ViewBuilder
+    private func row(_ title: LocalizedStringKey, _ symbol: String, _ color: Color, value: String? = nil) -> some View {
+        let label = Label { Text(title) } icon: { SettingsIcon(symbol: symbol, color: color) }
+        if let value {
+            LabeledContent { Text(value).foregroundStyle(.secondary).lineLimit(1) } label: { label }
+        } else {
+            label
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
+            List {
+                // Pro first: status, and Upgrade stays prominent
                 if model.pro != nil { SubscriptionSection(model: model) }
 
-                // MARK: 1. Active Card & Categories
+                // Card
                 Section {
                     if activeCard.kind == .real {
                         NavigationLink {
                             RenameCardView(model: model, card: activeCard)
                         } label: {
-                            LabeledContent {
-                                Text(activeCard.name)
-                                    .foregroundStyle(.secondary)
-                            } label: {
-                                Label {
-                                    Text("Card name")
-                                } icon: {
-                                    SettingsIcon(symbol: "creditcard.fill", color: .indigo)
-                                }
-                            }
+                            row("Card name", "creditcard.fill", .indigo, value: activeCard.name)
                         }
                         .accessibilityIdentifier("renameRealBook")
                     } else {
-                        LabeledContent {
-                            Text(activeCard.name).foregroundStyle(.secondary)
-                        } label: {
-                            Label("Card name", systemImage: "creditcard.fill")
-                        }
+                        row("Card name", "creditcard.fill", .indigo, value: activeCard.name)
                     }
+                } header: {
+                    Text("Card")
+                } footer: {
+                    Text("Paid with and Currency below apply to this card.")
+                }
 
+                // Expenses
+                Section {
                     NavigationLink {
                         CategoryManager(model: model)
                     } label: {
-                        LabeledContent {
-                            Text("\(model.globalCategories.count)")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label {
-                                Text("Categories")
-                            } icon: {
-                                SettingsIcon(symbol: "tag.fill", color: .orange)
-                            }
-                        }
+                        row("Categories", "tag.fill", .orange, value: "\(model.globalCategories.count)")
                     }
                     .accessibilityIdentifier("manageCategories")
 
                     NavigationLink {
                         PaymentMethodsView(model: model, cardID: activeCard.id)
                     } label: {
-                        LabeledContent {
-                            Text(model.paymentMethod(activeCard.defaultPaidWithID)?.name ?? "\(model.paymentMethods.count)")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label {
-                                Text("Paid with")
-                            } icon: {
-                                SettingsIcon(symbol: "creditcard.and.123", color: .mint)
-                            }
-                        }
+                        row("Paid with", "creditcard.and.123", .mint,
+                            value: model.paymentMethod(activeCard.defaultPaidWithID)?.name ?? "\(model.paymentMethods.count)")
                     }
                     .accessibilityIdentifier("paidWithSettings")
 
                     NavigationLink {
                         CurrencySettingsView(model: model, cardID: activeCard.id)
                     } label: {
-                        LabeledContent {
-                            Text(model.currency(of: activeCard) == model.reportingCurrency ? model.reportingCurrency
-                                 : "\(model.currency(of: activeCard)) · reports \(model.reportingCurrency)")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label {
-                                Text("Currency")
-                            } icon: {
-                                SettingsIcon(symbol: "banknote.fill", color: .green)
-                            }
-                        }
+                        row("Currency", "banknote.fill", .green,
+                            value: model.currency(of: activeCard) == model.reportingCurrency ? model.reportingCurrency
+                                : "\(model.currency(of: activeCard)) · reports \(model.reportingCurrency)")
                     }
                     .accessibilityIdentifier("currencySettings")
-                } header: {
-                    Text("Active Card")
-                }
 
-                // MARK: 2. Data & Storage
-                Section {
-                    NavigationLink {
-                        BackupView(model: model)
-                    } label: {
-                        Label {
-                            Text("Backup & restore")
-                        } icon: {
-                            SettingsIcon(symbol: "arrow.triangle.2.circlepath", color: .blue)
-                        }
-                    }
-                    .accessibilityIdentifier("backupSettings")
-
-                    NavigationLink {
-                        CSVInterchangeView(model: model, showsDismissButton: false)
-                    } label: {
-                        Label {
-                            Text("CSV export & import")
-                        } icon: {
-                            SettingsIcon(symbol: "tablecells.fill", color: .teal)
-                        }
-                    }
-                    .accessibilityIdentifier("csvInterchangeSettings")
-
-                    NavigationLink {
-                        ResetDataView(model: model)
-                    } label: {
-                        Label {
-                            Text("Reset data")
-                        } icon: {
-                            SettingsIcon(symbol: "trash.fill", color: MC.red)
-                        }
-                    }
-                    .accessibilityIdentifier("resetDataSettings")
-                } header: {
-                    Text("Data & Storage")
-                } footer: {
-                    Text("Export full JSON snapshots, import spreadsheets, or reset data to start fresh.")
-                }
-
-                // MARK: 3. Expense Input
-                Section {
                     NavigationLink {
                         EntryFormSettingsView(model: model)
                     } label: {
-                        Label {
-                            Text("Add Expense form")
-                        } icon: {
-                            SettingsIcon(symbol: "list.bullet.rectangle", color: .indigo)
-                        }
+                        row("Add sheet fields", "list.bullet.rectangle", .indigo)
                     }
                     .accessibilityIdentifier("entryFormSettings")
-                } header: {
-                    Text("Expense Input")
-                }
 
-                // MARK: 4. Shortcuts & Siri
-                Section {
                     NavigationLink {
                         ShortcutOrderSettingsView(model: model)
                     } label: {
-                        LabeledContent {
-                            Text(model.shortcutInputOrder.map(\.displayName).joined(separator: " → "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        } label: {
-                            Label {
-                                Text("Shortcut prompt order")
-                            } icon: {
-                                SettingsIcon(symbol: "arrow.up.arrow.down.square.fill", color: .pink)
-                            }
-                        }
+                        row("Shortcut input order", "arrow.up.arrow.down.square.fill", .pink)
                     }
                     .accessibilityIdentifier("shortcutOrderSettings")
                 } header: {
-                    Text("Shortcuts & Siri")
+                    Text("Expenses")
                 } footer: {
-                    Text("Configure the sequence Anka asks for details when adding expenses via Apple Shortcuts.")
+                    Text("Choose what the Add sheet asks for, and the order Shortcuts asks in.")
                 }
 
-                // MARK: 5. Appearance
+                // Appearance
                 Section {
                     Toggle(isOn: $model.autoAppearance) {
                         Label {
@@ -879,62 +795,78 @@ struct SettingsView: View {
                 } header: {
                     Text("Appearance")
                 } footer: {
-                    if model.autoAppearance {
-                        Text("anka automatically matches your iOS system appearance.")
-                    } else {
-                        Text("Appearance is locked to your selection.")
-                    }
+                    Text(model.autoAppearance ? "Anka matches your iOS appearance." : "Appearance stays on your selection.")
                 }
 
-                // MARK: 5. Security & Privacy
+                // Security
                 Section {
                     NavigationLink {
                         AppLockSettingsView(model: model)
                     } label: {
-                        LabeledContent {
-                            Text(model.settings.appLockTimeout?.title ?? "Off")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label {
-                                Text("App lock")
-                            } icon: {
-                                SettingsIcon(symbol: "lock.shield.fill", color: MC.red)
-                            }
-                        }
+                        row("App lock", "lock.shield.fill", MC.red, value: model.settings.appLockTimeout?.title ?? "Off")
                     }
                     .accessibilityIdentifier("appLockSettings")
                 } header: {
                     Text("Security")
                 } footer: {
-                    Text("Require Face ID or device passcode when returning to Anka.")
+                    Text("Ask for Face ID or your passcode when you return to Anka.")
                 }
 
-                // MARK: 6. About
+                // Data
+                Section {
+                    NavigationLink {
+                        BackupView(model: model)
+                    } label: {
+                        row("Backup & restore", "arrow.triangle.2.circlepath", .blue)
+                    }
+                    .accessibilityIdentifier("backupSettings")
+
+                    NavigationLink {
+                        CSVInterchangeView(model: model, showsDismissButton: false)
+                    } label: {
+                        row("CSV export & import", "tablecells.fill", .teal)
+                    }
+                    .accessibilityIdentifier("csvInterchangeSettings")
+                } header: {
+                    Text("Data")
+                } footer: {
+                    Text("Back up everything, or move expenses in and out as CSV.")
+                }
+
+                // About
                 Section {
                     let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.7.2"
                     let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "61"
-                    LabeledContent {
-                        Text("\(version) (\(build))")
-                            .foregroundStyle(.secondary)
-                    } label: {
-                        Label {
-                            Text("Version")
-                        } icon: {
-                            SettingsIcon(symbol: "info.circle.fill", color: .gray)
-                        }
-                    }
+                    row("Version", "info.circle.fill", .gray, value: "\(version) (\(build))")
                     Link(destination: AppLinks.privacy) {
-                        Label { Text("Privacy policy") } icon: { SettingsIcon(symbol: "hand.raised.fill", color: .gray) }
+                        row("Privacy policy", "hand.raised.fill", .gray)
                     }
                     Link(destination: AppLinks.terms) {
-                        Label { Text("Terms of use") } icon: { SettingsIcon(symbol: "doc.text.fill", color: .gray) }
+                        row("Terms of use", "doc.text.fill", .gray)
                     }
                 } header: {
                     Text("About")
                 } footer: {
                     Text("Anka keeps your spending on this device.")
                 }
+
+                // Reset, always last
+                Section {
+                    NavigationLink {
+                        ResetDataView(model: model)
+                    } label: {
+                        Label {
+                            Text("Reset data").foregroundStyle(MC.red)
+                        } icon: {
+                            SettingsIcon(symbol: "trash.fill", color: MC.red)
+                        }
+                    }
+                    .accessibilityIdentifier("resetDataSettings")
+                } footer: {
+                    Text("Clear expenses or start fresh. A safety backup is saved first.")
+                }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -953,6 +885,10 @@ private struct SubscriptionSection: View {
     @State private var redeeming = false
     @State private var restoring = false
 
+    private func proLabel(_ title: LocalizedStringKey, _ symbol: String, _ color: Color) -> some View {
+        Label { Text(title).foregroundStyle(.primary) } icon: { SettingsIcon(symbol: symbol, color: color) }
+    }
+
     var body: some View {
         Section {
             if model.isPro {
@@ -961,24 +897,26 @@ private struct SubscriptionSection: View {
                 } label: {
                     Label { Text("Anka Pro") } icon: { SettingsIcon(symbol: "star.fill", color: MC.red) }
                 }
-                Button("Manage subscription") { managing = true }
+                Button { managing = true } label: { proLabel("Manage subscription", "creditcard.fill", .indigo) }
             } else {
                 Button { model.paywall = "" } label: {
-                    Label { Text("Upgrade to Pro") } icon: { SettingsIcon(symbol: "star.fill", color: MC.red) }
+                    Label { Text("Upgrade to Pro").foregroundStyle(.primary) } icon: { SettingsIcon(symbol: "star.fill", color: MC.red) }
                 }
                 .accessibilityIdentifier("upgradeToPro")
             }
-            Button(restoring ? "Restoring…" : "Restore purchases") {
+            Button {
                 restoring = true
                 Task {
                     do { try await model.pro?.restore() } catch { model.error = error.localizedDescription }
                     restoring = false
                 }
+            } label: {
+                proLabel(restoring ? "Restoring…" : "Restore purchases", "arrow.clockwise", .blue)
             }
             .disabled(restoring)
-            Button("Redeem code") { redeeming = true }
+            Button { redeeming = true } label: { proLabel("Redeem code", "gift.fill", .pink) }
         } header: {
-            Text("Subscription")
+            Text("Anka Pro")
         } footer: {
             if !model.isPro { Text("Free includes one card, \(Plan.freeBills) bills and \(Plan.freeQuestionsPerDay) chat questions a day.") }
         }
@@ -1039,12 +977,12 @@ struct AppLockSettingsView: View {
                     .disabled(saving || timeout == model.settings.appLockTimeout)
                 }
             } header: {
-                Text("Lock after leaving anka")
+                Text("Lock after leaving Anka")
             } footer: {
-                Text("Turning this on or changing its timeout confirms your device authentication. anka covers its interface while it is in the app switcher, then asks for Face ID or your device passcode when the timeout has elapsed.")
+                Text("Turning this on or changing its timeout confirms your device authentication. Anka covers its interface while it is in the app switcher, then asks for Face ID or your device passcode when the timeout has elapsed.")
             }
             Section("Shortcuts") {
-                Text("Both anka Shortcuts always use the system device-authentication policy. A background text shortcut can add an expense only after that system check; it does not unlock the app screen. Quick entry may still show this lock when anka opens.")
+                Text("Both Anka Shortcuts always use the system device-authentication policy. A background text shortcut can add an expense only after that system check; it does not unlock the app screen. Quick entry may still show this lock when Anka opens.")
             }
             if saving { HStack { Spacer(); ProgressView("Saving app lock…"); Spacer() } }
             if let error { Text(error).foregroundStyle(MC.red) }

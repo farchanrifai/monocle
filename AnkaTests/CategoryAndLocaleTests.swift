@@ -5,8 +5,8 @@ final class CategoryAndLocaleTests: XCTestCase {
     func testSystemStyleSeparatorsRemainExact() throws {
         let us = Locale(identifier: "en_US")
         let id = Locale(identifier: "id_ID")
-        XCTAssertEqual(Money.format(2_800_050, currency: false, locale: us), "28,000.5")
-        XCTAssertEqual(Money.format(2_800_050, currency: false, locale: id), "28.000,5")
+        XCTAssertEqual(Money.format(2_800_050, currency: false, locale: us), "28,000.50")
+        XCTAssertEqual(Money.format(2_800_050, currency: false, locale: id), "28.000,50")
         XCTAssertEqual(try Money.parse("28,000", locale: us), 2_800_000)
         XCTAssertEqual(try Money.parse("28.000", locale: id), 2_800_000)
         XCTAssertEqual(try Money.parse("28.5k", locale: us), 2_850_000)

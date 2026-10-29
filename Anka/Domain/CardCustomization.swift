@@ -29,6 +29,16 @@ public enum StockCardDesign: String, Codable, Sendable, CaseIterable, Identifiab
     case topographic
     case neoGrid
     case warmParchment
+    // Appended after v8 shipped: raw values above are persisted, only ever add cases below.
+    case deepOcean
+    case rosePetal
+    case goldenHour
+    case duskMesh
+    case meadowMesh
+    case pinstripe
+    case polkaDots
+    case inkMinimal
+    case paperMinimal
 
     public var id: String { rawValue }
 
@@ -43,14 +53,25 @@ public enum StockCardDesign: String, Codable, Sendable, CaseIterable, Identifiab
         case .topographic: return "Topography"
         case .neoGrid: return "Neo Grid"
         case .warmParchment: return "Parchment"
+        case .deepOcean: return "Deep Ocean"
+        case .rosePetal: return "Rose Quartz"
+        case .goldenHour: return "Golden Hour"
+        case .duskMesh: return "Dusk Mesh"
+        case .meadowMesh: return "Meadow Mesh"
+        case .pinstripe: return "Pinstripe"
+        case .polkaDots: return "Polka"
+        case .inkMinimal: return "Ink"
+        case .paperMinimal: return "Paper"
         }
     }
 
     public var defaultTextTone: CardTextTone {
         switch self {
-        case .sunsetHeat, .auroraBorealis, .midnightCosmo, .topographic, .neoGrid:
+        case .sunsetHeat, .auroraBorealis, .midnightCosmo, .topographic, .neoGrid,
+             .deepOcean, .duskMesh, .pinstripe, .inkMinimal:
             return .light
-        case .acidCyber, .titaniumMetal, .appleAura, .warmParchment:
+        case .acidCyber, .titaniumMetal, .appleAura, .warmParchment,
+             .rosePetal, .goldenHour, .meadowMesh, .polkaDots, .paperMinimal:
             return .dark
         }
     }

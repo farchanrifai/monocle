@@ -4,6 +4,8 @@ import UIKit
 struct BottomNavigation: View {
     @Bindable var model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Phones with a home indicator, where the system tab bar dips into the bottom safe area.
+    @State private var hasHomeIndicator = true
 
     private var isDetail: Bool {
         model.selectedCardID != nil
@@ -45,7 +47,10 @@ struct BottomNavigation: View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 8)
-        .padding(.bottom, 8)
+        // Like the system floating tab bar: its bottom edge 23 pt above the screen edge, 11 pt into the
+        // 34 pt home-indicator area. Without one (iPhone SE) it keeps a small gap instead.
+        .padding(.bottom, hasHomeIndicator ? -11 : 8)
+        .onGeometryChange(for: Bool.self) { $0.safeAreaInsets.bottom > 0 } action: { hasHomeIndicator = $0 }
         .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: model.toast)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.44, dampingFraction: 0.76), value: isDetail)
         .sensoryFeedback(.selection, trigger: model.filterScope)

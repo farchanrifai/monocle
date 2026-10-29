@@ -52,7 +52,7 @@ struct ExpenseProposalCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 20, style: .continuous))
+        .background(Color.chatSurface, in: .rect(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -102,7 +102,7 @@ struct BillProposalCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 20, style: .continuous))
+        .background(Color.chatSurface, in: .rect(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -170,7 +170,7 @@ struct ExpenseChangeCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 20, style: .continuous))
+        .background(Color.chatSurface, in: .rect(cornerRadius: 20, style: .continuous))
     }
 
     @ViewBuilder

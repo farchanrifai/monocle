@@ -108,7 +108,7 @@ final class BackendModelTests: XCTestCase {
         XCTAssertFalse(model.alwaysHiddenCardIDs.contains(real.id))
         XCTAssertNotNil(model.error)
         failing.failNextWorkspaceWrite = true
-        model.moveCardToFront(real.id)
+        model.moveCardToBack(real.id)
         XCTAssertEqual(model.workspacePreferences, before)
         XCTAssertEqual(try state.loadWorkspacePreferences(), before)
     }

@@ -22,7 +22,7 @@ final class CurrencyTests: XCTestCase {
     func testMoneyFormatsParsesAndConvertsPerCurrency() throws {
         XCTAssertEqual(Money.format(2_800_000), "Rp28,000")
         XCTAssertEqual(Money.format(1_200_000, code: "JPY"), "¥12,000")
-        XCTAssertEqual(Money.format(4_050, code: "USD"), "$40.5")
+        XCTAssertEqual(Money.format(4_050, code: "USD"), "$40.50")
         XCTAssertEqual(try Money.parse("40.50", locale: Locale(identifier: "en_US"), code: "USD"), 4_050)
         XCTAssertThrowsError(try Money.parse("40.50", locale: Locale(identifier: "en_US"), code: "JPY"))
         XCTAssertEqual(try Money.parse("¥12,000", locale: Locale(identifier: "en_US"), code: "JPY"), 1_200_000)

@@ -22,12 +22,13 @@ struct ChatView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                ChatTranscript(model: model, session: session, send: send)
+                ChatTranscript(model: model, session: session, send: send, fill: { draft = $0; inputFocused = true })
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
                     // The composer floats over the transcript; this keeps the last bubble resting above it.
                     .padding(.bottom, composerHeight)
             }
+            .background(Color.chatCanvas) // one canvas behind the list, under both safe areas
             .scrollPosition($scrollPosition)
             .defaultScrollAnchor(.bottom)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
@@ -38,7 +39,7 @@ struct ChatView: View {
             .scrollEdgeEffectHidden(true, for: .all)
             .overlay(alignment: .top) {
                 GeometryReader { proxy in
-                    ProgressiveBlur(solid: max(proxy.safeAreaInsets.top - 30, 0), fade: 52, tint: Color(uiColor: .systemBackground))
+                    ProgressiveBlur(solid: max(proxy.safeAreaInsets.top - 30, 0), fade: 52, tint: .chatCanvas)
                         .ignoresSafeArea(edges: .top)
                 }
             }

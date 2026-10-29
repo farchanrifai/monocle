@@ -609,7 +609,7 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(model.cardsInCurrentStack.first?.id, b3.id)
     }
 
-    func testMoveCardToFrontAndReorderCards() throws {
+    func testMoveCardToBackAndReorderCards() throws {
         let store = try ExpenseRepository(inMemory: true)
         let b1 = try store.createCard(named: "Card 1")
         let b2 = try store.createCard(named: "Card 2")
@@ -626,8 +626,8 @@ final class MultiCardTests: XCTestCase {
         model.setActiveStack(id: stack.id)
         model.filterScope = .activeStack
 
-        // In active stack: move b3 to front
-        model.moveCardToFront(b3.id)
+        // In active stack: move b3 to the back (first in order)
+        model.moveCardToBack(b3.id)
         XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b3.id, b1.id, b2.id])
         XCTAssertEqual(model.visibleCards.first?.id, b3.id)
 
@@ -635,9 +635,9 @@ final class MultiCardTests: XCTestCase {
         model.reorderCardsInCurrentStack(fromOffsets: IndexSet(integer: 2), toOffset: 0)
         XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b2.id, b3.id, b1.id])
 
-        // In allCards mode: move b1 to front
+        // In allCards mode: move b1 to the back (first in order)
         model.filterScope = .allCards
-        model.moveCardToFront(b1.id)
+        model.moveCardToBack(b1.id)
         XCTAssertEqual(model.orderedCards.first?.id, b1.id)
     }
 

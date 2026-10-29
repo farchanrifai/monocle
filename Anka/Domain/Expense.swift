@@ -308,7 +308,7 @@ enum Money {
     }
     static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent, code: String? = nil) -> String {
         let value = Decimal(amount) / 100
-        let number = value.formatted(.number.locale(locale).precision(.fractionLength(0...(amount % 100 == 0 ? 0 : 2))))
+        let number = value.formatted(.number.locale(locale).precision(.fractionLength(amount % 100 == 0 ? 0 : 2)))
         return (currency ? symbol(code ?? reportingCurrency) : "") + number
     }
 }

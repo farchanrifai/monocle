@@ -11,9 +11,14 @@ struct ChatTranscript: View {
     let session: ChatSession
     var send: (String) -> Void
 
-    /// The first one adds an expense in the reporting currency's usual shorthand.
-    private static var suggestions: [String] {
-        [Money.reportingCurrency == "IDR" ? "Kopi 28rb" : "Coffee 5", "How much did I spend this month?", "Am I over budget?"]
+    /// Where a tapped suggestion goes. The phone fills the composer so the owner can edit before sending; nil sends it (Mac pane).
+    var fill: ((String) -> Void)? = nil
+
+    /// The first adds an expense, the second splits one across categories (the agent's colon form), both in the reporting currency's usual shorthand.
+    private static var suggestions: [(symbol: String, text: String)] {
+        [("plus.circle", "Add " + (Money.reportingCurrency == "IDR" ? "Kopi 28rb" : "Coffee 5")),
+         ("square.split.2x1", Money.reportingCurrency == "IDR" ? "Add pasar 50rb: 30rb makan, 20rb belanja" : "Add groceries 50: 30 food, 20 household"),
+         ("chart.pie", "Expenses by category this month")]
     }
     private var rows: [ChatRow] { session.rows }
 
@@ -65,24 +70,42 @@ struct ChatTranscript: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "bubble.left.and.text.bubble.right")
-                .font(.system(size: 34, weight: .medium))
+        VStack(spacing: 0) {
+            Image(systemName: "text.bubble")
+                .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(MC.red)
-            Text("Add an expense or ask about your spending, in English or Bahasa Indonesia.")
+                .frame(width: 68, height: 68)
+                .background(Color.chatSurface, in: Circle())
+                .accessibilityHidden(true)
+            Text("Add an expense or ask")
+                .font(.title3.weight(.semibold))
+                .padding(.top, 16)
+            Text("In English or Bahasa Indonesia. Type @ for a Card, # for a Category.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .padding(.top, 6)
             VStack(spacing: 8) {
-                ForEach(Self.suggestions, id: \.self) { suggestion in
-                    Button(suggestion) { send(suggestion) }
-                        .buttonStyle(.bordered)
-                        .tint(MC.red)
+                ForEach(Self.suggestions, id: \.text) { suggestion in
+                    Button { (fill ?? send)(suggestion.text) } label: {
+                        Label(suggestion.text, systemImage: suggestion.symbol)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .labelStyle(SuggestionLabelStyle())
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .background(Color.chatSurface, in: .rect(cornerRadius: 14, style: .continuous))
+                            .contentShape(.rect(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.top, 24)
         }
         .padding(.vertical, 40)
         .padding(.horizontal, 24)
+        .frame(maxWidth: 420)
     }
 
     @ViewBuilder
@@ -229,6 +252,16 @@ struct ChatScopeMenuItems: View {
     private func scopeButton(_ target: AnalyticsFilterScope, label: String, icon: String) -> some View {
         Button { Self.select(target, session: session, model: model) } label: {
             if target == scope { Label(label, systemImage: "checkmark") } else { Label(label, systemImage: icon) }
+        }
+    }
+}
+
+/// Icon in a fixed-width leading slot so the suggestion texts line up.
+private struct SuggestionLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 12) {
+            configuration.icon.foregroundStyle(MC.red).frame(width: 22)
+            configuration.title
         }
     }
 }

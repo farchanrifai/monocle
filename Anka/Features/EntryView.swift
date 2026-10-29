@@ -1,12 +1,15 @@
 import SwiftUI
+import UIKit
 
 struct EntryView: View {
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 52.0
+    @ScaledMetric(relativeTo: .title) private var keyHeight = 52.0
     private enum Field: Hashable { case note }
     @FocusState private var focusedField: Field?
+    @State private var keyboardUp = false
     @State private var showDate = false
     @State private var showCategories = false
     @State private var showSplits = false
@@ -25,56 +28,60 @@ struct EntryView: View {
 
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                VStack(spacing: 0) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 18) {
-                            amountDisplay
-                            if model.draft.isSplit {
-                                splitSummary
-                            } else {
-                                CategoryStrip(categories: model.activeCategories, selectedID: model.draft.categoryID, select: selectCategory) {
-                                    focusedField = nil
-                                    showCategories = true
-                                }
-                                if showsSplit { Button {
-                                    focusedField = nil
-                                    model.beginSplitting()
-                                    showSplits = model.draft.isSplit
-                                } label: {
-                                    Label("Split across categories", systemImage: "square.grid.2x2")
-                                        .font(.subheadline.weight(.semibold))
-                                 }.tint(MC.red).accessibilityIdentifier("editSplits") }
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        amountDisplay
+                        if model.draft.isSplit {
+                            splitSummary
+                        } else {
+                            CategoryStrip(categories: model.activeCategories, selectedID: model.draft.categoryID, select: selectCategory) {
+                                focusedField = nil
+                                showCategories = true
                             }
-                            if showsCurrency { currencySection }
-                            if showsPaidWith { paidWithMenu }
-                            if showsNote {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
-                                    TextField("Add a note (optional)", text: $model.draft.note)
-                                        .font(.subheadline).submitLabel(.done).focused($focusedField, equals: .note)
-                                        .onSubmit { focusedField = nil }.accessibilityIdentifier("expenseNote")
-                                }.frame(minHeight: 44)
-                            }
-                        }.padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 12)
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .frame(maxHeight: .infinity)
-                    // The keypad is outside the scrolling form: Record can never cover its last row.
-                    if focusedField == nil {
-                        keypad(rowHeight: min(58, max(44, geometry.size.height * 0.075)))
-                            .padding(.horizontal, 24).padding(.top, 4)
-                            .transition(.opacity)
-                    }
-                    RecordButton(
-                        title: model.draft.editing ? "Save changes" : "Add expense",
-                        symbol: model.draft.editing ? "checkmark" : "plus"
-                    ) {
-                        if model.saveDraft() { dismiss() }
-                    }.accessibilityIdentifier("recordExpense")
-                        .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 10)
+                            if showsSplit { Button {
+                                focusedField = nil
+                                model.beginSplitting()
+                                showSplits = model.draft.isSplit
+                            } label: {
+                                Label("Split across categories", systemImage: "square.grid.2x2")
+                                    .font(.subheadline.weight(.semibold))
+                             }.tint(MC.red).accessibilityIdentifier("editSplits") }
+                        }
+                        if showsCurrency { currencySection }
+                        if showsPaidWith { paidWithMenu }
+                        if showsNote {
+                            HStack(spacing: 10) {
+                                Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
+                                TextField("Add a note (optional)", text: $model.draft.note)
+                                    .font(.subheadline).submitLabel(.done).focused($focusedField, equals: .note)
+                                    .onSubmit { focusedField = nil }.accessibilityIdentifier("expenseNote")
+                            }.frame(minHeight: 44)
+                        }
+                    }.padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 12)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .frame(maxHeight: .infinity)
+                // The keypad is outside the scrolling form: Record can never cover its last row.
+                // Fixed row height (clamped so accessibility sizes can't starve the form), and only once the keyboard is gone: sizing it from the sheet's height, or inserting
+                // it while the keyboard was still sliding down, squeezed the form to nothing and Record overlapped its last row.
+                if focusedField == nil && !keyboardUp {
+                    keypad(rowHeight: min(max(keyHeight, 44), 64))
+                        .padding(.horizontal, 24).padding(.top, 4)
+                        .transition(.opacity)
+                }
+                RecordButton(
+                    title: model.draft.editing ? "Save changes" : "Add expense",
+                    symbol: model.draft.editing ? "checkmark" : "plus"
+                ) {
+                    if model.saveDraft() { dismiss() }
+                }.accessibilityIdentifier("recordExpense")
+                    // While the keyboard is up its floating Done pill sits over the button's right end; lift the button clear of it.
+                    .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, keyboardUp ? 58 : 10)
             }
+            .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: keyboardUp)
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in keyboardUp = false }
             .background(MC.paper)
             .navigationTitle(model.draft.editing ? "Edit expense" : "New expense")
             .navigationBarTitleDisplayMode(.inline)
@@ -128,24 +135,22 @@ struct EntryView: View {
     }
 
     private var amountDisplay: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Eyebrow(text: "Amount / \(draftCurrency)")
-                Spacer()
-                if showsDate {
-                    Button { focusedField = nil; showDate = true } label: {
-                        Label(Day.title(model.draft.civilDay), systemImage: "calendar").font(.caption)
-                    }.tint(.secondary).frame(minHeight: 32)
-                }
-            }
+        VStack(spacing: 6) {
+            Eyebrow(text: "Amount / \(draftCurrency)")
             Text(Money.format(amount, currency: false))
-                .font(.system(size: amountSize, weight: .regular)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
+                // A fixed height: the shrunk glyphs of a long amount would otherwise shorten the row and shift everything below it.
+                .font(.system(size: amountSize, weight: .semibold)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
+                .frame(maxWidth: .infinity).frame(height: amountSize * 1.2)
                 .foregroundStyle(amount == 0 ? .secondary : .primary)
                 .contentTransition(.numericText())
                 .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: amount)
                 .accessibilityLabel("Amount \(Money.format(amount))").accessibilityIdentifier("amountDisplay")
-            Rectangle().fill(MC.line).frame(height: 1)
-        }
+            if showsDate {
+                Button { focusedField = nil; showDate = true } label: {
+                    Label(Day.title(model.draft.civilDay), systemImage: "calendar").font(.caption)
+                }.tint(.secondary).frame(minHeight: 32)
+            }
+        }.frame(maxWidth: .infinity)
     }
     /// Currency the amount is typed in, with the rate to the reporting currency (fetched, or typed to override).
     private var currencySection: some View {
@@ -219,7 +224,7 @@ struct EntryView: View {
             HStack(spacing: 12) {
                 Image(systemName: "square.grid.2x2").foregroundStyle(MC.red)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Split across \(model.draft.splitParts.count) categories").font(.subheadline.weight(.semibold))
+                    Text("Split across \(model.draft.splitParts.count) \(model.draft.splitParts.count == 1 ? "category" : "categories")").font(.subheadline.weight(.semibold))
                     Text("Edit allocations").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()

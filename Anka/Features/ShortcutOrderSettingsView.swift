@@ -14,7 +14,7 @@ struct ShortcutOrderSettingsView: View {
             // MARK: 1. Live Sequence Preview
             Section {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Current Prompt Sequence")
+                    Text("Current order")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .textCase(.uppercase)
@@ -47,7 +47,7 @@ struct ShortcutOrderSettingsView: View {
                 }
                 .padding(.vertical, 4)
             } header: {
-                Text("Order Flow")
+                Text("Order")
             }
 
             // MARK: 2. Reorderable Fields
@@ -102,7 +102,7 @@ struct ShortcutOrderSettingsView: View {
                 }
                 .onMove(perform: move)
             } header: {
-                Text("Prompt Sequence")
+                Text("Prompt order")
             } footer: {
                 Text("Drag rows or tap arrows to reorder which detail Anka asks for first when running the shortcut.")
             }
@@ -113,7 +113,7 @@ struct ShortcutOrderSettingsView: View {
                     applyPreset([.card, .category, .note, .amount])
                 } label: {
                     presetRow(
-                        title: "Card First (Recommended)",
+                        title: "Card first (recommended)",
                         description: "Card → Category → Short Note → Amount",
                         isActive: currentOrder == [.card, .category, .note, .amount]
                     )
@@ -124,7 +124,7 @@ struct ShortcutOrderSettingsView: View {
                     applyPreset([.amount, .card, .category, .note])
                 } label: {
                     presetRow(
-                        title: "Amount First",
+                        title: "Amount first",
                         description: "Amount → Card → Category → Short Note",
                         isActive: currentOrder == [.amount, .card, .category, .note]
                     )
@@ -135,7 +135,7 @@ struct ShortcutOrderSettingsView: View {
                     applyPreset([.amount, .category, .card, .note])
                 } label: {
                     presetRow(
-                        title: "Amount & Category First",
+                        title: "Amount and Category first",
                         description: "Amount → Category → Card → Short Note",
                         isActive: currentOrder == [.amount, .category, .card, .note]
                     )
@@ -146,7 +146,7 @@ struct ShortcutOrderSettingsView: View {
                     applyPreset([.category, .card, .note, .amount])
                 } label: {
                     presetRow(
-                        title: "Category First",
+                        title: "Category first",
                         description: "Category → Card → Short Note → Amount",
                         isActive: currentOrder == [.category, .card, .note, .amount]
                     )
@@ -159,7 +159,7 @@ struct ShortcutOrderSettingsView: View {
             // MARK: 4. Information
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Dynamic Card Categories", systemImage: "sparkles")
+                    Label("Categories follow the card", systemImage: "sparkles")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary)
                     Text("When Card is asked before Category, Anka dynamically filters the category picker to only show active categories configured on that card.")
@@ -169,7 +169,7 @@ struct ShortcutOrderSettingsView: View {
                     Divider()
                         .padding(.vertical, 2)
 
-                    Label("Skipping Configured Inputs", systemImage: "arrow.uturn.forward")
+                    Label("Pre-filled steps are skipped", systemImage: "arrow.uturn.forward")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary)
                     Text("If you pre-fill any parameter in your Apple Shortcut action (or pass data from earlier Shortcut steps), that step is automatically skipped during execution.")
@@ -178,7 +178,7 @@ struct ShortcutOrderSettingsView: View {
                 }
                 .padding(.vertical, 4)
             } header: {
-                Text("How It Works")
+                Text("How it works")
             }
         }
         .environment(\.editMode, $editMode)

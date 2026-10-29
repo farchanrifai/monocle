@@ -1,19 +1,12 @@
 import SwiftUI
 import PhotosUI
 
-enum CustomizerTab: String, CaseIterable, Identifiable {
-    case colors = "Colors"
-    case stock = "Stock"
-    case photo = "Photo"
-
-    var id: String { rawValue }
-}
-
-
 struct CardCustomizerView: View {
     @Bindable var model: AppModel
     let initialCard: Card?
     let isCreatingNewCard: Bool
+    /// Unsaved drafts, mirrored out so Home shows edits behind the sheet. Cleared by Home when the sheet goes away.
+    @Binding var previewOverrides: [UUID: CardCustomization]
     var onDismiss: () -> Void
 
     private let placeholderID = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
@@ -24,9 +17,8 @@ struct CardCustomizerView: View {
     @State private var settledCardID: UUID
     @State private var drafts: [UUID: CardCustomization]
     @State private var draftNames: [UUID: String]
-    @State private var editingCardNameID: UUID? = nil
     @FocusState private var isNameFieldFocused: Bool
-    @State private var selectedTab: CustomizerTab = .colors
+    @State private var detent: PresentationDetent = .large
     @State private var customColor: Color = .orange
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var isProcessingPhoto = false
@@ -34,16 +26,21 @@ struct CardCustomizerView: View {
     @State private var cardCategorySelections: [UUID: Set<UUID>]
     @State private var editingCategoriesForCardID: UUID? = nil
 
+    private let previewSideInset: CGFloat = 28
+    private let swatchWidth: CGFloat = 96
+
     init(
         model: AppModel,
         initialCard: Card? = nil,
         cards: [Card]? = nil,
         isCreatingNewCard: Bool = false,
+        previewOverrides: Binding<[UUID: CardCustomization]> = .constant([:]),
         onDismiss: @escaping () -> Void
     ) {
         self.model = model
         self.initialCard = initialCard
         self.isCreatingNewCard = isCreatingNewCard
+        self._previewOverrides = previewOverrides
         self.onDismiss = onDismiss
 
         let visibleCards = cards ?? {
@@ -90,7 +87,6 @@ struct CardCustomizerView: View {
             let defaults = Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))
             initialCategorySelections[newID] = defaults.isEmpty ? Set(model.globalCategories.map(\.id)) : defaults
             activeID = newID
-            _editingCardNameID = State(initialValue: newID)
         }
 
         _cardCategorySelections = State(initialValue: initialCategorySelections)
@@ -132,108 +128,48 @@ struct CardCustomizerView: View {
         )
     }
 
+    private var currentName: Binding<String> {
+        Binding(
+            get: { draftNames[currentCardID] ?? customizerCards.first(where: { $0.id == currentCardID })?.name ?? activeCard.name },
+            set: { draftNames[currentCardID] = String($0.prefix(40)) }
+        )
+    }
+
+    /// Trimmed names; a blank one falls back to the card's current name.
+    private func finalNames() -> [UUID: String] {
+        draftNames.reduce(into: [:]) { result, entry in
+            let trimmed = entry.value.trimmingCharacters(in: .whitespacesAndNewlines)
+            let original = customizerCards.first(where: { $0.id == entry.key })?.name ?? "Card"
+            result[entry.key] = trimmed.isEmpty ? original : String(trimmed.prefix(40))
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            GeometryReader { windowProxy in
-                let screenWidth = windowProxy.size.width
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // MARK: - Live Preview Carousel
-                        cardCarousel(width: screenWidth)
-                            .padding(.top, 8)
-
-                        if currentCardID == placeholderID {
-                            placeholderControlsSection
-                        } else {
-                            // MARK: - Text Tone Picker
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Text Tone")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .textCase(.uppercase)
-
-                                Picker("Text Tone", selection: currentDraft.textTone) {
-                                    Text("Auto").tag(CardTextTone.auto)
-                                    Text("Light").tag(CardTextTone.light)
-                                    Text("Dark").tag(CardTextTone.dark)
-                                }
-                                .pickerStyle(.segmented)
-                                .accessibilityIdentifier("cardTextTonePicker")
-                            }
-                            .padding(.horizontal, 20)
-
-                            // MARK: - Category Tabs
-                            Picker("Customization Mode", selection: $selectedTab) {
-                                ForEach(CustomizerTab.allCases) { tab in
-                                    Text(tab.rawValue).tag(tab)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .padding(.horizontal, 20)
-                            .accessibilityIdentifier("cardCustomizerTabPicker")
-
-                            // MARK: - Tab Content
-                            switch selectedTab {
-                            case .colors:
-                                colorsSection
-                            case .stock:
-                                stockSection
-                            case .photo:
-                                photoSection
-                            }
-
-                            // MARK: - Card Categories
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Categories")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .textCase(.uppercase)
-
-                                Button {
-                                    editingCategoriesForCardID = currentCardID
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "tag.fill")
-                                            .font(.body.weight(.semibold))
-                                            .foregroundStyle(MC.ink)
-                                            .frame(width: 32, height: 32)
-                                            .background(MC.ink.opacity(0.08), in: Circle())
-
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text("Active Categories")
-                                                .font(.system(size: 15, weight: .semibold))
-                                                .foregroundStyle(Color.primary)
-                                            let count = (cardCategorySelections[currentCardID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
-                                            Text("\(count) of \(model.globalCategories.count) active on this card")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        Spacer()
-
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(MC.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .stroke(MC.ink.opacity(0.08), lineWidth: 1)
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("cardCategoriesButton")
-                            }
-                            .padding(.horizontal, 20)
-                        }
+          VStack(spacing: 0) {
+            // Live preview stays put while the controls scroll under it.
+            cardCarousel
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            Form {
+                if currentCardID == placeholderID {
+                    Section {
+                        placeholderControlsSection
                     }
-                    .frame(width: screenWidth)
-                    .padding(.bottom, 60)
+                    .listRowBackground(Color.clear)
+                } else {
+                    nameSection
+                    styleSection
+                    colorSection
+                    photoSection
+                    textToneSection
+                    categoriesSection
                 }
-                .scrollBounceBehavior(.always)
             }
+            .contentMargins(.top, 8, for: .scrollContent)
+          }
+          .background(Color(uiColor: .systemGroupedBackground))
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(isCreatingNewCard ? "New Card" : "Customize Card")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -245,16 +181,11 @@ struct CardCustomizerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if let editingID = editingCardNameID {
-                            commitEditingName(for: editingID)
-                        }
-
                         do {
-                            try model.applyCardCustomizations(names: draftNames, customizations: drafts,
+                            try model.applyCardCustomizations(names: finalNames(), customizations: drafts,
                                                               newCardIDs: Set(newCardIDs), selections: cardCategorySelections)
                             onDismiss()
                         } catch { model.report(error) }
-
                     }
                     .font(.headline)
                     .accessibilityIdentifier("saveCardCustomization")
@@ -295,19 +226,22 @@ struct CardCustomizerView: View {
                 guard let newItem else { return }
                 loadSelectedPhoto(newItem)
             }
+            .onChange(of: drafts) { _, newDrafts in
+                previewOverrides = newDrafts.filter { !newCardIDs.contains($0.key) }
+            }
             .onChange(of: activeCardID) { oldID, newID in
                 if let newID, newID != oldID {
                     UISelectionFeedbackGenerator().selectionChanged()
                     settledCardID = newID
-                    if let editingID = editingCardNameID, editingID != newID {
-                        commitEditingName(for: editingID)
-                    }
                     if newID != placeholderID, let custom = drafts[newID], case .customColor(let hex) = custom.style {
                         customColor = CardPalette.color(fromHex: hex)
                     }
                 }
             }
         }
+        .presentationDetents([.medium, .large], selection: $detent)
+        .presentationBackground(Color(.systemGroupedBackground))
+        .presentationDragIndicator(.visible)
     }
 
     private func addNewDraftCard() {
@@ -326,7 +260,7 @@ struct CardCustomizerView: View {
             activeCardID = newID
             settledCardID = newID
         }
-        startEditingName(for: newID)
+        isNameFieldFocused = true
     }
 
     private func removeDraftCard(_ cardID: UUID) {
@@ -346,41 +280,14 @@ struct CardCustomizerView: View {
         }
     }
 
-    private func startEditingName(for cardID: UUID) {
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-            editingCardNameID = cardID
-            isNameFieldFocused = true
-        }
-    }
-
-    private func commitEditingName(for cardID: UUID) {
-        if let current = draftNames[cardID] {
-            let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty {
-                let original = customizerCards.first(where: { $0.id == cardID })?.name ?? "Card"
-                draftNames[cardID] = original
-            } else {
-                draftNames[cardID] = String(trimmed.prefix(40))
-            }
-        }
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-            editingCardNameID = nil
-            isNameFieldFocused = false
-        }
-    }
-
     // MARK: - Card Carousel
-    private func cardCarousel(width: CGFloat) -> some View {
-        let sideInset: CGFloat = 36
-        let spacing: CGFloat = 14
-        let cardWidth = max(240, width - (sideInset * 2))
-
-        return VStack(spacing: 12) {
+    private var cardCarousel: some View {
+        VStack(spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: spacing) {
+                HStack(spacing: 14) {
                     ForEach(customizerCards) { card in
                         previewCard(for: card)
-                            .frame(width: cardWidth)
+                            .containerRelativeFrame(.horizontal) { width, _ in max(240, width - previewSideInset * 2) }
                             .scrollTransition(.interactive) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
@@ -397,8 +304,8 @@ struct CardCustomizerView: View {
                             }
                     }
 
-                    placeholderCard(cardWidth: cardWidth)
-                        .frame(width: cardWidth)
+                    placeholderCard
+                        .containerRelativeFrame(.horizontal) { width, _ in max(240, width - previewSideInset * 2) }
                         .scrollTransition(.interactive) { content, phase in
                             content
                                 .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
@@ -407,15 +314,16 @@ struct CardCustomizerView: View {
                         .id(placeholderID)
                 }
                 .scrollTargetLayout()
+                .padding(.vertical, 10)
             }
-            .contentMargins(.horizontal, sideInset, for: .scrollContent)
+            .contentMargins(.horizontal, previewSideInset, for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $activeCardID)
-            .frame(height: 204)
+            .scrollClipDisabled()
 
             pageIndicator
         }
-        .frame(width: width)
+        .padding(.vertical, 4)
     }
 
     private var pageIndicator: some View {
@@ -450,12 +358,11 @@ struct CardCustomizerView: View {
                 }
             }
         }
-        .padding(.top, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("cardCustomizerPageIndicator")
     }
 
-    private func placeholderCard(cardWidth: CGFloat) -> some View {
+    private var placeholderCard: some View {
         let isActive = (currentCardID == placeholderID)
         return Button {
             addNewDraftCard()
@@ -481,13 +388,13 @@ struct CardCustomizerView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(16)
-            .frame(height: 190)
+            .aspectRatio(1 / CardStackMetrics.aspect, contentMode: .fit)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemBackground).opacity(0.6))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(
                         Color.accentColor.opacity(isActive ? 0.6 : 0.25),
                         style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])
@@ -514,7 +421,7 @@ struct CardCustomizerView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 16)
             }
 
             Button {
@@ -526,10 +433,11 @@ struct CardCustomizerView: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 16)
             .accessibilityIdentifier("createNewCardButton")
         }
-        .padding(.top, 24)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
     }
 
     private func previewCard(for card: Card) -> some View {
@@ -540,85 +448,13 @@ struct CardCustomizerView: View {
         let count = isNewDraft ? 0 : model.expenses(for: card.id).count
         let isActive = (card.id == currentCardID)
         let cardIndex = (customizerCards.firstIndex(where: { $0.id == card.id }) ?? 0) + 1
-        let isEditingThisName = (editingCardNameID == card.id)
         let displayName = draftNames[card.id] ?? card.name
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                if isEditingThisName {
-                    HStack(spacing: 6) {
-                        TextField(
-                            "Card Name",
-                            text: Binding(
-                                get: { draftNames[card.id] ?? card.name },
-                                set: { draftNames[card.id] = $0 }
-                            )
-                        )
-                        .font(.headline)
-                        .foregroundStyle(textStyle)
-                        .textFieldStyle(.plain)
-                        .focused($isNameFieldFocused)
-                        .submitLabel(.done)
-                        .onSubmit {
-                            commitEditingName(for: card.id)
-                        }
-                        .accessibilityIdentifier("cardNameInlineTextField")
-
-                        if !(draftNames[card.id] ?? "").isEmpty {
-                            Button {
-                                draftNames[card.id] = ""
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.subheadline)
-                                    .foregroundStyle(textStyle.opacity(0.6))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("cardNameInlineClearButton")
-                        }
-
-                        Button {
-                            commitEditingName(for: card.id)
-                        } label: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.headline)
-                                .foregroundStyle(textStyle)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("cardNameInlineCommitButton")
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(textStyle.opacity(0.15))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(textStyle.opacity(0.3), lineWidth: 1)
-                    )
-                } else {
-                    if isActive {
-                        Button {
-                            startEditingName(for: card.id)
-                        } label: {
-                            HStack(spacing: 5) {
-                                Text(displayName)
-                                    .font(.headline)
-                                    .lineLimit(1)
-                                Image(systemName: "pencil")
-                                    .font(.caption2.weight(.semibold))
-                                    .opacity(0.7)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("cardNameButton-\(card.id)")
-                    } else {
-                        Text(displayName)
-                            .font(.headline)
-                            .lineLimit(1)
-                    }
-                }
+                Text(displayName)
+                    .font(.headline)
+                    .lineLimit(1)
 
                 Spacer(minLength: 8)
 
@@ -649,13 +485,13 @@ struct CardCustomizerView: View {
                 .font(.caption.monospaced())
         }
         .padding(16)
-        .frame(maxWidth: .infinity)
-        .frame(height: 190, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .aspectRatio(1 / CardStackMetrics.aspect, contentMode: .fit)
         .foregroundStyle(textStyle)
         .background(cardBackgroundView(for: custom, card: card))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(isActive ? 0.12 : 0.04), radius: isActive ? 10 : 4, y: isActive ? 4 : 2)
@@ -684,49 +520,128 @@ struct CardCustomizerView: View {
         }
     }
 
-    // MARK: - Colors Section
-    private var colorsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Palette")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+    // MARK: - Name
+    private var nameSection: some View {
+        Section("Name") {
+            HStack(spacing: 8) {
+                TextField("Card Name", text: currentName)
+                    .focused($isNameFieldFocused)
+                    .submitLabel(.done)
+                    .accessibilityIdentifier("cardNameInlineTextField")
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 12)], spacing: 12) {
-                ForEach(CardPalette.standard) { item in
-                    let isSelected: Bool = {
-                        if case .palette(let idx) = currentDraft.wrappedValue.style {
-                            return (idx % CardPalette.standard.count) == item.id
-                        }
-                        return false
-                    }()
-
+                if !currentName.wrappedValue.isEmpty {
                     Button {
-                        currentDraft.wrappedValue.style = .palette(index: item.id)
+                        currentName.wrappedValue = ""
                     } label: {
-                        Circle()
-                            .fill(item.color)
-                            .frame(width: 52, height: 52)
-                            .overlay(
-                                Circle()
-                                    .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
-                            )
-                            .overlay {
-                                if isSelected {
-                                    Image(systemName: "checkmark")
-                                        .font(.headline.bold())
-                                        .foregroundStyle(CardPalette.isDark(hex: item.hex) ? .white : .black)
-                                }
-                            }
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(item.name)
-                    .accessibilityIdentifier("paletteColor-\(item.id)")
+                    .accessibilityLabel("Clear name")
+                    .accessibilityIdentifier("cardNameInlineClearButton")
                 }
             }
+        }
+    }
 
-            Divider()
-                .padding(.vertical, 4)
+    // MARK: - Style
+    private var styleSection: some View {
+        Section("Style") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                let rowHeight = swatchWidth * CardStackMetrics.aspect + 26
+                LazyHGrid(rows: [GridItem(.fixed(rowHeight), spacing: 12), GridItem(.fixed(rowHeight))], spacing: 12) {
+                    ForEach(StockCardDesign.allCases) { design in
+                        stockSwatch(design)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .listRowInsets(EdgeInsets())
+        }
+    }
+
+    private func stockSwatch(_ design: StockCardDesign) -> some View {
+        let isSelected: Bool = {
+            if case .stock(let current) = currentDraft.wrappedValue.style { return current == design }
+            return false
+        }()
+
+        return Button {
+            currentDraft.wrappedValue.style = .stock(design)
+        } label: {
+            VStack(spacing: 6) {
+                StockDesignBackgroundView(design: design)
+                    .frame(width: swatchWidth, height: swatchWidth * CardStackMetrics.aspect)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: isSelected ? 2.5 : 0.5)
+                    )
+                    .overlay(alignment: .topTrailing) {
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(Color.accentColor)
+                                .background(Circle().fill(Color.white))
+                                .padding(5)
+                        }
+                    }
+
+                Text(design.displayName)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .frame(width: swatchWidth)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(design.displayName)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("stockDesign-\(design.id)")
+    }
+
+    // MARK: - Color
+    private var colorSection: some View {
+        Section("Color") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(CardPalette.standard) { item in
+                        let isSelected: Bool = {
+                            if case .palette(let idx) = currentDraft.wrappedValue.style {
+                                return (idx % CardPalette.standard.count) == item.id
+                            }
+                            return false
+                        }()
+
+                        Button {
+                            currentDraft.wrappedValue.style = .palette(index: item.id)
+                        } label: {
+                            Circle()
+                                .fill(item.color)
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
+                                )
+                                .overlay {
+                                    if isSelected {
+                                        Image(systemName: "checkmark")
+                                            .font(.headline.bold())
+                                            .foregroundStyle(CardPalette.isDark(hex: item.hex) ? .white : .black)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(item.name)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
+                        .accessibilityIdentifier("paletteColor-\(item.id)")
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .listRowInsets(EdgeInsets())
 
             ColorPicker("Custom Color", selection: Binding(
                 get: {
@@ -740,147 +655,100 @@ struct CardCustomizerView: View {
                     currentDraft.wrappedValue.style = .customColor(hex: CardPalette.hexString(from: newColor))
                 }
             ), supportsOpacity: false)
-            .font(.subheadline.weight(.medium))
             .accessibilityIdentifier("customColorPicker")
         }
-        .padding(.horizontal, 20)
     }
 
-    // MARK: - Stock Section
-    private var stockSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Stock Designs")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                ForEach(StockCardDesign.allCases) { design in
-                    let isSelected: Bool = {
-                        if case .stock(let current) = currentDraft.wrappedValue.style {
-                            return current == design
-                        }
-                        return false
-                    }()
-
-                    Button {
-                        currentDraft.wrappedValue.style = .stock(design)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            StockDesignBackgroundView(design: design)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 72)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .strokeBorder(isSelected ? Color.accentColor : Color.black.opacity(0.12), lineWidth: isSelected ? 2.5 : 0.5)
-                                )
-                                .overlay(alignment: .topTrailing) {
-                                    if isSelected {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.subheadline)
-                                            .foregroundStyle(Color.accentColor)
-                                            .background(Circle().fill(Color.white))
-                                            .padding(6)
-                                    }
-                                }
-
-                            Text(design.displayName)
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(design.displayName)
-                    .accessibilityIdentifier("stockDesign-\(design.id)")
-                }
+    // MARK: - Text Tone
+    private var textToneSection: some View {
+        Section("Text") {
+            Picker("Text Tone", selection: currentDraft.textTone) {
+                Text("Auto").tag(CardTextTone.auto)
+                Text("Light").tag(CardTextTone.light)
+                Text("Dark").tag(CardTextTone.dark)
             }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("cardTextTonePicker")
         }
-        .padding(.horizontal, 20)
     }
 
-    // MARK: - Photo Section
-    private var photoSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Custom Photo")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+    // MARK: - Categories
+    private var categoriesSection: some View {
+        Section("Categories") {
+            Button {
+                editingCategoriesForCardID = currentCardID
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "tag.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(MC.ink)
+                        .frame(width: 32, height: 32)
+                        .background(MC.ink.opacity(0.08), in: Circle())
 
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Active Categories")
+                            .foregroundStyle(Color.primary)
+                        let count = (cardCategorySelections[currentCardID] ?? Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))).count
+                        Text("\(count) of \(model.globalCategories.count) active on this card")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("cardCategoriesButton")
+        }
+    }
+
+    // MARK: - Photo
+    private var photoSection: some View {
+        Section("Photo") {
             if case .customPhoto(let filename) = currentDraft.wrappedValue.style,
                let image = CardArtworkStore.shared.loadArtwork(filename: filename) {
-                VStack(spacing: 12) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 120)
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.2), lineWidth: 0.5))
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 120)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
 
-                    HStack(spacing: 12) {
-                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                            Label("Replace", systemImage: "arrow.triangle.2.circlepath")
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.secondary.opacity(0.12), in: Capsule())
-                        }
-                        .accessibilityIdentifier("replacePhotoPicker")
-
-                        Button(role: .destructive) {
-                            currentDraft.wrappedValue.style = .palette(index: 0)
-                        } label: {
-                            Label("Remove", systemImage: "trash")
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.red.opacity(0.12), in: Capsule())
-                        }
-                        .accessibilityIdentifier("removePhoto")
-                    }
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    Label("Replace Photo", systemImage: "arrow.triangle.2.circlepath")
                 }
+                .accessibilityIdentifier("replacePhotoPicker")
+
+                Button(role: .destructive) {
+                    currentDraft.wrappedValue.style = .palette(index: 0)
+                } label: {
+                    Label("Remove Photo", systemImage: "trash")
+                }
+                .accessibilityIdentifier("removePhoto")
             } else {
-                VStack(spacing: 16) {
-                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "photo.badge.plus")
-                                .font(.system(size: 36))
-                                .foregroundStyle(.secondary)
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    Label("Choose from Photos", systemImage: "photo.badge.plus")
+                }
+                .accessibilityIdentifier("choosePhotoPicker")
 
-                            Text("Choose from Photos")
-                                .font(.headline)
-                                .foregroundStyle(.primary)
+                if isProcessingPhoto {
+                    ProgressView("Preparing image...")
+                        .font(.caption)
+                }
 
-                            Text("Recommended for horizontal photos and card artwork.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .strokeBorder(Color.secondary.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                        )
-                    }
-                    .accessibilityIdentifier("choosePhotoPicker")
-
-                    if isProcessingPhoto {
-                        ProgressView("Preparing image...")
-                            .font(.caption)
-                    }
-
-                    if let photoError {
-                        Text(photoError)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
+                if let photoError {
+                    Text(photoError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
                 }
             }
         }
-        .padding(.horizontal, 20)
     }
 
     @State private var preparedPhotoFilenames: Set<String> = []

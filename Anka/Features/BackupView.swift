@@ -30,7 +30,7 @@ struct BackupView: View {
                 }.accessibilityIdentifier("exportBackup")
                 Button("Choose backup to restore", systemImage: "arrow.counterclockwise") { importing = true }
                     .accessibilityIdentifier("importBackup")
-            } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. Older JSON backups remain supported.") }
+            } header: { Text("Backup") } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. Older JSON backups remain supported.") }
             if let candidate {
                 Section("Review replacement") {
                     LabeledContent("Cards", value: String(candidate.cards.count))
@@ -56,8 +56,8 @@ struct BackupView: View {
                         document = BackupDocument(data: data); exporting = true
                     } catch { message = "No readable safety backup is available yet. One is created before each restoration." }
                 }
-            } footer: { Text("Restoring replaces this card, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
-        }.navigationTitle("Backup & restore")
+            } header: { Text("Safety backup") } footer: { Text("Restoring replaces this card, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
+        }.navigationTitle("Backup & restore").navigationBarTitleDisplayMode(.inline)
             .fileExporter(isPresented: $exporting, document: document, contentType: BackupDocument.backupType, defaultFilename: "anka-\(Day.string(.now)).ankabackup") { result in
                 switch result {
                 case .success: message = "Backup exported."

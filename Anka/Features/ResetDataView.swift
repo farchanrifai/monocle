@@ -20,7 +20,7 @@ struct ResetDataView: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Label {
-                        Text("Safety Backup Guaranteed")
+                        Text("Safety backup first")
                             .font(.subheadline.weight(.semibold))
                     } icon: {
                         Image(systemName: "shield.lefthalf.filled")
@@ -91,7 +91,7 @@ struct ResetDataView: View {
                             Text("Erase all data and start fresh")
                                 .font(.body.weight(.medium))
                                 .foregroundStyle(.red)
-                            Text("Factory reset for daily expense tracking")
+                            Text("Cards, expenses and bills")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -102,7 +102,7 @@ struct ResetDataView: View {
                 }
                 .accessibilityIdentifier("resetAllDataButton")
             } header: {
-                Text("Complete Fresh Start")
+                Text("Start fresh")
             } footer: {
                 Text("Wipes all expenses, recurring bills, and extra cards. Starts fresh with a single clean card in real mode and restores default categories.")
             }

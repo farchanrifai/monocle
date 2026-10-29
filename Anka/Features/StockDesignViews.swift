@@ -28,6 +28,40 @@ public struct StockDesignBackgroundView: View {
                 NeoGridView()
             case .warmParchment:
                 WarmParchmentView()
+            case .deepOcean:
+                DeepOceanView()
+            case .rosePetal:
+                SoftGradientView(colors: [
+                    Color(red: 1.00, green: 0.88, blue: 0.90),
+                    Color(red: 0.98, green: 0.74, blue: 0.80),
+                    Color(red: 0.96, green: 0.80, blue: 0.74)
+                ])
+            case .goldenHour:
+                SoftGradientView(colors: [
+                    Color(red: 1.00, green: 0.91, blue: 0.58),
+                    Color(red: 1.00, green: 0.75, blue: 0.42),
+                    Color(red: 0.98, green: 0.60, blue: 0.40)
+                ])
+            case .duskMesh:
+                MeshStockView(colors: [
+                    Color(red: 0.10, green: 0.07, blue: 0.28), Color(red: 0.24, green: 0.10, blue: 0.45), Color(red: 0.12, green: 0.12, blue: 0.40),
+                    Color(red: 0.38, green: 0.12, blue: 0.50), Color(red: 0.55, green: 0.18, blue: 0.55), Color(red: 0.22, green: 0.14, blue: 0.52),
+                    Color(red: 0.65, green: 0.22, blue: 0.48), Color(red: 0.35, green: 0.16, blue: 0.50), Color(red: 0.14, green: 0.10, blue: 0.36)
+                ])
+            case .meadowMesh:
+                MeshStockView(colors: [
+                    Color(red: 0.86, green: 0.97, blue: 0.80), Color(red: 0.93, green: 0.98, blue: 0.76), Color(red: 0.80, green: 0.95, blue: 0.84),
+                    Color(red: 0.70, green: 0.92, blue: 0.76), Color(red: 0.88, green: 0.97, blue: 0.70), Color(red: 0.72, green: 0.93, blue: 0.86),
+                    Color(red: 0.60, green: 0.88, blue: 0.72), Color(red: 0.78, green: 0.94, blue: 0.74), Color(red: 0.66, green: 0.90, blue: 0.88)
+                ])
+            case .pinstripe:
+                PinstripeView()
+            case .polkaDots:
+                PolkaDotsView()
+            case .inkMinimal:
+                MinimalStockView(base: Color(red: 0.07, green: 0.07, blue: 0.08), ink: .white, accent: Color(red: 0.98, green: 0.38, blue: 0.16))
+            case .paperMinimal:
+                MinimalStockView(base: Color(red: 0.96, green: 0.96, blue: 0.94), ink: .black, accent: Color(red: 0.98, green: 0.38, blue: 0.16))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -281,6 +315,125 @@ struct WarmParchmentView: View {
                     y += lineSpacing
                 }
             }
+        }
+    }
+}
+
+// MARK: - 10. Deep Ocean
+struct DeepOceanView: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.03, green: 0.12, blue: 0.30),
+                    Color(red: 0.05, green: 0.34, blue: 0.54),
+                    Color(red: 0.06, green: 0.50, blue: 0.60)
+                ],
+                startPoint: .top,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [Color.white.opacity(0.18), Color.clear],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 220
+            )
+        }
+    }
+}
+
+// MARK: - 11-12. Soft gradients (Rose Quartz, Golden Hour): light fills, pair with dark text
+struct SoftGradientView: View {
+    let colors: [Color]
+
+    var body: some View {
+        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+// MARK: - 13-14. Mesh (Dusk Mesh, Meadow Mesh): 3x3 grid, one slightly off-center control point
+struct MeshStockView: View {
+    let colors: [Color]
+
+    var body: some View {
+        MeshGradient(
+            width: 3,
+            height: 3,
+            points: [
+                [0, 0], [0.5, 0], [1, 0],
+                [0, 0.5], [0.58, 0.42], [1, 0.5],
+                [0, 1], [0.5, 1], [1, 1]
+            ],
+            colors: colors
+        )
+    }
+}
+
+// MARK: - 15. Pinstripe
+struct PinstripeView: View {
+    var body: some View {
+        ZStack {
+            Color(red: 0.10, green: 0.13, blue: 0.22)
+            Canvas { context, size in
+                let spacing: CGFloat = 12
+                var x = -size.height
+                while x < size.width {
+                    var path = Path()
+                    path.move(to: CGPoint(x: x, y: size.height))
+                    path.addLine(to: CGPoint(x: x + size.height, y: 0))
+                    context.stroke(path, with: .color(Color.white.opacity(0.07)), lineWidth: 1)
+                    x += spacing
+                }
+            }
+            LinearGradient(colors: [Color.white.opacity(0.08), Color.clear], startPoint: .top, endPoint: .bottom)
+        }
+    }
+}
+
+// MARK: - 16. Polka
+struct PolkaDotsView: View {
+    var body: some View {
+        ZStack {
+            Color(red: 0.99, green: 0.95, blue: 0.88)
+            Canvas { context, size in
+                let spacing: CGFloat = 26
+                var row = 0
+                var y: CGFloat = spacing / 2
+                while y < size.height + spacing {
+                    var x: CGFloat = row.isMultiple(of: 2) ? spacing / 2 : spacing
+                    while x < size.width + spacing {
+                        let rect = CGRect(x: x - 4, y: y - 4, width: 8, height: 8)
+                        context.fill(Path(ellipseIn: rect), with: .color(Color(red: 0.96, green: 0.45, blue: 0.32).opacity(0.28)))
+                        x += spacing
+                    }
+                    y += spacing * 0.8
+                    row += 1
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 17-18. Minimal (Ink, Paper): flat base, hairline rule and a short accent bar
+struct MinimalStockView: View {
+    let base: Color
+    let ink: Color
+    let accent: Color
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            base
+            LinearGradient(colors: [ink.opacity(0.07), Color.clear], startPoint: .topLeading, endPoint: .center)
+            VStack(spacing: 0) {
+                Spacer()
+                Rectangle().fill(ink.opacity(0.12)).frame(height: 0.5)
+                Color.clear.frame(height: 14)
+            }
+            accent
+                .frame(width: 28, height: 3)
+                .clipShape(Capsule())
+                .padding(.leading, 16)
+                .padding(.bottom, 7)
         }
     }
 }

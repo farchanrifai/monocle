@@ -8,7 +8,7 @@ enum WMC {
 
     static func formatIDR(_ amount: Int64, currency: Bool = true) -> String {
         let value = Decimal(amount) / 100
-        let number = value.formatted(.number.precision(.fractionLength(0...(amount % 100 == 0 ? 0 : 2))))
+        let number = value.formatted(.number.precision(.fractionLength(amount % 100 == 0 ? 0 : 2)))
         return (currency ? WidgetSnapshotStore.currencySymbol : "") + number
     }
 
