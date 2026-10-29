@@ -191,6 +191,25 @@ final class AnkaUITests: XCTestCase {
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
     }
     @MainActor
+    func testDiscardClearsSplit() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        app.buttons["addExpense"].tap()
+        app.buttons["key-5"].tap()
+        app.buttons["editSplits"].tap()
+        XCTAssertTrue(app.navigationBars["Split expense"].waitForExistence(timeout: 5))
+        app.navigationBars["Split expense"].buttons["Done"].tap()
+        app.buttons["Close entry"].tap()
+        XCTAssertTrue(app.buttons["Discard"].waitForExistence(timeout: 5))
+        app.buttons["Discard"].tap()
+        XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5))
+        app.buttons["addExpense"].tap()
+        XCTAssertTrue(app.staticTexts["amountDisplay"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["category-Food & Drink"].exists, "A discarded expense comes back without its split")
+    }
+    @MainActor
     func testSwipeDownAlsoConfirmsDiscard() throws {
         let app = XCUIApplication()
         app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString
@@ -571,9 +590,11 @@ final class AnkaUITests: XCTestCase {
         XCTAssertTrue(app.buttons["split-category-0"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["split-amount-0"].exists)
         app.buttons["addSplit"].tap()
+        XCTAssertTrue(app.navigationBars["Categories"].waitForExistence(timeout: 5))
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'picker-category-'")).firstMatch.tap()
         XCTAssertTrue(app.buttons["split-category-1"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["split-amount-1"].exists)
-        XCTAssertTrue(app.staticTexts["Remaining"].exists)
+        XCTAssertTrue(app.staticTexts["splitStatus"].exists)
     }
 
     @MainActor
@@ -588,7 +609,8 @@ final class AnkaUITests: XCTestCase {
         app.buttons["editSplits"].tap()
         XCTAssertTrue(app.buttons["split-category-0"].waitForExistence(timeout: 5))
 
-        app.buttons["Use one category instead"].tap()
+        app.buttons["splitOptions"].tap()
+        app.buttons["Don't split"].tap()
         XCTAssertTrue(app.buttons["editSplits"].waitForExistence(timeout: 5))
 
         app.buttons["editSplits"].tap()

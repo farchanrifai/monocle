@@ -65,6 +65,25 @@ final class BackendModelTests: XCTestCase {
         XCTAssertEqual(try repository.categories(), before)
     }
 
+    func testDiscardingAnExpenseClearsItsSplit() throws {
+        let (directory, _, service, state) = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let model = AppModel(expenses: service, state: state)
+        model.openEntry()
+        model.draft.amount = "50"
+        model.beginSplitting()
+        model.addSplitPart()
+        XCTAssertEqual(model.draft.splitParts.count, 2)
+        model.persistDraft()
+        XCTAssertTrue(model.discardDraft())
+        model.openEntry()
+        XCTAssertTrue(model.draft.splitParts.isEmpty)
+        // A relaunch restores the stored draft, which must be the cleared one.
+        let relaunched = AppModel(expenses: service, state: state)
+        relaunched.openEntry()
+        XCTAssertTrue(relaunched.draft.splitParts.isEmpty)
+    }
+
     func testDirectServiceCommitInvalidatesWarmedInactiveCardCache() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }
