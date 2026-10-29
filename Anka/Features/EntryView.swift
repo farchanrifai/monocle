@@ -5,8 +5,8 @@ struct EntryView: View {
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 52.0
-    @ScaledMetric(relativeTo: .title) private var keyHeight = 52.0
+    @ScaledMetric(relativeTo: .largeTitle) private var amountSize = 60.0
+    @ScaledMetric(relativeTo: .title) private var keyHeight = 56.0
     private enum Field: Hashable { case note }
     @FocusState private var focusedField: Field?
     @State private var keyboardUp = false
@@ -67,17 +67,18 @@ struct EntryView: View {
                 // it while the keyboard was still sliding down, squeezed the form to nothing and Record overlapped its last row.
                 if focusedField == nil && !keyboardUp {
                     keypad(rowHeight: min(max(keyHeight, 44), 64))
-                        .padding(.horizontal, 24).padding(.top, 4)
+                        .padding(.horizontal, 24).padding(.top, 12)
                         .transition(.opacity)
                 }
-                RecordButton(
-                    title: model.draft.editing ? "Save changes" : "Add expense",
-                    symbol: model.draft.editing ? "checkmark" : "plus"
-                ) {
-                    if model.saveDraft() { dismiss() }
-                }.accessibilityIdentifier("recordExpense")
-                    // While the keyboard is up its floating Done pill sits over the button's right end; lift the button clear of it.
-                    .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, keyboardUp ? 58 : 10)
+                // Hidden while the keyboard is up, where the checkmark in the top bar takes its place.
+                if !keyboardUp {
+                    RecordButton(
+                        title: model.draft.editing ? "Save changes" : "Add expense",
+                        symbol: model.draft.editing ? "checkmark" : "plus"
+                    ) { save() }.accessibilityIdentifier("recordExpense")
+                        .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 10)
+                        .transition(.opacity)
+                }
             }
             .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: keyboardUp)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
@@ -91,9 +92,13 @@ struct EntryView: View {
                         .accessibilityLabel("Close entry")
                         .accessibilityIdentifier("closeEntry")
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focusedField = nil }
+                // Add expense is hidden under the keyboard, so the bar offers the same save until it goes away.
+                if keyboardUp {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(role: .confirm, action: save) { Image(systemName: "checkmark") }
+                            .accessibilityLabel(model.draft.editing ? "Save changes" : "Add expense")
+                            .accessibilityIdentifier("recordExpenseFromBar")
+                    }
                 }
             }
             .background {
@@ -139,7 +144,7 @@ struct EntryView: View {
             Eyebrow(text: "Amount / \(draftCurrency)")
             Text(Money.format(amount, currency: false))
                 // A fixed height: the shrunk glyphs of a long amount would otherwise shorten the row and shift everything below it.
-                .font(.system(size: amountSize, weight: .semibold)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
+                .font(.system(size: amountSize, weight: .bold)).tracking(-2).lineLimit(1).minimumScaleFactor(0.4)
                 .frame(maxWidth: .infinity).frame(height: amountSize * 1.2)
                 .foregroundStyle(amount == 0 ? .secondary : .primary)
                 .contentTransition(.numericText())
@@ -233,7 +238,7 @@ struct EntryView: View {
         }.buttonStyle(.plain).accessibilityIdentifier("editSplits")
     }
     private func keypad(rowHeight: CGFloat) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 4) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 10) {
             ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", Money.fractionDigits(draftCurrency) > 0 ? "." : "000", "0", "delete.left"], id: \.self) { key in
                 Button {
                     if key == "delete.left" {
@@ -255,6 +260,9 @@ struct EntryView: View {
                     .accessibilityIdentifier("key-\(key)")
             }
         }
+    }
+    private func save() {
+        if model.saveDraft() { dismiss() }
     }
     private func selectCategory(_ id: UUID) {
         if model.draft.categoryID != id { selectionTick += 1 }

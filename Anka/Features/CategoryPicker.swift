@@ -31,6 +31,14 @@ struct CategoryStrip: View {
                         }.padding(.vertical, 3)
                     }
                     .scrollIndicators(.hidden)
+                    // Chips fade out under the grid button instead of being cut at the scroll edge.
+                    .contentMargins(.trailing, 20, for: .scrollContent)
+                    .mask {
+                        HStack(spacing: 0) {
+                            Color.black
+                            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 28)
+                        }
+                    }
                     .accessibilityIdentifier("categoryStrip")
                     .onAppear { if let selectedID { reader.scrollTo(selectedID, anchor: .center) } }
                     .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: selectedID)
