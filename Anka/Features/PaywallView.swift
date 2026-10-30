@@ -60,7 +60,8 @@ struct PaywallHeader: View {
                 Text(reason).font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
             comparison
-            Text("Backup, export and App Lock are always free.")
+            Text("Renews automatically until cancelled. Cancel anytime in Settings › Subscriptions. Backup, export and App Lock are always free.")
+                .multilineTextAlignment(.center)
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 20)
