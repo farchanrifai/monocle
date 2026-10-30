@@ -8,7 +8,7 @@ import XCTest
 @MainActor
 final class AppleChatTests: XCTestCase {
     func testEveryToolSchemaConverts() throws {
-        XCTAssertEqual(ChatAgent.tools.count, 10)
+        XCTAssertEqual(ChatAgent.tools.count, 11)
         for tool in ChatAgent.tools {
             let name = try XCTUnwrap(tool["name"] as? String)
             let schema = try XCTUnwrap(tool["input_schema"] as? [String: Any])

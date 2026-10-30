@@ -12,7 +12,6 @@ struct MacChatView: View {
     @State private var mentionSelection = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @FocusState private var inputFocused: Bool
-    @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var model: AppModel { state.model }
     private var session: ChatSession { state.model.chat }
@@ -27,23 +26,21 @@ struct MacChatView: View {
                     ChatTranscript(model: model, session: session, send: send)
                         .frame(maxWidth: 720)
                         .padding(.horizontal, gutter).padding(.vertical, compact ? 8 : 16)
-                        // The composer floats over the transcript; this keeps the last bubble resting above it.
-                        // (Real padding: contentMargins is ignored when the content is shorter than the view, which hid a first bubble behind the composer.)
-                        .padding(.bottom, composerHeight)
                         .frame(maxWidth: .infinity)
                 }
                 .scrollPosition($scrollPosition)
                 .defaultScrollAnchor(.bottom)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
-                .overlay(alignment: .bottom) {
+                // The composer is a bar, so the transcript rests above it and blurs under it with the native soft edge.
+                .safeAreaBar(edge: .bottom) {
                     inputBar
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
                     .overlay(alignment: .top) {
                         ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
                             .frame(maxWidth: 720).padding(.horizontal, gutter).frame(maxWidth: .infinity)
                             .alignmentGuide(.top) { $0[.bottom] + 4 }
                     }
                 }
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
             } else {
                 ContentUnavailableView {
                     Label("Chat Needs Apple Intelligence", systemImage: "bubble.left.and.text.bubble.right")
@@ -124,9 +121,6 @@ struct MacChatView: View {
         .frame(maxWidth: 720)
         .padding(.horizontal, gutter).padding(.vertical, 12)
         .frame(maxWidth: .infinity)
-        .background(alignment: .bottom) {
-            ProgressiveBlur(edge: .bottom, solid: 36, fade: 40, tint: Color(nsColor: .windowBackgroundColor))
-        }
     }
 
     private func send(_ input: String) {

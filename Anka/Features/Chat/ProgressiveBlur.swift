@@ -1,33 +1,9 @@
 import SwiftUI
 
-/// Material that fades out with a smoothstep (no hard shoulder, no visible cutoff). Mac chat only: iPhone screens use
-/// the native soft scroll edge effect. `solid` is fully covered; `fade` eases to clear away from `edge`.
-struct ProgressiveBlur: View {
-    var edge: VerticalEdge = .top
-    var solid: CGFloat
-    var fade: CGFloat = 62
-    var tint: Color
-
-    var body: some View {
-        let total = solid + fade
-        let stops: [Gradient.Stop] = [.init(color: .black, location: 0)] + (0...16).map { step in
-            let t = CGFloat(step) / 16
-            return .init(color: .black.opacity(Double(1 - t * t * (3 - 2 * t))), location: (solid + fade * t) / total)
-        }
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            // Mostly canvas: the material alone reads grey over a black canvas, so the bars stood out as lighter bands.
-            .overlay(tint.opacity(0.85))
-            .mask { LinearGradient(stops: stops, startPoint: edge == .top ? .top : .bottom, endPoint: edge == .top ? .bottom : .top) }
-            .frame(height: total)
-            .allowsHitTesting(false)
-    }
-}
-
 /// The chat's surfaces, one set of system semantic colours that follows light and dark. iPhone uses the grouped-free
 /// system background ramp (black canvas in dark, raised grey surfaces); the Mac pane keeps its translucent fills.
 extension Color {
-    /// Behind the transcript, the composer fade and the top fade.
+    /// Behind the transcript.
     static var chatCanvas: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemBackground)
