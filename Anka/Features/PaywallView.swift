@@ -4,7 +4,7 @@ import SwiftUI
 /// Where the store listing, paywall and Settings link to. Replace the privacy page once it is hosted.
 enum AppLinks {
     static let terms = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-    static let privacy = URL(string: "https://pakaryan.com/anka/privacy")! // docs/site/anka/privacy
+    static let privacy = URL(string: "https://pakaryan.com/anka/privacy")! // site repo ~/Xcode/pakaryan
     static let support = URL(string: "mailto:anka@pakaryan.com?subject=Anka%20support")!
 }
 

@@ -1,6 +1,6 @@
 # Anka privacy policy
 
-Last updated: 2026-10-30. Published version: `docs/site/anka/privacy.html`.
+Last updated: 2026-10-30. Published at https://pakaryan.com/anka/privacy (site repo ~/Xcode/pakaryan).
 
 Anka keeps your spending on your device. There is no account, no sign-in, no analytics or advertising SDK, and no Anka server.
 
@@ -35,6 +35,6 @@ anka@pakaryan.com
 - **Privacy manifests:** `Anka/Resources/PrivacyInfo.xcprivacy` (app) and `AnkaWidgets/PrivacyInfo.xcprivacy` (widgets): no tracking, no collected data, UserDefaults with reasons `CA92.1` (app only) and `1C8F.1` (app group shared with the widgets). Re-check when adding file-timestamp, disk-space or system-boot-time APIs, or a third-party SDK.
 
 # Before publishing
-1. Upload `docs/site/anka/` so it serves https://pakaryan.com/anka/privacy and /anka/support (folders with index.html, `/anka/style.css`). In App Store Connect: Privacy Policy URL = /anka/privacy, Support URL = /anka/support. `AppLinks.privacy` already points there.
+1. The live pages are in the site repo `~/Xcode/pakaryan`: `src/pages/anka/privacy.astro` (mirror of this file) and `src/pages/anka/support.astro`; deploy with `npm run deploy`. In App Store Connect: Privacy Policy URL = /anka/privacy, Support URL = /anka/support. `AppLinks.privacy` already points there.
 2. If Claude chat returns (plan "Later"), add its row, a consent sheet (guideline 5.1.2(i)), and change the label to "Data Not Linked to You".
 3. If iCloud sync is added, this page and the label change.
