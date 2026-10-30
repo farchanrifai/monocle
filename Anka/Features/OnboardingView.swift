@@ -60,7 +60,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 feature("creditcard.fill", "A card for each part of life", "Daily spending, a trip, a project: each keeps its own expenses and budget.")
                 feature("calendar.badge.clock", "Budgets and bills", "See what's left this month and never miss a recurring payment.")
-                feature("lock.shield.fill", "Stays on your iPhone", "No account, no ads, no tracking. Chat runs on Apple Intelligence on the device.")
+                feature("lock.shield.fill", "Stays on your iPhone", "No account, no ads, no tracking. Your records stay on this iPhone.")
             }
             Spacer()
             Button { step = .currency } label: { Text("Continue").frame(maxWidth: .infinity) }

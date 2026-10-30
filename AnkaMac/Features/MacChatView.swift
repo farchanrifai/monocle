@@ -7,7 +7,7 @@ struct MacChatView: View {
     @Bindable var state: MacAppState
     var compact = false
     var close: (() -> Void)? = nil
-    @State private var unavailable = ChatSession.unavailableReason
+    @State private var unavailable = ChatSession.unavailableReason(isPro: false)
     @State private var draft = ""
     @State private var mentionSelection = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
@@ -58,7 +58,7 @@ struct MacChatView: View {
         }
         // Apple Intelligence can be turned on, or finish downloading, while the app runs.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            unavailable = ChatSession.unavailableReason
+            unavailable = ChatSession.unavailableReason(isPro: false)
         }
     }
 

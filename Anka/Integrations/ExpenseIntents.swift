@@ -515,7 +515,7 @@ enum AskError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .failed(let json): (try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])?["error"] as? String ?? "That didn't work."
-        case .chatOff: "Ask Anka needs Apple Intelligence on this iPhone."
+        case .chatOff: "Ask Anka needs Apple Intelligence on this iPhone, or Anka Pro with Chat with Claude turned on."
         }
     }
 }
@@ -597,7 +597,8 @@ struct AskAnkaIntent: AppIntent {
     @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
         try requireProShortcut()
         let model = AppEnvironment.shared.model
-        guard ChatSession.unavailableReason == nil else { throw AskError.chatOff }
+        // A Shortcut can't ask the Claude question, so it uses Claude only once allowed, else Apple Intelligence.
+        guard ClaudeConsent.uses(isPro: model.isPro) || ChatSession.unavailableReason(isPro: false) == nil else { throw AskError.chatOff }
         let scope = model.chat.scope ?? ChatScopeMenuItems.homeScope(model)
         let outputs = await model.chat.send(question, model: model, scope: scope)
         return .result(dialog: IntentDialog(stringLiteral: Self.spoken(outputs)))

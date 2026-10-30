@@ -49,6 +49,17 @@ final class ProStore {
         set(active)
     }
 
+    /// The newest Pro transaction as Apple signed it, for Anka's chat server to check; nil without Pro.
+    func receipt() async -> String? {
+        var newest: (expiry: Date, jws: String)?
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result, Self.productIDs.contains(transaction.productID), transaction.revocationDate == nil else { continue }
+            let expiry = transaction.expirationDate ?? .distantFuture
+            if expiry > newest?.expiry ?? .distantPast { newest = (expiry, result.jwsRepresentation) }
+        }
+        return newest?.jws
+    }
+
     /// Restore: asks the App Store to resend this Apple Account's transactions.
     func restore() async throws {
         try await AppStore.sync()

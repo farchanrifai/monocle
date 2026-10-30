@@ -44,7 +44,7 @@ struct PaywallHeader: View {
         ("Analytics", "Totals", "Trends"),
         ("Widgets", "—", "All + Live Activities"),
         ("Shortcuts", "Add Expense", "All"),
-        ("Chat", "\(Plan.freeQuestionsPerDay) a day", "Unlimited"),
+        ("Chat", "On-device, \(Plan.freeQuestionsPerDay) a day", "Claude, unlimited"),
         ("Card looks", "Default", "Customizer"),
         ("CSV", "Export", "Import too"),
     ]

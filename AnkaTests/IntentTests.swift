@@ -191,7 +191,7 @@ final class IntentTests: XCTestCase {
         let (_, service, model) = try makeTestModel()
         AppEnvironment.shared.model = model
         AppEnvironment.shared.expenses = service
-        if ChatSession.unavailableReason != nil {
+        if ChatSession.unavailableReason(isPro: false) != nil {
             var intent = AskAnkaIntent()
             intent.question = "how much this month?"
             do { _ = try await intent.perform(); XCTFail("chat can't run here") } catch AskError.chatOff {}

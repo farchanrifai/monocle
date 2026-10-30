@@ -1,6 +1,6 @@
 # Anka — AI Chat Spec (v1)
 
-> **App Store branch (`release/app-store`):** Claude, the API key, Luna invites and the Luna bridge are removed. Chat runs on Apple Intelligence only (`AppleChatAgent`), is on wherever the model is available, and needs no opt-in because nothing leaves the device. `ChatAgent` keeps only the shared tools, instructions and context. Sections below that describe Claude, streaming, the proxy and Luna apply to `main` (SideStore) only.
+> **App Store branch (`release/app-store`):** Pro users who allow it (one-time sheet, `ClaudeConsent`, Settings ▸ Chat with Claude) chat with Claude Haiku 5.5 through Anka's own Worker (`server/anka-chat`): the app sends its App Store transaction JWS (`ProStore.receipt()`), the Worker verifies it against Apple's root, pins the model, caps spend per subscription per month and streams the reply (§8). Everyone else, and Claude failures (offline, busy, cap), use Apple Intelligence (`AppleChatAgent`). No API keys or Luna invites in the app. DEBUG builds can use the Worker's owner key (`-ankaOwnerKey`). Sections below on personal keys, Luna invites and the Luna bridge apply to `main` (SideStore) only.
 
 A full-screen chat, opened from the bottom bar, where the user adds expenses and asks about spending in English or Bahasa Indonesia ("kopi 28rb", "how much on food this month?"). Claude picks a **tool**; the app runs it on-device. Claude never touches the store and never does arithmetic.
 

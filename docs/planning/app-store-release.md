@@ -14,7 +14,7 @@ Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9
 | --- | --- |
 | Individual developer account | Legal name shown as seller; no D-U-N-S; bank account and W-8BEN in own name |
 | Drop Luna | Delete invite registration, `LunaProxy`, `LunaBridge`, `LunaSnapshot`, Settings → Luna; no server, no App Store Server Notifications |
-| Apple Intelligence is the only chat in 1.0 | No per-user AI cost; chat shown only when `SystemLanguageModel.default.availability == .available`; Pro must not be sold on chat. Claude is removed from 1.0 and revisited for 1.1 |
+| Claude chat for Pro in 1.0 (decided 2026-10-30) | Pro and trial users who allow it chat with Claude Haiku 5.5 on any iPhone, in any language, through `server/anka-chat`, which verifies the App Store transaction and caps spend ($1 per subscription a month, $25 global). Free, declined, offline or capped: Apple Intelligence. Replaces "Apple Intelligence only" |
 | iOS first, Mac later | Before the Mac's first release, change its bundle ID to `com.farchan.anka` (universal purchase) |
 | Worldwide from day one | See phase 1b; no China mainland (ICP filing) |
 
@@ -29,7 +29,7 @@ Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9
 | Analytics | Month and category totals on the card | Analytics screen |
 | Widgets, Live Activities, spending sessions | — | Yes |
 | Shortcuts | Add Expense, Quick entry | All |
-| Chat (Apple Intelligence) | 5 questions a day; adding expenses through chat is unlimited | Unlimited |
+| Chat | Apple Intelligence, 5 questions a day; adding expenses through chat is unlimited | Claude (with consent), unlimited within fair use; else Apple Intelligence, unlimited |
 | Card customizer | Default looks | Full |
 | CSV | Export | Import too |
 | Backup/restore, App Lock | Always free | Always free |

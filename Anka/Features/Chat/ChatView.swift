@@ -9,7 +9,9 @@ struct ChatView: View {
     @State private var sentCount = 0
     @FocusState private var inputFocused: Bool
     /// Read when the screen opens: Apple Intelligence can be turned on, or finish downloading, while the app runs.
-    @State private var unavailable = ChatSession.unavailableReason
+    @State private var unavailable = ChatSession.unavailableReason(isPro: false)
+    /// The message waiting while the one-time Claude question is up.
+    @State private var askingClaude: String?
     @State private var mentionSelection = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -47,13 +49,19 @@ struct ChatView: View {
                   if unavailable == nil {
                     ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
                   } else {
-                    Text(unavailable ?? "")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(16)
-                        .frame(maxWidth: .infinity)
-                        .accessibilityIdentifier("chatUnavailable")
+                    VStack(spacing: 10) {
+                        Text(unavailable ?? "")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .accessibilityIdentifier("chatUnavailable")
+                        if !model.isPro {
+                            Button("See Pro") { model.paywall = "Chat with Claude works on any iPhone, in any language." }
+                                .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity)
                   }
                 }
             }
@@ -96,10 +104,20 @@ struct ChatView: View {
         .scrollEdgeEffectStyle(.soft, for: .all)
         .onAppear {
             if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) }
-            unavailable = ChatSession.unavailableReason
+            unavailable = ChatSession.unavailableReason(isPro: model.isPro)
             takePrefill()
         }
         .onChange(of: model.chatPrefill) { _, _ in takePrefill() }
+        .sheet(isPresented: Binding(get: { askingClaude != nil }, set: { if !$0, let input = askingClaude { draft = input; askingClaude = nil } })) {
+            ClaudeConsentSheet(onDevice: AppleChatAgent.unavailableReason == nil) { allowed in
+                let input = askingClaude ?? ""
+                askingClaude = nil
+                guard let allowed else { draft = input; return }
+                ClaudeConsent.choice = allowed
+                unavailable = ChatSession.unavailableReason(isPro: model.isPro)
+                if unavailable == nil { send(input) } else { draft = input }
+            }
+        }
     }
 
     /// A `anka://chat?q=` question lands in the composer; the owner taps Send.
@@ -111,6 +129,11 @@ struct ChatView: View {
 
     private func send(_ input: String) {
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isTyping, unavailable == nil else { return }
+        if ClaudeConsent.needsAsking(isPro: model.isPro) {
+            askingClaude = input
+            draft = ""
+            return
+        }
         sentCount += 1
         let session = session, model = model
         let scope = ChatScopeMenuItems.applyMention(in: input, session: session, model: model)
@@ -130,5 +153,39 @@ struct ChatView: View {
                 AccessibilityNotification.Announcement(message).post()
             }
         }
+    }
+}
+
+/// Asked once, before the first message goes to Claude (App Review 5.1.2(i)). Settings ▸ Chat with Claude changes it later.
+struct ClaudeConsentSheet: View {
+    /// Apple Intelligence can answer instead.
+    let onDevice: Bool
+    /// true: use Claude. false: keep chat on this iPhone. nil: not now (ask again next time).
+    let choose: (Bool?) -> Void
+
+    static let disclosure = "Anka Pro answers with Claude by Anthropic, on any iPhone and in any language. To answer, your message and the spending details it needs (amounts, dates, notes, category and card names) are sent to Anthropic through Anka's server. They're used only to answer you: Anka's server keeps nothing, and Anthropic doesn't use them to train its models."
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(MC.red)
+            Text("Chat with Claude").font(.title2.bold())
+            Text(Self.disclosure)
+            Text(onDevice ? "Or keep chat on this iPhone with Apple Intelligence. You can change this in Settings." : "You can change this in Settings.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Button { choose(true) } label: { Text("Use Claude").frame(maxWidth: .infinity) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier("claudeAllow")
+            Button { choose(onDevice ? false : nil) } label: { Text(onDevice ? "Keep on iPhone" : "Not now").frame(maxWidth: .infinity) }
+                .controlSize(.large)
+                .accessibilityIdentifier("claudeDecline")
+        }
+        .padding(24)
+        .tint(MC.red)
+        .presentationDetents([.large])
     }
 }

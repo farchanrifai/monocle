@@ -72,7 +72,8 @@ struct ChatRow: Identifiable, Equatable, Codable {
 }
 
 /// The conversation, owned by AppModel so it outlives the chat screen and is wiped with the data it
-/// describes. Saved to chat.json next to the ledger (what the user sees; the on-device model's memory lives only in its session).
+/// describes. Saved to chat.json next to the ledger: what the user sees and what Claude remembers, together (the on-device
+/// model's memory lives only in its session).
 @MainActor @Observable
 final class ChatSession {
     var rows: [ChatRow] = [] { didSet { save() } }
@@ -88,6 +89,10 @@ final class ChatSession {
     /// Chat-local scope: starts from the Home filter, never writes back to it (CHAT_SPEC §2).
     var scope: AnalyticsFilterScope? { didSet { save() } }
     @ObservationIgnored var agent: (any ChatBackend)?
+    /// Apple Intelligence answering a turn Claude couldn't (offline, busy, monthly cap).
+    @ObservationIgnored private var fallback: AppleChatAgent?
+    /// Claude's side of a restored conversation, handed to the agent when it is first created.
+    @ObservationIgnored private(set) var restoredMessages: [[String: Any]] = []
     @ObservationIgnored private let fileURL: URL?
     @ObservationIgnored private var loading = false
 
@@ -103,21 +108,26 @@ final class ChatSession {
         loading = true
         rows = snapshot.rows
         scope = snapshot.scope
+        // Claude's history made under other instructions or tools can't be continued (bound thinking blocks); the rows stay.
+        if json["fingerprint"] as? String == ClaudeChatAgent.fingerprint { restoredMessages = json["messages"] as? [[String: Any]] ?? [] }
         loading = false
     }
 
     func clear() {
         agent?.reset()
+        fallback?.reset()
+        restoredMessages = []
         scope = nil
         rows = []
     }
 
-    /// Called after every change to rows.
+    /// Called after every change to rows; the agent has already appended its messages by then.
     func save() {
         guard !loading, let fileURL else { return }
         do {
             let ui = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Snapshot(rows: rows, scope: scope)))
-            let json: [String: Any] = ["version": 1, "ui": ui]
+            let json: [String: Any] = ["version": 1, "fingerprint": ClaudeChatAgent.fingerprint, "ui": ui,
+                                       "messages": (agent as? ClaudeChatAgent)?.messages ?? restoredMessages]
             try JSONSerialization.data(withJSONObject: json).write(to: fileURL, options: .atomic)
         } catch {
             // ponytail: history is a convenience copy; a failed write never interrupts the chat.
@@ -126,12 +136,54 @@ final class ChatSession {
 }
 
 extension ChatSession {
-    /// Why chat can't run on this device, or nil when it can. DEBUG UI runs can swap in a scripted backend.
-    static var unavailableReason: String? {
+    /// Why chat can't run, or nil when it can: Claude for Pro (once allowed, or still to ask), else Apple Intelligence.
+    /// DEBUG UI runs can swap in a scripted backend.
+    static func unavailableReason(isPro: Bool) -> String? {
         #if DEBUG
         if usesFakeChat { return nil }
         #endif
-        return AppleChatAgent.unavailableReason
+        if ClaudeConsent.uses(isPro: isPro) || ClaudeConsent.needsAsking(isPro: isPro) { return nil }
+        guard let reason = AppleChatAgent.unavailableReason else { return nil }
+        #if os(iOS)
+        if !isPro { return reason + " Anka Pro adds chat by Claude on any iPhone." }
+        return reason + " Or turn on Chat with Claude in Settings."
+        #else
+        return reason
+        #endif
+    }
+
+    /// Sends Claude the newest Pro transaction for the server to check. DEBUG: the owner's free-team builds can't buy Pro,
+    /// so one launch with `-ankaOwnerKey <key>` stores the server's owner key instead.
+    static func claudeCredentials(_ model: AppModel) async -> [String: String]? {
+        #if DEBUG
+        // ponytail: plain defaults, not the Keychain; debug builds on the owner's phone only.
+        if let key = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["ankaOwnerKey"] as? String {
+            UserDefaults.standard.set(key, forKey: "ankaOwnerKey")
+        }
+        if let key = UserDefaults.standard.string(forKey: "ankaOwnerKey"), !key.isEmpty { return ["x-anka-owner": key] }
+        #endif
+        return await model.pro?.receipt().map { ["x-anka-receipt": $0] }
+    }
+
+    private func makeAgent(claude: Bool, model: AppModel) -> any ChatBackend {
+        guard claude else { return AppleChatAgent(model: model) }
+        let credentials = { [weak model] () async throws -> [String: String] in
+            guard let model, let credentials = await Self.claudeCredentials(model) else {
+                throw ClaudeClient.ClientError.notPro("Claude chat is part of Anka Pro.")
+            }
+            return credentials
+        }
+        let agent = ClaudeChatAgent(model: model, messages: restoredMessages) { body in
+            try await ClaudeClient(credentials: try await credentials()).send(body)
+        } stream: { body, onText in
+            try await ClaudeClient(credentials: try await credentials()).stream(body, onText: onText)
+        }
+        agent.onText = { [weak self] delta in
+            guard let self else { return }
+            streamingText = delta.map { (streamingText ?? "") + $0 }
+            if let streamingText { pacer.set(streamingText) } else { pacer.reset() }
+        }
+        return agent
     }
 
     /// Sends one user message and appends the reply rows. Returns the reply so the caller can announce it.
@@ -143,16 +195,31 @@ extension ChatSession {
         if appended == nil { rows.append(ChatRow(kind: .user(text))) }
         typingID = UUID()
         isTyping = true
+        let claude = ClaudeConsent.uses(isPro: model.isPro)
+        // Switching backend starts the other model fresh; Claude's history is kept for when it comes back.
+        if claude != (agent is ClaudeChatAgent) {
+            if let old = agent as? ClaudeChatAgent { restoredMessages = old.messages }
+            agent = nil
+        }
         let agent: any ChatBackend
         #if DEBUG
-        agent = self.agent ?? (Self.usesFakeChat ? FakeChatAgent(model: model) : AppleChatAgent(model: model))
+        agent = self.agent ?? (Self.usesFakeChat ? FakeChatAgent(model: model) : makeAgent(claude: claude, model: model))
         #else
-        agent = self.agent ?? AppleChatAgent(model: model)
+        agent = self.agent ?? makeAgent(claude: claude, model: model)
         #endif
         streamingText = nil
         pacer.reset()
         self.agent = agent
-        let outputs = Self.limitQuestions(await agent.send(text, scope: scope, now: .now), isPro: model.isPro)
+        var outputs = Self.limitQuestions(await agent.send(text, scope: scope, now: .now), isPro: model.isPro)
+        // Claude couldn't be reached and nothing was proposed yet: answer on this iPhone instead, when it can.
+        if let failure = (agent as? ClaudeChatAgent)?.failure, outputs.count == 1, AppleChatAgent.unavailableReason == nil {
+            streamingText = nil
+            pacer.reset()
+            let fallback = fallback ?? AppleChatAgent(model: model)
+            self.fallback = fallback
+            let why = if case .offline = failure { "You're offline" } else { failure.localizedDescription }
+            outputs = [.notice("\(why). Answered by Apple Intelligence on this iPhone.")] + (await fallback.send(text, scope: scope, now: .now))
+        }
         // A reply that opens with text grows out of the thinking bubble: both changes land in one animation. One that opens with a
         // card lets the bubble go, so no text slides down across the card.
         let reply = outputs.enumerated().map { index, output -> ChatRow in

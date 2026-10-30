@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.requestReview) private var requestReview
+    @AppStorage(ClaudeConsent.key) private var claudeChoice: Bool?
 
     /// Icon badge + title, with an optional trailing value. One look for every settings row.
     @ViewBuilder
@@ -87,6 +88,11 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle(isOn: Binding(get: { claudeChoice == true }, set: { claudeChoice = $0 })) {
+                        Label { Text("Chat with Claude") } icon: { SettingsIcon(symbol: "bubble.left.and.text.bubble.right.fill", color: .orange) }
+                    }
+                    .disabled(!model.isPro)
+                    .accessibilityIdentifier("claudeChatToggle")
                     NavigationLink {
                         AppLockSettingsView(model: model)
                     } label: {
@@ -96,7 +102,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Privacy & Security")
                 } footer: {
-                    Text("Anka keeps your spending on this device. App lock asks for Face ID or your passcode when you come back.")
+                    Text("Anka keeps your spending on this device. Chat with Claude (Pro) sends each chat message, with the spending details it needs, to Anthropic to answer it; off, chat uses Apple Intelligence on this iPhone. App lock asks for Face ID or your passcode when you come back.")
                 }
 
                 Section {
