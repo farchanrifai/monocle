@@ -19,6 +19,23 @@ final class AnkaUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Expense added"].waitForExistence(timeout: 5))
     }
     @MainActor
+    func testChatMentionRowTakesTap() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["ANKA_FAKE_CHAT"] = "1"
+        app.launchEnvironment["ANKA_SCREEN"] = "chat"
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)", "-ankaPro", "YES"]
+        app.launch()
+        let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
+        input.tap()
+        input.typeText("#")
+        let row = app.buttons["Transport"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap() // the list floats above the composer bar; the tap must reach it
+        XCTAssertTrue(((input.value as? String) ?? "").contains("#Transport"))
+    }
+    @MainActor
     func testInvalidEntryShowsErrorWithoutDismissingDraft() throws {
         let app = XCUIApplication()
         app.launchEnvironment["ANKA_TEST_RUN"] = UUID().uuidString

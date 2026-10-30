@@ -33,16 +33,19 @@ struct ChatView: View {
             .scrollBounceBehavior(.always)
             // Tapping the transcript dismisses the keyboard; buttons inside rows still win the tap.
             .onTapGesture { inputFocused = false }
+            // Over the transcript, not the bar: the bar only takes taps inside its own frame. The bar's inset puts it just above the composer.
+            .overlay(alignment: .bottom) {
+                if unavailable == nil {
+                    ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 4)
+                }
+            }
             // The composer is a bar, so the transcript rests above it and blurs under it with the native soft edge.
             .safeAreaBar(edge: .bottom) {
                 Group {
                   if unavailable == nil {
                     ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
-                        .overlay(alignment: .top) {
-                            ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
-                                .padding(.horizontal, 12)
-                                .alignmentGuide(.top) { $0[.bottom] + 4 }
-                        }
                   } else {
                     Text(unavailable ?? "")
                         .font(.footnote)

@@ -31,15 +31,13 @@ struct MacChatView: View {
                 .scrollPosition($scrollPosition)
                 .defaultScrollAnchor(.bottom)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
-                // The composer is a bar, so the transcript rests above it and blurs under it with the native soft edge.
-                .safeAreaBar(edge: .bottom) {
-                    inputBar
-                    .overlay(alignment: .top) {
-                        ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
-                            .frame(maxWidth: 720).padding(.horizontal, gutter).frame(maxWidth: .infinity)
-                            .alignmentGuide(.top) { $0[.bottom] + 4 }
-                    }
+                // Over the transcript, not the bar: the bar only takes taps inside its own frame. The bar's inset puts it just above the composer.
+                .overlay(alignment: .bottom) {
+                    ChatMentionList(model: model, session: session, draft: $draft, selection: $mentionSelection)
+                        .frame(maxWidth: 720).padding(.horizontal, gutter).padding(.bottom, 4).frame(maxWidth: .infinity)
                 }
+                // The composer is a bar, so the transcript rests above it and blurs under it with the native soft edge.
+                .safeAreaBar(edge: .bottom) { inputBar }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
             } else {
                 ContentUnavailableView {
