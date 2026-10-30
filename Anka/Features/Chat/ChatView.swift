@@ -33,8 +33,12 @@ struct ChatView: View {
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .scrollDismissesKeyboard(.interactively)
             .scrollBounceBehavior(.always)
-            // Tapping the transcript dismisses the keyboard; buttons inside rows still win the tap.
-            .onTapGesture { inputFocused = false }
+            // Tapping the transcript dismisses the keyboard; buttons inside rows still win the tap. The composer lives in the
+            // safe-area bar, where clearing the focus state alone leaves the keyboard up, so the first responder resigns too.
+            .onTapGesture {
+                inputFocused = false
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
             // Over the transcript, not the bar: the bar only takes taps inside its own frame. The bar's inset puts it just above the composer.
             .overlay(alignment: .bottom) {
                 if unavailable == nil {
