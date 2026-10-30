@@ -479,7 +479,7 @@ struct CardHomeView: View {
             .scrollEdgeEffectStyle(.soft, for: .all)
         }
         .navigationDestination(isPresented: $model.showAnalytics) {
-            AnalyticsView(model: model, showsDismissButton: false, isPushed: true).hidesBottomNavigation(model)
+            AnalyticsView(model: model).hidesBottomNavigation(model)
         }
         .sheet(isPresented: $model.showStartSessionSheet) {
             startSessionSheet.scrollEdgeEffectStyle(.soft, for: .all)

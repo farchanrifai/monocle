@@ -3,24 +3,17 @@ import Charts
 
 struct AnalyticsView: View {
     @Bindable var model: AppModel
-    var showsDismissButton = true
-    /// Pushed on a navigation stack: the system bar supplies the title, back button and edge swipe.
-    var isPushed = false
     @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
     @State private var selectedScope: AnalyticsFilterScope = .allCards
 
     var body: some View {
         let report = AnalyticsReport.build(data: model.reportingData(for: selectedScope), horizon: selectedHorizon)
-        AnalyticsReportView(model: model, showsDismissButton: showsDismissButton, isPushed: isPushed,
-                            selectedHorizon: $selectedHorizon, selectedScope: $selectedScope, report: report)
+        AnalyticsReportView(model: model, selectedHorizon: $selectedHorizon, selectedScope: $selectedScope, report: report)
     }
 }
 
 private struct AnalyticsReportView: View {
     @Bindable var model: AppModel
-    var showsDismissButton = true
-    var isPushed = false
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
     @Binding var selectedHorizon: AnalyticsTimeHorizon
@@ -43,15 +36,6 @@ private struct AnalyticsReportView: View {
         }
     }
 
-    private var ink: Color {
-        switch direction {
-        case .light, .ledger:
-            return MC.ink
-        case .instrument, .signal:
-            return .white
-        }
-    }
-
     private let categoryPalette: [Color] = [
         MC.red,
         Color.orange,
@@ -68,81 +52,45 @@ private struct AnalyticsReportView: View {
     ]
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .top) {
-                paper.ignoresSafeArea()
+        ZStack(alignment: .top) {
+            paper.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        controlsHeader
-                        if let error = report.errorMessage {
-                            Label(error, systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(MC.red)
-                        } else {
-                            kpiSummaryCard
-                            burnUpTrajectoryCard
-                            budgetVsActualCard
-                            dailyRhythmCard
-                            monthOverMonthCard
-                            categoryBreakdownCard
-                            if !selectedScope.isCard && cardPoints.count > 1 { crossCardBreakdownCard }
-                            if !paidWithTotals.isEmpty { paidWithBreakdownCard }
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    controlsHeader
+                    if let error = report.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(MC.red)
+                    } else {
+                        kpiSummaryCard
+                        burnUpTrajectoryCard
+                        budgetVsActualCard
+                        dailyRhythmCard
+                        monthOverMonthCard
+                        categoryBreakdownCard
+                        if !selectedScope.isCard && cardPoints.count > 1 { crossCardBreakdownCard }
+                        if !paidWithTotals.isEmpty { paidWithBreakdownCard }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 96)
                 }
-                .safeAreaBar(edge: .top) { if !isPushed { header } }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 96)
             }
-            .onAppear {
-                syncScopeWithHomeContext()
-            }
-            .onChange(of: model.filterScope) { _, _ in
-                syncScopeWithHomeContext()
-            }
-            .onChange(of: model.activeStackID) { _, _ in
-                syncScopeWithHomeContext()
-            }
-            .onChange(of: model.selectedCardID) { _, _ in
-                syncScopeWithHomeContext()
-            }
-            .navigationTitle(isPushed ? "Analytics & Trends" : "")
-            .navigationBarTitleDisplayMode(.inline)
         }
-    }
-
-    private var header: some View {
-        HStack {
-            if showsDismissButton {
-                Button {
-                    dismiss()
-                } label: {
-                    Text("Done")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(MC.red)
-                }
-                .accessibilityIdentifier("dismissAnalyticsView")
-            } else {
-                Color.clear
-                    .frame(width: 44, height: 44)
-            }
-
-            Spacer()
-
-            Text("Analytics & Trends")
-                .font(.headline)
-                .foregroundStyle(ink)
-                .accessibilityIdentifier("analyticsTitle")
-
-            Spacer()
-
-            Color.clear
-                .frame(width: 44, height: 44)
+        .onAppear {
+            syncScopeWithHomeContext()
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 8)
-        .frame(height: 52)
+        .onChange(of: model.filterScope) { _, _ in
+            syncScopeWithHomeContext()
+        }
+        .onChange(of: model.activeStackID) { _, _ in
+            syncScopeWithHomeContext()
+        }
+        .onChange(of: model.selectedCardID) { _, _ in
+            syncScopeWithHomeContext()
+        }
+        .navigationTitle("Analytics & Trends")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func syncScopeWithHomeContext() {

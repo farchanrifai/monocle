@@ -88,7 +88,7 @@ struct BudgetsView: View {
             }
             .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id).scrollEdgeEffectStyle(.soft, for: .all) }
             .navigationDestination(isPresented: $showingAnalytics) {
-                AnalyticsView(model: model, showsDismissButton: false, isPushed: true).hidesBottomNavigation(model)
+                AnalyticsView(model: model).hidesBottomNavigation(model)
             }
     }
 
