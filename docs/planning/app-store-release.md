@@ -1,4 +1,4 @@
-# anka — App Store release plan
+# ankka — App Store release plan
 
 Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9 build 113).
 
@@ -14,8 +14,8 @@ Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9
 | --- | --- |
 | Individual developer account | Legal name shown as seller; no D-U-N-S; bank account and W-8BEN in own name |
 | Drop Luna | Delete invite registration, `LunaProxy`, `LunaBridge`, `LunaSnapshot`, Settings → Luna; no server, no App Store Server Notifications |
-| Claude chat for Pro in 1.0 (decided 2026-10-30) | Pro and trial users who allow it chat with Claude Haiku 5.5 on any iPhone, in any language, through `server/anka-chat`, which verifies the App Store transaction and caps spend ($1 per subscription a month, $25 global). Free, declined, offline or capped: Apple Intelligence. Replaces "Apple Intelligence only" |
-| iOS first, Mac later | Before the Mac's first release, change its bundle ID to `com.farchan.anka` (universal purchase) |
+| Claude chat for Pro in 1.0 (decided 2026-10-30) | Pro and trial users who allow it chat with Claude Haiku 5.5 on any iPhone, in any language, through `server/ankka-chat`, which verifies the App Store transaction and caps spend ($1 per subscription a month, $25 global). Free, declined, offline or capped: Apple Intelligence. Replaces "Apple Intelligence only" |
+| iOS first, Mac later | Before the Mac's first release, change its bundle ID to `com.farchan.ankka` (universal purchase) |
 | Worldwide from day one | See phase 1b; no China mainland (ICP filing) |
 
 ## Free and Pro
@@ -51,28 +51,28 @@ Updated: 2026-10-21. Branch: `release/app-store` (from `main` @ `ba4f078`, 0.9.9
 ### 0. Account (owner, this weekend)
 - Enroll (Individual). Sign the Paid Apps Agreement; add bank and tax details. Products don't load in sandbox until it is active.
 - Apply for the Small Business Program (15%).
-- Register `com.farchan.anka`, `com.farchan.anka.AnkaWidgets`, `group.com.farchan.anka`; In-App Purchase capability.
+- Register `com.farchan.ankka`, `com.farchan.ankka.AnkkaWidgets`, `group.com.farchan.ankka`; In-App Purchase capability.
 - Create the app record (check the name), subscription group, monthly + yearly products, trial offer.
 
 ## Status (2026-10-22)
 
 Done on this branch, no paid account needed (254 iOS + 21 Mac unit tests pass; UI tests not run):
-- **Strip:** Luna and Claude removed; chat is Apple Intelligence only, no opt-in, explains itself when unavailable. `ANKA_FAKE_CHAT` drives chat in UI tests.
+- **Strip:** Luna and Claude removed; chat is Apple Intelligence only, no opt-in, explains itself when unavailable. `ANKKA_FAKE_CHAT` drives chat in UI tests.
 - **Worldwide:** Shortcuts and chat amounts follow the card's currency with decimals; onboarding picks the currency (device's first) and scales the Sample card without exchange rates.
 - **Plan:** `Plan` + `ExpenseService.plan` enforce 1 real card, 3 running bills (others frozen: no reconcile, no reminders), 10 user entries on the Sample card (any plan), locked cards after a lapse, Pro-only foreign currency. `AppModel.report` turns refused writes into the paywall.
-- **StoreKit:** `ProStore` (entitlements, updates, restore, app-group cache for widgets), `Configuration/Anka.storekit` (monthly 2.99 / yearly 29.99, 1-week free trial: placeholders until prices are decided), scheme uses it for Run.
+- **StoreKit:** `ProStore` (entitlements, updates, restore, app-group cache for widgets), `Configuration/Ankka.storekit` (monthly 2.99 / yearly 29.99, 1-week free trial: placeholders until prices are decided), scheme uses it for Run.
 - **Screens:** `PaywallView` (SubscriptionStoreView + Free vs Pro table, restore, redeem, terms, privacy), `KeptCardPicker` (permanent choice, stored in UserDefaults), `OnboardingView`, Settings ▸ Subscription and About links; "Start your real card" removed.
 - **Gates:** new stacks, stack budgets, CSV import, Analytics, spending sessions, card looks, second card, foreign currencies, Pro Shortcuts (sessions, summary, budget left, Ask), Home Screen widgets, chat after 5 questions a day.
 - **Compliance:** `ITSAppUsesNonExemptEncryption = NO`, deprecation fixed, privacy manifests (app + widgets, `1C8F.1`), `scripts/build-appstore.sh`, `build-ipa.sh` never publishes `release/*`, `docs/privacy.md` rewritten.
 
 Needs the account or the owner:
 - Team signing: `DEVELOPMENT_TEAM`, then `ProStoreTests` StoreKit cases stop skipping (they need a team-signed build).
-- App Store Connect: products with the same IDs (`com.farchan.anka.pro.monthly` / `.yearly`), group, trial; prices.
+- App Store Connect: products with the same IDs (`com.farchan.ankka.pro.monthly` / `.yearly`), group, trial; prices.
 - Contact line, privacy page hosting (`AppLinks.privacy` is a placeholder), support URL, rate-the-app link (needs the app ID).
 - Phone checks: onboarding, paywall purchase in sandbox/TestFlight, downgrade picker, widgets lock, chat limit.
 - Done 2026-10-22: rating prompt (`ReviewPrompt`, once per version after 10 saves); unused `RecentsView` with its "PROTOTYPE 01" label removed.
 - Done 2026-10-22: UI tests. Mac 9/9 pass. iOS 44/46: the two failures (`testRecoveredDraftCanBeDiscardedToOpenAnotherTransaction`, `testTransactionPageLiquidGlassAddButtonAndPlatter`) fail on `main` too. Three release-caused failures fixed (two tests lacked an isolated store, so onboarding covered Home; the chat test now waits for focus after the reply's expense card).
-- Done 2026-10-22: simulator screenshots of onboarding (all steps), paywall header and kept-card picker; table labels shortened, picker preselects the card in use. DEBUG hooks `ANKA_SHOW_PAYWALL=1|header`, `ANKA_ONBOARDING_STEP=welcome|currency|card|trial|none`. The real paywall shows "Subscription Unavailable" until products load (Xcode Run with the .storekit file, or App Store Connect).
+- Done 2026-10-22: simulator screenshots of onboarding (all steps), paywall header and kept-card picker; table labels shortened, picker preselects the card in use. DEBUG hooks `ANKKA_SHOW_PAYWALL=1|header`, `ANKKA_ONBOARDING_STEP=welcome|currency|card|trial|none`. The real paywall shows "Subscription Unavailable" until products load (Xcode Run with the .storekit file, or App Store Connect).
 - Check on the phone: after chat replies with an expense card, the first tap on the composer may not focus it (the UI test needed a second tap).
 - Not done yet: MARKETING_VERSION 1.0.0 at submission.
 
@@ -94,7 +94,7 @@ Needs the account or the owner:
 - Tests: `SKTestSession` for purchase, expiry, refund, trial eligibility.
 
 ### 2b. Screens
-- Onboarding (first launch only): what Anka does → reporting currency → start blank, with the Sample card, or restore a `.monoclebackup` → trial offer (skippable).
+- Onboarding (first launch only): what Ankka does → reporting currency → start blank, with the Sample card, or restore a `.monoclebackup` → trial offer (skippable).
 - Paywall: one `SubscriptionStoreView` with the Free vs Pro comparison as its marketing content; Apple's sheet takes payment. Opened from onboarding, Settings and every locked feature.
 - Locked states: Pro badge and paywall on tap; widget placeholder when not Pro; lapsed subscription keeps extra cards readable, explained once.
 - Settings → Subscription: plan, renewal date, Manage, Restore, Redeem code.

@@ -1,10 +1,10 @@
-# Anka — App Spec (as built, v0.7.21 / build 84)
+# Ankka — App Spec (as built, v0.7.21 / build 84)
 
 Personal IDR expense tracker for iPhone. Local-first. Describes the code on `codex/backend-reliability`.
 
 ## 1. Data models
 
-**There is no SwiftData and no `@Model`.** Persistence is **Core Data** (`Anka.xcdatamodeld`, current version `AnkaV4`). Entities are untyped `NSManagedObject` (no generated classes). They are mapped by hand to `Sendable` value structs in `Persistence/ExpenseRepository.swift`.
+**There is no SwiftData and no `@Model`.** Persistence is **Core Data** (`Ankka.xcdatamodeld`, current version `AnkkaV4`). Entities are untyped `NSManagedObject` (no generated classes). They are mapped by hand to `Sendable` value structs in `Persistence/ExpenseRepository.swift`.
 
 The domain has no Account or Wallet entity. A **Book** is shown in the UI as a **"card"**. Users can hold multiple cards and group them into "stacks". Stacks and card appearance are stored in JSON (`workspace.json`), not in Core Data.
 
@@ -73,21 +73,21 @@ User-created, not an enum. Six defaults have fixed UUIDs: Food & Drink, Transpor
 ## 4. Targets and shared code
 
 Targets are generated from XcodeGen `project.yml`:
-- **Anka**: iOS app, iPhone only, portrait.
-- **AnkaWidgets**: WidgetKit and Live Activity extension.
-- **AnkaTests** and **AnkaUITests**.
+- **Ankka**: iOS app, iPhone only, portrait.
+- **AnkkaWidgets**: WidgetKit and Live Activity extension.
+- **AnkkaTests** and **AnkkaUITests**.
 
 Other facts:
 - **No macOS target.** A native Mac app is planned only (`docs/planning/roadmap.md`).
 - **No Swift packages and no third-party dependencies.** The only shared code is two files compiled into both targets: `Integrations/Widgets/WidgetSnapshot.swift` and `WidgetSnapshotStore.swift`.
-- App Group: `group.com.farchan.anka`, used for widget snapshots.
+- App Group: `group.com.farchan.ankka`, used for widget snapshots.
 
 ## 5. Sync and container setup
 
 **CloudKit/iCloud is off.** There are no iCloud entitlements; the implementation report states "No CloudKit synchronization was introduced." iCloud sync is a roadmap item.
 
 `App/AppEnvironment.swift` is the single composition root:
-- **Store:** an `NSPersistentContainer` with a SQLite store at `Application Support/anka-prototype/Anka.sqlite`, opened with automatic lightweight migration.
+- **Store:** an `NSPersistentContainer` with a SQLite store at `Application Support/ankka-prototype/Ankka.sqlite`, opened with automatic lightweight migration.
 - **Startup order:** backup recovery runs first, then sample seeding. Then it builds `ExpenseService` and `@MainActor @Observable AppModel` (a singleton).
 - **Other state:** stored as JSON files next to the store (`FileLocalStateStore`): `settings.json`, `workspace.json` and per-card drafts.
 - **Backups:** full-workspace export/restore (`.monoclebackup`, format 7) via `BackupService`.
@@ -123,7 +123,7 @@ Other surfaces:
 
 ## 8. Navigation and where chat could go
 
-`RootView` (`App/AnkaApp.swift`) is a `TabView` with **Home** (`BookHomeView`) and **Analytics** (`AnalyticsView`). The system tab bar is hidden and replaced by the custom `BottomNavigation`, which has a tab switcher, a stack filter menu and a central "+" add button.
+`RootView` (`App/AnkkaApp.swift`) is a `TabView` with **Home** (`BookHomeView`) and **Analytics** (`AnalyticsView`). The system tab bar is hidden and replaced by the custom `BottomNavigation`, which has a tab switcher, a stack filter menu and a central "+" add button.
 
 Most other screens are `.sheet`s: entry, settings, budgets, bills, CSV, card customizer. Candidate places for chat:
 1. **A third `Tab`.** This needs a matching item in `NativeTabSwitcher` (`BottomNavigation.swift`, which uses `UITabBarItem` tags 0 and 1).

@@ -8,9 +8,9 @@ project_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_root"
 : "${DEVELOPMENT_TEAM:?Set DEVELOPMENT_TEAM to your Apple Developer team ID}"
 mkdir -p build
-archive=build/Anka.xcarchive
+archive=build/Ankka.xcarchive
 rm -rf "$archive" build/AppStore
-xcodebuild archive -project Anka.xcodeproj -scheme Anka -configuration Release \
+xcodebuild archive -project Ankka.xcodeproj -scheme Ankka -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$archive" \
   DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic -allowProvisioningUpdates
 destination=export

@@ -1,0 +1,25 @@
+name = "ankka-chat"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Anthropic refuses requests that egress from the Hong Kong colo (seen in luna-server). Pin execution near Singapore.
+[placement]
+region = "aws:ap-southeast-1"
+
+# Secrets (wrangler secret put): ANTHROPIC_API_KEY, OWNER_KEY (optional, the owner's debug builds).
+[vars]
+MODEL = "claude-haiku-5-5"
+MAX_TOKENS_CEILING = "16000"
+MAX_BODY_BYTES = "1000000"
+CAP_MONTHLY_USD_USER = "1"      # ~1,000 Haiku messages per subscriber a month
+CAP_MONTHLY_USD_GLOBAL = "25"
+BUNDLE_ID = "com.farchan.ankka"
+PRODUCT_IDS = "com.farchan.ankka.pro.yearly,com.farchan.ankka.pro.monthly"
+ENVIRONMENTS = "Production,Sandbox"
+
+# `wrangler d1 create ankka-chat`, paste the id, then `wrangler d1 migrations apply ankka-chat --remote`.
+[[d1_databases]]
+binding = "DB"
+database_name = "ankka-chat"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

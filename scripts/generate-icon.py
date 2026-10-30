@@ -23,7 +23,7 @@ for y in range(size):
 def chunk(name, data):
     return struct.pack('>I', len(data)) + name + data + struct.pack('>I', zlib.crc32(name + data) & 0xffffffff)
 image = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b'')
-root = Path(__file__).resolve().parents[1] / 'Anka/Resources/Assets.xcassets'
+root = Path(__file__).resolve().parents[1] / 'Ankka/Resources/Assets.xcassets'
 (root / 'AppIcon.appiconset/Icon.png').write_bytes(image)
 (root / 'Contents.json').write_text(json.dumps({'info': {'author': 'xcode', 'version': 1}}, indent=2) + '\n')
 (root / 'AppIcon.appiconset/Contents.json').write_text(json.dumps({'images': [{'filename': 'Icon.png', 'idiom': 'universal', 'platform': 'ios', 'size': '1024x1024'}], 'info': {'author': 'xcode', 'version': 1}}, indent=2) + '\n')

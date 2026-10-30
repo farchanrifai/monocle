@@ -1,4 +1,4 @@
-name: Anka
+name: Ankka
 options:
   bundleIdPrefix: com.farchan
   deploymentTarget:
@@ -13,39 +13,39 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     MARKETING_VERSION: '0.9.9'
     CURRENT_PROJECT_VERSION: '113'
-    ANKA_RUN_LARGE_BENCHMARK: '0'
+    ANKKA_RUN_LARGE_BENCHMARK: '0'
 targets:
-  Anka:
+  Ankka:
     type: application
     platform: iOS
     attributes:
       SystemCapabilities:
         com.apple.ApplicationGroups.iOS:
           enabled: 1
-    sources: [Anka]
+    sources: [Ankka]
     info:
-      path: Anka/Resources/Info.plist
+      path: Ankka/Resources/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # ProMotion: without this, iPhone caps the app's own animations and drags at 60 Hz.
         CADisableMinimumFrameDurationOnPhone: true
         UTExportedTypeDeclarations:
-          - UTTypeIdentifier: com.farchan.anka.backup
-            UTTypeDescription: Anka workspace backup
+          - UTTypeIdentifier: com.farchan.ankka.backup
+            UTTypeDescription: Ankka workspace backup
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification:
-              public.filename-extension: [ankabackup, monoclebackup]
-        # anka:// links from widgets, Shortcuts and Safari (AnkaApp.onOpenURL).
+              public.filename-extension: [ankkabackup, ankabackup, monoclebackup]
+        # ankka:// links from widgets, Shortcuts and Safari (AnkkaApp.onOpenURL).
         CFBundleURLTypes:
-          - CFBundleURLName: com.farchan.anka
-            CFBundleURLSchemes: [anka]
+          - CFBundleURLName: com.farchan.ankka
+            CFBundleURLSchemes: [ankka]
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
-        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.anka
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.ankka
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: anka
+        INFOPLIST_KEY_CFBundleDisplayName: ankka
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
@@ -55,10 +55,10 @@ targets:
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_ENTITLEMENTS: Anka/Resources/Anka.entitlements
+        CODE_SIGN_ENTITLEMENTS: Ankka/Resources/Ankka.entitlements
     dependencies:
-      - target: AnkaWidgets
-  AnkaWidgets:
+      - target: AnkkaWidgets
+  AnkkaWidgets:
     type: app-extension
     platform: iOS
     attributes:
@@ -66,14 +66,14 @@ targets:
         com.apple.ApplicationGroups.iOS:
           enabled: 1
     sources:
-      - path: AnkaWidgets
+      - path: AnkkaWidgets
         excludes:
           - Info.plist
           - "*.entitlements"
-      - path: Anka/Integrations/Widgets/WidgetSnapshot.swift
-      - path: Anka/Integrations/Widgets/WidgetSnapshotStore.swift
+      - path: Ankka/Integrations/Widgets/WidgetSnapshot.swift
+      - path: Ankka/Integrations/Widgets/WidgetSnapshotStore.swift
     info:
-      path: AnkaWidgets/Info.plist
+      path: AnkkaWidgets/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -82,107 +82,107 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
-        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.anka.AnkaWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.ankka.AnkkaWidgets
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
-        CODE_SIGN_ENTITLEMENTS: AnkaWidgets/AnkaWidgets.entitlements
-  AnkaTests:
+        CODE_SIGN_ENTITLEMENTS: AnkkaWidgets/AnkkaWidgets.entitlements
+  AnkkaTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - AnkaTests
-      - path: Configuration/Anka.storekit
+      - AnkkaTests
+      - path: Configuration/Ankka.storekit
         buildPhase: resources
     dependencies:
-      - target: Anka
+      - target: Ankka
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-  AnkaUITests:
+  AnkkaUITests:
     type: bundle.ui-testing
     platform: iOS
-    sources: [AnkaUITests]
+    sources: [AnkkaUITests]
     dependencies:
-      - target: Anka
+      - target: Ankka
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-  AnkaMac:
+  AnkkaMac:
     type: application
     platform: macOS
     sources:
-      - path: Anka/Domain
-      - path: Anka/Application
-      - path: Anka/Persistence
-      - path: Anka/App/AppModel.swift
-      - path: Anka/App/AppEnvironment.swift
-      - path: Anka/Integrations/ExpenseIntents.swift
-      - path: Anka/Integrations/BillNotificationService.swift
-      - path: Anka/Resources/Anka.xcdatamodeld
-      - path: Anka/Resources/PrivacyInfo.xcprivacy
-      - path: Anka/Features/Chat/ChatBubble.swift
-      - path: Anka/Features/Chat/ProgressiveBlur.swift
-      - path: Anka/Features/Chat/ChatTranscript.swift
-      - path: Anka/Features/Chat/ExpenseProposalCard.swift
-      - path: Anka/Features/Chat/ChatChartView.swift
-      - path: Anka/Features/StockDesignViews.swift
-      - path: Anka/Features/BudgetStatusViews.swift
-      - path: AnkaMac
+      - path: Ankka/Domain
+      - path: Ankka/Application
+      - path: Ankka/Persistence
+      - path: Ankka/App/AppModel.swift
+      - path: Ankka/App/AppEnvironment.swift
+      - path: Ankka/Integrations/ExpenseIntents.swift
+      - path: Ankka/Integrations/BillNotificationService.swift
+      - path: Ankka/Resources/Ankka.xcdatamodeld
+      - path: Ankka/Resources/PrivacyInfo.xcprivacy
+      - path: Ankka/Features/Chat/ChatBubble.swift
+      - path: Ankka/Features/Chat/ProgressiveBlur.swift
+      - path: Ankka/Features/Chat/ChatTranscript.swift
+      - path: Ankka/Features/Chat/ExpenseProposalCard.swift
+      - path: Ankka/Features/Chat/ChatChartView.swift
+      - path: Ankka/Features/StockDesignViews.swift
+      - path: Ankka/Features/BudgetStatusViews.swift
+      - path: AnkkaMac
     info:
-      path: AnkaMac/Resources/Info.plist
+      path: AnkkaMac/Resources/Info.plist
       properties:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        CFBundleDisplayName: anka
+        CFBundleDisplayName: ankka
         LSApplicationCategoryType: public.app-category.finance
         NSHumanReadableCopyright: Copyright © 2026 Farchan. All rights reserved.
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.anka.mac
-        PRODUCT_NAME: Anka
-        PRODUCT_MODULE_NAME: AnkaMac
+        PRODUCT_BUNDLE_IDENTIFIER: com.farchan.ankka.mac
+        PRODUCT_NAME: Ankka
+        PRODUCT_MODULE_NAME: AnkkaMac
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
-        CODE_SIGN_ENTITLEMENTS: AnkaMac/Resources/AnkaMac.entitlements
+        CODE_SIGN_ENTITLEMENTS: AnkkaMac/Resources/AnkkaMac.entitlements
         MACOSX_DEPLOYMENT_TARGET: '26.0'
         ENABLE_HARDENED_RUNTIME: YES
-  AnkaMacTests:
+  AnkkaMacTests:
     type: bundle.unit-test
     platform: macOS
-    sources: [AnkaMacTests]
+    sources: [AnkkaMacTests]
     dependencies:
-      - target: AnkaMac
+      - target: AnkkaMac
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         MACOSX_DEPLOYMENT_TARGET: '26.0'
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Anka.app/Contents/MacOS/Anka
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Ankka.app/Contents/MacOS/Ankka
         BUNDLE_LOADER: $(TEST_HOST)
-  AnkaMacUITests:
+  AnkkaMacUITests:
     type: bundle.ui-testing
     platform: macOS
-    sources: [AnkaMacUITests]
+    sources: [AnkkaMacUITests]
     dependencies:
-      - target: AnkaMac
+      - target: AnkkaMac
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         MACOSX_DEPLOYMENT_TARGET: '26.0'
 schemes:
-  Anka:
+  Ankka:
     build:
       targets:
-        Anka: all
-        AnkaWidgets: all
+        Ankka: all
+        AnkkaWidgets: all
     run:
-      storeKitConfiguration: Configuration/Anka.storekit
+      storeKitConfiguration: Configuration/Ankka.storekit
     test:
-      targets: [AnkaTests, AnkaUITests]
+      targets: [AnkkaTests, AnkkaUITests]
       environmentVariables:
-        ANKA_RUN_LARGE_BENCHMARK: $(ANKA_RUN_LARGE_BENCHMARK)
-  AnkaMac:
+        ANKKA_RUN_LARGE_BENCHMARK: $(ANKKA_RUN_LARGE_BENCHMARK)
+  AnkkaMac:
     build:
       targets:
-        AnkaMac: all
+        AnkkaMac: all
     test:
-      targets: [AnkaMacTests, AnkaMacUITests]
+      targets: [AnkkaMacTests, AnkkaMacUITests]

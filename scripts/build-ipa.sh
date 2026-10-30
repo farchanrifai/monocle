@@ -5,20 +5,20 @@ cd "$project_root"
 # The public SideStore feed must never carry a release build (anyone could install it): keep those local.
 case "$(git rev-parse --abbrev-ref HEAD)" in release/*) SKIP_SIDESTORE_PUBLISH=1 ;; esac
 mkdir -p build/device build/packages
-xcodebuild build -project Anka.xcodeproj -scheme Anka -configuration Release \
+xcodebuild build -project Ankka.xcodeproj -scheme Ankka -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO
 package_stage="$(mktemp -d "$project_root/build/packages/stage.XXXXXX")"
 trap 'rm -rf "$package_stage"' EXIT
 mkdir -p "$package_stage/Payload"
-ditto build/device/Build/Products/Release-iphoneos/Anka.app "$package_stage/Payload/Anka.app"
+ditto build/device/Build/Products/Release-iphoneos/Ankka.app "$package_stage/Payload/Ankka.app"
 # An unsigned device build for SideStore to re-sign, not an App Store export.
-version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$package_stage/Payload/Anka.app/Info.plist")
-build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$package_stage/Payload/Anka.app/Info.plist")
-output_path="$project_root/build/packages/anka-$version-build-$build_number-unsigned.ipa"
+version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$package_stage/Payload/Ankka.app/Info.plist")
+build_number=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$package_stage/Payload/Ankka.app/Info.plist")
+output_path="$project_root/build/packages/ankka-$version-build-$build_number-unsigned.ipa"
 package_suffix=0
 while [ -e "$output_path" ]; do
   package_suffix=$((package_suffix + 1))
-  output_path="$project_root/build/packages/anka-$version-build-$build_number-unsigned-$(date +%Y%m%d-%H%M%S)-$package_suffix.ipa"
+  output_path="$project_root/build/packages/ankka-$version-build-$build_number-unsigned-$(date +%Y%m%d-%H%M%S)-$package_suffix.ipa"
 done
 (cd "$package_stage" && /usr/bin/zip -qr "$output_path" Payload)
 /usr/bin/unzip -t "$output_path"
@@ -46,7 +46,7 @@ fi
 
 release_notes="${1:-$changelog_notes}"
 if [ -z "$release_notes" ]; then
-  release_notes="Anka $version ($build_number)"
+  release_notes="Ankka $version ($build_number)"
 fi
 
 if [ "${SKIP_SIDESTORE_PUBLISH:-0}" != "1" ]; then
