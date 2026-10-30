@@ -43,6 +43,9 @@ final class ProStore {
         // -ankaPro YES / NO forces a plan for local runs and UI tests.
         if let forced = UserDefaults.standard.object(forKey: "ankaPro") as? Bool { active = forced }
         #endif
+        #if DEBUG && ANKA_FORCE_PRO
+        active = true // the owner's free-team phone build: StoreKit can't sell to it
+        #endif
         set(active)
     }
 
