@@ -435,12 +435,13 @@ struct CardHomeView: View {
             }
         }
         .sheet(isPresented: $managing) {
-            manageStackSheet
+            manageStackSheet.scrollEdgeEffectStyle(.soft, for: .all)
         }
         .sheet(isPresented: $model.showStackCustomizer) {
             StackCustomizerView(model: model, initialMode: model.stackCustomizerMode) {
                 model.showStackCustomizer = false
             }
+            .scrollEdgeEffectStyle(.soft, for: .all)
         }
         .environment(\.cardAppearancePreview, appearancePreview)
         .sheet(item: $model.customizerTarget, onDismiss: { appearancePreview = [:] }) { target in
@@ -475,12 +476,13 @@ struct CardHomeView: View {
             NavigationStack {
                 CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
             }
+            .scrollEdgeEffectStyle(.soft, for: .all)
         }
         .navigationDestination(isPresented: $model.showAnalytics) {
             AnalyticsView(model: model, showsDismissButton: false, isPushed: true).hidesBottomNavigation(model)
         }
         .sheet(isPresented: $model.showStartSessionSheet) {
-            startSessionSheet
+            startSessionSheet.scrollEdgeEffectStyle(.soft, for: .all)
         }
         .navigationDestination(item: $selectedExpenseForDetail) { expense in
             TransactionDetailView(

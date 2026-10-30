@@ -90,6 +90,7 @@ struct ChatView: View {
             }
         }
         .tint(MC.red)
+        .scrollEdgeEffectStyle(.soft, for: .all)
         .onAppear {
             if session.scope == nil { session.scope = ChatScopeMenuItems.homeScope(model) }
             unavailable = ChatSession.unavailableReason

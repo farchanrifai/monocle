@@ -37,7 +37,7 @@ struct PaymentMethodsView: View {
             }
         }
         .navigationTitle("Paid with").navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $editing) { method in PaymentMethodEditor(model: model, method: method) }
+        .sheet(item: $editing) { method in PaymentMethodEditor(model: model, method: method).scrollEdgeEffectStyle(.soft, for: .all) }
     }
 }
 

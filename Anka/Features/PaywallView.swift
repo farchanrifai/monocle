@@ -111,6 +111,7 @@ struct KeptCardPicker: View {
                     .font(.callout).foregroundStyle(.secondary).padding(.horizontal).padding(.vertical, 8)
             }
             .navigationTitle("Keep one card")
+            .scrollEdgeEffectStyle(.soft, for: .all)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

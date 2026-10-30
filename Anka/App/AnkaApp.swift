@@ -37,16 +37,18 @@ struct RootView: View {
                 .toolbar(.hidden, for: .tabBar)
                 .safeAreaBar(edge: .bottom) { if model.pushedDepth == 0 { BottomNavigation(model: model) } }
                 .tint(MC.red)
+                // iOS 27 defaults bars to the hard edge; every screen keeps the soft (progressive) blur.
+                .scrollEdgeEffectStyle(.soft, for: .all)
                 .sheet(isPresented: $model.showEntry, onDismiss: {
                     if !model.draftNeedsConfirmation { model.discardDraft() }
-                }) { EntryView(model: model).proPaywall(model) }
+                }) { EntryView(model: model).proPaywall(model).scrollEdgeEffectStyle(.soft, for: .all) }
                 .sensoryFeedback(.success, trigger: model.saveFeedback)
                 .modifier(ReviewPrompt(model: model))
                 .alert("Discard the unfinished expense?", isPresented: Binding(get: { model.pendingEntry != nil }, set: { if !$0 { model.pendingEntry = nil } })) {
                     Button("Discard and continue", role: .destructive) { model.discardAndOpenPendingEntry() }
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
                 } message: { Text("You have an unfinished expense from an interruption. Discard it to open this expense.") }
-                .sheet(isPresented: $model.showSettings) { SettingsView(model: model).proPaywall(model) }
+                .sheet(isPresented: $model.showSettings) { SettingsView(model: model).proPaywall(model).scrollEdgeEffectStyle(.soft, for: .all) }
                 .fullScreenCover(isPresented: $model.showChat) { ChatView(model: model, session: model.chat).proPaywall(model) }
                 .modifier(ProPresentation(model: model))
                 .alert(model.spendingCurrencyQuestion, isPresented: Binding(get: { model.spendingCurrencySuggestion != nil && !model.showEntry },

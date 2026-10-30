@@ -41,6 +41,7 @@ struct OnboardingView: View {
             } message: { Text(error ?? "") }
         }
         .tint(MC.red)
+        .scrollEdgeEffectStyle(.soft, for: .all)
         .interactiveDismissDisabled()
         .proPaywall(model)
         // A restored backup with real cards needs no further setup.

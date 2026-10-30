@@ -62,7 +62,7 @@ struct TransactionDetailView: View {
             ), onDismiss: {
                 if !model.draftNeedsConfirmation { model.discardDraft() }
             }) {
-                EntryView(model: model)
+                EntryView(model: model).scrollEdgeEffectStyle(.soft, for: .all)
             }
             .confirmationDialog(
                 "Delete Expense?",

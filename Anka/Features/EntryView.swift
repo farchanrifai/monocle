@@ -115,7 +115,7 @@ struct EntryView: View {
             .sheet(isPresented: $showCategories) {
                 CategoryPicker(categories: model.activeCategories, selectedID: model.draft.categoryID, select: selectCategory)
             }
-            .sheet(isPresented: $showSplits) { SplitEditor(model: model) }
+            .sheet(isPresented: $showSplits) { SplitEditor(model: model).scrollEdgeEffectStyle(.soft, for: .all) }
             .alert(showDiscard ? (model.draft.editing ? "Discard your changes?" : "Discard this expense?") : "Check this", isPresented: Binding(get: { showDiscard || model.error != nil }, set: {
                 if !$0 { showDiscard = false; model.error = nil }
             })) {

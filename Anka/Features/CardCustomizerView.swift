@@ -178,7 +178,7 @@ struct CardCustomizerView: View {
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
             }
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            .scrollEdgeEffectStyle(.soft, for: .all)
           }
           .background(Color(uiColor: .systemGroupedBackground))
             .scrollDismissesKeyboard(.interactively)
@@ -217,6 +217,7 @@ struct CardCustomizerView: View {
                             set: { cardCategorySelections[cardID] = $0 }
                         )
                     )
+                    .scrollEdgeEffectStyle(.soft, for: .all)
                 }
             }
             .onAppear {

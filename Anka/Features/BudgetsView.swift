@@ -86,7 +86,7 @@ struct BudgetsView: View {
                 }
                 if case .card(let id) = subject { ToolbarItem(placement: .topBarTrailing) { Button("Edit", systemImage: "slider.horizontal.3") { editing = BudgetEditTarget(id: id) } } }
             }
-            .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id) }
+            .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id).scrollEdgeEffectStyle(.soft, for: .all) }
             .navigationDestination(isPresented: $showingAnalytics) {
                 AnalyticsView(model: model, showsDismissButton: false, isPushed: true).hidesBottomNavigation(model)
             }

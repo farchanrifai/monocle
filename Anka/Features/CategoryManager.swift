@@ -55,10 +55,10 @@ struct CategoryManager: View {
             }
         }
         .sheet(isPresented: $isCreatingCategory) {
-            NewGlobalCategorySheet(model: model)
+            NewGlobalCategorySheet(model: model).scrollEdgeEffectStyle(.soft, for: .all)
         }
         .sheet(item: $editingGlobalCategory) { category in
-            GlobalCategoryEditor(model: model, category: category)
+            GlobalCategoryEditor(model: model, category: category).scrollEdgeEffectStyle(.soft, for: .all)
         }
         .alert("Delete category?", isPresented: Binding(
             get: { deletingGlobalCategory != nil },
@@ -516,7 +516,7 @@ struct CategoryRuleManager: View {
         }
         .navigationTitle("Keyword rules")
         .toolbar { ToolbarItem(placement: .primaryAction) { Button("New rule", systemImage: "plus") { newRule() } } }
-        .sheet(item: $editing) { rule in CategoryRuleEditor(model: model, rule: rule) }
+        .sheet(item: $editing) { rule in CategoryRuleEditor(model: model, rule: rule).scrollEdgeEffectStyle(.soft, for: .all) }
     }
 
     private func newRule() { editing = CategoryRule(id: UUID(), keyword: "", categoryID: model.activeCategories.first?.id ?? UUID()) }

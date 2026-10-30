@@ -198,10 +198,10 @@ struct BillsView: View {
             .navigationTitle("Bills")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $isCreating) {
-                BillEditor(model: model, existingRule: nil)
+                BillEditor(model: model, existingRule: nil).scrollEdgeEffectStyle(.soft, for: .all)
             }
             .sheet(item: $editingRule) { rule in
-                BillEditor(model: model, existingRule: rule)
+                BillEditor(model: model, existingRule: rule).scrollEdgeEffectStyle(.soft, for: .all)
             }
     }
 
