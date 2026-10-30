@@ -1,6 +1,6 @@
 # Anka privacy policy
 
-Last updated: 2026-10-22. Draft for the owner to host; replace the contact line before publishing.
+Last updated: 2026-10-30. Published version: `docs/site/anka/privacy.html`.
 
 Anka keeps your spending on your device. There is no account, no sign-in, no analytics or advertising SDK, and no Anka server.
 
@@ -23,7 +23,7 @@ Backups you export are files you control. Anka doesn't upload them anywhere.
 Anka does not collect, sell or share your data and does not track you across apps or sites.
 
 ## Contact
-<owner contact here>
+anka@pakaryan.com
 
 ---
 
@@ -32,9 +32,9 @@ Anka does not collect, sell or share your data and does not track you across app
 - **Data collection:** Data Not Collected. Nothing is sent to the developer; chat is on-device.
 - **Frankfurter:** currency codes and dates are not personal data; the IP address is incidental to the request and not linked to an identity or used for tracking.
 - **Tracking:** No.
-- **Privacy manifests:** `Monocle/Resources/PrivacyInfo.xcprivacy` (app) and `MonocleWidgets/PrivacyInfo.xcprivacy` (widgets): no tracking, no collected data, UserDefaults with reasons `CA92.1` (app only) and `1C8F.1` (app group shared with the widgets). Re-check when adding file-timestamp, disk-space or system-boot-time APIs, or a third-party SDK.
+- **Privacy manifests:** `Anka/Resources/PrivacyInfo.xcprivacy` (app) and `AnkaWidgets/PrivacyInfo.xcprivacy` (widgets): no tracking, no collected data, UserDefaults with reasons `CA92.1` (app only) and `1C8F.1` (app group shared with the widgets). Re-check when adding file-timestamp, disk-space or system-boot-time APIs, or a third-party SDK.
 
 # Before publishing
-1. Fill in the contact line, host this page, and set its URL in App Store Connect (Privacy Policy URL) and in `AppLinks.privacy` (`Monocle/Features/PaywallView.swift`).
+1. Host `docs/site/anka/` (privacy.html, support.html, style.css), and set its URL in App Store Connect (Privacy Policy URL) and in `AppLinks.privacy` (`Anka/Features/PaywallView.swift`).
 2. If Claude chat returns (plan "Later"), add its row, a consent sheet (guideline 5.1.2(i)), and change the label to "Data Not Linked to You".
 3. If iCloud sync is added, this page and the label change.
