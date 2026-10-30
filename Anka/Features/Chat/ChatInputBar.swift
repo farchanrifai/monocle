@@ -45,9 +45,5 @@ struct ChatInputBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(alignment: .bottom) {
-            ProgressiveBlur(edge: .bottom, solid: 34, fade: 46, tint: .chatCanvas)
-                .ignoresSafeArea(edges: .bottom)
-        }
     }
 }

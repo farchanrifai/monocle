@@ -69,6 +69,8 @@ struct CardDismissPan: UIGestureRecognizerRepresentable {
 struct CardSpringModifier: ViewModifier {
     let isSelected: Bool
     let expanded: Bool
+    /// A card is open or still returning to the stack.
+    let closing: Bool
     let reduceMotion: Bool
     let releaseVelocity: CGFloat
 
@@ -85,6 +87,10 @@ struct CardSpringModifier: ViewModifier {
                         damping: 2 * 0.74 * frequency,
                         initialVelocity: releaseVelocity
                     )
+                } else if closing && !expanded, $0.animation != nil {
+                    // The rest rise ~500 pt from off-screen; the selected card's 0.74 damping would overshoot them ~16 pt,
+                    // over the title strip of the card above. Critically damped, they land without passing it.
+                    $0.animation = .spring(response: 0.47, dampingFraction: 1)
                 }
             }
     }
@@ -322,6 +328,7 @@ struct CardHomeView: View {
     @State private var returnDistance: CGFloat = 0
     @State private var releaseVelocity: Double = 0
     @State private var detailScroll: CGFloat = 0
+    @State private var outerScroll = ScrollPosition()
     @State private var scrollOverscroll: CGFloat = 0
 
     @State private var displayedCards: [Card] = []
@@ -372,55 +379,12 @@ struct CardHomeView: View {
         }
     }
 
-    private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
-        let toolbarHeight = HomeMetrics.barHeight
-        // Shorten the full fade from 88 pt to 66 pt (25%), ending closer to the toolbar.
-        let featherHeight: CGFloat = 22
-        let totalHeight = safeAreaTop + toolbarHeight + featherHeight
-        let fadeStart = safeAreaTop + 8
-        let fadeLength = totalHeight - fadeStart
-
-        // A smoothstep has zero slope at both ends: no hard shoulder beneath
-        // the toolbar and no visible cutoff at the bottom of the material.
-        let stops: [Gradient.Stop] = [.init(color: .black, location: 0)] + (0...16).map { step in
-            let t = CGFloat(step) / 16
-            let opacity = 1 - t * t * (3 - 2 * t)
-            return .init(color: .black.opacity(Double(opacity)),
-                         location: (fadeStart + fadeLength * t) / totalHeight)
-        }
-        let scrollFraction = min(max((detailScroll - 5) / 64, 0), 1)
-        let scrollOpacity = scrollFraction * scrollFraction * (3 - 2 * scrollFraction)
-
-        return Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(paper.opacity(0.52))
-            // Composite first, then fade once so tint and material share an edge.
-            .mask {
-                LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
-            }
-            .frame(height: totalHeight)
-            .opacity(expanded ? scrollOpacity : 1)
-            .ignoresSafeArea(edges: .top)
-            // Animate screen changes only; scroll updates stay attached to the finger.
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: expanded)
-            .allowsHitTesting(false)
-    }
-
-    private func topBar(safeAreaTop: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: safeAreaTop)
-            header
-        }
-        .background(alignment: .top) {
-            progressiveBlurHeaderBackground(safeAreaTop: safeAreaTop)
-        }
-        .ignoresSafeArea(edges: .top)
-    }
-
     var body: some View {
         GeometryReader { geometry in
+            // A still outer scroll view owns the top bar, so the native soft edge effect blurs everything under it,
+            // including the card plane, which is an overlay outside the inner scroll views.
+            ScrollView {
             ZStack(alignment: .top) {
-                paper.ignoresSafeArea()
 
                 home(width: geometry.size.width, height: geometry.size.height)
                     .allowsHitTesting(selectedID == nil)
@@ -436,14 +400,21 @@ struct CardHomeView: View {
                     cardPlane(frames: frames, geometry: proxy)
                 }
             }
-            .overlay(alignment: .top) {
-                topBar(safeAreaTop: geometry.safeAreaInsets.top)
-                    .zIndex(1000)
-            }
             .gesture(CardDismissPan(enabled: selectedID != nil && expanded && detailScroll <= 1,
                                     changed: updateDismiss, ended: endDismiss))
-
+            .containerRelativeFrame([.horizontal, .vertical])
+            Color.clear.frame(height: 1)
+            }
+            // Parked 1 pt down: the soft edge effect only draws once content has scrolled under the bar.
+            .scrollPosition($outerScroll)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in
+                if y < 1 { outerScroll.scrollTo(y: 1) } // initial position and any reset by layout
+            }
+            .scrollDisabled(true)
+            .safeAreaBar(edge: .top) { header }
+            .scrollEdgeEffectStyle(.soft, for: .top)
         }
+        .background(paper.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) {
             if showsBottomBar {
                 Button {
@@ -628,8 +599,9 @@ struct CardHomeView: View {
                     .blur(radius: expanded && !reduceMotion ? 10 : 0)
             }
             .padding(.horizontal, 20)
-            .padding(.top, HomeMetrics.contentTop)
+            .padding(.top, 12)
         }
+        .scrollEdgeEffectHidden(true, for: .top)
         .scrollClipDisabled()
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self) { geo in
@@ -685,8 +657,10 @@ struct CardHomeView: View {
                     .allowsHitTesting(expanded && dismissAmount == 0)
             }
             .padding(.horizontal, 16)
-            .padding(.top, HomeMetrics.contentTop)
+            .padding(.top, 12)
         }
+        .scrollEdgeEffectHidden(true, for: .top)
+        .scrollClipDisabled()
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, value in
             detailScroll = value
@@ -758,6 +732,7 @@ struct CardHomeView: View {
             .modifier(CardSpringModifier(
                 isSelected: isSelected,
                 expanded: expanded,
+                closing: selectedID != nil,
                 reduceMotion: reduceMotion,
                 releaseVelocity: releaseVelocity
             ))

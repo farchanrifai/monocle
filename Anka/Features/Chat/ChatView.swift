@@ -12,7 +12,6 @@ struct ChatView: View {
     @State private var unavailable = ChatSession.unavailableReason
     @State private var mentionSelection = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
-    @State private var composerHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isTyping: Bool { session.isTyping }
@@ -25,8 +24,6 @@ struct ChatView: View {
                 ChatTranscript(model: model, session: session, send: send, fill: { draft = $0; inputFocused = true })
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
-                    // The composer floats over the transcript; this keeps the last bubble resting above it.
-                    .padding(.bottom, composerHeight)
             }
             .background(Color.chatCanvas) // one canvas behind the list, under both safe areas
             .scrollPosition($scrollPosition)
@@ -36,14 +33,8 @@ struct ChatView: View {
             .scrollBounceBehavior(.always)
             // Tapping the transcript dismisses the keyboard; buttons inside rows still win the tap.
             .onTapGesture { inputFocused = false }
-            .scrollEdgeEffectHidden(true, for: .all)
-            .overlay(alignment: .top) {
-                GeometryReader { proxy in
-                    ProgressiveBlur(solid: max(proxy.safeAreaInsets.top - 30, 0), fade: 52, tint: .chatCanvas)
-                        .ignoresSafeArea(edges: .top)
-                }
-            }
-            .overlay(alignment: .bottom) {
+            // The composer is a bar, so the transcript rests above it and blurs under it with the native soft edge.
+            .safeAreaBar(edge: .bottom) {
                 Group {
                   if unavailable == nil {
                     ChatInputBar(text: $draft, focused: $inputFocused, isBusy: isTyping, names: ChatMentionList.names(model), onSend: { send(draft) })
@@ -62,7 +53,6 @@ struct ChatView: View {
                         .accessibilityIdentifier("chatUnavailable")
                   }
                 }
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
             }
             .environment(\.chatFlightID, session.flightID)
             .sensoryFeedback(.impact(weight: .light), trigger: sentCount)

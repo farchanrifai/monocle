@@ -69,7 +69,6 @@ private struct AnalyticsReportView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let safeAreaTop = geometry.safeAreaInsets.top
             ZStack(alignment: .top) {
                 paper.ignoresSafeArea()
 
@@ -91,14 +90,10 @@ private struct AnalyticsReportView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, isPushed ? 16 : 68)
+                    .padding(.top, 16)
                     .padding(.bottom, 96)
                 }
-
-                if !isPushed {
-                    topBar(safeAreaTop: safeAreaTop)
-                        .zIndex(1000)
-                }
+                .safeAreaBar(edge: .top) { if !isPushed { header } }
             }
             .onAppear {
                 syncScopeWithHomeContext()
@@ -115,17 +110,6 @@ private struct AnalyticsReportView: View {
             .navigationTitle(isPushed ? "Analytics & Trends" : "")
             .navigationBarTitleDisplayMode(.inline)
         }
-    }
-
-    private func topBar(safeAreaTop: CGFloat) -> some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: safeAreaTop)
-            header
-        }
-        .background(alignment: .top) {
-            progressiveBlurHeaderBackground(safeAreaTop: safeAreaTop)
-        }
-        .ignoresSafeArea(edges: .top)
     }
 
     private var header: some View {
@@ -159,35 +143,6 @@ private struct AnalyticsReportView: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 8)
         .frame(height: 52)
-    }
-
-    private func progressiveBlurHeaderBackground(safeAreaTop: CGFloat) -> some View {
-        let toolbarHeight: CGFloat = 52
-        // Shorten the full fade from 88 pt to 66 pt (25%), ending closer to the toolbar.
-        let featherHeight: CGFloat = 22
-        let totalHeight = safeAreaTop + toolbarHeight + featherHeight
-        let fadeStart = safeAreaTop + 8
-        let fadeLength = totalHeight - fadeStart
-
-        // A smoothstep has zero slope at both ends: no hard shoulder beneath
-        // the toolbar and no visible cutoff at the bottom of the material.
-        let stops: [Gradient.Stop] = [.init(color: .black, location: 0)] + (0...16).map { step in
-            let t = CGFloat(step) / 16
-            let opacity = 1 - t * t * (3 - 2 * t)
-            return .init(color: .black.opacity(Double(opacity)),
-                         location: (fadeStart + fadeLength * t) / totalHeight)
-        }
-
-        return Rectangle()
-            .fill(.ultraThinMaterial)
-            .overlay(paper.opacity(0.52))
-            // Composite first, then fade once so tint and material share an edge.
-            .mask {
-                LinearGradient(stops: stops, startPoint: .top, endPoint: .bottom)
-            }
-            .frame(height: totalHeight)
-            .ignoresSafeArea(edges: .top)
-            .allowsHitTesting(false)
     }
 
     private func syncScopeWithHomeContext() {
