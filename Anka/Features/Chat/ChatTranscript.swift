@@ -53,7 +53,8 @@ struct ChatTranscript: View {
                     }
                 }
                 .padding(.top, startsRun(index) ? 10 : 0)
-                .transition(row == nil ? .scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity) : .identity)
+                // The user's bubble grows on its own (ChatBubble); reply cards and texts fade in while the list moves up.
+                .transition(row == nil ? .scale(scale: 0.6, anchor: .bottomLeading).combined(with: .opacity) : row!.isUser ? .identity : .opacity)
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: session.isTyping)

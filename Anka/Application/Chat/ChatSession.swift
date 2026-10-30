@@ -153,11 +153,11 @@ extension ChatSession {
         pacer.reset()
         self.agent = agent
         let outputs = Self.limitQuestions(await agent.send(text, scope: scope, now: .now), isPro: model.isPro)
-        // The reply grows out of the thinking bubble: both changes land in one animation, the first text bubble scales up from its tail.
-        let firstText = outputs.firstIndex { if case .text = $0 { true } else { false } }
+        // A reply that opens with text grows out of the thinking bubble: both changes land in one animation. One that opens with a
+        // card lets the bubble go, so no text slides down across the card.
         let reply = outputs.enumerated().map { index, output -> ChatRow in
             switch output {
-            case .text(let text): ChatRow(id: index == firstText ? typingID : UUID(), kind: .assistant(text))
+            case .text(let text): ChatRow(id: index == 0 ? typingID : UUID(), kind: .assistant(text))
             case .proposal(let expense): ChatRow(kind: .proposal(expense, .pending))
             case .change(let change): ChatRow(kind: .change(change, .pending))
             case .bill(let bill): ChatRow(kind: .bill(bill, .pending))

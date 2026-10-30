@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ChatInputBar: View {
     @Binding var text: String
@@ -7,27 +8,23 @@ struct ChatInputBar: View {
     var names: [Character: [String]] = [:]
     var onSend: () -> Void
 
-    /// Changes on every send. A TextField that still has marked text (the word being autocorrected) ignores the cleared binding and
-    /// brings the old message back on the next keystroke, so Send gives the field a new identity and refocuses it.
-    @State private var fieldID = UUID()
-
     private var canSend: Bool { !isBusy && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
         GlassEffectContainer(spacing: 8) {
             HStack(alignment: .bottom, spacing: 8) {
                 MentionTextField(prompt: "Add an expense or ask… (@ card, # category)", text: $text, names: names)
-                    .id(fieldID)
                     .lineLimit(1...5)
                     .focused(focused)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 20))
+                    .frame(minHeight: 44) // one line matches the Send button
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 22))
                 Button {
-                    let refocus = focused.wrappedValue
                     onSend()
-                    fieldID = UUID()
-                    if refocus { Task { @MainActor in focused.wrappedValue = true } }
+                    // A field that still has marked text (the word being autocorrected) ignores the cleared binding and brings the
+                    // old message back on the next keystroke, so the text view is emptied directly. The keyboard stays up.
+                    (UIResponder.current as? UITextView)?.text = ""
                 } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 16, weight: .bold))
@@ -46,4 +43,15 @@ struct ChatInputBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
+}
+
+private extension UIResponder {
+    private static weak var found: UIResponder?
+    /// The first responder, found by sending an action down the responder chain.
+    static var current: UIResponder? {
+        found = nil
+        UIApplication.shared.sendAction(#selector(capture), to: nil, from: nil, for: nil)
+        return found
+    }
+    @objc private func capture() { Self.found = self }
 }
