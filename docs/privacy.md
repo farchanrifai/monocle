@@ -35,6 +35,6 @@ anka@pakaryan.com
 - **Privacy manifests:** `Anka/Resources/PrivacyInfo.xcprivacy` (app) and `AnkaWidgets/PrivacyInfo.xcprivacy` (widgets): no tracking, no collected data, UserDefaults with reasons `CA92.1` (app only) and `1C8F.1` (app group shared with the widgets). Re-check when adding file-timestamp, disk-space or system-boot-time APIs, or a third-party SDK.
 
 # Before publishing
-1. Host `docs/site/anka/` (privacy.html, support.html, style.css), and set its URL in App Store Connect (Privacy Policy URL) and in `AppLinks.privacy` (`Anka/Features/PaywallView.swift`).
+1. Upload `docs/site/anka/` so it serves https://pakaryan.com/anka/privacy and /anka/support (folders with index.html, `/anka/style.css`). In App Store Connect: Privacy Policy URL = /anka/privacy, Support URL = /anka/support. `AppLinks.privacy` already points there.
 2. If Claude chat returns (plan "Later"), add its row, a consent sheet (guideline 5.1.2(i)), and change the label to "Data Not Linked to You".
 3. If iCloud sync is added, this page and the label change.
