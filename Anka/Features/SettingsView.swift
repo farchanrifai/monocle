@@ -128,6 +128,10 @@ struct SettingsView: View {
                     Button { requestReview() } label: {
                         Label { Text("Rate Anka").foregroundStyle(Color.primary) } icon: { SettingsIcon(symbol: "heart.fill", color: .pink) }
                     }
+                    Link(destination: AppLinks.support) {
+                        row("Contact support", "envelope.fill", .blue)
+                    }
+                    .accessibilityIdentifier("supportSettings")
                     Link(destination: AppLinks.privacy) {
                         row("Privacy policy", "hand.raised.fill", .gray)
                     }

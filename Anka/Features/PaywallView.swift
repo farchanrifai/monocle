@@ -6,6 +6,7 @@ enum AppLinks {
     static let terms = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
     // ponytail: placeholder until docs/privacy.md is hosted (plan phase 4).
     static let privacy = URL(string: "https://github.com/farchanrifai/monocle-releases/blob/main/privacy.md")!
+    static let support = URL(string: "mailto:anka@pakaryan.com?subject=Anka%20support")!
 }
 
 /// Apple's subscription sheet with the Free vs Pro comparison on top. Apple takes the payment.
