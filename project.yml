@@ -36,6 +36,10 @@ targets:
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification:
               public.filename-extension: [ankabackup, monoclebackup]
+        # anka:// links from widgets, Shortcuts and Safari (AnkaApp.onOpenURL).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.farchan.anka
+            CFBundleURLSchemes: [anka]
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
