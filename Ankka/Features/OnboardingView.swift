@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// First launch: what Ankka does → the workspace currency → the user's card (or a backup) → the Pro trial.
+/// First launch: the motion intro (OnboardingIntro) → the workspace currency → the user's card (or a backup) → the Pro trial.
 struct OnboardingView: View {
     let model: AppModel
     private enum Step: String { case welcome, currency, card, trial }
@@ -29,7 +29,7 @@ struct OnboardingView: View {
         NavigationStack {
             Group {
                 switch step {
-                case .welcome: welcome
+                case .welcome: OnboardingIntro { step = .currency }.toolbar(.hidden, for: .navigationBar)
                 case .currency: currencyStep
                 case .card: cardStep
                 case .trial: trial
@@ -49,33 +49,6 @@ struct OnboardingView: View {
             if !needs, step != .trial {
                 UserDefaults.standard.set(true, forKey: "onboarded")
                 model.showOnboarding = false
-            }
-        }
-    }
-
-    private var welcome: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            Spacer()
-            Text("ankka").font(.system(size: 44, weight: .bold))
-            VStack(alignment: .leading, spacing: 20) {
-                feature("creditcard.fill", "A card for each part of life", "Daily spending, a trip, a project: each keeps its own expenses and budget.")
-                feature("calendar.badge.clock", "Budgets and bills", "See what's left this month and never miss a recurring payment.")
-                feature("lock.shield.fill", "Stays on your iPhone", "No account, no ads, no tracking. Your records stay on this iPhone.")
-            }
-            Spacer()
-            Button { step = .currency } label: { Text("Continue").frame(maxWidth: .infinity) }
-                .buttonStyle(.borderedProminent).controlSize(.large)
-                .accessibilityIdentifier("onboardingContinue")
-        }
-        .padding(24)
-    }
-
-    private func feature(_ symbol: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: symbol).font(.title2).foregroundStyle(MC.red).frame(width: 32)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.headline)
-                Text(detail).font(.subheadline).foregroundStyle(.secondary)
             }
         }
     }

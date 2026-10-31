@@ -156,8 +156,16 @@ extension View {
 /// The root's paywall, onboarding and, after a lapse, the kept-card picker (kept out of RootView's long modifier chain).
 struct ProPresentation: ViewModifier {
     let model: AppModel
+    #if DEBUG
+    /// `-ankkaIntro YES` replays the onboarding intro over the app, for reviewing it on a device that's already set up.
+    @State private var introPreview = UserDefaults.standard.bool(forKey: "ankkaIntro")
+    @State private var introRun = 0
+    #endif
     func body(content: Content) -> some View {
         content
+            #if DEBUG
+            .fullScreenCover(isPresented: $introPreview) { OnboardingIntro { introRun += 1 }.id(introRun) }
+            #endif
             // Only when nothing covers the root: a second presenter for the same paywall makes SwiftUI tear down
             // and rebuild the presented screen (onboarding restarted at its first step).
             .proPaywall(model, when: !model.showOnboarding && !model.needsKeptCardChoice && !model.showSettings && !model.showEntry && !model.showChat)

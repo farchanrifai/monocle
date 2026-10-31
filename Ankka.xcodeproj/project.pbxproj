@@ -54,6 +54,7 @@
 		383417294256F62B031E39C2 /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF8FEE75AD9E1F3DC0E84350 /* ProStore.swift */; };
 		3B6B32E4CF0C9661E0066033 /* SampleCardSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7E33CAAAF48F992E696E415 /* SampleCardSeeder.swift */; };
 		3B97CDC008F0FA9F0F00916C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9772133485D488441B3BA55A /* Assets.xcassets */; };
+		3EA2FA8395BAC864E7E783C6 /* OnboardingIntroArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = A386FF06604E295264EDFC65 /* OnboardingIntroArt.swift */; };
 		40E9E23C7E00DCFC8A8F6D84 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16F654EFB5D6E5A80D6CE2C /* AppLock.swift */; };
 		41868E1DDDAD6B76981FAB96 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B194C4C23BDB1823ABA6BC35 /* ChatInputBar.swift */; };
 		422130184E5368DC1FA2BDCF /* CSVTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5B95C580C5F861C0934039 /* CSVTests.swift */; };
@@ -176,6 +177,7 @@
 		F81A5445CBBED4A907DE234E /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70A410DBB49499EA47166EE /* Expense.swift */; };
 		F84D0BE500E5A40EF0F77D56 /* ClaudeChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2D2A0063211A12B4F672F /* ClaudeChatAgent.swift */; };
 		F8D95181C659FC06994B8D1F /* BillNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C122AE207033098AF8674B94 /* BillNotificationService.swift */; };
+		F9D06C0FFDEB28EA9E0090DF /* OnboardingIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC34ABB304A7C69DCBC5984D /* OnboardingIntro.swift */; };
 		FA15411E9B5192B5FED365A6 /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35185C7C145DEC8AC74EC44E /* CategoryPicker.swift */; };
 		FBAE17E047BB934D12579F56 /* AppleChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33C5B2303609AD4CBDE9958F /* AppleChatAgent.swift */; };
 		FFE518D8508E2EC7F2431074 /* CardBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 544CE807AB8B0D84BA804F56 /* CardBackup.swift */; };
@@ -323,6 +325,7 @@
 		979E2E30C645F22DB56517AB /* CardBackTelemetryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBackTelemetryView.swift; sourceTree = "<group>"; };
 		9ABE6B5F0B498038C4CD4EBB /* StackCustomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCustomizerView.swift; sourceTree = "<group>"; };
 		A2EDA89B5E50C08FC3B5F72B /* AnkkaWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkkaWidgetsBundle.swift; sourceTree = "<group>"; };
+		A386FF06604E295264EDFC65 /* OnboardingIntroArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIntroArt.swift; sourceTree = "<group>"; };
 		A3C338ABB52741B34BE8DC22 /* GlobalHotKeyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKeyController.swift; sourceTree = "<group>"; };
 		A530786F976E67D39C0A186C /* ResetDataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDataView.swift; sourceTree = "<group>"; };
 		A5777141DB7F9ACF1A38F910 /* MacDataTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDataTransferView.swift; sourceTree = "<group>"; };
@@ -341,6 +344,7 @@
 		BA6292F0F3D4245488D35869 /* MacCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCommands.swift; sourceTree = "<group>"; };
 		BBADD6BDB846F5CD5792E81F /* CardCustomization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCustomization.swift; sourceTree = "<group>"; };
 		BBE8DB4FD911C45D5E79CE17 /* CSVEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVEngine.swift; sourceTree = "<group>"; };
+		BC34ABB304A7C69DCBC5984D /* OnboardingIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIntro.swift; sourceTree = "<group>"; };
 		BC9B52B5720FD9D3293FBEBF /* ToolExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
 		C122AE207033098AF8674B94 /* BillNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillNotificationService.swift; sourceTree = "<group>"; };
 		C16F654EFB5D6E5A80D6CE2C /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
@@ -530,6 +534,8 @@
 				904761B53A391F14D52A58ED /* CSVInterchangeView.swift */,
 				C71A6A4CB7C18C637C975283 /* EntryDismissalGuard.swift */,
 				D9E5EF07FFEF330E3E115569 /* EntryView.swift */,
+				BC34ABB304A7C69DCBC5984D /* OnboardingIntro.swift */,
+				A386FF06604E295264EDFC65 /* OnboardingIntroArt.swift */,
 				FB7F517D0CFD03E34CBA4ED5 /* OnboardingView.swift */,
 				CA589E4341AE49574B7DBFFA /* PaidWithSettingsView.swift */,
 				16DA02FB358DEB5E68DBA346 /* PaywallView.swift */,
@@ -1142,6 +1148,8 @@
 				A1151546BDC98E852E2A15C3 /* ExpenseRepository.swift in Sources */,
 				1DD2853DCBC5F0DCF64BEA5F /* ExpenseService.swift in Sources */,
 				4B5C89181CA653AC3544D819 /* LocalStateStore.swift in Sources */,
+				F9D06C0FFDEB28EA9E0090DF /* OnboardingIntro.swift in Sources */,
+				3EA2FA8395BAC864E7E783C6 /* OnboardingIntroArt.swift in Sources */,
 				0CADD54DCCC356D0416077D8 /* OnboardingView.swift in Sources */,
 				C1CF1135B09928512B1FF8EA /* PaidWithSettingsView.swift in Sources */,
 				00AB2FB5D257810A5C0E8C51 /* PaywallView.swift in Sources */,
