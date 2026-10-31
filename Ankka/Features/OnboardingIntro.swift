@@ -1,3 +1,4 @@
+import CoreMotion
 import SwiftUI
 
 /// The first-launch intro: one Ankka card carried through six full-bleed colour steps, a liquid ripple between them.
@@ -8,6 +9,7 @@ struct OnboardingIntro: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var m = IntroMotion()
+    @State private var tilt = IntroTilt()
 
     static let canvas = CGSize(width: 402, height: 874)
     static let nextCentre = CGPoint(x: 346, y: 784)
@@ -31,14 +33,19 @@ struct OnboardingIntro: View {
         .sensoryFeedback(.impact(flexibility: .rigid), trigger: m.rigid)
         .sensoryFeedback(.success, trigger: m.success)
         .sensoryFeedback(.selection, trigger: m.tick)
-        .task { m.start(reduce: reduceMotion) }
-        .onDisappear { m.stop() }
+        .task {
+            m.start(reduce: reduceMotion)
+            if !reduceMotion { tilt.start() }
+        }
+        .onDisappear { m.stop(); tilt.stop() }
     }
 
     private func pal(_ step: Int) -> IntroPalette { IntroPalette.step(step, dark: scheme == .dark) }
 
     @ViewBuilder private func stage(t: Double) -> some View {
-        let drift = CGPoint(x: 0.42 * sin(2 * .pi * t / 7.3), y: 0.30 * sin(2 * .pi * t / 9.1 + 1.3))
+        // Phone tilt plus a slow drift that keeps the scene alive when the phone is still.
+        let drift = CGPoint(x: max(-1, min(1, tilt.x + 0.42 * sin(2 * .pi * t / 7.3))),
+                            y: max(-1, min(1, tilt.y + 0.30 * sin(2 * .pi * t / 9.1 + 1.3))))
         ZStack {
             // Outgoing page wobbles from the Next button; the incoming one floods in through the ripple.
             IntroPage(step: m.page, pal: pal(m.page), props: m.props[m.page] ?? [], t: t, gain: m.idle, drift: drift)
@@ -51,6 +58,7 @@ struct OnboardingIntro: View {
                 if !reduceMotion { RippleEffects(ripple: ripple, pal: pal(next)) }
             }
             VaultBack(motion: m)
+            floorShadows(drift: drift)
             hero(t: t, drift: drift)
             StepObjects(motion: m, t: t, pal: pal)
             VaultFront(motion: m)
@@ -59,8 +67,35 @@ struct OnboardingIntro: View {
             }
             Color.clear.contentShape(Rectangle()).onTapGesture { m.togglePause() }
                 .accessibilityHidden(true)
-            controls(now: Date(timeIntervalSinceReferenceDate: t))
+            // The controls change ink exactly where the flood passes: the old ink outside it, the new ink inside.
+            let now = Date(timeIntervalSinceReferenceDate: t)
+            let ripple = RippleShape(radius: m.ripple, t: t - m.rippleStart, centre: Self.nextCentre)
+            controls(now: now, ink: pal(m.page).ink)
+                .mask {
+                    if m.incoming == nil { Rectangle() }
+                    else if reduceMotion { Rectangle().opacity(1 - m.crossfade) }
+                    else { Rectangle().overlay { ripple.blendMode(.destinationOut) }.compositingGroup() }
+                }
+            if let next = m.incoming {
+                controls(now: now, ink: pal(next).ink)
+                    .mask { if reduceMotion { Rectangle().opacity(m.crossfade) } else { ripple } }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
+    }
+
+    /// A soft shadow on the floor under each card: fainter and wider the higher the card is above where it rests.
+    private func floorShadows(drift: CGPoint) -> some View {
+        ZStack {
+            ForEach(IntroCard.Kind.allCases, id: \.self) { kind in
+                let pose = m.pose(kind)
+                FloorShadow(cardY: pose.y, cardX: pose.x + 9 * drift.x * m.idle, floorY: m.floorY, tone: pal(m.shadowStep).shd)
+            }
+        }
+        .opacity(m.floorOpacity * m.heroOpacity)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private func anchor(_ p: CGPoint) -> UnitPoint { UnitPoint(x: p.x / Self.canvas.width, y: p.y / Self.canvas.height) }
@@ -95,9 +130,8 @@ struct OnboardingIntro: View {
 
     // MARK: Controls
 
-    private func controls(now: Date) -> some View {
-        let ink = pal(m.inkStep).ink
-        return ZStack {
+    private func controls(now: Date, ink: Color) -> some View {
+        ZStack {
             Button("Skip") { m.skip() }
                 .font(.system(size: 16, weight: .semibold))
                 .padding(.horizontal, 18)
@@ -174,6 +208,7 @@ final class IntroMotion {
     static let hiddenLines = [LineState](repeating: LineState(), count: 3)
     static let dwell = [0, 5.2, 5.6, 6.6, 6.8, 6.4, 6.4]
     static let propCounts = [0, 5, 3, 3, 2, 2, 2]
+    static let floor = [0.0, 462, 462, 502, 474, 420, 462]
     static let lastStep = 6
 
     // Pages and the flood
@@ -196,6 +231,8 @@ final class IntroMotion {
     var liftY = 0.0
     var liftScale = 1.0
     var heroOpacity = 1.0
+    var floorY = 462.0
+    var floorOpacity = 1.0
 
     // Card faces
     var wordmark = [Double](repeating: 0, count: 5)
@@ -251,7 +288,6 @@ final class IntroMotion {
     var liquid = 0.0
     var liquidStep = 2
     var press = 1.0
-    var inkStep = 1
     var shadowStep = 1
     var skipOpacity = 1.0
     var nextOpacity = 1.0
@@ -503,8 +539,8 @@ final class IntroMotion {
         withAnimation(IntroSpring.pour) { liquid = 0 }
         at(260, nil) { self.liquidStep = to + 1 }
         at(420, IntroSpring.fill) { self.liquid = 1 }
-        at(115, IntroSpring.ink) { self.inkStep = to }
         withAnimation(IntroSpring.tint) { shadowStep = to }
+        at(60, IntroSpring.hand) { self.floorY = Self.floor[to] }
 
         // Text: the old lines leave upward, the new ones rise in.
         for (i, delay) in [0.0, 30, 0].enumerated() {
@@ -693,6 +729,7 @@ final class IntroMotion {
     private func beatVault() {
         let set = vaultPoses()
         at(380, IntroSpring.vault) { self.setPoses(set) }
+        at(380, IntroSpring.fade) { self.floorOpacity = 0 }
         at(460, IntroSpring.fade) { self.vaultBack.opacity = 1 }
         at(460, IntroSpring.pop) { self.vaultBack.s = 1 }
         at(1000, IntroSpring.fade) { self.vaultFront.opacity = 1 }
@@ -722,12 +759,14 @@ final class IntroMotion {
         withAnimation(IntroSpring.xfOut) { heroOpacity = 0 }
         at(200, nil) { self.endState(to) }
         at(200, IntroSpring.xfIn) { self.heroOpacity = 1 }
-        withAnimation(IntroSpring.cross) { inkStep = to; shadowStep = to; liquidStep = to + 1 }
+        withAnimation(IntroSpring.cross) { shadowStep = to; liquidStep = to + 1 }
         at(700, nil) { self.arrive(at: to); self.locked = false }
     }
 
     private func endState(_ step: Int) {
         faces(step)
+        floorY = Self.floor[step]
+        floorOpacity = step == 6 ? 0 : 1
         switch step {
         case 2: setPoses(Poses.hand)
         case 3:
@@ -756,4 +795,34 @@ final class IntroMotion {
             withAnimation(IntroSpring.fade) { ctaOpacity = 1 }
         }
     }
+}
+
+// MARK: - Tilt
+
+/// Phone tilt for the parallax: roll and pitch away from how the phone was held at the start, ±12° mapped to ±1.
+@MainActor @Observable
+final class IntroTilt {
+    var x = 0.0
+    var y = 0.0
+    @ObservationIgnored private let manager = CMMotionManager()
+    @ObservationIgnored private var reference: CMAttitude?
+
+    func start() {
+        guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
+        manager.deviceMotionUpdateInterval = 1.0 / 60
+        manager.startDeviceMotionUpdates(to: .main) { [weak self] data, _ in
+            guard let attitude = data?.attitude else { return }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if let reference = self.reference { attitude.multiply(byInverseOf: reference) } else { self.reference = attitude.copy() as? CMAttitude }
+                let range = 12 * Double.pi / 180
+                let tx = max(-1, min(1, attitude.roll / range)), ty = max(-1, min(1, attitude.pitch / range))
+                // ponytail: exponential smoothing in place of the spec's 0.70 · 1.00 spring; same feel at 60 Hz
+                self.x += (tx - self.x) * 0.12
+                self.y += (ty - self.y) * 0.12
+            }
+        }
+    }
+
+    func stop() { manager.stopDeviceMotionUpdates() }
 }

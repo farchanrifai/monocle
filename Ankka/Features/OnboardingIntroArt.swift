@@ -1,7 +1,6 @@
 import SwiftUI
 
-// Drawings for OnboardingIntro, in the design's 402×874 pt canvas. The layered props stand in for the 3D clay renders
-// named in the design's slot list (prop-clay-8.png and so on); a render drops into the same frame.
+// Drawings for OnboardingIntro, in the design's 402×874 pt canvas. The props are clay renders in Assets › Onboarding.
 
 // MARK: - Palette
 
@@ -36,27 +35,12 @@ struct IntroPalette {
 }
 
 private extension View {
-    /// Draws in the design's SVG viewBox size and scales it into the slot.
-    func fitted(_ width: CGFloat, _ height: CGFloat) -> some View {
-        GeometryReader { geo in
-            self.frame(width: width, height: height)
-                .scaleEffect(min(geo.size.width / width, geo.size.height / height))
-                .frame(width: geo.size.width, height: geo.size.height)
-        }
-    }
-
     func box(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> some View {
         frame(width: w, height: h).position(x: x + w / 2, y: y + h / 2)
     }
 }
 
 private func clamp01(_ v: Double) -> Double { min(max(v, 0), 1) }
-
-private func lit(_ pal: IntroPalette, radius: CGFloat) -> RadialGradient {
-    RadialGradient(stops: [.init(color: pal.hi, location: 0), .init(color: pal.lt, location: 0.36),
-                           .init(color: pal.base, location: 0.78), .init(color: pal.mid, location: 1)],
-                   center: UnitPoint(x: 0.36, y: 0.3), startRadius: 0, endRadius: radius)
-}
 
 // MARK: - Pages
 
@@ -101,379 +85,55 @@ struct IntroPage: View {
     private var layout: [PropSlot] {
         switch step {
         case 1: [
-            PropSlot(CGRect(x: 0, y: 112, width: 132, height: 163), -12, 0.8) { ClayGlyph(glyph: "8", pal: $0).fitted(170, 210) },
-            PropSlot(CGRect(x: 300, y: 118, width: 86, height: 66), 16, 0.5) { ClayCoin(pal: $0, tilt: 29, thickness: 11).fitted(120, 92) },
-            PropSlot(CGRect(x: 316, y: 398, width: 78, height: 80), -6, 0.6) { CoinStack(pal: $0).fitted(120, 122) },
-            PropSlot(CGRect(x: 14, y: 402, width: 84, height: 104), 10, 0.9) { ClayGlyph(glyph: "2", pal: $0).fitted(170, 210) },
-            PropSlot(CGRect(x: 232, y: 94, width: 32, height: 32), -18, 0.25) { ClayCoin(pal: $0, tilt: 46, thickness: 7).fitted(120, 120).blur(radius: 0.6) },
+            PropSlot("prop-clay-8", CGRect(x: 0, y: 112, width: 132, height: 163), -12, 0.8),
+            PropSlot("prop-coin-tilt", CGRect(x: 300, y: 118, width: 86, height: 66), 16, 0.5),
+            PropSlot("prop-coin-stack", CGRect(x: 316, y: 398, width: 78, height: 80), -6, 0.6),
+            PropSlot("prop-clay-2", CGRect(x: 14, y: 402, width: 84, height: 104), 10, 0.9),
+            PropSlot("prop-coin-face", CGRect(x: 232, y: 94, width: 32, height: 32), -18, 0.25, blur: 0.6),
         ]
         case 2: [
-            PropSlot(CGRect(x: -22, y: 90, width: 200, height: 99), -10, 0.7) { BoardingPass(pal: $0).fitted(210, 104) },
-            PropSlot(CGRect(x: 14, y: 452, width: 150, height: 75), -9, 0.85) { Sunglasses(pal: $0).fitted(200, 100) },
-            PropSlot(CGRect(x: 318, y: 112, width: 64, height: 49), -14, 0.4) { ClayCoin(pal: $0, tilt: 29, thickness: 11).fitted(120, 92) },
+            PropSlot("prop-boarding-pass", CGRect(x: -22, y: 90, width: 200, height: 99), -10, 0.7),
+            PropSlot("prop-sunglasses", CGRect(x: 14, y: 452, width: 150, height: 75), -9, 0.85),
+            PropSlot("prop-coin-tilt-marigold", CGRect(x: 318, y: 112, width: 64, height: 49), -14, 0.4),
         ]
         case 3: [
-            PropSlot(CGRect(x: 14, y: 104, width: 92, height: 130), -8, 0.8) { KopiCup(pal: $0).fitted(110, 156) },
-            PropSlot(CGRect(x: 322, y: 420, width: 68, height: 92), 10, 0.6) { Receipt(pal: $0).fitted(92, 124) },
-            PropSlot(CGRect(x: 110, y: 190, width: 58, height: 43), 0, 0.35) { Beans(pal: $0).fitted(86, 64) },
+            PropSlot("prop-kopi-cup", CGRect(x: 14, y: 104, width: 92, height: 130), -8, 0.8),
+            PropSlot("prop-receipt-curl", CGRect(x: 322, y: 420, width: 68, height: 92), 10, 0.6),
+            PropSlot("prop-coffee-beans", CGRect(x: 110, y: 190, width: 58, height: 43), 0, 0.35),
         ]
         case 4: [
-            PropSlot(CGRect(x: 250, y: 124, width: 124, height: 71), 0, 0.5) { Cloud(pal: $0).fitted(150, 86) },
-            PropSlot(CGRect(x: -18, y: 130, width: 84, height: 48), 0, 0.3) { Cloud(pal: $0).fitted(150, 86) },
+            PropSlot("prop-cloud", CGRect(x: 250, y: 124, width: 124, height: 71), 0, 0.5),
+            PropSlot("prop-cloud-small", CGRect(x: -18, y: 130, width: 84, height: 48), 0, 0.3),
         ]
         case 5: [
-            PropSlot(CGRect(x: 8, y: 104, width: 76, height: 94), -10, 0.8) { ClayGlyph(glyph: "%", pal: $0, size: 168).fitted(170, 210) },
-            PropSlot(CGRect(x: 318, y: 112, width: 64, height: 49), -14, 0.4) { ClayCoin(pal: $0, tilt: 29, thickness: 11).fitted(120, 92) },
+            PropSlot("prop-clay-percent", CGRect(x: 8, y: 104, width: 76, height: 94), -10, 0.8),
+            PropSlot("prop-coin-tilt-lilac", CGRect(x: 318, y: 112, width: 64, height: 49), -14, 0.4),
         ]
         default: [
-            PropSlot(CGRect(x: 12, y: 110, width: 72, height: 89), -10, 0.8) { Padlock(pal: $0).fitted(100, 124) },
-            PropSlot(CGRect(x: 284, y: 472, width: 106, height: 55), -22, 0.6) { Key(pal: $0).fitted(124, 64) },
+            PropSlot("prop-padlock", CGRect(x: 12, y: 110, width: 72, height: 89), -10, 0.8),
+            PropSlot("prop-key", CGRect(x: 284, y: 472, width: 106, height: 55), -22, 0.6),
         ]
         }
     }
 }
 
-/// Where a prop sits on the canvas.
+/// A clay prop render (Assets › Onboarding, light and dark) and where it sits on the canvas.
+/// The renders come from a Blender script that maps lighting onto each step's palette, so props stay tone-on-tone.
 private struct PropSlot {
+    let image: String
     let frame: CGRect
     let rotation: Double
     let depth: Double
-    let draw: (IntroPalette) -> AnyView
+    var blur = 0.0
 
-    init<V: View>(_ frame: CGRect, _ rotation: Double, _ depth: Double, @ViewBuilder draw: @escaping (IntroPalette) -> V) {
-        self.frame = frame; self.rotation = rotation; self.depth = depth
-        self.draw = { AnyView(draw($0)) }
-    }
-}
-
-// MARK: - Props
-
-private struct ClayGlyph: View {
-    let glyph: String
-    let pal: IntroPalette
-    var size: CGFloat = 200
-
-    var body: some View {
-        ZStack {
-            Text(glyph).foregroundStyle(pal.shd.opacity(0.32)).blur(radius: 10).offset(x: 8, y: 9)
-            ForEach((1...8).reversed(), id: \.self) { i in
-                Text(glyph)
-                    .foregroundStyle(LinearGradient(colors: [pal.mid, pal.dp], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .offset(x: 1.05 * Double(i), y: 1.4 * Double(i))
-            }
-            Text(glyph).foregroundStyle(lit(pal, radius: 150))
-            Text(glyph).foregroundStyle(.white.opacity(0.35)).blur(radius: 3).offset(x: -2, y: -3)
-                .mask(Text(glyph))
-        }
-        .font(.system(size: size, weight: .black, design: .rounded))
-        .offset(x: -6, y: -2)
-    }
-}
-
-/// A satin clay coin: reeded rim, lit face, engraved ring. `tilt` is the face's vertical radius (29 tilted, 46 face-on).
-private struct ClayCoin: View {
-    let pal: IntroPalette
-    let tilt: CGFloat
-    let thickness: CGFloat
-    var glyph: String? = nil
-
-    var body: some View {
-        let cy = 6 + tilt
-        let rim = LinearGradient(stops: [.init(color: pal.dp, location: 0), .init(color: pal.mid, location: 0.16), .init(color: pal.lt, location: 0.4),
-                                         .init(color: pal.mid, location: 0.7), .init(color: pal.dp, location: 1)], startPoint: .leading, endPoint: .trailing)
-        ZStack(alignment: .topLeading) {
-            Ellipse().fill(pal.shd.opacity(0.3)).frame(width: 90, height: 20).blur(radius: 6)
-                .position(x: 68, y: cy + thickness + tilt * 0.9)
-            Ellipse().fill(rim).frame(width: 100, height: 2 * tilt).position(x: 60, y: cy + thickness)
-            Rectangle().fill(rim).frame(width: 100, height: thickness).position(x: 60, y: cy + thickness / 2)
-            Ellipse().fill(lit(pal, radius: 62)).frame(width: 100, height: 2 * tilt).position(x: 60, y: cy)
-            Ellipse().stroke(pal.sh.opacity(0.55), lineWidth: 2.4).frame(width: 74, height: 2 * tilt * 0.74).position(x: 60, y: cy + 0.6)
-            Ellipse().stroke(pal.hi.opacity(0.7), lineWidth: 1.2).frame(width: 74, height: 2 * tilt * 0.74).position(x: 60.5, y: cy + 1.8)
-            if let glyph {
-                Text(glyph).font(.system(size: 50, weight: .black, design: .rounded)).foregroundStyle(pal.sh)
-                    .scaleEffect(x: 1, y: tilt / 46).position(x: 60, y: cy + 1)
-            }
-            Ellipse().fill(.white.opacity(0.55)).frame(width: 26, height: tilt * 0.34).blur(radius: 3).rotationEffect(.degrees(-18))
-                .position(x: 38, y: cy - tilt * 0.48)
-        }
-    }
-}
-
-private struct CoinStack: View {
-    let pal: IntroPalette
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            ClayCoin(pal: pal, tilt: 29, thickness: 11).frame(width: 120, height: 92).offset(x: 2, y: 30)
-            ClayCoin(pal: pal, tilt: 29, thickness: 11).frame(width: 120, height: 92).offset(x: -2, y: 15)
-            ClayCoin(pal: pal, tilt: 29, thickness: 11).frame(width: 120, height: 92).offset(x: 1, y: 0)
-        }
-        .frame(width: 120, height: 122, alignment: .topLeading)
-    }
-}
-
-/// A shape filled with a lit face over a darker extrusion and a soft cast shadow.
-private struct Clay<S: Shape>: View {
-    let shape: S
-    let pal: IntroPalette
-    var depth = CGSize(width: 2, height: 4)
-
-    var body: some View {
-        ZStack {
-            shape.fill(pal.shd.opacity(0.28)).blur(radius: 6).offset(x: 6, y: 10)
-            shape.fill(LinearGradient(colors: [pal.mid, pal.dp], startPoint: .top, endPoint: .bottom)).offset(depth)
-            shape.fill(LinearGradient(stops: [.init(color: pal.hi, location: 0), .init(color: pal.lt, location: 0.45), .init(color: pal.base, location: 1)],
-                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-            shape.stroke(.white.opacity(0.5), lineWidth: 1).mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center))
-        }
-    }
-}
-
-private struct BoardingPass: View {
-    let pal: IntroPalette
-
-    private var ticket: Path {
-        var p = Path()
-        p.move(to: CGPoint(x: 18, y: 8))
-        p.addLine(to: CGPoint(x: 138, y: 8))
-        p.addArc(center: CGPoint(x: 146, y: 8), radius: 8, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: true)
-        p.addLine(to: CGPoint(x: 190, y: 8))
-        p.addArc(center: CGPoint(x: 190, y: 20), radius: 12, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
-        p.addLine(to: CGPoint(x: 202, y: 80))
-        p.addArc(center: CGPoint(x: 190, y: 80), radius: 12, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
-        p.addLine(to: CGPoint(x: 154, y: 92))
-        p.addArc(center: CGPoint(x: 146, y: 92), radius: 8, startAngle: .degrees(0), endAngle: .degrees(180), clockwise: true)
-        p.addLine(to: CGPoint(x: 18, y: 92))
-        p.addArc(center: CGPoint(x: 18, y: 80), radius: 12, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
-        p.addLine(to: CGPoint(x: 6, y: 20))
-        p.addArc(center: CGPoint(x: 18, y: 20), radius: 12, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
-        p.closeSubpath()
-        return p
+    init(_ image: String, _ frame: CGRect, _ rotation: Double, _ depth: Double, blur: Double = 0) {
+        self.image = image; self.frame = frame; self.rotation = rotation; self.depth = depth; self.blur = blur
     }
 
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Clay(shape: ticket, pal: pal)
-            Path { p in p.move(to: CGPoint(x: 146, y: 20)); p.addLine(to: CGPoint(x: 146, y: 80)) }
-                .stroke(pal.sh.opacity(0.7), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [3, 4]))
-            Image(systemName: "airplane").font(.system(size: 20, weight: .bold)).foregroundStyle(pal.sh)
-                .position(x: 76, y: 38)
-            Capsule().fill(pal.sh.opacity(0.75)).frame(width: 30, height: 9).position(x: 38, y: 38)
-            Capsule().fill(pal.sh.opacity(0.75)).frame(width: 30, height: 9).position(x: 114, y: 38)
-            Capsule().fill(pal.mid.opacity(0.9)).frame(width: 80, height: 6).position(x: 62, y: 62)
-            Capsule().fill(pal.mid.opacity(0.9)).frame(width: 52, height: 6).position(x: 48, y: 75)
-            HStack(spacing: 2.4) {
-                ForEach(0..<9, id: \.self) { i in Rectangle().fill(pal.sh).frame(width: i % 3 == 0 ? 2.6 : 1.3) }
-            }
-            .frame(width: 30, height: 48).position(x: 176, y: 50)
-        }
-        .frame(width: 210, height: 104, alignment: .topLeading)
-    }
-}
-
-private struct Sunglasses: View {
-    let pal: IntroPalette
-    var body: some View {
-        let lens = LinearGradient(stops: [.init(color: pal.sh, location: 0), .init(color: pal.dp, location: 0.7), .init(color: pal.shd, location: 1)],
-                                  startPoint: .topLeading, endPoint: .bottomTrailing)
-        ZStack(alignment: .topLeading) {
-            Ellipse().fill(pal.shd.opacity(0.26)).frame(width: 168, height: 16).blur(radius: 6).position(x: 102, y: 92)
-            Path { p in p.move(to: CGPoint(x: 18, y: 31)); p.addLine(to: CGPoint(x: 5, y: 25)); p.move(to: CGPoint(x: 182, y: 31)); p.addLine(to: CGPoint(x: 195, y: 25)) }
-                .stroke(pal.sh, style: StrokeStyle(lineWidth: 6.5, lineCap: .round))
-            Path { p in p.move(to: CGPoint(x: 86, y: 40)); p.addQuadCurve(to: CGPoint(x: 114, y: 40), control: CGPoint(x: 100, y: 28)) }
-                .stroke(pal.mid, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-            ForEach([52.0, 148.0], id: \.self) { x in
-                ZStack {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous).fill(pal.base).frame(width: 82, height: 58)
-                    RoundedRectangle(cornerRadius: 22, style: .continuous).fill(lens).frame(width: 70, height: 48)
-                    Capsule().fill(.white.opacity(0.4)).frame(width: 9, height: 34).rotationEffect(.degrees(28)).offset(x: -12, y: -2).blur(radius: 1)
-                }
-                .position(x: x, y: 52)
-            }
-        }
-        .frame(width: 200, height: 100, alignment: .topLeading)
-    }
-}
-
-/// A takeaway kopi cup: tapered body, sleeve band, domed lid.
-private struct KopiCup: View {
-    let pal: IntroPalette
-
-    private struct CupBody: Shape {
-        func path(in rect: CGRect) -> Path {
-            var p = Path()
-            p.move(to: CGPoint(x: 18, y: 44))
-            p.addLine(to: CGPoint(x: 92, y: 44))
-            p.addLine(to: CGPoint(x: 82, y: 136))
-            p.addQuadCurve(to: CGPoint(x: 28, y: 136), control: CGPoint(x: 55, y: 146))
-            p.closeSubpath()
-            return p
-        }
-    }
-
-    private struct Sleeve: Shape {
-        func path(in rect: CGRect) -> Path {
-            var p = Path()
-            p.move(to: CGPoint(x: 21, y: 74))
-            p.addQuadCurve(to: CGPoint(x: 89, y: 74), control: CGPoint(x: 55, y: 80))
-            p.addLine(to: CGPoint(x: 85, y: 108))
-            p.addQuadCurve(to: CGPoint(x: 25, y: 108), control: CGPoint(x: 55, y: 114))
-            p.closeSubpath()
-            return p
-        }
-    }
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Ellipse().fill(pal.shd.opacity(0.3)).frame(width: 80, height: 16).blur(radius: 6).position(x: 62, y: 146)
-            Clay(shape: CupBody(), pal: pal)
-            Sleeve().fill(LinearGradient(colors: [pal.mid, pal.sh], startPoint: .top, endPoint: .bottom))
-            Sleeve().stroke(pal.hi.opacity(0.4), lineWidth: 1)
-            RoundedRectangle(cornerRadius: 8).fill(LinearGradient(colors: [pal.hi, pal.lt, pal.mid], startPoint: .top, endPoint: .bottom))
-                .frame(width: 88, height: 16).position(x: 55, y: 40)
-            Path { p in
-                p.move(to: CGPoint(x: 22, y: 33))
-                p.addQuadCurve(to: CGPoint(x: 88, y: 33), control: CGPoint(x: 55, y: 6))
-                p.closeSubpath()
-            }
-            .fill(LinearGradient(colors: [pal.hi, pal.base], startPoint: .top, endPoint: .bottom))
-            Capsule().fill(pal.sh.opacity(0.7)).frame(width: 14, height: 5).position(x: 68, y: 22)
-        }
-        .frame(width: 110, height: 156, alignment: .topLeading)
-    }
-}
-
-private struct Receipt: View {
-    let pal: IntroPalette
-
-    private struct Paper: Shape {
-        func path(in rect: CGRect) -> Path {
-            var p = Path()
-            p.move(to: CGPoint(x: 12, y: 10))
-            p.addLine(to: CGPoint(x: 80, y: 6))
-            p.addLine(to: CGPoint(x: 82, y: 104))
-            for i in 0..<7 {
-                let x = 82 - Double(i + 1) * 10
-                p.addLine(to: CGPoint(x: x + 5, y: i % 2 == 0 ? 112 : 104))
-                p.addLine(to: CGPoint(x: x, y: i % 2 == 0 ? 104 : 112))
-            }
-            p.addLine(to: CGPoint(x: 10, y: 108))
-            p.closeSubpath()
-            return p
-        }
-    }
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Clay(shape: Paper(), pal: pal, depth: CGSize(width: 1.5, height: 3))
-            ForEach(0..<5, id: \.self) { i in
-                Capsule().fill(pal.mid.opacity(0.85)).frame(width: i == 4 ? 30 : 46 - Double(i % 2) * 14, height: 5)
-                    .position(x: 26 + (i == 4 ? 34 : (46 - Double(i % 2) * 14) / 2), y: 28 + Double(i) * 15)
-            }
-        }
-        .frame(width: 92, height: 124, alignment: .topLeading)
-    }
-}
-
-private struct Beans: View {
-    let pal: IntroPalette
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Ellipse().fill(pal.shd.opacity(0.25)).frame(width: 68, height: 12).blur(radius: 5).position(x: 46, y: 56)
-            ForEach([(28.0, 30.0, -30.0), (58.0, 34.0, 24.0)], id: \.0) { x, y, angle in
-                ZStack {
-                    Ellipse().fill(LinearGradient(colors: [pal.mid, pal.dp], startPoint: .top, endPoint: .bottom)).offset(x: 1, y: 2)
-                    Ellipse().fill(lit(pal, radius: 24))
-                    Path { p in p.move(to: CGPoint(x: 15, y: 2)); p.addQuadCurve(to: CGPoint(x: 15, y: 40), control: CGPoint(x: 24, y: 21)) }
-                        .stroke(pal.sh, style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
-                }
-                .frame(width: 30, height: 42)
-                .rotationEffect(.degrees(angle))
-                .position(x: x, y: y)
-            }
-        }
-        .frame(width: 86, height: 64, alignment: .topLeading)
-    }
-}
-
-private struct Cloud: View {
-    let pal: IntroPalette
-
-    private struct Puffs: Shape {
-        func path(in rect: CGRect) -> Path {
-            var p = Path()
-            p.addEllipse(in: CGRect(x: 14, y: 36, width: 50, height: 40))
-            p.addEllipse(in: CGRect(x: 38, y: 12, width: 58, height: 58))
-            p.addEllipse(in: CGRect(x: 80, y: 28, width: 50, height: 46))
-            p.addRoundedRect(in: CGRect(x: 26, y: 50, width: 96, height: 26), cornerSize: CGSize(width: 13, height: 13))
-            return p
-        }
-    }
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Ellipse().fill(pal.shd.opacity(0.22)).frame(width: 112, height: 12).blur(radius: 6).position(x: 80, y: 80)
-            Puffs().fill(LinearGradient(colors: [pal.lt, pal.mid], startPoint: .top, endPoint: .bottom)).offset(y: 3)
-            Puffs().fill(RadialGradient(colors: [.white.opacity(0.95), pal.hi, pal.lt], center: UnitPoint(x: 0.4, y: 0.25), startRadius: 0, endRadius: 80))
-        }
-        .frame(width: 150, height: 86, alignment: .topLeading)
-    }
-}
-
-private struct Padlock: View {
-    let pal: IntroPalette
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Path { p in
-                p.move(to: CGPoint(x: 28, y: 58))
-                p.addLine(to: CGPoint(x: 28, y: 38))
-                p.addArc(center: CGPoint(x: 50, y: 38), radius: 22, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
-                p.addLine(to: CGPoint(x: 72, y: 58))
-            }
-            .stroke(LinearGradient(colors: [pal.lt, pal.mid, pal.dp], startPoint: .leading, endPoint: .trailing), style: StrokeStyle(lineWidth: 11, lineCap: .round))
-            Clay(shape: RoundedRectangle(cornerRadius: 16, style: .continuous).path(in: CGRect(x: 14, y: 52, width: 72, height: 62)), pal: pal)
-            Circle().fill(pal.sh).frame(width: 13, height: 13).position(x: 50, y: 78)
-            Capsule().fill(pal.sh).frame(width: 6, height: 16).position(x: 50, y: 89)
-        }
-        .frame(width: 100, height: 124, alignment: .topLeading)
-    }
-}
-
-private struct Key: View {
-    let pal: IntroPalette
-
-    private struct Blade: Shape {
-        func path(in rect: CGRect) -> Path {
-            var p = Path()
-            p.addEllipse(in: CGRect(x: 6, y: 8, width: 44, height: 44))
-            p.addRoundedRect(in: CGRect(x: 44, y: 24, width: 72, height: 12), cornerSize: CGSize(width: 6, height: 6))
-            p.addRect(CGRect(x: 92, y: 30, width: 9, height: 18))
-            p.addRect(CGRect(x: 106, y: 30, width: 8, height: 13))
-            return p
-        }
-    }
-
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Clay(shape: Blade(), pal: pal)
-            Circle().fill(pal.sh).frame(width: 15, height: 15).position(x: 26, y: 30)
-            Circle().fill(pal.bg).frame(width: 11, height: 11).position(x: 26, y: 30)
-        }
-        .frame(width: 124, height: 64, alignment: .topLeading)
-    }
-}
-
-private struct PaperPlane: View {
-    let pal: IntroPalette
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Path { p in p.move(to: CGPoint(x: 58, y: 21)); p.addLine(to: CGPoint(x: 2, y: 3)); p.addLine(to: CGPoint(x: 20, y: 24)); p.closeSubpath() }
-                .fill(LinearGradient(colors: [.white, pal.hi, pal.lt], startPoint: .top, endPoint: .bottom))
-            Path { p in p.move(to: CGPoint(x: 58, y: 21)); p.addLine(to: CGPoint(x: 20, y: 24)); p.addLine(to: CGPoint(x: 14, y: 41)); p.closeSubpath() }
-                .fill(pal.sh)
-            Path { p in p.move(to: CGPoint(x: 58, y: 21)); p.addLine(to: CGPoint(x: 20, y: 24)); p.addLine(to: CGPoint(x: 24, y: 31)); p.closeSubpath() }
-                .fill(pal.dp.opacity(0.55))
-        }
-        .frame(width: 60, height: 44, alignment: .topLeading)
+    func draw(_ pal: IntroPalette) -> some View {
+        Image(image).resizable().scaledToFit()
+            .shadow(color: pal.shd.opacity(0.3), radius: 5, x: 3, y: 7)
+            .blur(radius: blur)
     }
 }
 
@@ -667,6 +327,33 @@ struct CardFlip: ViewModifier, Animatable {
     }
 }
 
+/// One card's floor shadow. Animatable so it fades and spreads in step with the card's own spring.
+struct FloorShadow: View, Animatable {
+    var cardY: Double
+    var cardX: Double
+    var floorY: Double
+    let tone: Color
+
+    nonisolated var animatableData: AnimatablePair<AnimatablePair<Double, Double>, Double> {
+        get { AnimatablePair(AnimatablePair(cardY, cardX), floorY) }
+        set { cardY = newValue.first.first; cardX = newValue.first.second; floorY = newValue.second }
+    }
+
+    var body: some View {
+        // Height above where the card rests: the floor sits 140 pt below a resting card's centre.
+        let height = min(max(0, (floorY - 140) - (322 + cardY)), 460)
+        let k = 1 - height / 460
+        Ellipse()
+            .fill(EllipticalGradient(stops: [.init(color: tone.opacity(0.4), location: 0), .init(color: tone.opacity(0.15), location: 0.55),
+                                             .init(color: tone.opacity(0), location: 1)]))
+            .frame(width: 270, height: 46)
+            .scaleEffect(1 + 0.6 * height / 460)
+            .opacity(0.9 * k * k)
+            .position(x: 201 + cardX, y: floorY)
+            .frame(width: 402, height: 874)
+    }
+}
+
 // MARK: - Odometer
 
 /// One rolling glyph column, clipped to a single cell and faded at the top and bottom edges.
@@ -783,7 +470,8 @@ struct StepObjects: View {
             // Yen coins ride on the Tokyo card.
             ForEach(m.coins.indices, id: \.self) { i in
                 let c = m.coins[i], spot = Self.coinSpots[i]
-                ClayCoin(pal: pal(4), tilt: 46, thickness: 7, glyph: "¥").fitted(120, 120)
+                Image("prop-coin-yen").resizable().scaledToFit()
+                    .shadow(color: pal(4).shd.opacity(0.3), radius: 4, x: 2, y: 5)
                     .frame(width: 46, height: 46)
                     .rotationEffect(.degrees(c.r))
                     .position(x: spot.x + m.tokyo.x, y: spot.y + c.y + m.tokyo.y - 12)
@@ -879,12 +567,8 @@ private struct KopiMessage: View, Animatable {
 
     private var chip: some View {
         HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(LinearGradient(colors: [pal.hi, pal.lt], startPoint: .topLeading, endPoint: .bottomTrailing))
-                KopiCup(pal: pal).fitted(110, 156).padding(5)
-            }
-            .frame(width: 40, height: 40)
+            Image("prop-kopi-chip").resizable().scaledToFit()
+                .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Kopi").font(.system(size: 15, weight: .bold))
                 Text("FOOD & DRINK").font(.system(size: 9, weight: .semibold, design: .monospaced)).tracking(0.7)
@@ -967,7 +651,7 @@ private struct PlaneOnRoute: View, Animatable {
     var body: some View {
         let p = clamp01(progress)
         let at = Route.point(p), tn = Route.tangent(min(max(p, 0.002), 0.998))
-        PaperPlane(pal: pal).fitted(60, 44)
+        Image("prop-paper-plane").resizable().scaledToFit()
             .frame(width: 46, height: 34)
             .shadow(color: pal.shd.opacity(0.25), radius: 3, y: 4)
             .rotationEffect(.radians(atan2(tn.y, tn.x)))
