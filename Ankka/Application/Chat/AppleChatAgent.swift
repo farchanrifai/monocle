@@ -62,7 +62,7 @@ final class AppleChatAgent: ChatBackend {
             self.session = session
             do {
                 // Greedy: tool choice and arguments stay the same for the same prompt, which makes tuning comparable.
-                let reply = try await session.respond(to: prompt, options: GenerationOptions(sampling: .greedy)).content
+                let reply = try await session.respond(to: prompt, options: GenerationOptions(samplingMode: .greedy)).content
                 notes = []
                 return notice + outputs + (reply.isEmpty || Self.claimsDone(reply, beside: outputs) ? [] : [.text(reply)])
             } catch {

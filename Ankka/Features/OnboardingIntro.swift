@@ -503,7 +503,7 @@ final class IntroMotion {
         go(to: Self.lastStep, force: true)
     }
 
-    private func go(to to: Int, force: Bool = false) {
+    private func go(to: Int, force: Bool = false) {
         guard force || !locked, incoming == nil, to > page, to <= Self.lastStep else { return }
         autoplay?.cancel()
         tasks.forEach { $0.cancel() }
