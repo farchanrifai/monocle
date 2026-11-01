@@ -72,19 +72,24 @@ struct WhatsNewPrompt: ViewModifier {
 struct WhatsNewSheet: View {
     let version: String
     @Environment(\.dismiss) private var dismiss
+    @State private var height: CGFloat = 420
 
+    // Sized to its content so it stays a floating (glass) sheet; past the screen it opens full height and scrolls.
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text("What's new in Ankka \(version)").font(.title2.bold()).padding(.top, 32)
-            ScrollView {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("What's new in Ankka \(version)").font(.title2.bold()).padding(.top, 8)
                 WhatsNewNotes(version: version)
+                VoteRow(version: version)
+                Button { dismiss() } label: { Text("Continue").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent).controlSize(.large)
             }
-            VoteRow(version: version)
-            Button { dismiss() } label: { Text("Continue").frame(maxWidth: .infinity) }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+            .padding(24)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         }
-        .padding(24)
+        .scrollBounceBehavior(.basedOnSize)
         .tint(MC.red)
+        .presentationDetents([.height(height)])
     }
 }
 
