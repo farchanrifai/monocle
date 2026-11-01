@@ -73,17 +73,27 @@ struct ToolExecutor {
         case overview, pace, monthOverMonth = "month_over_month", budgetHistory = "budget_history", topExpenses = "top_expenses"
     }
 
-    struct SplitPart: Decodable { let category: String; let amount: Decimal }
+    /// An amount as the model sent it: a number, or the user's own words ("28rb", "1,5jt", "Rp28.000"), which the app
+    /// converts once it knows the card's currency, so a misread suffix can't turn into a wrong number.
+    struct AmountText: Decodable {
+        /// A JSON number is already an amount; only text goes through the parser.
+        let number: Decimal?, text: String
+        init(from decoder: Decoder) throws {
+            let value = try decoder.singleValueContainer()
+            if let number = try? value.decode(Decimal.self) { self.number = number; text = "\(number)" } else { number = nil; text = try value.decode(String.self) }
+        }
+    }
+    struct SplitPart: Decodable { let category: String; let amount: AmountText }
     struct ProposeInput: Decodable {
-        let amount: Decimal; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String?
+        let amount: AmountText; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String?
         var paid_with: String?
     }
-    struct EditInput: Decodable { let id: String; var amount: Decimal?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
+    struct EditInput: Decodable { let id: String; var amount: AmountText?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
     struct DeleteInput: Decodable { let id: String }
     enum Frequency: String, Decodable { case monthly, weekly, yearly }
     enum RecordMode: String, Decodable { case automatic, confirm }
     struct BillInput: Decodable {
-        let name: String; let amount: Decimal; let category: String; let frequency: Frequency
+        let name: String; let amount: AmountText; let category: String; let frequency: Frequency
         var day: Int?; var weekday: Int?; var month: Int?; var record: RecordMode?; var reminder: Bool?; var card: String?
     }
     struct ListBillsInput: Decodable { var scope: String? }
@@ -109,11 +119,38 @@ struct ToolExecutor {
     }
 
     /// The model's major-unit amount in minor units of `card`'s currency.
-    private func minor(_ major: Decimal, on card: Card, what: String = "Amount") throws -> Int64 {
+    private func minor(_ amount: AmountText, on card: Card, what: String = "Amount") throws -> Int64 {
         let code = model.currency(ofCard: card.id)
-        do { return try Money.minor(fromMajor: major, code: code) } catch {
+        do {
+            guard let major = amount.number ?? Self.amount(amount.text, code: code) else { throw EntryError.invalidAmount }
+            return try Money.minor(fromMajor: major, code: code)
+        } catch {
             throw ToolError(message: "\(what) must be above 0 in \(code), for example \(Money.fractionDigits(code) > 0 ? "4.50" : "28000").")
         }
+    }
+
+    /// "28rb", "100k", "1,5jt", "2 juta", "Rp28.000", "$4.50", "4,50 €" → major units of `code`. nil when it isn't an amount.
+    static func amount(_ text: String, code: String = "IDR") -> Decimal? {
+        var s = text.lowercased().replacingOccurrences(of: " ", with: "")
+        for affix in ["rp", code.lowercased(), Money.symbol(code).lowercased()] where !affix.isEmpty {
+            if s.hasPrefix(affix) { s = String(s.dropFirst(affix.count)) }
+            if s.hasSuffix(affix) { s = String(s.dropLast(affix.count)) }
+        }
+        s = s.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        for (suffix, scale) in [("ribu", 1e3), ("rb", 1e3), ("k", 1e3), ("juta", 1e6), ("jt", 1e6)] where s.hasSuffix(suffix) {
+            guard let number = Decimal(string: s.dropLast(suffix.count).replacingOccurrences(of: ",", with: "."), locale: Locale(identifier: "en_US_POSIX")),
+                  number > 0 else { return nil }
+            return number * Decimal(scale)
+        }
+        guard !s.isEmpty, s.allSatisfy({ $0.isNumber || $0 == "." || $0 == "," }) else { return nil }
+        // A last separator followed by one or two digits is the decimal point, where the currency has decimals;
+        // every other dot or comma groups thousands ("Rp28.000", "1,234.50", "1.234,50").
+        var digits = s.filter(\.isNumber)
+        if Money.fractionDigits(code) > 0, let last = s.lastIndex(where: { $0 == "." || $0 == "," }), (1...2).contains(s.distance(from: last, to: s.endIndex) - 1) {
+            let fraction = String(s[s.index(after: last)...])
+            digits = s[..<last].filter(\.isNumber) + "." + fraction
+        }
+        return Decimal(string: digits, locale: Locale(identifier: "en_US_POSIX"))
     }
 
     struct ProposalResult: Encodable { let status: String; let card: String; let category: String; let amount: Amount; let day: String; let note: String }
@@ -673,5 +710,83 @@ struct ToolExecutor {
 
     private static func failure(_ message: String) -> Outcome {
         Outcome(json: (try? encode(["error": message])) ?? #"{"error":"Tool failed."}"#, isError: true)
+    }
+}
+
+/// Adds expenses with no model at all, for when neither Claude nor Apple Intelligence can answer (offline, or a language the
+/// on-device model doesn't read, like Bahasa Indonesia). Each comma, semicolon or line is a purchase: one amount, the rest is
+/// its name. The category comes from the user's own past choices first (the executor), then common words.
+@MainActor
+enum OfflineReader {
+    /// Words that say which default category a purchase belongs to, English and Bahasa Indonesia.
+    static let words: [String: [String]] = [
+        "Food & Drink": ["kopi", "coffee", "makan", "lunch", "dinner", "breakfast", "sarapan", "snack", "jajan", "minum", "teh", "food",
+                         "grabfood", "gofood", "shopeefood", "bakso", "nasi", "mie", "roti", "cafe", "resto", "warung"],
+        "Transport": ["bensin", "pertamax", "grab", "gojek", "ojek", "taxi", "taksi", "parkir", "parking", "tol", "krl", "mrt", "busway",
+                      "kereta", "train", "bus", "petrol", "fuel", "gas", "uber"],
+        "Shopping": ["belanja", "baju", "sepatu", "shopping", "shopee", "tokopedia", "shirt", "shoes"],
+        "Home": ["listrik", "internet", "wifi", "sewa", "kos", "kost", "rent", "electricity", "groceries", "pasar", "pulsa"],
+        "Wellbeing": ["gym", "dokter", "obat", "apotek", "doctor", "medicine", "pharmacy"],
+        "Leisure": ["bioskop", "nonton", "netflix", "spotify", "movie", "cinema", "game"],
+    ]
+    private static let yesterday: Set<String> = ["kemarin", "yesterday"]
+    private static let today: Set<String> = ["hari", "ini", "today"]
+
+    /// Proposals for every purchase it can read; empty when there is none (a question, say), so the error stands.
+    static func read(_ text: String, model: AppModel, scope: AnalyticsFilterScope, now: Date) -> [ChatAgent.Output] {
+        let executor = ToolExecutor(model: model, scope: scope, now: now, userText: text)
+        guard let card = try? executor.targetCard() else { return [] }
+        let code = model.currency(ofCard: card.id)
+        let categories = model.activeCategories(for: card.id).map(\.name)
+        // A comma between digits belongs to the number ("1,5jt"); any other comma, a semicolon or a line ends a purchase.
+        let separated = text.replacingOccurrences(of: #"(?<!\d),|,(?!\d)"#, with: ";", options: .regularExpression)
+        let pieces = separated.split(whereSeparator: { ";\n".contains($0) }).flatMap { piece -> [Substring] in
+            // "kopi 28rb dan roti 15rb" is two purchases; "fish and chips 50k" is one.
+            let parts = piece.components(separatedBy: " dan ").flatMap { $0.components(separatedBy: " and ") }.map { Substring($0) }
+            return parts.count > 1 && parts.allSatisfy({ amount(in: String($0), code: code) != nil }) ? parts : [piece]
+        }
+        return pieces.compactMap { piece -> ChatAgent.Output? in
+            var piece = String(piece)
+            // "#Transport" names the category; it isn't part of the purchase's name.
+            let named = categories.first { piece.localizedCaseInsensitiveContains("#" + $0) }
+            if let named { piece = piece.replacingOccurrences(of: "#" + named, with: "", options: .caseInsensitive) }
+            // "tanggal 5" / "tgl 5": that day of this month.
+            var day = Day.string(now)
+            if let match = piece.range(of: #"\b(tanggal|tgl)\s*(\d{1,2})\b"#, options: [.regularExpression, .caseInsensitive]) {
+                let number = Int(piece[match].filter(\.isNumber)) ?? 0
+                var parts = Calendar.current.dateComponents([.year, .month], from: now); parts.day = number
+                if let date = Calendar.current.date(from: parts), Calendar.current.component(.day, from: date) == number { day = Day.string(date) }
+                piece.removeSubrange(match)
+            }
+            guard let (amountText, rest) = amount(in: piece, code: code) else { return nil }
+            var words = rest.split(separator: " ").map(String.init)
+            if words.contains(where: { yesterday.contains($0.lowercased()) }) {
+                day = Day.string(Calendar.current.date(byAdding: .day, value: -1, to: now) ?? now)
+            }
+            words.removeAll { yesterday.contains($0.lowercased()) || today.contains($0.lowercased()) }
+            let note = words.joined(separator: " ")
+            guard !note.isEmpty else { return nil }
+            let lower = Set(words.map { $0.lowercased() })
+            let category = named ?? words.compactMap { word in categories.first { $0.caseInsensitiveCompare(word) == .orderedSame } }.first
+                ?? Self.words.first { name, keys in categories.contains(name) && !lower.isDisjoint(with: keys) }?.key
+                ?? categories.first
+            guard let category, let input = try? JSONSerialization.data(withJSONObject: [
+                "amount": amountText, "note": note.prefix(1).uppercased() + note.dropFirst(), "category": category, "day": day]) else { return nil }
+            return executor.run("propose_expense", input: input).proposal.map { .proposal($0) }
+        }
+    }
+
+    /// The piece's one amount ("28rb", "28 rb", "Rp28.000") and the words around it; nil with none or several.
+    private static func amount(in piece: String, code: String) -> (String, String)? {
+        var tokens = piece.split(separator: " ").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ":!?()")) }.filter { !$0.isEmpty }
+        // "28 rb" → "28rb"
+        for index in tokens.indices.dropLast().reversed()
+        where tokens[index].allSatisfy({ $0.isNumber || $0 == "," || $0 == "." }) && ["rb", "ribu", "k", "jt", "juta"].contains(tokens[index + 1].lowercased()) {
+            tokens[index] += tokens.remove(at: index + 1)
+        }
+        let amounts = tokens.indices.filter { tokens[$0].contains(where: \.isNumber) && ToolExecutor.amount(tokens[$0], code: code) != nil }
+        guard amounts.count == 1, let index = amounts.first else { return nil }
+        let text = tokens.remove(at: index)
+        return (text, tokens.joined(separator: " "))
     }
 }

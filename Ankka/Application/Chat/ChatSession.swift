@@ -220,6 +220,14 @@ extension ChatSession {
             let why = if case .offline = failure { "You're offline" } else { failure.localizedDescription }
             outputs = [.notice("\(why). Answered by Apple Intelligence on this iPhone.")] + (await fallback.send(text, scope: scope, now: .now))
         }
+        // Nothing could answer (offline without Apple Intelligence, or a language it doesn't read): the app still adds
+        // the purchases it can read itself.
+        if !outputs.contains(where: { switch $0 { case .proposal, .change, .bill, .text, .chart: true; default: false } }) {
+            let read = OfflineReader.read(text, model: model, scope: scope, now: .now)
+            if !read.isEmpty {
+                outputs = [.notice("The assistant can't answer right now, so the app read your message itself: amounts and names only. Check each one before saving.")] + read
+            }
+        }
         // A reply's words introduce its cards: text the model wrote after proposing moves ahead of the first card.
         func isCard(_ output: ChatAgent.Output) -> Bool { switch output { case .proposal, .change, .bill: true; default: false } }
         func isText(_ output: ChatAgent.Output) -> Bool { if case .text = output { true } else { false } }

@@ -157,29 +157,7 @@ final class AppleChatAgent: ChatBackend {
         return object
     }
 
-    /// "28rb", "100k", "1,5jt", "2 juta", "Rp28.000", "$4.50", "4,50 €" → major units of `code`. nil when it isn't an amount.
-    static func amount(_ text: String, code: String = "IDR") -> Decimal? {
-        var s = text.lowercased().replacingOccurrences(of: " ", with: "")
-        for affix in ["rp", code.lowercased(), Money.symbol(code).lowercased()] where !affix.isEmpty {
-            if s.hasPrefix(affix) { s = String(s.dropFirst(affix.count)) }
-            if s.hasSuffix(affix) { s = String(s.dropLast(affix.count)) }
-        }
-        s = s.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        for (suffix, scale) in [("ribu", 1e3), ("rb", 1e3), ("k", 1e3), ("juta", 1e6), ("jt", 1e6)] where s.hasSuffix(suffix) {
-            guard let number = Decimal(string: s.dropLast(suffix.count).replacingOccurrences(of: ",", with: "."), locale: Locale(identifier: "en_US_POSIX")),
-                  number > 0 else { return nil }
-            return number * Decimal(scale)
-        }
-        guard !s.isEmpty, s.allSatisfy({ $0.isNumber || $0 == "." || $0 == "," }) else { return nil }
-        // A last separator followed by one or two digits is the decimal point, where the currency has decimals;
-        // every other dot or comma groups thousands ("Rp28.000", "1,234.50", "1.234,50").
-        var digits = s.filter(\.isNumber)
-        if Money.fractionDigits(code) > 0, let last = s.lastIndex(where: { $0 == "." || $0 == "," }), (1...2).contains(s.distance(from: last, to: s.endIndex) - 1) {
-            let fraction = String(s[s.index(after: last)...])
-            digits = s[..<last].filter(\.isNumber) + "." + fraction
-        }
-        return Decimal(string: digits, locale: Locale(identifier: "en_US_POSIX"))
-    }
+    static func amount(_ text: String, code: String = "IDR") -> Decimal? { ToolExecutor.amount(text, code: code) }
 
     /// The subset of JSON Schema ChatAgent.tools uses (object, array, enum, string, integer, boolean).
     /// Apple's twist: `amount` is a string the app parses, and a proposal's `category` is one of `categories`

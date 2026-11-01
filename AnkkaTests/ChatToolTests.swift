@@ -37,6 +37,43 @@ final class ChatToolTests: XCTestCase {
 
     // MARK: - propose_expense
 
+    func testAmountsAreConvertedByTheAppAsTheUserWroteThem() throws {
+        let rupiah: [(String, Decimal)] = [("28rb", 28_000), ("28 ribu", 28_000), ("100k", 100_000), ("1,5jt", 1_500_000), ("2 juta", 2_000_000),
+                                           ("Rp28.000", 28_000), ("28.000", 28_000), ("Rp 1.250.000", 1_250_000), ("45000", 45_000)]
+        for (text, value) in rupiah { XCTAssertEqual(ToolExecutor.amount(text, code: "IDR"), value, text) }
+        let dollars: [(String, Decimal)] = [("$4.50", 4.5), ("4,50", 4.5), ("1,234.50", 1234.5), ("12", 12), ("28k", 28_000)]
+        for (text, value) in dollars { XCTAssertEqual(ToolExecutor.amount(text, code: "USD"), value, text) }
+        XCTAssertNil(ToolExecutor.amount("kopi", code: "IDR"))
+        XCTAssertNil(ToolExecutor.amount("0rb", code: "IDR"))
+
+        let proposed = run("propose_expense", ["amount": "1,5jt", "category": "Food & Drink", "note": "Katering"], scope: .card(id: daily.id, name: daily.name))
+        XCTAssertEqual(proposed.proposal?.amount, 150_000_000, proposed.json)
+        let split = run("propose_expense", ["amount": "50rb", "note": "Pasar", "split": [["category": "Food & Drink", "amount": "30rb"], ["category": "Transport", "amount": "20rb"]]],
+                        scope: .card(id: daily.id, name: daily.name))
+        XCTAssertEqual(split.proposal?.splits.map(\.amount), [3_000_000, 2_000_000], split.json)
+    }
+
+    func testOfflineReaderAddsPurchasesWithoutAModel() throws {
+        let scope = AnalyticsFilterScope.card(id: daily.id, name: daily.name)
+        let names = Dictionary(try repo.categories(in: daily.id).map { ($0.id, $0.name) }) { first, _ in first }
+        func read(_ text: String) -> [(note: String, amount: Int64, category: String, day: String)] {
+            OfflineReader.read(text, model: model, scope: scope, now: now).compactMap {
+                guard case .proposal(let e) = $0 else { return nil }
+                return (e.note, e.amount, names[e.splits[0].categoryID] ?? "?", e.day)
+            }
+        }
+        let three = read("kopi 28rb, bensin 100 rb kemarin; parkir 5rb")
+        XCTAssertEqual(three.map(\.note), ["Kopi", "Bensin", "Parkir"])
+        XCTAssertEqual(three.map(\.amount), [2_800_000, 10_000_000, 500_000])
+        XCTAssertEqual(three.map(\.category), ["Food & Drink", "Transport", "Transport"])
+        XCTAssertEqual(three.map(\.day), ["2026-09-15", "2026-09-14", "2026-09-15"])
+        XCTAssertEqual(read("roti 15rb dan susu 20rb").count, 2, "dan between two amounts is two purchases")
+        XCTAssertEqual(read("fish and chips 50rb").map(\.note), ["Fish and chips"], "one amount stays one purchase")
+        XCTAssertEqual(read("Lunch at work 45rb").first?.category, "Food & Drink", "the user's own past choice")
+        XCTAssertTrue(read("berapa pengeluaran bulan ini?").isEmpty, "a question isn't an expense")
+        XCTAssertTrue(read("pasar 50rb: 30rb makan").isEmpty, "two amounts in one piece is left to the assistant")
+    }
+
     func testProposeUsesTheCategoryTheUserGaveThisPurchaseBefore() throws {
         let scope = AnalyticsFilterScope.card(id: daily.id, name: daily.name)
         let input = try JSONSerialization.data(withJSONObject: ["amount": 28000, "category": "Transport", "note": "kopi"])

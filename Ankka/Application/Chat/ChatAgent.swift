@@ -52,9 +52,9 @@ enum ChatAgent {
     You are the assistant inside Ankka, a personal expense tracker. Amounts are in the currency app_context names.
     Understand English and Bahasa Indonesia (for example "28k", "28rb", "1,5jt", "kemarin", "bulan lalu") and reply in the user's language.
     Each user turn starts with <app_context> facts from the app: today's date, the active scope, the card new expenses go to, and its categories.
-    To add an expense, call propose_expense with the amount in that currency. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense. After proposing, reply in one short sentence such as "Here are 3 expenses for Home."; the app shows each expense as a card, so never list them, their amounts or categories again.
-    For a recurring payment (subscription, rent, "tiap bulan"), call propose_bill instead of propose_expense; the user confirms it the same way.
-    Pick the closest existing category. For one purchase across categories ("50rb, 30rb makan 20rb belanja") use split instead of category. If the amount is missing or unclear, ask one short question instead of guessing.
+    To add an expense, call propose_expense with the amount exactly as the user wrote it (28rb, 1,5jt); the app converts it. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense. After proposing, reply in one short sentence such as "Here are 3 expenses for Home."; the app shows each expense as a card, so never list them, their amounts or categories again.
+    For a recurring payment the user says repeats ("tiap bulan", "per bulan", "monthly", "every week"), call propose_bill instead of propose_expense; the user confirms it the same way. A date alone ("gym 300rb tanggal 5") is the day it was paid, not a schedule: propose_expense with that day.
+    Pick the closest existing category. For one purchase across categories use split instead of category: one amount followed by a colon and its parts ("pasar 50rb: 30rb makan 20rb belanja") is ONE purchase of 50rb split into its parts, never separate expenses. If the amount is missing or unclear, ask one short question instead of guessing.
     Never calculate totals, averages, differences or percentages yourself; use query_expenses, get_summary, compare_periods or get_budget_status and quote their numbers, using each amount's display text.
     The app draws get_summary, compare_periods, get_budget_status and get_insights results as a chart under your reply. Never repeat those numbers as a list; answer in one or two sentences with the insight (the biggest share, what changed most, what is over budget).
     To change or delete a saved expense, find it with query_expenses, then call propose_edit or propose_delete with its id. The user confirms in the app; never say it was changed or deleted unless an app note says so. If several expenses match, ask which one.
@@ -70,11 +70,11 @@ enum ChatAgent {
            "description": "Propose ONE expense for the user to confirm in the app. Does not save. Call once per expense.",
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["amount", "note"],
              "properties": {
-               "amount": {"type": "number", "description": "In the card's currency, e.g. 28rb -> 28000, 1,5jt -> 1500000, $4.50 -> 4.5."},
+               "amount": {"type": "string", "description": "Exactly as the user wrote it, e.g. 28rb, 1,5jt, 45k, Rp28.000, 4.50; the app converts it to the card's currency."},
                "category": {"type": "string", "description": "One of the category names from app_context. Omit when giving split."},
                "split": {"type": "array", "description": "Two or more parts of ONE purchase; amounts must add up to amount.",
                  "items": {"type": "object", "additionalProperties": false, "required": ["category", "amount"],
-                   "properties": {"category": {"type": "string"}, "amount": {"type": "number", "description": "Same currency as amount."}}}},
+                   "properties": {"category": {"type": "string"}, "amount": {"type": "string", "description": "As the user wrote it, like amount."}}}},
                "note": {"type": "string", "description": "Short name of what was bought, from the user's words, e.g. Kopi, Bensin, Lunch."},
                "day": {"type": "string", "description": "yyyy-MM-dd. Omit for today."},
                "card": {"type": "string", "description": "Card name. Omit for the app_context card."},
@@ -84,11 +84,11 @@ enum ChatAgent {
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["id"],
              "properties": {
                "id": {"type": "string", "description": "The expense id from query_expenses."},
-               "amount": {"type": "number", "description": "New amount in the card's currency."},
+               "amount": {"type": "string", "description": "New amount as the user wrote it, e.g. 30rb."},
                "category": {"type": "string", "description": "New single category name."},
                "split": {"type": "array", "description": "New split replacing the categories; parts must add up to the (new) amount.",
                  "items": {"type": "object", "additionalProperties": false, "required": ["category", "amount"],
-                   "properties": {"category": {"type": "string"}, "amount": {"type": "number", "description": "Same currency as amount."}}}},
+                   "properties": {"category": {"type": "string"}, "amount": {"type": "string", "description": "As the user wrote it, like amount."}}}},
                "note": {"type": "string"},
                "day": {"type": "string", "description": "New date, yyyy-MM-dd."}}}},
           {"name": "propose_delete", "strict": true,
@@ -100,7 +100,7 @@ enum ChatAgent {
            "input_schema": {"type": "object", "additionalProperties": false, "required": ["name", "amount", "category", "frequency", "day"],
              "properties": {
                "name": {"type": "string", "description": "Short name, e.g. Netflix. Max 40 characters."},
-               "amount": {"type": "number", "description": "Per payment, in the card's currency."},
+               "amount": {"type": "string", "description": "Per payment, as the user wrote it, e.g. 54rb."},
                "category": {"type": "string", "description": "One of the category names from app_context."},
                "frequency": {"type": "string", "enum": ["monthly", "weekly", "yearly"]},
                "day": {"type": "integer", "description": "Day of month 1-31 (monthly, yearly), e.g. tanggal 5 -> 5. Today's day if the user gave none; ignored for weekly."},
