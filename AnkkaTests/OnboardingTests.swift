@@ -42,7 +42,8 @@ final class OnboardingTests: XCTestCase {
         let card = try XCTUnwrap(model.cards.first { $0.kind == .real })
         XCTAssertEqual(card.name, "Daily")
         XCTAssertEqual(model.activeCardID, card.id)
-        XCTAssertTrue(model.hiddenCardIDs.contains(Card.demo.id))
+        XCTAssertFalse(model.homeDeckCards.contains { $0.id == Card.demo.id }, "an unkept Sample card leaves Home")
+        XCTAssertFalse(model.unhiddenCards.contains { $0.id == Card.demo.id })
         XCTAssertFalse(model.needsOnboarding)
         XCTAssertThrowsError(try model.setUpCurrency("EUR"), "the no-rates shortcut is only for a workspace without real data")
     }
@@ -54,5 +55,38 @@ final class OnboardingTests: XCTestCase {
         try model.finishOnboarding(cardName: "Everyday", keepSample: true)
         let real = model.cards.filter { $0.kind == .real }
         XCTAssertEqual(real.map(\.name), ["Everyday"])
+    }
+}
+
+/// Free keeps writing to its card; new stacks, stack caps and CSV import are Pro on every path.
+@MainActor
+final class FreePlanGateTests: XCTestCase {
+    func testFreeCanArrangeStacksButNotAddStacksCapsOrImport() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleCard()
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: dir))
+        model.pro = ProStore(defaults: try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString)), listen: false)
+        XCTAssertFalse(model.isPro)
+        let card = try model.createCard(named: "Daily")
+
+        var renamed = model.stacks
+        renamed[0].name = "Everyday"
+        XCTAssertNoThrow(try model.saveStackConfiguration(renamed, activeStackID: model.activeStackID, alwaysHiddenIDs: []))
+        XCTAssertThrowsError(try model.saveStackConfiguration(model.stacks + [Stack(name: "Trip")], activeStackID: model.activeStackID, alwaysHiddenIDs: [])) {
+            XCTAssertEqual($0 as? PlanError, .stacks)
+        }
+        var capped = model.stacks
+        capped[0].capLimit = 500_00
+        XCTAssertThrowsError(try model.saveStackConfiguration(capped, activeStackID: model.activeStackID, alwaysHiddenIDs: [])) {
+            XCTAssertEqual($0 as? PlanError, .stackBudget)
+        }
+        let category = try XCTUnwrap(model.activeCategories(for: card.id).first)
+        let row = Expense(amount: 100_00, day: Day.string(.now), note: "csv", splits: [.init(categoryID: category.id, amount: 100_00)], source: "csv", cardID: card.id)
+        XCTAssertThrowsError(try model.importExpenses([row], to: card.id)) { XCTAssertEqual($0 as? PlanError, .csvImport) }
+        XCTAssertEqual(model.stacks.map(\.name), ["Everyday"])
+        XCTAssertTrue(model.expenses(for: card.id).isEmpty)
     }
 }

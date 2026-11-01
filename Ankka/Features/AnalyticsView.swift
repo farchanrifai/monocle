@@ -67,7 +67,7 @@ private struct AnalyticsReportView: View {
                     if let error = report.errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .foregroundStyle(MC.red)
-                    } else {
+                    } else if model.isPro {
                         kpiSummaryCard
                         burnUpTrajectoryCard
                         budgetVsActualCard
@@ -76,6 +76,12 @@ private struct AnalyticsReportView: View {
                         categoryBreakdownCard
                         if !selectedScope.isCard && cardPoints.count > 1 { crossCardBreakdownCard }
                         if !paidWithTotals.isEmpty { paidWithBreakdownCard }
+                    } else {
+                        // Free: the totals and budgets; the trend charts are Pro (docs/planning/app-store-release.md).
+                        kpiSummaryCard
+                        budgetVsActualCard
+                        categoryBreakdownCard
+                        trendsLockedCard
                     }
                 }
                 .padding(.horizontal, 20)
@@ -148,7 +154,7 @@ private struct AnalyticsReportView: View {
             // Horizon Chips
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    Button { pickingPeriod = true } label: {
+                    Button { if model.requirePro("Picking any dates is part of Pro.") { pickingPeriod = true } } label: {
                         Label(customRange.map(Self.rangeTitle) ?? "Pick dates", systemImage: "calendar")
                             .font(.caption.weight(customRange != nil ? .semibold : .medium))
                             .padding(.horizontal, 14)
@@ -267,6 +273,23 @@ private struct AnalyticsReportView: View {
     }
 
     // MARK: - KPI Summary Card
+
+    /// Free's stand-in for the trend charts: what Pro adds, and the way to it.
+    private var trendsLockedCard: some View {
+        Button { _ = model.requirePro("Trends are part of Pro.") } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Trends", systemImage: "lock.fill").font(.headline).foregroundStyle(MC.red)
+                Text("Spending pace against your budget, daily rhythm, this month against last, spending by card and by Paid with, and any dates you pick.")
+                    .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+                Text("See Pro").font(.subheadline.weight(.semibold)).foregroundStyle(MC.red)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(18)
+            .background(MC.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("analyticsTrendsLocked")
+    }
 
     private var kpiSummaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {

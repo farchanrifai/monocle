@@ -135,16 +135,12 @@ final class AppModel {
     var workspacePreferences = WorkspacePreferences()
     var hiddenCardIDs: Set<UUID> = []
     var alwaysHiddenCardIDs: Set<UUID> = []
-    /// A second real card, or any card's look, is Pro.
+    /// A second real card is Pro. An existing card opens on every plan: its Look pane is Pro, its name, categories
+    /// and Delete stay free.
     var customizerTarget: CustomizerTarget? = nil {
         didSet {
-            switch customizerTarget {
-            case .newCard where cards.contains(where: { $0.kind == .real }):
-                if !requirePro(PlanError.cardLimit.localizedDescription) { customizerTarget = nil }
-            case .existing:
-                if !requirePro("Card looks are part of Pro.") { customizerTarget = nil }
-            default: break
-            }
+            if case .newCard = customizerTarget, cards.contains(where: { $0.kind == .real }),
+               !requirePro(PlanError.cardLimit.localizedDescription) { customizerTarget = nil }
         }
     }
     var customizingCard: Card? {
@@ -410,7 +406,7 @@ final class AppModel {
             }
             drafts[card.id] = value
         }
-        try performWorkspaceCommand {
+        try performWorkspaceCommand(safetyCopy: true) {
             try expenseService.unifyCategoriesToGlobalCatalog(catalog)
             for (cardID, value) in drafts { try requireState().saveDraft(value, for: cardID) }
             try requireState().saveSettings(updatedSettings)
@@ -422,11 +418,12 @@ final class AppModel {
         publishPreferences(preferences)
     }
 
-    private func performWorkspaceCommand(_ operation: () throws -> Void) throws {
+    /// `safetyCopy`: the command deletes or rewrites data, so the state before it becomes the exportable safety backup.
+    private func performWorkspaceCommand(safetyCopy: Bool = false, _ operation: () throws -> Void) throws {
         guard let expenseService, startupError == nil else { throw BackupError.recoveryRequired }
         do {
             if let backups {
-                try backups.withRecovery(currentDraft: draft, settings: settings) {
+                try backups.withRecovery(currentDraft: draft, settings: settings, safetyCopy: safetyCopy) {
                     try expenseService.performTransaction(operation)
                 }
             } else {
@@ -681,7 +678,7 @@ final class AppModel {
         proposed.visibleCardIDs.removeAll { $0 == id }
         proposed.alwaysHiddenCardIDs.removeAll { $0 == id }
         for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == id } }
-        try performWorkspaceCommand {
+        try performWorkspaceCommand(safetyCopy: true) {
             try expenseService.deleteCard(id: id)
             try requireState().saveSettings(updatedSettings)
             try requireState().saveWorkspacePreferences(proposed)
@@ -724,7 +721,8 @@ final class AppModel {
                     if updatedSettings.card.id == card.id { updatedSettings.card = renamed }
                 }
                 if let customization = customizations[card.id] { proposed.cardCustomizations[card.id] = customization }
-                if let selection = selections[card.id] {
+                // Only a changed selection writes: a locked card in the carousel (Free after a lapse) must not block the save.
+                if let selection = selections[card.id], selection != activeCategoryIDs(for: card.id) {
                     for category in globalCategories {
                         var inactive = proposed.cardInactiveCategoryIDs[card.id] ?? []
                         if selection.contains(category.id) {
@@ -803,6 +801,11 @@ final class AppModel {
     }
 
     func saveStackConfiguration(_ stacks: [Stack], activeStackID: UUID?, alwaysHiddenIDs: Set<UUID>) throws {
+        if !isPro {
+            let saved = Dictionary(workspacePreferences.stacks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            if stacks.contains(where: { saved[$0.id] == nil }) { throw PlanError.stacks }
+            if stacks.contains(where: { $0.capLimit != nil && $0.capLimit != saved[$0.id]?.capLimit }) { throw PlanError.stackBudget }
+        }
         var proposed = workspacePreferences
         proposed.stacks = stacks; proposed.activeStackID = activeStackID
         proposed.alwaysHiddenCardIDs = Array(alwaysHiddenIDs)
@@ -1320,7 +1323,7 @@ final class AppModel {
             if value.spendingCurrency == new { value.spendingCurrency = nil }
             return value
         }
-        try performWorkspaceCommand {
+        try performWorkspaceCommand(safetyCopy: true) {
             for card in cards { try expenseService.updateCard(card) }
             for (cardID, values) in updated { try expenseService.saveExpenses(values, in: cardID) }
             for (cardID, values) in budgets { for version in values { try expenseService.save(version, in: cardID) } }
@@ -1598,6 +1601,7 @@ final class AppModel {
     }
 
     func importExpenses(_ batch: [Expense], to cardID: UUID) throws {
+        guard isPro else { throw PlanError.csvImport }
         try expenseService?.saveExpenses(batch, in: cardID)
         invalidateExpenseCaches()
         showToast("Imported \(batch.count) \(batch.count == 1 ? "expense" : "expenses")")
@@ -2167,9 +2171,12 @@ extension AppModel {
             card = try createCard(named: name)
         }
         _ = selectCard(card.id)
-        if !keepSample {
-            hiddenCardIDs.insert(Card.demo.id)
-            persistWorkspacePreferences()
+        if !keepSample, !alwaysHiddenCardIDs.contains(Card.demo.id) {
+            var proposed = workspacePreferences
+            proposed.alwaysHiddenCardIDs.append(Card.demo.id)
+            proposed.visibleCardIDs.removeAll { $0 == Card.demo.id }
+            for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == Card.demo.id } }
+            try commitPresentationPreferences(proposed)
         }
         UserDefaults.standard.set(true, forKey: "onboarded")
     }

@@ -442,10 +442,11 @@ struct CardHomeView: View {
                 model.showStackCustomizer = false
             }
             .scrollEdgeEffectStyle(.soft, for: .all)
+            .proPaywall(model)
         }
         .environment(\.cardAppearancePreview, appearancePreview)
         .sheet(item: $model.customizerTarget, onDismiss: { appearancePreview = [:] }) { target in
-            switch target {
+            Group { switch target {
             case .existing(let card):
                 CardCustomizerView(
                     model: model,
@@ -466,7 +467,8 @@ struct CardHomeView: View {
                 ) {
                     model.customizerTarget = nil
                 }
-            }
+            } }
+            .proPaywall(model)
         }
         // Pushed on the root stack, so the system back button and the edge swipe work.
         .navigationDestination(isPresented: $showingBills) {
@@ -477,6 +479,7 @@ struct CardHomeView: View {
                 CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
             }
             .scrollEdgeEffectStyle(.soft, for: .all)
+            .proPaywall(model)
         }
         .navigationDestination(isPresented: $model.showAnalytics) {
             AnalyticsView(model: model).hidesBottomNavigation(model)

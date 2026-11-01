@@ -26,6 +26,7 @@ struct CardCustomizerView: View {
     @State private var cardCategorySelections: [UUID: Set<UUID>]
     @State private var editingCategoriesForCardID: UUID? = nil
     @State private var pane: Pane = .look
+    @State private var deletingCard: Card?
 
     private enum Pane: String, CaseIterable { case look = "Look", details = "Details" }
 
@@ -44,6 +45,8 @@ struct CardCustomizerView: View {
         self.isCreatingNewCard = isCreatingNewCard
         self._previewOverrides = previewOverrides
         self.onDismiss = onDismiss
+        // Looks are Pro; Free opens on the card's name, categories and Delete.
+        _pane = State(initialValue: model.isPro ? .look : .details)
 
         let visibleCards = cards ?? {
             let list = model.orderedCards.filter { !model.hiddenCardIDs.contains($0.id) }
@@ -168,10 +171,15 @@ struct CardCustomizerView: View {
                     if currentCardID == placeholderID {
                         placeholderControlsSection.padding(.top, 8)
                     } else if pane == .look {
-                        designSection
-                        colorSection
-                        photoSection
-                        textToneSection
+                        if !model.isPro { proLookBanner }
+                        Group {
+                            designSection
+                            colorSection
+                            photoSection
+                            textToneSection
+                        }
+                        .disabled(!model.isPro)
+                        .opacity(model.isPro ? 1 : 0.45)
                     } else {
                         detailsSection
                     }
@@ -734,6 +742,19 @@ struct CardCustomizerView: View {
         .contentShape(Rectangle())
     }
 
+    private var proLookBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock.fill").foregroundStyle(MC.red)
+            Text("Card looks are part of Pro.").font(.subheadline.weight(.medium))
+            Spacer(minLength: 8)
+            Button("See Pro") { _ = model.requirePro("Card looks are part of Pro.") }
+                .buttonStyle(.borderedProminent).controlSize(.small)
+                .accessibilityIdentifier("customizerSeePro")
+        }
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
     private var detailsSection: some View {
         let isNew = newCardIDs.contains(currentCardID)
         let card = model.cards.first { $0.id == currentCardID }
@@ -771,6 +792,28 @@ struct CardCustomizerView: View {
                        : "Categories save with the card. Paid with and currency apply as soon as you change them.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
+            if let card, !isNew {
+                Button(role: .destructive) { deletingCard = card } label: {
+                    Label("Delete Card", systemImage: "trash").frame(maxWidth: .infinity).frame(minHeight: 46)
+                }
+                .buttonStyle(.bordered).tint(MC.red)
+                .disabled(model.cards.count < 2)
+                .padding(.top, 14)
+                .accessibilityIdentifier("deleteCardButton")
+                if model.cards.count < 2 {
+                    Text("Your only card can't be deleted.").font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 6)
+                }
+            }
+        }
+        .alert("Delete \(deletingCard?.name ?? "this card")?", isPresented: Binding(get: { deletingCard != nil }, set: { if !$0 { deletingCard = nil } })) {
+            Button("Delete Card", role: .destructive) {
+                guard let card = deletingCard else { return }
+                deletingCard = nil
+                do { try model.deleteCard(id: card.id); onDismiss() } catch { model.report(error) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Its expenses, budgets and bills are deleted too, and other changes in this sheet aren't saved. A safety backup of everything before the delete stays in Backup & restore.")
         }
     }
 

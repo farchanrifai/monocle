@@ -159,9 +159,9 @@ struct StackCustomizerView: View {
                             }
                     }
 
-                    // Add Stack Button
+                    // Add Stack Button (new stacks are Pro; arranging the ones you have is free)
                     Button {
-                        addNewStack()
+                        if model.requirePro(PlanError.stacks.localizedDescription) { addNewStack() }
                     } label: {
                         VStack(spacing: 8) {
                             Image(systemName: "plus.circle.fill")
@@ -722,7 +722,7 @@ struct StackCustomizerView: View {
         var uncapped = stack; uncapped.capLimit = nil
         let cardSum = model.stackBudgetLimit(uncapped)
         let capOn = Binding(get: { stack.capLimit != nil }, set: { on in
-            guard let idx else { return }
+            guard let idx, !on || model.requirePro(PlanError.stackBudget.localizedDescription) else { return }
             workingStacks[idx].capLimit = on ? (cardSum ?? 1_000_000 * 100) : nil
         })
         let capText = Binding(get: { stack.capLimit.map { Money.format($0, currency: false) } ?? "" }, set: { text in
@@ -739,9 +739,9 @@ struct StackCustomizerView: View {
                 .accessibilityIdentifier("stackCapToggle")
             if stack.capLimit != nil {
                 HStack {
-                    Text("Rp").foregroundStyle(.secondary)
+                    Text(Money.symbol(model.reportingCurrency)).foregroundStyle(.secondary)
                     TextField("Cap", text: capText)
-                        .keyboardType(.numberPad)
+                        .keyboardType(Money.fractionDigits(model.reportingCurrency) > 0 ? .decimalPad : .numberPad)
                         .font(.body.monospacedDigit())
                         .accessibilityIdentifier("stackCapField")
                 }

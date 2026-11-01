@@ -1,7 +1,7 @@
 import StoreKit
 import SwiftUI
 
-/// Where the store listing, paywall and Settings link to. Replace the privacy page once it is hosted.
+/// Where the store listing, paywall and Settings link to.
 enum AppLinks {
     static let terms = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
     static let privacy = URL(string: "https://pakaryan.com/ankka/privacy")! // site repo ~/Xcode/pakaryan
@@ -44,7 +44,7 @@ struct PaywallHeader: View {
         ("Analytics", "Totals", "Trends"),
         ("Widgets", "—", "All + Live Activities"),
         ("Shortcuts", "Add Expense", "All"),
-        ("Chat", "On-device, \(Plan.freeQuestionsPerDay) a day", "Claude, unlimited"),
+        ("Chat", "Apple Intelligence, \(Plan.freeQuestionsPerDay)/day", "Claude, unlimited"),
         ("Card looks", "Default", "Customizer"),
         ("CSV", "Export", "Import too"),
     ]
@@ -168,7 +168,8 @@ struct ProPresentation: ViewModifier {
             #endif
             // Only when nothing covers the root: a second presenter for the same paywall makes SwiftUI tear down
             // and rebuild the presented screen (onboarding restarted at its first step).
-            .proPaywall(model, when: !model.showOnboarding && !model.needsKeptCardChoice && !model.showSettings && !model.showEntry && !model.showChat)
+            .proPaywall(model, when: !model.showOnboarding && !model.needsKeptCardChoice && !model.showSettings && !model.showEntry && !model.showChat
+                        && !model.showStackCustomizer && !model.showCSVInterchange && model.customizerTarget == nil)
             .fullScreenCover(isPresented: Binding(get: { model.needsKeptCardChoice && !model.showPaywall && !model.showOnboarding }, set: { _ in })) {
                 KeptCardPicker(model: model)
             }

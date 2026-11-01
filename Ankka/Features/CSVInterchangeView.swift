@@ -78,7 +78,11 @@ struct CSVInterchangeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-                Picker("Interchange Mode", selection: $selectedTab) {
+                // Export is free; Import is Pro on every path into this screen.
+                Picker("Interchange Mode", selection: Binding(get: { selectedTab }, set: { tab in
+                    if tab == 1, !model.requirePro(PlanError.csvImport.localizedDescription) { return }
+                    selectedTab = tab
+                })) {
                     Text("Export").tag(0)
                     Text("Import").tag(1)
                 }
