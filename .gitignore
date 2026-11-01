@@ -17,3 +17,6 @@ xcuserdata/
 .env.*
 !.env.example
 .claude/
+
+# Golden format fixture: GoldenFormatTests reads it from the source tree
+!AnkkaTests/Fixtures/*.ankkabackup
