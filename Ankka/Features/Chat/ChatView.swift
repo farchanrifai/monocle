@@ -7,7 +7,7 @@ struct ChatView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
     @State private var sentCount = 0
-    @FocusState private var inputFocused: Bool
+    @State private var inputFocused = false
     /// Read when the screen opens: Apple Intelligence can be turned on, or finish downloading, while the app runs.
     @State private var unavailable = ChatSession.unavailableReason(isPro: false)
     /// The message waiting while the one-time Claude question is up.
