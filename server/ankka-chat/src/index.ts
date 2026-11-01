@@ -29,6 +29,7 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const path = new URL(req.url).pathname
     if (req.method === 'GET' && path === '/health') return Response.json({ ok: true })
+    if (req.method === 'POST' && path === '/v1/vote') return vote(req, env)
     if (req.method !== 'POST' || path !== '/v1/messages') return fail(404, 'not_found_error', 'Not found')
 
     const user = await identify(req, env)
@@ -56,6 +57,25 @@ export default {
     ctx.waitUntil(meter(toMeter, ctype.includes('event-stream'), env, user, body.model).catch((e) => console.error('meter failed', String(e))))
     return new Response(toClient, { status: up.status, headers: { 'content-type': ctype, 'cache-control': 'no-cache' } })
   },
+}
+
+/** `{version, up}` from a What's New vote body, or null when it isn't one. */
+export function parseVote(body: any): { version: string; up: boolean } | null {
+  if (!body || typeof body.version !== 'string' || typeof body.up !== 'boolean') return null
+  return /^\d{1,3}(\.\d{1,3}){0,2}$/.test(body.version) ? { version: body.version, up: body.up } : null
+}
+
+// ponytail: open and anonymous, so anyone can inflate a count with curl; the app sends one vote per version. Add a
+// per-install id (and a privacy label change) if the numbers ever look gamed.
+async function vote(req: Request, env: Env): Promise<Response> {
+  let v: ReturnType<typeof parseVote> = null
+  try { v = parseVote(await req.json()) } catch {}
+  if (!v) return fail(400, 'invalid_request_error', 'Expected {version, up}')
+  await env.DB.prepare(
+    `INSERT INTO votes (version, up, down) VALUES (?1, ?2, ?3)
+     ON CONFLICT (version) DO UPDATE SET up = up + ?2, down = down + ?3`,
+  ).bind(v.version, v.up ? 1 : 0, v.up ? 0 : 1).run()
+  return Response.json({ ok: true })
 }
 
 /** Pins what costs money: the model, the output ceiling, and no server tools (they bill outside the token table). */

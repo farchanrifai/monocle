@@ -112,6 +112,7 @@
 		91D0D9374EE6A6AF791BD637 /* BackendPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA4C3E279FE472DCBBF5B383 /* BackendPersistenceTests.swift */; };
 		9277D337C0592E27AEEA6EE5 /* AnkkaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 91F36016913858DEA74210B7 /* AnkkaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		930B0ADB1C2072069DF1D4D6 /* ExpenseProposalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A910FB2B32493830110977EE /* ExpenseProposalCard.swift */; };
+		9310BCF68C88069C548CB8CB /* WhatsNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13ADB6704A3E6B19106B47DD /* WhatsNew.swift */; };
 		9ACB8A69CEFD6BD890BE0EF8 /* CategoryValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01361098BD135875BFCB9271 /* CategoryValidation.swift */; };
 		9F6F2C65F4A0518BFC78F28C /* AnkkaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04CC71099CDAFC042AF502CE /* AnkkaMacApp.swift */; };
 		A06516518EFF9116E6275DD0 /* ChatTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2957DD0B1E7E530866DABC41 /* ChatTranscript.swift */; };
@@ -249,6 +250,7 @@
 		0CEE1AA74CA70E3F02305D05 /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		0DFF58FAC069C56B2DB6C7A3 /* WidgetStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
 		0F7CF9CAEF164E9721C2299E /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
+		13ADB6704A3E6B19106B47DD /* WhatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNew.swift; sourceTree = "<group>"; };
 		1443A6D1EAD82EE5A0CD0E51 /* BackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
 		1539168ED0AC144BC3C2D446 /* BudgetStatusViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetStatusViews.swift; sourceTree = "<group>"; };
 		164C44BA9BA94588B957E495 /* OnboardingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingTests.swift; sourceTree = "<group>"; };
@@ -548,6 +550,7 @@
 				9ABE6B5F0B498038C4CD4EBB /* StackCustomizerView.swift */,
 				2E51AC641610FA1EE90306C4 /* StockDesignViews.swift */,
 				7FDE4AE27DBE93E9FAE194BC /* TransactionDetailView.swift */,
+				13ADB6704A3E6B19106B47DD /* WhatsNew.swift */,
 				A4C6792DF4F6B3FD3B3CFD81 /* Chat */,
 			);
 			path = Features;
@@ -1170,6 +1173,7 @@
 				7D47FFF1D85C4A2257944C58 /* StockDesignViews.swift in Sources */,
 				5E9075E261B4F1F2CC75F0F9 /* ToolExecutor.swift in Sources */,
 				43E898F7492AE1E9EEE042F6 /* TransactionDetailView.swift in Sources */,
+				9310BCF68C88069C548CB8CB /* WhatsNew.swift in Sources */,
 				DD06645DDABBECAFF564A0FD /* WidgetSnapshot.swift in Sources */,
 				A11BC2CB8456ADE60CC0EF0A /* WidgetSnapshotStore.swift in Sources */,
 				11FD9A547BA68E9D5F515741 /* WidgetSnapshotUpdater.swift in Sources */,

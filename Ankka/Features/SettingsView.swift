@@ -131,6 +131,9 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink { WhatsNewHistoryView() } label: {
+                        Label { Text("What's new") } icon: { SettingsIcon(symbol: "sparkles", color: MC.red) }
+                    }
                     Button { requestReview() } label: {
                         Label { Text("Rate Ankka").foregroundStyle(Color.primary) } icon: { SettingsIcon(symbol: "heart.fill", color: .pink) }
                     }

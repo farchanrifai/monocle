@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "votes": "wrangler d1 execute ankka-chat --remote --command \"SELECT * FROM votes ORDER BY version DESC\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",

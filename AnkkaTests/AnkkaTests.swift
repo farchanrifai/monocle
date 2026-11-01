@@ -197,3 +197,14 @@ final class AnkkaTests: XCTestCase {
         XCTAssertEqual(try restored.expense().splits, [.init(categoryID: ExpenseCategory.defaults[0].id, amount: 2_800_000)])
     }
 }
+
+extension AnkkaTests {
+    func testWhatsNewShowsOnceAfterAnUpdateWithNotes() throws {
+        let noted = try XCTUnwrap(WhatsNew.releases.first?.version)
+        XCTAssertEqual(WhatsNew.versionToShow(current: noted, lastSeen: "0.0.1", isNewUser: false), noted)
+        XCTAssertNil(WhatsNew.versionToShow(current: noted, lastSeen: noted, isNewUser: false), "already seen")
+        XCTAssertNil(WhatsNew.versionToShow(current: noted, lastSeen: "", isNewUser: true), "new installs get onboarding")
+        XCTAssertNil(WhatsNew.versionToShow(current: "99.0", lastSeen: noted, isNewUser: false), "no notes, no sheet")
+        XCTAssertEqual(Set(WhatsNew.releases.map(\.version)).count, WhatsNew.releases.count, "one entry per version")
+    }
+}

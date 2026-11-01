@@ -47,6 +47,7 @@ struct RootView: View {
                 }) { EntryView(model: model).proPaywall(model).scrollEdgeEffectStyle(.soft, for: .all) }
                 .sensoryFeedback(.success, trigger: model.saveFeedback)
                 .modifier(ReviewPrompt(model: model))
+                .modifier(WhatsNewPrompt(model: model))
                 .alert("Discard the unfinished expense?", isPresented: Binding(get: { model.pendingEntry != nil }, set: { if !$0 { model.pendingEntry = nil } })) {
                     Button("Discard and continue", role: .destructive) { model.discardAndOpenPendingEntry() }
                     Button("Keep draft", role: .cancel) { model.pendingEntry = nil }
