@@ -29,9 +29,12 @@ struct RootView: View {
                         }
                         .toolbar(.hidden, for: .tabBar)
                     }
-                    Tab("Budgets", systemImage: "chart.pie", value: 1) {
-                        NavigationStack { BudgetsView(model: model) }
-                            .toolbar(.hidden, for: .tabBar)
+                    Tab("Analytics", systemImage: "chart.line.uptrend.xyaxis", value: 1) {
+                        NavigationStack {
+                            AnalyticsView(model: model)
+                                .navigationDestination(isPresented: $model.showBudgets) { BudgetsView(model: model).hidesBottomNavigation(model) }
+                        }
+                        .toolbar(.hidden, for: .tabBar)
                     }
                 }
                 .toolbar(.hidden, for: .tabBar)
@@ -71,8 +74,8 @@ struct RootView: View {
             case "chat": model.showChat = true
             case "customize": if let card = model.orderedCards.last { model.customizerTarget = .existing(card) }
             case "chat-demo": fillDemoChat(model); model.showChat = true
-            case "budgets": model.selectedTab = 1
-            case "analytics": model.showAnalytics = true
+            case "budgets": model.selectedTab = 1; model.showBudgets = true
+            case "analytics": model.selectedTab = 1
             default: break
             }
         }
@@ -115,12 +118,14 @@ struct RootView: View {
             } else if host == "budgets" {
                 model.showEntry = false
                 model.showSettings = false
+                model.selectedCardID = nil
                 model.selectedTab = 1
+                model.showBudgets = true
             } else if host == "analytics" {
                 model.showEntry = false
                 model.showSettings = false
-                model.selectedTab = 0
-                model.showAnalytics = true
+                model.selectedCardID = nil
+                model.selectedTab = 1
             } else if host == "chat" {
                 model.showEntry = false
                 model.showSettings = false

@@ -4,7 +4,6 @@ import Charts
 struct BudgetsView: View {
     @Bindable var model: AppModel
     @State private var editing: BudgetEditTarget?
-    @State private var showingAnalytics = false
     /// nil follows the active card.
     @State private var picked: BudgetSubject?
     /// Over-budget nudges put away with Not now, for this visit.
@@ -12,6 +11,11 @@ struct BudgetsView: View {
     /// A finished cycle picked from the Cycles chart; nil is the running one.
     @State private var viewing: Cycle?
     @State private var editingStack: UUID?
+
+    init(model: AppModel, subject: BudgetSubject? = nil) {
+        self.model = model
+        _picked = State(initialValue: subject)
+    }
 
     private var subject: BudgetSubject { picked ?? defaultSubject }
 
@@ -89,11 +93,6 @@ struct BudgetsView: View {
             .toolbar {
                 // Leading, not principal: a centred title moves aside when the name is long, so its place would depend on the card.
                 ToolbarItem(placement: .topBarLeading) { subjectMenu }.sharedBackgroundVisibility(.hidden)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Analytics", systemImage: "chart.line.uptrend.xyaxis") { showingAnalytics = true }
-                        .tint(.primary) // toolbar icons are black, like Home's
-                        .accessibilityIdentifier("budgetsAnalyticsButton")
-                }
                 if subject != .all { // All cards has nothing of its own to set
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Budget settings", systemImage: "slider.horizontal.3") {
@@ -103,7 +102,7 @@ struct BudgetsView: View {
                             case .all: break
                             }
                         }
-                        .tint(.primary)
+                        .tint(.primary) // toolbar icons are black, like Home's
                         .accessibilityIdentifier("budgetSettingsButton")
                     }
                 }
@@ -112,9 +111,6 @@ struct BudgetsView: View {
             .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id).scrollEdgeEffectStyle(.soft, for: .all) }
             .sheet(isPresented: Binding(get: { editingStack != nil }, set: { if !$0 { editingStack = nil } })) {
                 StackCustomizerView(model: model, stackID: editingStack) { editingStack = nil }.scrollEdgeEffectStyle(.soft, for: .all)
-            }
-            .navigationDestination(isPresented: $showingAnalytics) {
-                AnalyticsView(model: model).hidesBottomNavigation(model)
             }
     }
 

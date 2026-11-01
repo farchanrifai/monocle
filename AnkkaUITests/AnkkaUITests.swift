@@ -56,11 +56,17 @@ final class AnkkaUITests: XCTestCase {
         app.launchEnvironment["ANKKA_TEST_RUN"] = UUID().uuidString
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
-        // Budgets is a main tab now.
-        app.buttons["homeTab"].press(forDuration: 0.3, thenDragTo: app.buttons["budgetsTab"])
-        XCTAssertTrue(app.staticTexts["Categories"].waitForExistence(timeout: 5))
+        // Budgets opens from Analytics' Budget vs actual card.
+        app.buttons["analyticsTab"].tap()
+        let openBudgets = app.buttons["openBudgets"]
+        XCTAssertTrue(openBudgets.waitForExistence(timeout: 5))
+        for _ in 0..<4 where openBudgets.frame.maxY > app.frame.height * 0.7 { app.swipeUp() } // clear of the bottom bar
+        openBudgets.tap()
+        XCTAssertTrue(app.buttons["budgetSubjectMenu"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["homeTab"].waitForExistence(timeout: 5))
         app.buttons["homeTab"].tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))
         app.buttons["bookOptionsMenu"].tap()
@@ -297,13 +303,15 @@ final class AnkkaUITests: XCTestCase {
         swipeBack()
         XCTAssertTrue(app.buttons["addExpense"].waitForExistence(timeout: 5), "Edge swipe leaves Expense Details")
 
-        // Analytics is pushed from the Budgets tab; the swipe returns to Budgets.
-        app.buttons["homeTab"].press(forDuration: 0.3, thenDragTo: app.buttons["budgetsTab"])
-        XCTAssertTrue(app.buttons["budgetsAnalyticsButton"].waitForExistence(timeout: 5))
-        app.buttons["budgetsAnalyticsButton"].tap()
-        XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
+        // Budgets is pushed from the Analytics tab; the swipe returns to Analytics.
+        app.buttons["analyticsTab"].tap()
+        let openBudgets = app.buttons["openBudgets"]
+        XCTAssertTrue(openBudgets.waitForExistence(timeout: 5))
+        for _ in 0..<4 where openBudgets.frame.maxY > app.frame.height * 0.7 { app.swipeUp() } // clear of the bottom bar
+        openBudgets.tap()
+        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5))
         swipeBack()
-        XCTAssertTrue(app.navigationBars["Budgets"].waitForExistence(timeout: 5), "Edge swipe leaves Analytics for Budgets")
+        XCTAssertTrue(app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5), "Edge swipe leaves Budgets for Analytics")
     }
 
     @MainActor
@@ -1256,14 +1264,12 @@ final class AnkkaUITests: XCTestCase {
         app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
         app.launch()
 
-        // 1. Open Analytics from the Budgets tab's top bar
+        // 1. Analytics is a main tab
         let homeTab = app.buttons["homeTab"]
-        let budgetsTab = app.buttons["budgetsTab"]
+        let analyticsTab = app.buttons["analyticsTab"]
         XCTAssertTrue(homeTab.waitForExistence(timeout: 10))
-        XCTAssertTrue(budgetsTab.exists)
-        homeTab.press(forDuration: 0.3, thenDragTo: budgetsTab)
-        XCTAssertTrue(app.buttons["budgetsAnalyticsButton"].waitForExistence(timeout: 5))
-        app.buttons["budgetsAnalyticsButton"].tap()
+        XCTAssertTrue(analyticsTab.exists)
+        analyticsTab.tap()
 
         // 2. Verify Analytics & Trends is a root page, not a modal
         XCTAssertTrue(app.staticTexts["Analytics & Trends"].waitForExistence(timeout: 5) || app.navigationBars["Analytics & Trends"].waitForExistence(timeout: 5))
@@ -1287,8 +1293,7 @@ final class AnkkaUITests: XCTestCase {
             app.buttons["All Cards"].tap()
         }
 
-        // 7. Back to Budgets, then Home from the switcher
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // 7. Home from the switcher
         XCTAssertTrue(homeTab.waitForExistence(timeout: 5))
         homeTab.tap()
         XCTAssertTrue(app.buttons["bookOptionsMenu"].waitForExistence(timeout: 5))

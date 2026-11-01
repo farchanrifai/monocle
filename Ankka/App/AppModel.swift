@@ -104,6 +104,8 @@ final class AppModel {
         set { if !newValue { paywall = nil } }
     }
     var selectedTab = 0
+    /// The Budgets page, pushed over the Analytics tab (links and screenshots).
+    var showBudgets = false
     var error: String?
     var startupError: String?
     var backups: BackupService?

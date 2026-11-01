@@ -121,12 +121,12 @@ private struct NativeTabSwitcher: UIViewRepresentable {
     func makeUIView(context: Context) -> UITabBar {
         let tabBar = UITabBar()
         let home = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), selectedImage: UIImage(systemName: "house.fill"))
-        let budgets = UITabBarItem(title: "Budgets", image: UIImage(systemName: "chart.pie"), selectedImage: UIImage(systemName: "chart.pie.fill"))
+        let analytics = UITabBarItem(title: "Analytics", image: UIImage(systemName: "chart.line.uptrend.xyaxis"), selectedImage: UIImage(systemName: "chart.line.uptrend.xyaxis"))
         home.tag = 0
-        budgets.tag = 1
+        analytics.tag = 1
         home.accessibilityIdentifier = "homeTab"
-        budgets.accessibilityIdentifier = "budgetsTab"
-        tabBar.items = [home, budgets]
+        analytics.accessibilityIdentifier = "analyticsTab"
+        tabBar.items = [home, analytics]
         tabBar.selectedItem = home
         tabBar.itemPositioning = .fill
         tabBar.delegate = context.coordinator
