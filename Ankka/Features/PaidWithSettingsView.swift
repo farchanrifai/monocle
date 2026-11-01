@@ -103,7 +103,11 @@ struct CurrencySettingsView: View {
             } footer: {
                 Text("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day and makes a safety backup first.")
             } }
-            if let card, let cardID {
+            if let card, !Money.rateCurrencies.contains(model.reportingCurrency) {
+                Section { } header: { Text(card.name) } footer: {
+                    Text("Exchange rates aren't available for \(model.reportingCurrency), so a card can't keep its budget in another currency. You can still add an expense in any currency and type its rate.")
+                }
+            } else if let card, let cardID {
                 Section {
                     Picker("Budget currency", selection: Binding(get: { model.currency(of: card) }, set: { code in
                         run { try await model.setCardCurrencies(budget: code, spending: card.spendingCurrency, for: cardID) }

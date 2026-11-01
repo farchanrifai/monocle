@@ -148,7 +148,7 @@ struct EntryView: View {
                 .foregroundStyle(amount == 0 ? .secondary : .primary)
                 .contentTransition(.numericText())
                 .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: amount)
-                .accessibilityLabel("Amount \(Money.format(amount))").accessibilityIdentifier("amountDisplay")
+                .accessibilityLabel("Amount \(Money.format(amount, code: draftCurrency))").accessibilityIdentifier("amountDisplay")
             if model.draft.isForeign(reporting: model.reportingCurrency) { conversionLine }
             detailPills.padding(.top, 6)
         }.frame(maxWidth: .infinity)
@@ -210,6 +210,8 @@ struct EntryView: View {
     private var currencyMenu: some View {
         Menu {
             Picker("Currency", selection: Binding(get: { draftCurrency }, set: { code in
+                // Spending in another currency is Pro: say so on the pick, not after the amount and rate are in.
+                if code != model.reportingCurrency, !model.requirePro(PlanError.foreignCurrency.localizedDescription) { return }
                 model.draft.currency = code == model.reportingCurrency ? nil : code
                 model.draft.rate = ""; model.draft.rateSource = nil
             })) {
@@ -315,7 +317,7 @@ struct EntryView: View {
                 } label: {
                     Group {
                         if key == "delete.left" { Image(systemName: key).font(.title2) }
-                        else { Text(key).font(.system(size: key == "000" ? 21 : 29, weight: .regular)) }
+                        else { Text(key == "." ? (Locale.current.decimalSeparator ?? ".") : key).font(.system(size: key == "000" ? 21 : 29, weight: .regular)) }
                     }.frame(maxWidth: .infinity).frame(height: rowHeight).contentShape(Rectangle())
                 }.buttonStyle(PressFeedbackStyle()).accessibilityLabel(key == "delete.left" ? "Delete digit" : key)
                     .accessibilityIdentifier("key-\(key)")

@@ -309,8 +309,17 @@ enum Money {
     static func format(_ amount: Int64, currency: Bool = true, locale: Locale = .autoupdatingCurrent, code: String? = nil) -> String {
         let value = Decimal(amount) / 100
         let number = value.formatted(.number.locale(locale).precision(.fractionLength(amount % 100 == 0 ? 0 : 2)))
-        return (currency ? symbol(code ?? reportingCurrency) : "") + number
+        guard currency else { return number }
+        let symbol = symbol(code ?? reportingCurrency)
+        // A bare ISO code ("SGD", "CHF") needs a space; "$", "¥", "Rp" sit against the number.
+        return symbol + (isCurrencyCode(symbol) ? " " : "") + number
     }
+
+    /// Currencies the rate source (ECB via Frankfurter) publishes. Others work as the reporting currency and with a typed rate.
+    static let rateCurrencies: Set<String> = [
+        "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", "ISK",
+        "JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR",
+    ]
 }
 
 enum Day {

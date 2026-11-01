@@ -433,9 +433,9 @@ struct BillEditor: View {
                         .accessibilityIdentifier("billNameField")
 
                     HStack {
-                        Text("Rp").foregroundStyle(.secondary)
+                        Text(Money.symbol(model.reportingCurrency)).foregroundStyle(.secondary)
                         TextField("Amount", text: $amountText.groupedAmount())
-                            .keyboardType(.numberPad)
+                            .keyboardType(Money.fractionDigits(model.reportingCurrency) > 0 ? .decimalPad : .numberPad)
                             .focused($focusedField, equals: .amount)
                             .accessibilityIdentifier("billAmountField")
                     }

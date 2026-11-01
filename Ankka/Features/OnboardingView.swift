@@ -62,7 +62,9 @@ struct OnboardingView: View {
                 .pickerStyle(.wheel)
                 .labelsHidden()
             } footer: {
-                Text("Budgets and totals use this currency. Pro adds cards and expenses in other currencies.")
+                Text(Money.rateCurrencies.contains(currency)
+                     ? "Budgets and totals use this currency. Pro adds cards and expenses in other currencies."
+                     : "Budgets and totals use this currency. Exchange rates aren't published for it, so expenses in other currencies need a rate you type.")
             }
         }
         .navigationTitle("Your currency")
@@ -114,7 +116,7 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: "star.circle.fill").font(.system(size: 64)).foregroundStyle(MC.red)
             Text("Try Pro free for a week").font(.title.bold()).multilineTextAlignment(.center)
-            Text("More cards and stacks, unlimited bills, widgets, Analytics and every Shortcut. Cancel any time in Settings.")
+            Text("Chat with Claude on any iPhone, more cards and stacks, unlimited bills, widgets, trends and every Shortcut. Cancel any time in Settings.")
                 .font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Spacer()
             Button { model.paywall = "Try every Pro feature free for a week." } label: { Text("See Pro").frame(maxWidth: .infinity) }
