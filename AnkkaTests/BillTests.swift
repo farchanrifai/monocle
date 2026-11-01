@@ -456,7 +456,8 @@ extension BillTests {
         let bill = Bill(cardID: service.activeCardID, name: "Rent", amount: 10000,
                             categoryID: try XCTUnwrap(service.categories.first?.id), recurrence: .monthly(day: 1))
         try service.saveBill(bill)
-        let occurrence = BillOccurrence(billRuleID: bill.id, cardID: bill.cardID, dueDay: Day.string(.now))
+        // A past day: on the 1st, saveBill already makes today's occurrence and a second one for the same day is a duplicate.
+        let occurrence = BillOccurrence(billRuleID: bill.id, cardID: bill.cardID, dueDay: "2026-09-01")
         try store.saveOccurrence(occurrence)
         _ = try service.confirmBillOccurrence(occurrence.id)
         XCTAssertThrowsError(try service.confirmBillOccurrence(occurrence.id))
