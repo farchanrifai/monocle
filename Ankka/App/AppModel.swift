@@ -1788,6 +1788,43 @@ final class AppModel {
         return Set(cardCategories.map(\.id).filter { !inactive.contains($0) })
     }
 
+    // MARK: - What past expenses teach chat
+
+    /// The card's single-category expenses from the last 90 days, newest first, keyed by their note.
+    private func recentNotes(cardID: UUID, now: Date) -> [(note: String, categoryID: UUID)] {
+        let since = Day.string(Calendar.current.date(byAdding: .day, value: -90, to: now) ?? now)
+        return expenses(for: cardID)
+            .filter { $0.day >= since && $0.splits.count == 1 && !$0.note.trimmingCharacters(in: .whitespaces).isEmpty }
+            .sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
+            .map { ($0.note.trimmingCharacters(in: .whitespaces), $0.splits[0].categoryID) }
+    }
+
+    /// The category the user gave this purchase before: the newest saved expense with the same note on the card, then a
+    /// keyword rule (Categories › Rules). nil when neither knows, or the category is no longer active on the card.
+    func learnedCategory(note: String, cardID: UUID, now: Date = .now) -> UUID? {
+        let note = note.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !note.isEmpty else { return nil }
+        let active = Set(activeCategories(for: cardID).map(\.id))
+        if let past = recentNotes(cardID: cardID, now: now).first(where: { $0.note.lowercased() == note }), active.contains(past.categoryID) {
+            return past.categoryID
+        }
+        return settings.categoryRules.first { note.contains($0.keyword) && active.contains($0.categoryID) }?.categoryID
+    }
+
+    /// The card's most frequent notes of the last 90 days with the category each last had, for chat's context.
+    func frequentNotes(cardID: UUID, limit: Int, now: Date = .now) -> [(note: String, category: String)] {
+        let names = Dictionary(activeCategories(for: cardID).map { ($0.id, $0.name) }) { first, _ in first }
+        var counts: [String: Int] = [:], latest: [String: (note: String, categoryID: UUID)] = [:]
+        for item in recentNotes(cardID: cardID, now: now) {
+            let key = item.note.lowercased()
+            counts[key, default: 0] += 1
+            if latest[key] == nil { latest[key] = item }
+        }
+        return counts.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
+            .compactMap { key, _ in latest[key].flatMap { item in names[item.categoryID].map { (String(item.note.prefix(30)), $0) } } }
+            .prefix(limit).map { $0 }
+    }
+
     func activeCategories(for cardID: UUID) -> [ExpenseCategory] {
         let inactive = Set(workspacePreferences.cardInactiveCategoryIDs[cardID] ?? [])
         let cardCategories = (try? expenseService?.categories(for: cardID)) ?? []

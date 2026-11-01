@@ -55,7 +55,7 @@ final class ClaudeChatAgent: ChatBackend {
             outputs.append(.notice("Started a fresh conversation to keep chat fast."))
         }
         let checkpoint = messages.count
-        let executor = ToolExecutor(model: model, scope: scope, now: now)
+        let executor = ToolExecutor(model: model, scope: scope, now: now, userText: text)
         var content: [[String: Any]] = [["type": "text", "text": ChatAgent.context(executor, now: now, lastPeriod: lastPeriod)]]
         content += notes.map { ["type": "text", "text": "App note: \($0)"] }
         content.append(["type": "text", "text": text])

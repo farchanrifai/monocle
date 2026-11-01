@@ -31,18 +31,20 @@ enum ChatAgent {
     /// Per-request facts go in the user turn so the system prompt and tools stay byte-stable.
     /// `listCategories: false` for Apple's small model, which answers "what categories?" by echoing the list;
     /// a wrong category name gets the valid list back in the tool error instead.
-    static func context(_ executor: ToolExecutor, now: Date, listCategories: Bool = true, lastPeriod: String? = nil) -> String {
+    /// `pastNotes` lists the card's most frequent past notes with their category, so a new purchase lands where the user puts it.
+    static func context(_ executor: ToolExecutor, now: Date, listCategories: Bool = true, lastPeriod: String? = nil, pastNotes: Int = 20) -> String {
         let model = executor.model
         let card = try? executor.targetCard()
         let categories = card.flatMap { try? model.activeCategories(in: $0.id) }?.map(\.name) ?? []
         let cards = model.cards(in: executor.scope).map(\.name)
         let scope = executor.scope.isAllCards ? "All cards" : "\(executor.scope.subtitle): \(executor.scope.title)"
+        let past = card.map { model.frequentNotes(cardID: $0.id, limit: pastNotes, now: now) } ?? []
         return """
         <app_context>
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
         Scope: \(scope) (cards: \(cards.joined(separator: ", "))).
         New expenses go to card: \(card?.name ?? "none — ask the user"), currency \(card.map { model.currency(ofCard: $0.id) } ?? Money.reportingCurrency).
-        \(lastPeriod.map { "Period of your last answer: \($0). A follow-up that names no period (\"what categories?\", \"and transport?\") uses it, not this_month.\n" } ?? "")        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")</app_context>
+        \(lastPeriod.map { "Period of your last answer: \($0). A follow-up that names no period (\"what categories?\", \"and transport?\") uses it, not this_month.\n" } ?? "")        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")\(past.isEmpty ? "" : "How the user categorised past expenses on that card (note → category): \(past.map { "\($0.note) → \($0.category)" }.joined(separator: "; ")).\n")</app_context>
         """
     }
 

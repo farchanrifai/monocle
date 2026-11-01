@@ -47,9 +47,9 @@ final class AppleChatAgent: ChatBackend {
 
     func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output] {
         if let reason = Self.unavailableReason { return [.error(reason)] }
-        let executor = ToolExecutor(model: model, scope: scope, now: now)
+        let executor = ToolExecutor(model: model, scope: scope, now: now, userText: text)
         self.executor = executor
-        let prompt = ([ChatAgent.context(executor, now: now, listCategories: false, lastPeriod: lastPeriod)] + notes.map { "App note: \($0)" } + [text]).joined(separator: "\n\n")
+        let prompt = ([ChatAgent.context(executor, now: now, listCategories: false, lastPeriod: lastPeriod, pastNotes: 8)] + notes.map { "App note: \($0)" } + [text]).joined(separator: "\n\n")
         var notice: [ChatAgent.Output] = []
         let categories = ((try? executor.targetCard()).flatMap { try? model.activeCategories(in: $0.id) } ?? []).map(\.name)
         // ponytail: tools are fixed per session, so a different card's categories start a fresh one (history lost).

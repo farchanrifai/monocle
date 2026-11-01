@@ -37,6 +37,22 @@ final class ChatToolTests: XCTestCase {
 
     // MARK: - propose_expense
 
+    func testProposeUsesTheCategoryTheUserGaveThisPurchaseBefore() throws {
+        let scope = AnalyticsFilterScope.card(id: daily.id, name: daily.name)
+        let input = try JSONSerialization.data(withJSONObject: ["amount": 28000, "category": "Transport", "note": "kopi"])
+        let food = try category("Food & Drink", in: daily), transport = try category("Transport", in: daily)
+
+        let guessed = ToolExecutor(model: model, scope: scope, now: now, userText: "kopi 28rb").run("propose_expense", input: input)
+        XCTAssertEqual(guessed.proposal?.splits.map(\.categoryID), [food.id], "Kopi was Food & Drink before, whatever the model guessed")
+        XCTAssertEqual(json(guessed)["category"] as? String, "Food & Drink", "the model hears the category it'll be")
+
+        let named = ToolExecutor(model: model, scope: scope, now: now, userText: "kopi 28rb #Transport").run("propose_expense", input: input)
+        XCTAssertEqual(named.proposal?.splits.map(\.categoryID), [transport.id], "a category the user names wins")
+
+        let context = ChatAgent.context(ToolExecutor(model: model, scope: scope, now: now), now: now)
+        XCTAssertTrue(context.contains("Kopi → Food & Drink"), context)
+    }
+
     func testProposeBuildsUnsavedExpenseOnScopeCardInMinorUnits() throws {
         let before = try repo.expenses(in: travel.id).count
         let outcome = run("propose_expense", ["amount": 28000, "category": "food & DRINK", "note": " Kopi "], scope: tripScope)

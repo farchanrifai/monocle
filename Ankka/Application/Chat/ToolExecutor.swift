@@ -22,6 +22,8 @@ struct ToolExecutor {
     /// Chat-local default scope (CHAT_SPEC §2).
     let scope: AnalyticsFilterScope
     var now: Date = .now
+    /// The user's message: a category it names wins over the one learned from past expenses.
+    var userText = ""
 
     func run(_ name: String, input: Data) -> Outcome {
         do {
@@ -152,10 +154,19 @@ struct ToolExecutor {
         let day = input.day ?? Day.string(now)
         guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
         let categories = try model.activeCategories(in: card.id)
-        guard let splits = try splits(total: minor, category: input.category, split: input.split, on: card, in: categories) else {
-            throw ToolError(message: "Give a category, or a split of two or more categories.")
-        }
         let note = (input.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        // What the user chose for this purchase before wins over the model's guess (a split is left as given).
+        let named = input.category.map { userText.localizedCaseInsensitiveContains($0) } ?? false
+        let learned = input.split == nil && !named ? model.learnedCategory(note: note, cardID: card.id, now: now) : nil
+        let splits: [Split]
+        if let learned {
+            splits = [Split(categoryID: learned, amount: minor)]
+        } else {
+            guard let given = try self.splits(total: minor, category: input.category, split: input.split, on: card, in: categories) else {
+                throw ToolError(message: "Give a category, or a split of two or more categories.")
+            }
+            splits = given
+        }
         // Paid with: a named label, otherwise the card's default.
         let paidWithID: UUID?
         if let name = input.paid_with?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
