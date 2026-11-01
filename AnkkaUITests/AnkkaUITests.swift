@@ -58,7 +58,7 @@ final class AnkkaUITests: XCTestCase {
         app.launch()
         // Budgets is a main tab now.
         app.buttons["homeTab"].press(forDuration: 0.3, thenDragTo: app.buttons["budgetsTab"])
-        XCTAssertTrue(app.staticTexts["Where it went"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Categories"].waitForExistence(timeout: 5))
         let budget = XCTAttachment(screenshot: app.screenshot())
         budget.name = "budgets"; budget.lifetime = .keepAlways; add(budget)
         app.buttons["homeTab"].tap()

@@ -4,6 +4,8 @@ import Foundation
 enum BudgetSubject: Equatable, Hashable, Sendable {
     case card(UUID)
     case stack(UUID)
+    /// Every visible card, added up like a stack without a cap.
+    case all
 }
 
 /// One row under a budget: a category (card budget) or a member card (stack budget).
@@ -42,6 +44,13 @@ struct BudgetCycleResult: Identifiable, Equatable, Sendable {
     let isGoal: Bool
     var id: Date { cycle.start }
     var isOver: Bool { spent > limit }
+}
+
+/// A card face's total: what was spent in the period it counts, and which period that is.
+struct CardPeriodTotal: Equatable, Sendable {
+    let total: Int64
+    let count: Int
+    let cycle: Cycle
 }
 
 struct BudgetCardInput {
@@ -132,18 +141,18 @@ enum BudgetReport {
         var limits: [Int64] = [], lines: [BudgetLine] = []
         for card in input.cards {
             let inCycle = card.expenses.filter { cycle.contains($0) }
-            spent += Money.sum(inCycle.map(\.amount))
+            // Rows share the stack's currency (the reporting one), so a yen card reads in dollars like the total above it.
+            let cardSpent = Money.sum(inCycle.map(\.amount))
+            spent += cardSpent
             var cardLimit: Int64?
             if let version = BudgetHistory.active(on: asOf, budgets: card.budgets, calendar: calendar), version.totalUntilDay == nil {
-                cardLimit = version.overallLimit
-                if card.currency == input.reportingCurrency {
-                    limits.append(version.overallLimit)
-                } else {
-                    approximate = true
-                    limits.append(input.convert(version.overallLimit, card.currency, input.reportingCurrency) ?? version.overallLimit)
-                }
+                if card.currency != input.reportingCurrency { approximate = true }
+                let limit = card.currency == input.reportingCurrency ? version.overallLimit
+                    : input.convert(version.overallLimit, card.currency, input.reportingCurrency) ?? version.overallLimit
+                cardLimit = limit
+                limits.append(limit)
             }
-            lines.append(BudgetLine(id: card.card.id, name: card.card.name, limit: cardLimit, spent: Money.sum(inCycle.map(card.amount))))
+            lines.append(BudgetLine(id: card.card.id, name: card.card.name, limit: cardLimit, spent: cardSpent))
         }
         guard let limit = input.stack.budgetLimit(cardLimits: limits) else { return nil }
         return (limit, spent, lines, approximate)

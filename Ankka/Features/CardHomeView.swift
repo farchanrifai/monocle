@@ -1007,8 +1007,8 @@ private struct CardFaceText: View, @MainActor Equatable {
     }
 
     var body: some View {
-        let cardExpenses = model.expenses(for: card.id)
-        let total = model.spent(for: card.id)
+        let period = model.periodSpent(for: card.id)
+        let total = period.total
 
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -1052,8 +1052,9 @@ private struct CardFaceText: View, @MainActor Equatable {
                     .font(.caption.monospacedDigit())
                     .opacity(0.8)
             }
-            Text("\(cardExpenses.count) EXPENSES")
+            Text("\(period.cycle.label.uppercased()) · \(period.count) EXPENSES")
                 .font(.system(size: 11, weight: .medium).monospaced())
+                .lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

@@ -129,7 +129,8 @@ private struct AnalyticsReportView: View {
             // Horizon Chips
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(AnalyticsTimeHorizon.allCases) { horizon in
+                    // When the cycle is the calendar month, "This month" would be the same chip twice.
+                    ForEach(AnalyticsTimeHorizon.allCases.filter { $0 != .thisMonth || !(report.period?.cycle.isCalendarMonth ?? true) }) { horizon in
                         let isSelected = selectedHorizon == horizon
                         Button {
                             selectedHorizon = horizon
@@ -464,7 +465,7 @@ private struct AnalyticsReportView: View {
         switch selectedScope {
         case .card(let id, _): .card(id)
         case .stack(let id, _): .stack(id)
-        case .allCards: nil
+        case .allCards: .all
         }
     }
 

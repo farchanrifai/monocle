@@ -88,7 +88,8 @@ final class BudgetReportTests: XCTestCase {
         let status = try XCTUnwrap(BudgetReport.stack(stackInput(cards: [usd]), now: now))
         XCTAssertEqual(status.limit, 160_000_00)
         XCTAssertEqual(status.spent, 8_000_00)                 // reporting amounts
-        XCTAssertEqual(status.lines.first?.spent, 5_00)        // card currency
+        XCTAssertEqual(status.lines.first?.spent, 8_000_00)    // rows read in the stack's (reporting) currency too
+        XCTAssertEqual(status.lines.first?.limit, 160_000_00)
         XCTAssertTrue(status.approximate)
     }
 

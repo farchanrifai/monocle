@@ -48,6 +48,7 @@ struct MacBudgetsView: View {
         switch subject {
         case .card(let id): model.cards.first { $0.id == id }?.name ?? "Card"
         case .stack(let id): model.stacks.first { $0.id == id }?.name ?? "Stack"
+        case .all: "All cards"
         }
     }
 

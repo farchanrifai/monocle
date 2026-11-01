@@ -464,8 +464,9 @@ struct CardCustomizerView: View {
         let custom = drafts[card.id] ?? model.customization(for: card.id)
         let textStyle = CardPalette.resolvedTextColor(for: custom)
         let isNewDraft = newCardIDs.contains(card.id)
-        let total = isNewDraft ? 0 : model.spent(for: card.id)
-        let count = isNewDraft ? 0 : model.expenses(for: card.id).count
+        let period = isNewDraft ? nil : model.periodSpent(for: card.id)
+        let total = period?.total ?? 0
+        let count = period?.count ?? 0
         let isActive = (card.id == currentCardID)
         let cardIndex = (customizerCards.firstIndex(where: { $0.id == card.id }) ?? 0) + 1
         let displayName = draftNames[card.id] ?? card.name
@@ -501,8 +502,9 @@ struct CardCustomizerView: View {
                 .font(.title.bold())
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
-            Text("\(count) EXPENSES")
+            Text(period.map { "\($0.cycle.label.uppercased()) · \(count) EXPENSES" } ?? "\(count) EXPENSES")
                 .font(.caption.monospaced())
+                .lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

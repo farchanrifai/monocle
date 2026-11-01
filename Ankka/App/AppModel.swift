@@ -898,6 +898,7 @@ final class AppModel {
     @ObservationIgnored private var expensesCache: [UUID: [Expense]] = [:]
     @ObservationIgnored private var expenseByIDCache: [UUID: Expense]? = nil
     @ObservationIgnored private var spentCache: [UUID: Int64] = [:]
+    @ObservationIgnored private var periodSpentCache: [UUID: CardPeriodTotal] = [:]
     @ObservationIgnored private var memoizedActivities: [Expense]? = nil
     @ObservationIgnored private var memoizedActivitiesKey: String = ""
 
@@ -905,7 +906,7 @@ final class AppModel {
 
     private func committedWorkspaceChanged() {
         if let refreshError = expenseService?.projectionRefreshError {
-            expensesCache.removeAll(); spentCache.removeAll(); memoizedActivities = nil
+            expensesCache.removeAll(); spentCache.removeAll(); periodSpentCache.removeAll(); memoizedActivities = nil
             error = "Your change was saved, but the display could not refresh: \(refreshError)"
             do { try WidgetSnapshotStore.writeSnapshot(.unavailable("Open Ankka to refresh")) }
             catch { BackendDiagnostics.widgetPublicationFailed() }
@@ -916,6 +917,7 @@ final class AppModel {
         expensesCache.removeAll()
         expenseByIDCache = nil
         spentCache.removeAll()
+        periodSpentCache.removeAll()
         memoizedActivities = nil
         memoizedActivitiesKey = ""
         syncWidgetSnapshot()
@@ -979,6 +981,19 @@ final class AppModel {
         return total
     }
 
+    /// What a card's face counts: its budget's running period (the whole trip for a "Total until" budget), else this cycle.
+    // ponytail: cached until the next data change, so a face left open over a cycle boundary shows the old cycle until then.
+    func periodSpent(for cardID: UUID) -> CardPeriodTotal {
+        if let cached = periodSpentCache[cardID] { return cached }
+        let cycle = budgetPeriod(for: cardID).cycle
+        let card = cards.first { $0.id == cardID }
+        let inCycle = expenses(for: cardID).filter { cycle.contains($0) }
+        let result = CardPeriodTotal(total: Money.sum(inCycle.map { expense in card.map { cardAmount(expense, in: $0) } ?? expense.amount }),
+                                     count: inCycle.count, cycle: cycle)
+        periodSpentCache[cardID] = result
+        return result
+    }
+
     /// Sum of the stack's cards' current monthly budgets, or the stack's cap. "Total until" budgets don't count.
     func stackBudgetLimit(_ stack: Stack) -> Int64? {
         let cards = stack.cardIDs.compactMap { id in cards.first { $0.id == id } }.filter { !alwaysHiddenCardIDs.contains($0.id) }
@@ -1008,15 +1023,26 @@ final class AppModel {
 
     func budgetStackInput(_ stackID: UUID) -> BudgetStackInput? {
         guard let stack = stacks.first(where: { $0.id == stackID }) else { return nil }
+        return budgetStackInput(stack)
+    }
+
+    /// All visible cards as one uncapped stack: their budgets and spending added up by calendar month.
+    var allCardsBudgetInput: BudgetStackInput? {
+        budgetStackInput(Stack(name: "All cards", cardIDs: unhiddenCards.map(\.id)))
+    }
+
+    private func budgetStackInput(_ stack: Stack) -> BudgetStackInput? {
         let inputs = stack.cardIDs.filter { !alwaysHiddenCardIDs.contains($0) }.compactMap(budgetCardInput)
         return BudgetStackInput(stack: stack, cards: inputs, reportingCurrency: reportingCurrency,
                                 convert: { [self] in approximate($0, from: $1, to: $2) })
     }
 
-    func budgetStatus(_ subject: BudgetSubject) -> BudgetStatus? {
+    /// The cycle running on `date` (today by default).
+    func budgetStatus(_ subject: BudgetSubject, at date: Date = .now) -> BudgetStatus? {
         switch subject {
-        case .card(let id): budgetCardInput(id).flatMap { BudgetReport.card($0) }
-        case .stack(let id): budgetStackInput(id).flatMap { BudgetReport.stack($0) }
+        case .card(let id): budgetCardInput(id).flatMap { BudgetReport.card($0, now: date) }
+        case .stack(let id): budgetStackInput(id).flatMap { BudgetReport.stack($0, now: date) }
+        case .all: allCardsBudgetInput.flatMap { BudgetReport.stack($0, now: date) }
         }
     }
 
@@ -1025,6 +1051,7 @@ final class AppModel {
         switch subject {
         case .card(let id): budgetCardInput(id).map { BudgetReport.cardHistory($0, count: count, now: now) } ?? []
         case .stack(let id): budgetStackInput(id).map { BudgetReport.stackHistory($0, count: count, now: now) } ?? []
+        case .all: allCardsBudgetInput.map { BudgetReport.stackHistory($0, count: count, now: now) } ?? []
         }
     }
 
@@ -1913,6 +1940,22 @@ final class AppModel {
             if isActive { try requireState().saveSettings(proposed) }
         }
         if isActive { settings = proposed }
+        invalidateExpenseCaches()
+    }
+
+    /// Payday came early: the running cycle ends yesterday, and a new one with the same budget starts today and runs to the
+    /// usual start day after next, so later cycles fall back on their usual day.
+    func startCycleToday(cardID: UUID, date: Date = .now, calendar: Calendar = .current) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let history = try expenseService.budgets(for: cardID)
+        let today = Day.string(date, calendar: calendar)
+        guard let current = BudgetHistory.period(containing: date, budgets: history, calendar: calendar),
+              current.budget.totalUntilDay == nil, today != Day.string(current.cycle.start, calendar: calendar) else { return }
+        var budget = current.budget
+        budget.id = history.first { $0.effectiveDay == today }?.id ?? UUID()
+        budget.effectiveDay = today
+        budget.transitionEndDay = Day.string(BudgetHistory.transitionEnd(after: current.cycle.end, startDay: budget.startDay, calendar: calendar), calendar: calendar)
+        try performWorkspaceCommand { try expenseService.save(budget, in: cardID) }
         invalidateExpenseCaches()
     }
 

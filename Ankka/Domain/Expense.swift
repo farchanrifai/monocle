@@ -565,7 +565,12 @@ struct Cycle: Equatable, Sendable {
         guard Day.date(expense.day, calendar: calendar) != nil else { return false }
         return expense.day >= Day.string(start, calendar: calendar) && expense.day < Day.string(end, calendar: calendar)
     }
+    /// A cycle that starts on the 1st and runs one month reads as that month.
+    var isCalendarMonth: Bool {
+        calendar.component(.day, from: start) == 1 && calendar.date(byAdding: .month, value: 1, to: start) == end
+    }
     var label: String {
+        if isCalendarMonth { return start.formatted(.dateTime.month(.wide)) }
         let last = calendar.date(byAdding: .day, value: -1, to: end) ?? end
         return start.formatted(.dateTime.day().month(.abbreviated)) + " – " + last.formatted(.dateTime.day().month(.abbreviated))
     }
@@ -661,12 +666,18 @@ enum BudgetHistory {
             let end = reporting.date(byAdding: .day, value: 1, to: reporting.startOfDay(for: last)) ?? last
             return BudgetPeriod(budget: budget, cycle: Cycle(start: reporting.startOfDay(for: start), end: end, calendar: calendar))
         }
+        var cycle = Cycle.containing(date, startDay: budget.startDay, calendar: calendar)
         if let start = Day.date(budget.effectiveDay, calendar: calendar),
            let endDay = budget.transitionEndDay, let end = Day.date(endDay, calendar: calendar),
            day >= budget.effectiveDay, day < endDay {
-            return BudgetPeriod(budget: budget, cycle: Cycle(start: Day.reportingCalendar(calendar).startOfDay(for: start), end: Day.reportingCalendar(calendar).startOfDay(for: end), calendar: calendar))
+            cycle = Cycle(start: Day.reportingCalendar(calendar).startOfDay(for: start), end: Day.reportingCalendar(calendar).startOfDay(for: end), calendar: calendar)
         }
-        return BudgetPeriod(budget: budget, cycle: Cycle.containing(date, startDay: budget.startDay, calendar: calendar))
+        // A cycle started early (payday came early) cuts the one before it short.
+        if let next = budgets.filter({ $0.effectiveDay > day }).map(\.effectiveDay).min(),
+           let nextStart = Day.date(next, calendar: calendar), nextStart < cycle.end {
+            cycle = Cycle(start: cycle.start, end: nextStart, calendar: calendar)
+        }
+        return BudgetPeriod(budget: budget, cycle: cycle)
     }
 
     static func transitionEnd(after date: Date, startDay: Int, calendar: Calendar = Day.calendar) -> Date {

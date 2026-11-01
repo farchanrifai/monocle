@@ -25,7 +25,8 @@ struct StackCustomizerView: View {
         "car", "cross.case", "sportscourt", "bag"
     ]
 
-    init(model: AppModel, initialMode: StackCustomizerMode = .manage, onDismiss: @escaping () -> Void) {
+    /// `stackID` opens on that stack instead of the active one.
+    init(model: AppModel, initialMode: StackCustomizerMode = .manage, stackID: UUID? = nil, onDismiss: @escaping () -> Void) {
         self.model = model
         self.initialMode = initialMode
         self.onDismiss = onDismiss
@@ -37,7 +38,7 @@ struct StackCustomizerView: View {
             initialStacks = [def]
         }
 
-        var activeID = model.activeStackID ?? initialStacks.first?.id ?? UUID()
+        var activeID = stackID ?? model.activeStackID ?? initialStacks.first?.id ?? UUID()
 
         if initialMode == .create {
             let newID = UUID()

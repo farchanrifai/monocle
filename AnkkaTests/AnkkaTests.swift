@@ -62,6 +62,23 @@ final class AnkkaTests: XCTestCase {
         XCTAssertEqual(Day.string(next.cycle.start, calendar: calendar), "2026-10-25")
         XCTAssertEqual(Day.string(next.cycle.end, calendar: calendar), "2026-11-25")
     }
+    func testEarlyPaydayCutsTheRunningCycleAndReturnsToTheUsualDay() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        func cycle(_ day: String, _ history: [BudgetVersion]) throws -> String {
+            let period = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date(day, calendar: calendar)), budgets: history, calendar: calendar))
+            return Day.string(period.cycle.start, calendar: calendar) + "…" + Day.string(period.cycle.end, calendar: calendar)
+        }
+        let payday = BudgetVersion(id: UUID(), effectiveDay: "2026-09-25", overallLimit: 100_000, startDay: 25)
+        let early = BudgetVersion(id: UUID(), effectiveDay: "2026-10-23", overallLimit: 100_000, startDay: 25, transitionEndDay: "2026-11-25")
+        let history = [payday, early]
+        XCTAssertEqual(try cycle("2026-10-22", history), "2026-09-25…2026-10-23")
+        XCTAssertEqual(try cycle("2026-10-23", history), "2026-10-23…2026-11-25")
+        XCTAssertEqual(try cycle("2026-11-25", history), "2026-11-25…2026-12-25")
+        let october = Cycle.containing(try XCTUnwrap(Day.date("2026-10-10", calendar: calendar)), startDay: 1, calendar: calendar)
+        XCTAssertTrue(october.isCalendarMonth)
+        XCTAssertFalse(Cycle.containing(try XCTUnwrap(Day.date("2026-10-10", calendar: calendar)), startDay: 25, calendar: calendar).isCalendarMonth)
+    }
     @MainActor
     func testStoreRoundTripUpsertAndInvalidSavePreservation() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
