@@ -67,11 +67,11 @@ struct RootView: View {
         }
         .preferredColorScheme(model.preferredColorScheme)
         #if DEBUG
-        // Screenshot hook: ANKKA_SCREEN=entry|settings|chat|chat-demo|customize|budgets|analytics opens that screen on launch.
+        // Screenshot hook: ANKKA_SCREEN=entry|settings|roadmap|chat|chat-demo|customize|budgets|analytics opens that screen on launch.
         .task {
             switch ProcessInfo.processInfo.environment["ANKKA_SCREEN"] {
             case "entry": model.openEntry(for: model.activeCardID)
-            case "settings": model.showSettings = true
+            case "settings", "roadmap": model.showSettings = true
             case "chat": model.showChat = true
             case "customize": if let card = model.orderedCards.last { model.customizerTarget = .existing(card) }
             case "chat-demo": fillDemoChat(model); model.showChat = true

@@ -4,6 +4,8 @@ What's New sheet with votes (2026-11-01, `release/app-store`; a free take on rel
 
 Deployed (Worker version 9cc7e413, migration 0002 applied); a vote from the phone counted. A test row `0.0.0` may remain in `votes`.
 
+Roadmap (same day): Settings ▸ About ▸ Roadmap (`Ankka/Features/Roadmap.swift`) lists "Coming" items with 👍/👎 (tap again to undo, other thumb to switch) and "Shipped" items struck through with their version. List comes from `GET /v1/roadmap` (D1 `roadmap`, migration 0003, seeded with 4 coming + 3 shipped drafts for the owner to edit), cached for offline; counts never sent to the app. Votes: `POST /v1/roadmap/vote {id, vote, previous}`. Ranking: `npm run roadmap`. Shared helpers in WhatsNew.swift: `WhatsNew.server` (DEBUG `-ankkaServer http://localhost:8787/` for `wrangler dev`), `WhatsNew.post`, `Thumbs`. `ANKKA_SCREEN=roadmap` opens it. Deployed (Worker b58fba27).
+
 Open: (1) Retake App Store screenshots. (2) Phone runs the DEMO build (now with What's New); reinstall `build/phone-fast` for real data. (3) `BillTests.testResolvedBillCannotBeRecordedOrSkippedAgain` fails on the 1st of a month only. (4) Paid Apple Developer account: App Groups/widgets, TestFlight, sandbox receipt, submission. (5) Check the "Anthropic doesn't train on it" wording. (6) macOS 27.2 beta vs Xcode SDK mismatch; Mac verified by build only.
 
 ## 2. Last Completed Checkpoint

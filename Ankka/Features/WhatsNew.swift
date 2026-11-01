@@ -24,10 +24,23 @@ enum WhatsNew {
     /// One anonymous 👍/👎 per version, counted by the chat server (no device id). Fire and forget.
     static func vote(_ version: String, up: Bool) {
         UserDefaults.standard.set(up, forKey: voteKey(version))
-        var request = URLRequest(url: URL(string: "https://ankka-chat.farchan.workers.dev/v1/vote")!)
+        post("v1/vote", ["version": version, "up": up])
+    }
+
+    /// The chat server (server/ankka-chat), which also counts What's New and Roadmap votes.
+    static let server: URL = {
+        #if DEBUG
+        // `-ankkaServer http://localhost:8787/` points a simulator run at `wrangler dev`.
+        if let url = UserDefaults.standard.string(forKey: "ankkaServer").flatMap(URL.init(string:)) { return url }
+        #endif
+        return URL(string: "https://ankka-chat.farchan.workers.dev/")!
+    }()
+
+    static func post(_ path: String, _ body: [String: Any]) {
+        var request = URLRequest(url: server.appending(path: path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["version": version, "up": up])
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         Task { _ = try? await URLSession.shared.data(for: request) }
     }
 
@@ -109,23 +122,36 @@ private struct VoteRow: View {
         HStack {
             Text(vote == nil ? "Like this update?" : "Thanks for telling us").foregroundStyle(.secondary)
             Spacer()
-            thumb(up: true)
-            thumb(up: false)
+            Thumbs(vote: vote) { up in
+                vote = up
+                WhatsNew.vote(version, up: up)
+            }
+            .disabled(vote != nil)
         }
         .onAppear { vote = UserDefaults.standard.object(forKey: WhatsNew.voteKey(version)) as? Bool }
     }
+}
+
+/// 👍 and 👎, the chosen one filled in red. `vote`: true up, false down, nil none.
+struct Thumbs: View {
+    let vote: Bool?
+    let tap: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            thumb(up: true)
+            thumb(up: false)
+        }
+    }
 
     private func thumb(up: Bool) -> some View {
-        Button {
-            vote = up
-            WhatsNew.vote(version, up: up)
-        } label: {
-            Image(systemName: up ? (vote == true ? "hand.thumbsup.fill" : "hand.thumbsup") : (vote == false ? "hand.thumbsdown.fill" : "hand.thumbsdown"))
+        Button { tap(up) } label: {
+            Image(systemName: "hand.thumbs\(up ? "up" : "down")\(vote == up ? ".fill" : "")")
                 .font(.title3).frame(width: HomeMetrics.hitTarget, height: HomeMetrics.hitTarget)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
         .foregroundStyle(vote == up ? MC.red : .secondary)
-        .disabled(vote != nil)
         .accessibilityLabel(up ? "Like" : "Dislike")
+        .accessibilityAddTraits(vote == up ? .isSelected : [])
     }
 }

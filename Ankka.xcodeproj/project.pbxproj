@@ -173,6 +173,7 @@
 		EE9EB56797915C3FE2DF2A2F /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22AC06A61FC4144C69CFA19A /* AnalyticsView.swift */; };
 		EF307ED456033FF0D655C41E /* ChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03AD2E9BDF5D55B2558CDF88 /* ChatAgent.swift */; };
 		F0634430B1D386AD49739001 /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D649D161C924341D1229395 /* MacRootView.swift */; };
+		F1EDC056613BC7FACA09FC5A /* Roadmap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346BCCA886BD43E435B72136 /* Roadmap.swift */; };
 		F3091CF1275A84944E18CC82 /* BudgetStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D1B8C934E734556CCB6811 /* BudgetStatus.swift */; };
 		F3E84FD2413C5304FD21D85D /* MacCardStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A6560092BC49D43D30F8BC /* MacCardStats.swift */; };
 		F6CEE62863B5D157DBE41CBC /* ClaudeClientStreamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B10BE1F00FE0ED58EB1CDD /* ClaudeClientStreamTests.swift */; };
@@ -273,6 +274,7 @@
 		2E51AC641610FA1EE90306C4 /* StockDesignViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDesignViews.swift; sourceTree = "<group>"; };
 		335542CA746BA4BBDFBE8959 /* ExpenseIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseIntents.swift; sourceTree = "<group>"; };
 		33C5B2303609AD4CBDE9958F /* AppleChatAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleChatAgent.swift; sourceTree = "<group>"; };
+		346BCCA886BD43E435B72136 /* Roadmap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Roadmap.swift; sourceTree = "<group>"; };
 		34C3478862CF541C1B34E68B /* ClaudeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeClient.swift; sourceTree = "<group>"; };
 		35185C7C145DEC8AC74EC44E /* CategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryPicker.swift; sourceTree = "<group>"; };
 		366D4F2292C46B3CDA51A354 /* CardArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardArtworkStore.swift; sourceTree = "<group>"; };
@@ -545,6 +547,7 @@
 				16DA02FB358DEB5E68DBA346 /* PaywallView.swift */,
 				5829FC2870F53E6B6E43E7D4 /* RecentsView.swift */,
 				A530786F976E67D39C0A186C /* ResetDataView.swift */,
+				346BCCA886BD43E435B72136 /* Roadmap.swift */,
 				AFCCAB240824608C1B354CBF /* SettingsView.swift */,
 				3B7ECE4B78433EF864D61BEA /* ShortcutOrderSettingsView.swift */,
 				9ABE6B5F0B498038C4CD4EBB /* StackCustomizerView.swift */,
@@ -1165,6 +1168,7 @@
 				E2D5AB6F1438AC82A8DEC1A0 /* ProgressiveBlur.swift in Sources */,
 				16836660BCB99F3D7F7ECBD7 /* RecentsView.swift in Sources */,
 				EA45E19661EF9A57E3E59ECE /* ResetDataView.swift in Sources */,
+				F1EDC056613BC7FACA09FC5A /* Roadmap.swift in Sources */,
 				C8DB35645E215BCAC12DBFBE /* SampleCardSeeder.swift in Sources */,
 				7537B3F327EDBBBB700560DF /* SettingsView.swift in Sources */,
 				E0FDF4EE3029C38AC5FC937B /* ShortcutOrderSettingsView.swift in Sources */,

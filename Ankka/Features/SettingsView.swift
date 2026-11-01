@@ -2,6 +2,9 @@ import StoreKit
 import SwiftUI
 
 struct SettingsView: View {
+    #if DEBUG
+    @State private var debugRoadmap = ProcessInfo.processInfo.environment["ANKKA_SCREEN"] == "roadmap"
+    #endif
     @Bindable var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.requestReview) private var requestReview
@@ -134,6 +137,9 @@ struct SettingsView: View {
                     NavigationLink { WhatsNewHistoryView() } label: {
                         Label { Text("What's new") } icon: { SettingsIcon(symbol: "sparkles", color: MC.red) }
                     }
+                    NavigationLink { RoadmapView() } label: {
+                        Label { Text("Roadmap") } icon: { SettingsIcon(symbol: "map.fill", color: .green) }
+                    }
                     Button { requestReview() } label: {
                         Label { Text("Rate Ankka").foregroundStyle(Color.primary) } icon: { SettingsIcon(symbol: "heart.fill", color: .pink) }
                     }
@@ -156,6 +162,9 @@ struct SettingsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            #if DEBUG
+            .navigationDestination(isPresented: $debugRoadmap) { RoadmapView() } // ANKKA_SCREEN=roadmap
+            #endif
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

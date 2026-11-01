@@ -7,7 +7,8 @@
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "votes": "wrangler d1 execute ankka-chat --remote --command \"SELECT * FROM votes ORDER BY version DESC\""
+    "votes": "wrangler d1 execute ankka-chat --remote --command \"SELECT * FROM votes ORDER BY version DESC\"",
+    "roadmap": "wrangler d1 execute ankka-chat --remote --command \"SELECT id, title, shipped_in, up, down, up - down AS score FROM roadmap ORDER BY shipped_in IS NOT NULL, score DESC\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",

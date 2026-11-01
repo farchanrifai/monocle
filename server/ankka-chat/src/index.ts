@@ -30,6 +30,8 @@ export default {
     const path = new URL(req.url).pathname
     if (req.method === 'GET' && path === '/health') return Response.json({ ok: true })
     if (req.method === 'POST' && path === '/v1/vote') return vote(req, env)
+    if (req.method === 'GET' && path === '/v1/roadmap') return roadmap(env)
+    if (req.method === 'POST' && path === '/v1/roadmap/vote') return roadmapVote(req, env)
     if (req.method !== 'POST' || path !== '/v1/messages') return fail(404, 'not_found_error', 'Not found')
 
     const user = await identify(req, env)
@@ -75,6 +77,36 @@ async function vote(req: Request, env: Env): Promise<Response> {
     `INSERT INTO votes (version, up, down) VALUES (?1, ?2, ?3)
      ON CONFLICT (version) DO UPDATE SET up = up + ?2, down = down + ?3`,
   ).bind(v.version, v.up ? 1 : 0, v.up ? 0 : 1).run()
+  return Response.json({ ok: true })
+}
+
+/** Coming items first, then shipped; never the counts (seeing them makes people follow the crowd). */
+async function roadmap(env: Env): Promise<Response> {
+  const { results } = await env.DB.prepare(
+    'SELECT id, title, detail, shipped_in FROM roadmap ORDER BY shipped_in IS NOT NULL, sort, title',
+  ).all()
+  return Response.json({ items: results }, { headers: { 'cache-control': 'max-age=300' } })
+}
+
+const thumbs = [1, 0, -1]
+
+/** `{id, vote, previous}` (1 up, -1 down, 0 none) from a roadmap vote body, or null. `previous` lets a phone change
+ *  or take back its vote without the server knowing who it is. */
+export function parseRoadmapVote(body: any): { id: string; vote: number; previous: number } | null {
+  if (!body || typeof body.id !== 'string' || !/^[a-z0-9-]{1,40}$/.test(body.id)) return null
+  if (!thumbs.includes(body.vote) || !thumbs.includes(body.previous) || body.vote === body.previous) return null
+  return { id: body.id, vote: body.vote, previous: body.previous }
+}
+
+// ponytail: same open, anonymous counters as `vote`; MAX(0, …) only stops a forged undo from going negative.
+async function roadmapVote(req: Request, env: Env): Promise<Response> {
+  let v: ReturnType<typeof parseRoadmapVote> = null
+  try { v = parseRoadmapVote(await req.json()) } catch {}
+  if (!v) return fail(400, 'invalid_request_error', 'Expected {id, vote, previous}')
+  const up = Number(v.vote === 1) - Number(v.previous === 1)
+  const down = Number(v.vote === -1) - Number(v.previous === -1)
+  await env.DB.prepare('UPDATE roadmap SET up = MAX(0, up + ?2), down = MAX(0, down + ?3) WHERE id = ?1 AND shipped_in IS NULL')
+    .bind(v.id, up, down).run()
   return Response.json({ ok: true })
 }
 
