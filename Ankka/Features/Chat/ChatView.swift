@@ -167,7 +167,7 @@ struct ClaudeConsentSheet: View {
     /// true: use Claude. false: keep chat on this iPhone. nil: not now (ask again next time).
     let choose: (Bool?) -> Void
 
-    static let disclosure = "Ankka Pro answers with Claude by Anthropic, on any iPhone and in any language. To answer, your message and the spending details it needs (amounts, dates, notes, category and card names) are sent to Anthropic through Ankka's server. They're used only to answer you: Ankka's server keeps nothing, and Anthropic doesn't use them to train its models."
+    static let disclosure = "Ankka Pro answers with Claude by Anthropic, on any iPhone and in any language. To answer, your message and the spending details it needs (amounts, dates, notes, category, card and Paid with names, and the notes you use most) are sent to Anthropic through Ankka's server. They're used only to answer you: Ankka's server doesn't store them, and Anthropic doesn't use them to train its models."
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

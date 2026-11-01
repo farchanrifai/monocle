@@ -24,7 +24,7 @@ final class IntentTests: XCTestCase {
         XCTAssertTrue(all.contains { $0 == .amount })
 
         // Verify display names and symbols
-        XCTAssertEqual(ShortcutInputField.card.displayName, "Card / Account")
+        XCTAssertEqual(ShortcutInputField.card.displayName, "Card")
         XCTAssertEqual(ShortcutInputField.category.displayName, "Category")
         XCTAssertEqual(ShortcutInputField.note.displayName, "Short Note")
         XCTAssertEqual(ShortcutInputField.amount.displayName, "Amount")

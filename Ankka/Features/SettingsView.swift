@@ -259,7 +259,7 @@ struct AppLockSettingsView: View {
                 Text("Turning this on or changing its timeout confirms your device authentication. Ankka covers its interface while it is in the app switcher, then asks for Face ID or your device passcode when the timeout has elapsed.")
             }
             Section("Shortcuts") {
-                Text("Both Ankka Shortcuts always use the system device-authentication policy. A background text shortcut can add an expense only after that system check; it does not unlock the app screen. Quick entry may still show this lock when Ankka opens.")
+                Text("Ankka's Shortcuts ask for Face ID or your passcode before they run. A Shortcut that adds an expense in the background doesn't unlock the app; opening Ankka may still show this lock.")
             }
             if saving { HStack { Spacer(); ProgressView("Saving app lock…"); Spacer() } }
             if let error { Text(error).foregroundStyle(MC.red) }

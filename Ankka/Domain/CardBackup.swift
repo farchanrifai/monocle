@@ -351,7 +351,7 @@ enum ShortcutInputField: String, CaseIterable, Codable, Identifiable, Hashable, 
 
     var displayName: String {
         switch self {
-        case .card: return "Card / Account"
+        case .card: return "Card"
         case .category: return "Category"
         case .note: return "Short Note"
         case .amount: return "Amount"
