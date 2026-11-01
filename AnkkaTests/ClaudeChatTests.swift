@@ -268,4 +268,45 @@ final class ClaudeChatTests: XCTestCase {
             XCTAssertTrue(ChatSession.unavailableReason(isPro: false)?.hasSuffix("Ankka Pro adds chat by Claude on any iPhone.") == true)
         }
     }
+
+    func testSaveAllSavesEveryPendingCardFromOneReply() throws {
+        let cardID = model.activeCardID
+        let category = try XCTUnwrap(model.activeCategories(for: cardID).first)
+        func expense(_ note: String, _ amount: Int64) -> Expense {
+            Expense(amount: amount, day: Day.string(.now), note: note, splits: [.init(categoryID: category.id, amount: amount)], cardID: cardID)
+        }
+        let rows = [ChatRow(kind: .user("kopi 28rb, makan 45rb, bensin 100rb")),
+                    ChatRow(kind: .proposal(expense("Kopi", 28_000_00), .pending)), ChatRow(kind: .proposal(expense("Makan", 45_000_00), .pending)),
+                    ChatRow(kind: .proposal(expense("Bensin", 100_000_00), .pending)), ChatRow(kind: .assistant("Here are 3 expenses."))]
+        model.chat.rows = rows
+        XCTAssertTrue(model.chat.proposalRun(around: rows[0].id).isEmpty)
+        let run = model.chat.proposalRun(around: rows[2].id)
+        XCTAssertEqual(run.map(\.id), rows[1...3].map(\.id), "the run around any of its cards is the same")
+        model.chat.resolveProposal(rows[1].id, expense("Kopi", 28_000_00), as: .discarded, model: model)
+        model.chat.resolveAll(model.chat.proposalRun(around: rows[3].id), as: .saved, model: model)
+        XCTAssertEqual(Set(model.expenses(for: cardID).map(\.note)), ["Makan", "Bensin"], "a discarded card stays out")
+    }
+
+    /// Live, and skipped unless TEST_RUNNER_ANKKA_LIVE_CHAT=1: three purchases in one message become three cards, from the real
+    /// Claude (through the server; TEST_RUNNER_ANKKA_OWNER_KEY) and from Apple Intelligence on this device (in English).
+    func testLiveSeveralPurchasesBecomeOneCardEach() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["ANKKA_LIVE_CHAT"] == "1" else { throw XCTSkip("Live chat test; set TEST_RUNNER_ANKKA_LIVE_CHAT=1") }
+        let message = "kopi 28rb, makan siang 45rb, bensin 100rb"
+        func cards(_ outputs: [ChatAgent.Output]) -> [String] {
+            outputs.compactMap { if case .proposal(let expense) = $0 { "\(expense.note) \(expense.amount)" } else { nil } }
+        }
+        if let key = environment["ANKKA_OWNER_KEY"], !key.isEmpty {
+            let claude = ClaudeChatAgent(model: model) { body in try await ClaudeClient(credentials: ["x-ankka-owner": key]).send(body) }
+            let outputs = await claude.send(message, scope: .allCards)
+            print("LIVE claude:", cards(outputs), outputs.filter { if case .proposal = $0 { false } else { true } })
+            XCTAssertEqual(cards(outputs).count, 3, "Claude")
+        }
+        // Apple Intelligence doesn't take Bahasa Indonesia ("unsupported language or locale"), so it gets the English message.
+        let apple = AppleChatAgent(model: model)
+        let outputs = await apple.send("coffee 28k, lunch 45k, gas 100k", scope: .allCards, now: .now)
+        print("LIVE apple:", cards(outputs), outputs.filter { if case .proposal = $0 { false } else { true } })
+        XCTAssertEqual(cards(outputs).count, 3, "Apple Intelligence")
+    }
+
 }

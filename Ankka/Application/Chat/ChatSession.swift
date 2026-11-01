@@ -220,6 +220,13 @@ extension ChatSession {
             let why = if case .offline = failure { "You're offline" } else { failure.localizedDescription }
             outputs = [.notice("\(why). Answered by Apple Intelligence on this iPhone.")] + (await fallback.send(text, scope: scope, now: .now))
         }
+        // A reply's words introduce its cards: text the model wrote after proposing moves ahead of the first card.
+        func isCard(_ output: ChatAgent.Output) -> Bool { switch output { case .proposal, .change, .bill: true; default: false } }
+        func isText(_ output: ChatAgent.Output) -> Bool { if case .text = output { true } else { false } }
+        if let firstCard = outputs.firstIndex(where: isCard) {
+            let after = outputs[firstCard...]
+            outputs = Array(outputs[..<firstCard]) + after.filter(isText) + after.filter { !isText($0) }
+        }
         // A reply that opens with text grows out of the thinking bubble: both changes land in one animation. One that opens with a
         // card lets the bubble go, so no text slides down across the card.
         let reply = outputs.enumerated().map { index, output -> ChatRow in
@@ -279,6 +286,22 @@ extension ChatSession {
             break
         }
         rows[index].kind = .proposal(expense, state)
+    }
+
+    /// The expense cards next to each other around `id` (one reply's several expenses), in order; just `id`'s own row when it
+    /// stands alone. The transcript draws a run of two or more as one card.
+    func proposalRun(around id: UUID) -> [ChatRow] {
+        func isProposal(_ index: Int) -> Bool { if case .proposal = rows[index].kind { true } else { false } }
+        guard let index = rows.firstIndex(where: { $0.id == id }), isProposal(index) else { return [] }
+        var first = index, last = index
+        while first > 0, isProposal(first - 1) { first -= 1 }
+        while last + 1 < rows.count, isProposal(last + 1) { last += 1 }
+        return Array(rows[first...last])
+    }
+
+    /// Saves (or discards) every card of a run that's still waiting.
+    func resolveAll(_ run: [ChatRow], as state: ProposalState, model: AppModel) {
+        for row in run { if case .proposal(let expense, .pending) = row.kind { resolveProposal(row.id, expense, as: state, model: model) } }
     }
 }
 
@@ -356,9 +379,17 @@ final class FakeChatAgent: ChatBackend {
     func note(_ text: String) {}
     func reset() {}
     func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output] {
-        let input = Data(#"{"amount": 28000, "category": "Food & Drink", "note": "Kopi"}"#.utf8)
-        let outcome = ToolExecutor(model: model, scope: scope, now: now).run("propose_expense", input: input)
-        return [.text("Adding it.")] + (outcome.proposal.map { [.proposal($0)] } ?? [.error(outcome.json)])
+        let executor = ToolExecutor(model: model, scope: scope, now: now)
+        // A comma-separated message is several purchases: three cards, with the text after them as Claude sends it.
+        let inputs = text.contains(",")
+            ? [#"{"amount": 28000, "category": "Food & Drink", "note": "Kopi"}"#, #"{"amount": 45000, "category": "Food & Drink", "note": "Makan siang"}"#,
+               #"{"amount": 100000, "category": "Transport", "note": "Bensin"}"#]
+            : [#"{"amount": 28000, "category": "Food & Drink", "note": "Kopi"}"#]
+        let cards = inputs.map { input -> ChatAgent.Output in
+            let outcome = executor.run("propose_expense", input: Data(input.utf8))
+            return outcome.proposal.map { .proposal($0) } ?? .error(outcome.json)
+        }
+        return inputs.count > 1 ? cards + [.text("Here are 3 expenses.")] : [.text("Adding it.")] + cards
     }
 }
 #endif

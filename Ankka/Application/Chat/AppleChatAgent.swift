@@ -32,6 +32,14 @@ final class AppleChatAgent: ChatBackend {
         }
     }
 
+    /// Apple Intelligence has no Bahasa Indonesia (or many other languages); say so plainly instead of the system's error.
+    static func message(for error: Error) -> String {
+        if let error = error as? LanguageModelSession.GenerationError, case .unsupportedLanguageOrLocale = error {
+            return "Apple Intelligence on this iPhone only understands English and a few other languages, not Bahasa Indonesia. Try in English, or add it with the + button."
+        }
+        return error.localizedDescription
+    }
+
     func note(_ text: String) { notes.append(text) }
 
     // ponytail: on-device history lives only in the session; a relaunch or backend switch starts fresh.
@@ -60,7 +68,7 @@ final class AppleChatAgent: ChatBackend {
             } catch {
                 self.session = nil
                 if fresh || attempt == 1 {
-                    return notice + outputs.filter { if case .text = $0 { false } else { true } } + [.error(error.localizedDescription)]
+                    return notice + outputs.filter { if case .text = $0 { false } else { true } } + [.error(Self.message(for: error))]
                 }
                 notice = [.notice("Started a fresh conversation to keep chat fast.")]
             }
@@ -84,6 +92,7 @@ final class AppleChatAgent: ChatBackend {
     static let extraInstructions = """
     A new purchase ("bensin 100rb kemarin") is always propose_expense with its day set, even if a similar expense exists.
     One amount followed by a colon and parts ("pasar 50rb: 30rb makan 20rb belanja") is ONE purchase: call propose_expense once with amount 50rb, note Pasar and split [Food & Drink 30rb, Shopping 20rb]. Never propose the parts separately.
+    Several purchases in one message, separated by commas, "dan" or "and" ("kopi 28rb, makan siang 45rb, bensin 100rb") are separate expenses: call propose_expense once for each, three calls for three purchases.
     Call the tool right away: the app shows its result as a card the user confirms. Never ask "shall I add it?" and never say added, saved, updated or deleted. If no category fits clearly, pick the closest one.
     Write every amount exactly as the user wrote it (28rb, 100k, 1,5jt); the app converts it.
     note is a short name of what was bought, from the user's words, e.g. Kopi, Bensin, Lunch.

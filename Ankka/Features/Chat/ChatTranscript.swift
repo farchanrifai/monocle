@@ -122,15 +122,21 @@ struct ChatTranscript: View {
                     Button("Copy", systemImage: "doc.on.doc") { Self.copy(text) }
                 }
         case .proposal(let expense, let state):
-            ExpenseProposalCard(
-                expense: expense,
-                category: expense.cardID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.splits.first?.categoryID },
-                splitLabel: expense.splits.count > 1 ? categoryName(expense) : nil,
-                cardName: model.cards.first { $0.id == expense.cardID }?.name ?? "",
-                state: state,
-                onSave: { session.resolveProposal(row.id, expense, as: .saved, model: model) },
-                onDiscard: { session.resolveProposal(row.id, expense, as: .discarded, model: model) },
-                onEdit: { session.resolveProposal(row.id, expense, as: .opened, model: model) })
+            let run = session.proposalRun(around: row.id)
+            if run.count > 1 {
+                // One reply's several expenses share one card, drawn at the first of them.
+                if run.first?.id == row.id { proposalGroup(run) }
+            } else {
+                ExpenseProposalCard(
+                    expense: expense,
+                    category: expense.cardID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.splits.first?.categoryID },
+                    splitLabel: expense.splits.count > 1 ? categoryName(expense) : nil,
+                    cardName: model.cards.first { $0.id == expense.cardID }?.name ?? "",
+                    state: state,
+                    onSave: { session.resolveProposal(row.id, expense, as: .saved, model: model) },
+                    onDiscard: { session.resolveProposal(row.id, expense, as: .discarded, model: model) },
+                    onEdit: { session.resolveProposal(row.id, expense, as: .opened, model: model) })
+            }
         case .change(let change, let state):
             ExpenseChangeCard(
                 change: change,
@@ -157,6 +163,23 @@ struct ChatTranscript: View {
         case .error(let message):
             Text(message).font(.footnote).foregroundStyle(MC.red).frame(maxWidth: .infinity)
         }
+    }
+
+    private func proposalGroup(_ run: [ChatRow]) -> some View {
+        let items = run.compactMap { row -> ExpenseProposalGroup.Item? in
+            guard case .proposal(let expense, let state) = row.kind else { return nil }
+            return .init(id: row.id, expense: expense, state: state,
+                         symbol: expense.splits.count > 1 ? "square.split.2x1"
+                             : expense.cardID.flatMap { try? model.activeCategories(in: $0) }?.first { $0.id == expense.splits.first?.categoryID }?.symbol ?? "questionmark.circle",
+                         categoryLabel: categoryName(expense),
+                         cardName: model.cards.first { $0.id == expense.cardID }?.name ?? "")
+        }
+        return ExpenseProposalGroup(
+            items: items,
+            onEdit: { session.resolveProposal($0.id, $0.expense, as: .opened, model: model) },
+            onDiscard: { session.resolveProposal($0.id, $0.expense, as: .discarded, model: model) },
+            onSaveAll: { session.resolveAll(run, as: .saved, model: model) },
+            onDiscardAll: { session.resolveAll(run, as: .discarded, model: model) })
     }
 
     private func categoryName(_ expense: Expense) -> String {

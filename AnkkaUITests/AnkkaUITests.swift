@@ -345,6 +345,29 @@ final class AnkkaUITests: XCTestCase {
     }
 
     @MainActor
+    func testSeveralChatExpensesShareOneCardAndSaveAll() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["ANKKA_TEST_RUN"] = UUID().uuidString
+        app.launchEnvironment["ANKKA_FAKE_CHAT"] = "1"
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        app.buttons["chatButton"].tap()
+        let input = app.textViews["chatInput"].exists ? app.textViews["chatInput"] : app.textFields["chatInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("kopi 28rb, makan siang 45rb, bensin 100rb")
+        app.buttons["chatSend"].tap()
+        let saveAll = app.buttons["proposalSaveAll"]
+        XCTAssertTrue(saveAll.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons.matching(identifier: "proposalRow").count, 3, "three expenses, one card")
+        XCTAssertFalse(app.buttons["proposalSave"].exists, "no per-expense card")
+        keepScreenshot(app.screenshot())
+        saveAll.tap()
+        XCTAssertTrue(app.staticTexts["3 saved"].waitForExistence(timeout: 5))
+        keepScreenshot(app.screenshot())
+    }
+
+    @MainActor
     func testChatComposerIsReallyEmptyAfterSending() throws {
         let app = XCUIApplication()
         app.launchEnvironment["ANKKA_TEST_RUN"] = UUID().uuidString
