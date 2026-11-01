@@ -546,20 +546,11 @@ struct Cycle: Equatable, Sendable {
         self.start = self.calendar.startOfDay(for: start)
         self.end = self.calendar.startOfDay(for: end)
     }
-    static func containing(_ date: Date, startDay: Int, calendar: Calendar = Day.calendar) -> Self {
+    /// Budget periods are calendar months.
+    static func month(containing date: Date, calendar: Calendar = Day.calendar) -> Self {
         let calendar = Day.reportingCalendar(calendar)
-        let date = calendar.startOfDay(for: date)
-        let day = min(31, max(1, startDay))
-        let month = calendar.dateInterval(of: .month, for: date)!.start
-        func boundary(_ month: Date) -> Date {
-            let days = calendar.range(of: .day, in: .month, for: month)!.count
-            return calendar.date(byAdding: .day, value: min(day, days) - 1, to: month)!
-        }
-        let current = boundary(month)
-        if date >= current {
-            return .init(start: current, end: boundary(calendar.date(byAdding: .month, value: 1, to: month)!), calendar: calendar)
-        }
-        return .init(start: boundary(calendar.date(byAdding: .month, value: -1, to: month)!), end: current, calendar: calendar)
+        let month = calendar.dateInterval(of: .month, for: calendar.startOfDay(for: date))!
+        return .init(start: month.start, end: month.end, calendar: calendar)
     }
     func contains(_ expense: Expense) -> Bool {
         guard Day.date(expense.day, calendar: calendar) != nil else { return false }
@@ -587,9 +578,10 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
     var id = UUID()
     var effectiveDay: String
     var overallLimit: Int64
+    /// Stored for older data; periods are calendar months and ignore it.
     var startDay: Int
     var categoryLimits: [CategoryBudget] = []
-    /// Set only for the first period after a start-day change.
+    /// Stored for older data (a start-day change or an early payday); ignored.
     var transitionEndDay: String?
     var cardID: UUID? = nil
     /// Set for a "Total until" budget (a goal): one period from effectiveDay up to and including this day.
@@ -601,7 +593,7 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
 
     static func initial(overallLimit: Int64, startDay: Int, date: Date = .now, calendar: Calendar = Day.calendar, cardID: UUID? = nil) -> Self {
         let validStartDay = min(31, max(1, startDay))
-        let cycle = Cycle.containing(date, startDay: validStartDay, calendar: calendar)
+        let cycle = Cycle.month(containing: date, calendar: calendar)
         let id = (cardID == nil || cardID == Card.demo.id) ? legacyID : UUID()
         return .init(id: id, effectiveDay: Day.string(cycle.start, calendar: calendar),
                      overallLimit: max(1, min(Money.maximum, overallLimit)), startDay: validStartDay,
@@ -646,7 +638,6 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
 struct BudgetPeriod: Equatable, Sendable {
     let budget: BudgetVersion
     let cycle: Cycle
-    var isTransition: Bool { budget.transitionEndDay == Day.string(cycle.end, calendar: cycle.calendar) }
 }
 
 enum BudgetHistory {
@@ -658,7 +649,6 @@ enum BudgetHistory {
 
     static func period(containing date: Date, budgets: [BudgetVersion], calendar: Calendar = Day.calendar) -> BudgetPeriod? {
         guard let budget = active(on: date, budgets: budgets, calendar: calendar) else { return nil }
-        let day = Day.string(date, calendar: calendar)
         // A "Total until" budget is one period from its start through its last day.
         if let lastDay = budget.totalUntilDay, let start = Day.date(budget.effectiveDay, calendar: calendar),
            let last = Day.date(lastDay, calendar: calendar) {
@@ -666,22 +656,7 @@ enum BudgetHistory {
             let end = reporting.date(byAdding: .day, value: 1, to: reporting.startOfDay(for: last)) ?? last
             return BudgetPeriod(budget: budget, cycle: Cycle(start: reporting.startOfDay(for: start), end: end, calendar: calendar))
         }
-        var cycle = Cycle.containing(date, startDay: budget.startDay, calendar: calendar)
-        if let start = Day.date(budget.effectiveDay, calendar: calendar),
-           let endDay = budget.transitionEndDay, let end = Day.date(endDay, calendar: calendar),
-           day >= budget.effectiveDay, day < endDay {
-            cycle = Cycle(start: Day.reportingCalendar(calendar).startOfDay(for: start), end: Day.reportingCalendar(calendar).startOfDay(for: end), calendar: calendar)
-        }
-        // A cycle started early (payday came early) cuts the one before it short.
-        if let next = budgets.filter({ $0.effectiveDay > day }).map(\.effectiveDay).min(),
-           let nextStart = Day.date(next, calendar: calendar), nextStart < cycle.end {
-            cycle = Cycle(start: cycle.start, end: nextStart, calendar: calendar)
-        }
-        return BudgetPeriod(budget: budget, cycle: cycle)
-    }
-
-    static func transitionEnd(after date: Date, startDay: Int, calendar: Calendar = Day.calendar) -> Date {
-        Cycle.containing(date, startDay: startDay, calendar: calendar).end
+        return BudgetPeriod(budget: budget, cycle: Cycle.month(containing: date, calendar: calendar))
     }
 }
 

@@ -33,51 +33,35 @@ final class AnkkaTests: XCTestCase {
         expense.day = "2026-02-30"
         XCTAssertThrowsError(try expense.validate(categories: ExpenseCategory.defaults))
     }
-    func testMonthEndClampingAndLeapYear() throws {
+    func testPeriodsAreCalendarMonths() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let february = try XCTUnwrap(Day.date("2024-02-29", calendar: calendar))
-        let leap = Cycle.containing(february, startDay: 31, calendar: calendar)
-        XCTAssertEqual(Day.string(leap.start, calendar: calendar), "2024-02-29")
-        XCTAssertEqual(Day.string(leap.end, calendar: calendar), "2024-03-31")
-        let ordinary = Cycle.containing(try XCTUnwrap(Day.date("2026-02-27", calendar: calendar)), startDay: 31, calendar: calendar)
-        XCTAssertEqual(Day.string(ordinary.start, calendar: calendar), "2026-01-31")
-        XCTAssertEqual(Day.string(ordinary.end, calendar: calendar), "2026-02-28")
+        let leap = Cycle.month(containing: try XCTUnwrap(Day.date("2024-02-29", calendar: calendar)), calendar: calendar)
+        XCTAssertEqual(Day.string(leap.start, calendar: calendar), "2024-02-01")
+        XCTAssertEqual(Day.string(leap.end, calendar: calendar), "2024-03-01")
+        XCTAssertTrue(leap.isCalendarMonth)
     }
-    func testEffectiveBudgetHistoryPreservesPeriodsAcrossStartDayChange() throws {
+    func testOldStartDaysAndEarlyPaydaysReadAsCalendarMonths() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let september = try XCTUnwrap(Day.date("2026-09-08", calendar: calendar))
-        let original = BudgetVersion.initial(overallLimit: 450_000_000, startDay: 1, date: september, calendar: calendar)
-        XCTAssertEqual(original.effectiveDay, "2026-09-01")
-        let changed = BudgetVersion(id: UUID(), effectiveDay: "2026-10-01", overallLimit: 500_000_000, startDay: 25,
-                                    transitionEndDay: "2026-10-25")
-        let history = [original, changed]
-        XCTAssertEqual(BudgetHistory.period(containing: try XCTUnwrap(Day.date("2026-09-30", calendar: calendar)), budgets: history, calendar: calendar)?.budget, original)
-        let transition = try XCTUnwrap(BudgetHistory.period(containing: try XCTUnwrap(Day.date("2026-10-10", calendar: calendar)), budgets: history, calendar: calendar))
-        XCTAssertEqual(Day.string(transition.cycle.start, calendar: calendar), "2026-10-01")
-        XCTAssertEqual(Day.string(transition.cycle.end, calendar: calendar), "2026-10-25")
-        XCTAssertTrue(transition.isTransition)
-        let next = try XCTUnwrap(BudgetHistory.period(containing: try XCTUnwrap(Day.date("2026-10-25", calendar: calendar)), budgets: history, calendar: calendar))
-        XCTAssertEqual(Day.string(next.cycle.start, calendar: calendar), "2026-10-25")
-        XCTAssertEqual(Day.string(next.cycle.end, calendar: calendar), "2026-11-25")
-    }
-    func testEarlyPaydayCutsTheRunningCycleAndReturnsToTheUsualDay() throws {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        func cycle(_ day: String, _ history: [BudgetVersion]) throws -> String {
-            let period = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date(day, calendar: calendar)), budgets: history, calendar: calendar))
-            return Day.string(period.cycle.start, calendar: calendar) + "…" + Day.string(period.cycle.end, calendar: calendar)
+        func period(_ day: String, _ history: [BudgetVersion]) throws -> BudgetPeriod {
+            try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date(day, calendar: calendar)), budgets: history, calendar: calendar))
         }
-        let payday = BudgetVersion(id: UUID(), effectiveDay: "2026-09-25", overallLimit: 100_000, startDay: 25)
-        let early = BudgetVersion(id: UUID(), effectiveDay: "2026-10-23", overallLimit: 100_000, startDay: 25, transitionEndDay: "2026-11-25")
-        let history = [payday, early]
-        XCTAssertEqual(try cycle("2026-10-22", history), "2026-09-25…2026-10-23")
-        XCTAssertEqual(try cycle("2026-10-23", history), "2026-10-23…2026-11-25")
-        XCTAssertEqual(try cycle("2026-11-25", history), "2026-11-25…2026-12-25")
-        let october = Cycle.containing(try XCTUnwrap(Day.date("2026-10-10", calendar: calendar)), startDay: 1, calendar: calendar)
-        XCTAssertTrue(october.isCalendarMonth)
-        XCTAssertFalse(Cycle.containing(try XCTUnwrap(Day.date("2026-10-10", calendar: calendar)), startDay: 25, calendar: calendar).isCalendarMonth)
+        let original = BudgetVersion.initial(overallLimit: 450_000_000, startDay: 1, date: try XCTUnwrap(Day.date("2026-09-08", calendar: calendar)), calendar: calendar)
+        XCTAssertEqual(original.effectiveDay, "2026-09-01")
+        // Saved before periods were months: a start-day change with its transition, then an early payday.
+        let changed = BudgetVersion(id: UUID(), effectiveDay: "2026-10-01", overallLimit: 500_000_000, startDay: 25, transitionEndDay: "2026-10-25")
+        let early = BudgetVersion(id: UUID(), effectiveDay: "2026-11-23", overallLimit: 600_000_000, startDay: 25, transitionEndDay: "2026-12-25")
+        let history = [original, changed, early]
+        XCTAssertEqual(try period("2026-09-30", history).budget, original)
+        let october = try period("2026-10-28", history)
+        XCTAssertEqual(october.budget, changed)
+        XCTAssertEqual(Day.string(october.cycle.start, calendar: calendar), "2026-10-01")
+        XCTAssertEqual(Day.string(october.cycle.end, calendar: calendar), "2026-11-01")
+        let november = try period("2026-11-10", history)
+        XCTAssertEqual(november.budget, changed)
+        XCTAssertEqual(Day.string(november.cycle.end, calendar: calendar), "2026-12-01")
+        XCTAssertEqual(try period("2026-11-24", history).budget, early)
     }
     @MainActor
     func testStoreRoundTripUpsertAndInvalidSavePreservation() throws {

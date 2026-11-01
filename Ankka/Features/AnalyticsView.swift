@@ -136,7 +136,7 @@ private struct AnalyticsReportView: View {
                             selectedHorizon = horizon
                             scrubbedDate = nil
                         } label: {
-                            Text(horizon.rawValue)
+                            Text(horizon.title(cycleIsMonth: report.period?.cycle.isCalendarMonth ?? true))
                                 .font(.caption.weight(isSelected ? .semibold : .medium))
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
@@ -236,7 +236,7 @@ private struct AnalyticsReportView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Eyebrow(text: "\(selectedHorizon.rawValue) spending")
+                    Eyebrow(text: "\(selectedHorizon.title(cycleIsMonth: report.period?.cycle.isCalendarMonth ?? true)) spending")
                     Text(Money.format(metrics.totalSpend))
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(Color.primary)
@@ -481,13 +481,13 @@ private struct AnalyticsReportView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Budget vs actual").font(.headline)
                     Text(status.map { "\($0.cycle.label) · \(Money.format($0.spent, code: currency)) of \(Money.format($0.limit, code: currency))" }
-                         ?? "This cycle, per card" + (across?.approximate == true ? " · ≈ at today's rate" : ""))
+                         ?? "This month, per card" + (across?.approximate == true ? " · ≈ at today's rate" : ""))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 BudgetLineRows(lines: lines, currency: currency)
                 if cycles.count > 1 {
                     Divider()
-                    Text("Cycle by cycle").font(.subheadline.weight(.semibold))
+                    Text("Month by month").font(.subheadline.weight(.semibold))
                     BudgetCyclesChart(results: cycles, currency: currency)
                 }
             }

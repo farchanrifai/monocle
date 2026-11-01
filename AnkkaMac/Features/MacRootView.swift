@@ -842,7 +842,7 @@ struct MacStackView: View {
         let cards = stack.map(model.cards(in:)) ?? model.hiddenCards
         let expenses = cards.flatMap { model.expenses(for: $0.id) }
         // Stacks use the calendar month, like iOS; a single card's own cycle doesn't apply here.
-        let month = Cycle.containing(.now, startDay: 1)
+        let month = Cycle.month(containing: .now)
         let cycleTotal = expenses.filter { month.contains($0) }.reduce(0) { $0 + $1.amount }
         let budget = stack.flatMap(model.stackBudgetLimit)
         VStack(spacing: 0) {

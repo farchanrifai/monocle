@@ -557,6 +557,7 @@ struct CardHomeView: View {
             .accessibilityIdentifier("homeLogo")
 
             Spacer()
+            periodMenu
             optionsMenu
         }
         .padding(.horizontal, 20)
@@ -1047,7 +1048,7 @@ private struct CardFaceText: View, @MainActor Equatable {
                     .font(.caption.monospacedDigit())
                     .opacity(0.8)
             }
-            Text("\(period.cycle.label.uppercased()) · \(period.count) EXPENSES")
+            Text("\(period.cycle?.label.uppercased() ?? "ALL TIME") · \(period.count) EXPENSES")
                 .font(.system(size: 11, weight: .medium).monospaced())
                 .lineLimit(1).minimumScaleFactor(0.8)
         }
@@ -1247,7 +1248,8 @@ struct CardPresentationView: View {
         let activities = model.activities(selectedCardID: cardID, allCards: isAllCards)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
-                Text(cardID != nil ? "Latest Expenses" : (isAllCards ? "All Expenses" : "Recent Expenses"))
+                Text((model.homeMonthOffset ?? 0) > 0 ? model.homeMonth.map { "\($0.label) Expenses" } ?? ""
+                     : cardID != nil ? "Latest Expenses" : (isAllCards ? "All Expenses" : "Recent Expenses"))
                     .font(.system(size: 15, weight: .semibold))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityFocused($headingFocused)
@@ -1347,6 +1349,29 @@ struct CardPresentationView: View {
                 Label("Manage Stacks & Cards…", systemImage: "slider.horizontal.3")
             }
         }
+    }
+
+    /// Which month the card totals and expense lists count, in its own bubble beside the options button.
+    private var periodMenu: some View {
+        Menu {
+            Picker("Month", selection: $model.homeMonthOffset) {
+                ForEach(0..<6, id: \.self) { offset in
+                    let month = AppModel.month(offset: offset)
+                    let sameYear = Calendar.current.isDate(month.start, equalTo: .now, toGranularity: .year)
+                    Text(month.start.formatted(sameYear ? .dateTime.month(.wide) : .dateTime.month(.wide).year())).tag(Int?.some(offset))
+                }
+                Text("All time").tag(Int?.none)
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal.decrease")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(model.homeMonthOffset == 0 ? ink : MC.red)
+                .frame(width: HomeMetrics.hitTarget, height: HomeMetrics.hitTarget)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .contentShape(Circle())
+        }
+        .accessibilityLabel("Filter by month")
+        .accessibilityIdentifier("homePeriodMenu")
     }
 
     private var optionsMenu: some View {

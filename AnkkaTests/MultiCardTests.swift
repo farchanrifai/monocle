@@ -370,6 +370,15 @@ final class MultiCardTests: XCTestCase {
 
         // Fixture writes bypass the command service; reload publishes their committed state.
         try model.reload()
+        // This month's lists keep the full history; an earlier month narrows them to that month.
+        XCTAssertEqual(model.activities(selectedCardID: daily.id, allCards: false).count, 1)
+        let now = Calendar.current.dateComponents([.year, .month], from: .now)
+        let september = (now.year! - 2026) * 12 + now.month! - 9 // months back to the fixture's September
+        model.homeMonthOffset = september
+        XCTAssertEqual(model.activities(selectedCardID: daily.id, allCards: false).count, 1)
+        model.homeMonthOffset = september + 1
+        XCTAssertTrue(model.activities(selectedCardID: daily.id, allCards: false).isEmpty)
+        model.homeMonthOffset = 0
 
         // 1. Create Travel Stack with travel & shopping cards
         let travelStack = try model.createStack(name: "Tokyo Trip", icon: "airplane", cardIDs: [travel.id, shopping.id])
@@ -453,7 +462,7 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(model.stackBudgetLimit(saved), 25_000_000_00)
         let report = AnalyticsReport.build(data: model.reportingData(for: .stack(id: saved.id, name: saved.name)), horizon: .thisCycle)
         XCTAssertEqual(report.period?.budget.overallLimit, 25_000_000_00)
-        XCTAssertEqual(report.period?.cycle.start, Cycle.containing(.now, startDay: 1).start)
+        XCTAssertEqual(report.period?.cycle.start, Cycle.month(containing: .now).start)
 
         // A cap replaces the sum, and moving a card through updateStack takes it out of Travel.
         var beachEdit = try XCTUnwrap(model.stacks.last)
@@ -472,10 +481,10 @@ final class MultiCardTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
-        try model.saveBudget(overallLimit: 3_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [], applyToNextCycle: false)
         let activeBefore = model.activeBudget, settingsBefore = model.settings.budget
 
-        try model.saveBudget(overallLimit: 7_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false, cardID: other.id)
+        try model.saveBudget(overallLimit: 7_000_000_00, categoryLimits: [], applyToNextCycle: false, cardID: other.id)
 
         XCTAssertEqual(model.budgetPeriod(for: other.id).budget.overallLimit, 7_000_000_00)
         XCTAssertEqual(model.activeBudget, activeBefore)
@@ -507,17 +516,17 @@ final class MultiCardTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
-        try model.saveBudget(overallLimit: 3_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [], applyToNextCycle: false)
         let lastDay = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 45, to: .now))
-        try model.saveBudget(overallLimit: 25_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false, totalUntil: lastDay)
+        try model.saveBudget(overallLimit: 25_000_000_00, categoryLimits: [], applyToNextCycle: false, totalUntil: lastDay)
         XCTAssertEqual(model.activeBudget.totalUntilDay, Day.string(lastDay, calendar: .current))
         XCTAssertEqual(model.activeBudget.overallLimit, 25_000_000_00)
         XCTAssertEqual(Day.string(model.cycle.end), Day.string(try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: lastDay))))
         XCTAssertEqual(model.budgetHistory.count, 1)
-        try model.saveBudget(overallLimit: 4_000_000_00, startDay: 1, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 4_000_000_00, categoryLimits: [], applyToNextCycle: false)
         XCTAssertNil(model.activeBudget.totalUntilDay)
         XCTAssertEqual(model.budgetHistory.count, 1)
-        XCTAssertThrowsError(try model.saveBudget(overallLimit: 1_00, startDay: 1, categoryLimits: [], applyToNextCycle: false,
+        XCTAssertThrowsError(try model.saveBudget(overallLimit: 1_00, categoryLimits: [], applyToNextCycle: false,
                                                   totalUntil: XCTUnwrap(Calendar.current.date(byAdding: .day, value: -60, to: .now))))
     }
 

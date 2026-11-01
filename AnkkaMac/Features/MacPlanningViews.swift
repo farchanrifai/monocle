@@ -26,7 +26,7 @@ private struct BudgetTable: View {
                 }
             }
             if lines.isEmpty {
-                Text("Nothing to show yet this cycle.").foregroundStyle(.secondary).gridCellColumns(onEdit == nil ? 4 : 5)
+                Text("Nothing to show yet this month.").foregroundStyle(.secondary).gridCellColumns(onEdit == nil ? 4 : 5)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -59,10 +59,10 @@ struct MacBudgetsView: View {
             subjectMenu
             if let status {
                 HStack {
-                    SummaryTile(title: "Limit", value: (status.approximate ? "≈ " : "") + Money.format(status.limit, code: status.currency), detail: status.isTransition ? "Transition · \(status.cycle.label)" : status.cycle.label)
+                    SummaryTile(title: "Limit", value: (status.approximate ? "≈ " : "") + Money.format(status.limit, code: status.currency), detail: status.cycle.label)
                     SummaryTile(title: "Spent", value: Money.format(status.spent, code: status.currency), detail: "\(Int((status.fraction * 100).rounded()))% used")
                     SummaryTile(title: "Remaining", value: Money.format(status.remaining, code: status.currency),
-                                detail: status.pace.map { $0.label } ?? (status.isGoal ? "Total until" : "Cycle budget"))
+                                detail: status.pace.map { $0.label } ?? (status.isGoal ? "Total until" : "Monthly budget"))
                 }
                 HStack {
                     Text(isStack ? "By card" : "Category budgets").font(.title2.bold()); Spacer()
@@ -71,7 +71,7 @@ struct MacBudgetsView: View {
                 BudgetTable(lines: status.lines, currency: status.currency, nameTitle: isStack ? "Card" : "Category", fallbackLimit: status.limit,
                             onEdit: isStack ? { editing = BudgetEditTarget(id: $0) } : nil)
                 if cycles.count > 1 {
-                    Text("Cycle by cycle").font(.title2.bold())
+                    Text("Month by month").font(.title2.bold())
                     BudgetCyclesChart(results: cycles, currency: status.currency)
                     Text(isStack ? "Past stack cycles add up the cards' budgets that applied then. A cap is today's cap." : "Grey is the limit, dark is what you spent. Red went over.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -117,7 +117,6 @@ private struct BudgetEditor: View {
     let cardID: UUID
     let close: () -> Void
     @State private var amount: String
-    @State private var startDay: Int
     @State private var categoryAmounts: [UUID: String]
     @State private var nextCycle = false
     @State private var error: String?
@@ -128,7 +127,6 @@ private struct BudgetEditor: View {
         self.model = model; self.cardID = cardID; self.close = close
         let budget_ = model.budgetPeriod(for: cardID).budget
         _amount = State(initialValue: Money.format(budget_.overallLimit, currency: false))
-        _startDay = State(initialValue: budget_.startDay)
         _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: budget_.categoryLimits.map { ($0.categoryID, Money.format($0.limit, currency: false)) }))
         _isTotal = State(initialValue: budget_.totalUntilDay != nil)
         _totalUntil = State(initialValue: budget_.totalUntilDay.flatMap { Day.date($0) }
@@ -149,8 +147,7 @@ private struct BudgetEditor: View {
                     Text("One amount from \(Day.title(Day.string(model.budgetPeriod(for: cardID).cycle.start))) through the last day. Use it for a trip or a goal.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Stepper("Cycle begins on day \(startDay)", value: $startDay, in: 1...31)
-                    Toggle("Apply to next cycle", isOn: $nextCycle)
+                    Toggle("Apply from next month", isOn: $nextCycle)
                 }
                 Section("Categories") {
                     ForEach(model.activeCategories(for: cardID)) { category in
@@ -169,7 +166,7 @@ private struct BudgetEditor: View {
                 guard !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
                 return CategoryBudget(categoryID: id, limit: try Money.parse(value))
             }
-            try model.saveBudget(overallLimit: total, startDay: isTotal ? model.budgetPeriod(for: cardID).budget.startDay : startDay, categoryLimits: categories,
+            try model.saveBudget(overallLimit: total, categoryLimits: categories,
                                  applyToNextCycle: !isTotal && nextCycle, totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
             close()
         } catch { self.error = error.localizedDescription }
@@ -480,7 +477,7 @@ struct MacAnalyticsView: View {
         let cycles = subject.map { model.budgetCycles($0) } ?? []
         if !lines.isEmpty {
             cardRow {
-                ChartCard("Budget vs actual", info: "This cycle's spending against its budget" + (status == nil ? ", per card. Cards in another currency are converted at today's rate." : ".") + " Red means over the limit.") {
+                ChartCard("Budget vs actual", info: "This month's spending against its budget" + (status == nil ? ", per card. Cards in another currency are converted at today's rate." : ".") + " Red means over the limit.") {
                     VStack(alignment: .leading, spacing: 14) {
                         if let status {
                             Text("\(status.cycle.label) · \(Money.format(status.spent, code: currency)) of \(Money.format(status.limit, code: currency))")
@@ -521,7 +518,7 @@ struct MacAnalyticsView: View {
         HStack(spacing: 8) {
             scopeMenu
             Divider().frame(height: 18).padding(.horizontal, 4)
-            ForEach(horizons) { option in Pill(option.rawValue, selected: horizon == option) { horizon = option } }
+            ForEach(horizons) { option in Pill(option.title(cycleIsMonth: scopeCycle?.isCalendarMonth ?? true), selected: horizon == option) { horizon = option } }
             Pill("Custom", selected: horizon == nil) { useCustom(range) }
             Divider().frame(height: 18).padding(.horizontal, 4)
             datePill(range.startDate, start: true, range: range)

@@ -63,7 +63,7 @@ struct BudgetCyclesChart: View {
         .chartYAxis { AxisMarks(position: .leading) { AxisGridLine(); AxisValueLabel() } }
         .frame(height: 180)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Budget against spending by cycle")
+        .accessibilityLabel("Budget against spending by month")
         .accessibilityValue(results.map { "\(label($0)): spent \(Money.format($0.spent, code: currency)) of \(Money.format($0.limit, code: currency))" }.joined(separator: ". "))
     }
 }

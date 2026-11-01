@@ -11,6 +11,8 @@ enum AnalyticsTimeHorizon: String, CaseIterable, Identifiable, Sendable {
     case yearToDate = "Year to date"
 
     var id: String { rawValue }
+    /// The budget period is the month, except under a "Total until" budget.
+    func title(cycleIsMonth: Bool) -> String { self == .thisCycle && cycleIsMonth ? "This month" : rawValue }
 }
 
 enum AnalyticsScope: String, CaseIterable, Identifiable, Sendable {

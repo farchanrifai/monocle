@@ -55,7 +55,7 @@ final class WidgetSnapshotTests: XCTestCase {
             cardID: card.id
         )
 
-        let cycle = Cycle.containing(.now, startDay: 1)
+        let cycle = Cycle.month(containing: .now)
 
         let snapshot = WidgetSnapshotUpdater.update(
             activeCard: card,

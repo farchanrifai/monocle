@@ -58,7 +58,7 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(model.settings.startDay, 1)
     }
 
-    func testBudgetSaveCreatesAnEffectiveTransitionVersion() throws {
+    func testBudgetSaveStartsThisMonthOrNext() throws {
         let store = TestExpenseStore()
         let service = try ExpenseService(store: store)
         let state = TestState()
@@ -66,17 +66,13 @@ final class FoundationTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let date = try XCTUnwrap(Day.date("2026-09-08", calendar: calendar))
-        try model.saveBudget(overallLimit: 500_000_000, startDay: 1, categoryLimits: [], applyToNextCycle: false, date: date, calendar: calendar)
-        try model.saveBudget(overallLimit: 600_000_000, startDay: 25, categoryLimits: [], applyToNextCycle: false, date: date, calendar: calendar)
-        let transition = try XCTUnwrap(store.budgetValues.first { $0.startDay == 25 })
-        XCTAssertEqual(transition.effectiveDay, "2026-10-01")
-        XCTAssertEqual(transition.transitionEndDay, "2026-10-25")
+        try model.saveBudget(overallLimit: 500_000_000, categoryLimits: [], applyToNextCycle: false, date: date, calendar: calendar)
+        try model.saveBudget(overallLimit: 600_000_000, categoryLimits: [], applyToNextCycle: true, date: date, calendar: calendar)
+        XCTAssertEqual(store.budgetValues.first { $0.effectiveDay == "2026-09-01" }?.overallLimit, 500_000_000)
+        let next = try XCTUnwrap(store.budgetValues.first { $0.effectiveDay == "2026-10-01" })
+        XCTAssertEqual(next.overallLimit, 600_000_000)
+        XCTAssertNil(next.transitionEndDay)
         XCTAssertEqual(model.settings.budget, 600_000_000)
-        XCTAssertEqual(model.settings.startDay, 25)
-        let transitionDate = try XCTUnwrap(Day.date("2026-10-10", calendar: calendar))
-        try model.saveBudget(overallLimit: 650_000_000, startDay: 25, categoryLimits: [], applyToNextCycle: false, date: transitionDate, calendar: calendar)
-        let adjusted = try XCTUnwrap(store.budgetValues.first { $0.effectiveDay == "2026-10-01" })
-        XCTAssertEqual(adjusted.transitionEndDay, "2026-10-25")
     }
 
     func testExistingStateEncodingReopensAndCorruptionIsPreserved() throws {

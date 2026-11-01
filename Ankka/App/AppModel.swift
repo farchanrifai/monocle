@@ -290,7 +290,7 @@ final class AppModel {
     }
     var currentBudgetPeriod: BudgetPeriod {
         BudgetHistory.period(containing: .now, budgets: budgetHistory)
-            ?? BudgetPeriod(budget: activeBudget, cycle: Cycle.containing(.now, startDay: activeBudget.startDay))
+            ?? BudgetPeriod(budget: activeBudget, cycle: Cycle.month(containing: .now))
     }
     var cycle: Cycle { currentBudgetPeriod.cycle }
     var cycleExpenses: [Expense] {
@@ -987,15 +987,32 @@ final class AppModel {
 
     /// What a card's face counts: its budget's running period (the whole trip for a "Total until" budget), else this cycle.
     // ponytail: cached until the next data change, so a face left open over a cycle boundary shows the old cycle until then.
-    func periodSpent(for cardID: UUID) -> CardPeriodTotal {
-        if let cached = periodSpentCache[cardID] { return cached }
-        let cycle = budgetPeriod(for: cardID).cycle
+    /// The month Home and the card page count: 0 is this month, 1 last month, and so on; nil is all time.
+    var homeMonthOffset: Int? = 0 {
+        didSet { if homeMonthOffset != oldValue { periodSpentCache.removeAll() } }
+    }
+    var homeMonth: Cycle? { homeMonthOffset.map(Self.month(offset:)) }
+    static func month(offset: Int) -> Cycle {
+        Cycle.month(containing: Calendar.current.date(byAdding: .month, value: -offset, to: .now) ?? .now)
+    }
+
+    /// A card face's total for the chosen month, or for this month (`current`, the customizer's preview).
+    func periodSpent(for cardID: UUID, current: Bool = false) -> CardPeriodTotal {
+        let cacheable = !current || homeMonthOffset == 0
+        if cacheable, let cached = periodSpentCache[cardID] { return cached }
+        let cycle = current ? Self.month(offset: 0) : homeMonth
         let card = cards.first { $0.id == cardID }
-        let inCycle = expenses(for: cardID).filter { cycle.contains($0) }
+        let inCycle = expenses(for: cardID).filter { cycle?.contains($0) ?? true }
         let result = CardPeriodTotal(total: Money.sum(inCycle.map { expense in card.map { cardAmount(expense, in: $0) } ?? expense.amount }),
                                      count: inCycle.count, cycle: cycle)
-        periodSpentCache[cardID] = result
+        if cacheable { periodSpentCache[cardID] = result }
         return result
+    }
+
+    /// The card's expenses for the lists: the full history, unless an earlier month is picked.
+    func expensesInHomeMonth(for cardID: UUID) -> [Expense] {
+        guard let offset = homeMonthOffset, offset > 0, let month = homeMonth else { return expenses(for: cardID) }
+        return expenses(for: cardID).filter(month.contains)
     }
 
     /// Sum of the stack's cards' current monthly budgets, or the stack's cap. "Total until" budgets don't count.
@@ -1022,7 +1039,7 @@ final class AppModel {
         let budgets = (try? expenseService?.budgets(for: cardID)) ?? []
         if let period = BudgetHistory.period(containing: .now, budgets: budgets) { return period }
         let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay)
-        return BudgetPeriod(budget: fallback, cycle: Cycle.containing(.now, startDay: fallback.startDay))
+        return BudgetPeriod(budget: fallback, cycle: Cycle.month(containing: .now))
     }
 
     func budgetStackInput(_ stackID: UUID) -> BudgetStackInput? {
@@ -1454,9 +1471,9 @@ final class AppModel {
 
     func activities(selectedCardID: UUID?, allCards: Bool) -> [Expense] {
         if let selectedCardID {
-            return expenses(for: selectedCardID)
+            return expensesInHomeMonth(for: selectedCardID)
         }
-        let key = "\(allCards)-\(filterScope.rawValue)-\(activeStackID?.uuidString ?? "nil")-\(unhiddenCards.count)-\(homeDeckCards.count)"
+        let key = "\(allCards)-\(filterScope.rawValue)-\(activeStackID?.uuidString ?? "nil")-\(unhiddenCards.count)-\(homeDeckCards.count)-\(homeMonthOffset ?? -1)"
         if memoizedActivitiesKey == key, let cached = memoizedActivities {
             return cached
         }
@@ -1464,7 +1481,7 @@ final class AppModel {
         var all: [Expense] = []
         let targetCards = allCards ? unhiddenCards : homeDeckCards
         for b in targetCards {
-            all.append(contentsOf: expenses(for: b.id))
+            all.append(contentsOf: expensesInHomeMonth(for: b.id))
         }
         let sorted = all.sorted { $0.day == $1.day ? $0.createdAt > $1.createdAt : $0.day > $1.day }
         memoizedActivities = sorted
@@ -1905,7 +1922,7 @@ final class AppModel {
     }
 
     /// `totalUntil` makes a "Total until" budget (a goal): one amount from the current period's start through that day.
-    func saveBudget(overallLimit: Int64, startDay: Int, categoryLimits: [CategoryBudget], applyToNextCycle: Bool,
+    func saveBudget(overallLimit: Int64, categoryLimits: [CategoryBudget], applyToNextCycle: Bool,
                     totalUntil: Date? = nil, date: Date = .now, calendar: Calendar = .current, cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         // Another card's budget saves the same way but leaves the active card's settings alone.
@@ -1914,52 +1931,25 @@ final class AppModel {
         let history = try expenseService.budgets(for: cardID)
         let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: date, calendar: calendar)
         let current = BudgetHistory.period(containing: date, budgets: history, calendar: calendar)
-            ?? BudgetPeriod(budget: fallback, cycle: Cycle.containing(date, startDay: fallback.startDay, calendar: calendar))
-        let effectiveStart: Date
-        let transitionEndDay: String?
-        let isTransition = current.budget.transitionEndDay == Day.string(current.cycle.end, calendar: calendar)
-        if totalUntil != nil || current.budget.totalUntilDay != nil {
-            // Switching kind, or editing a goal, replaces the version from the same start; no transition period.
-            effectiveStart = current.cycle.start
-            transitionEndDay = nil
-        } else if startDay == current.budget.startDay {
-            effectiveStart = applyToNextCycle ? current.cycle.end : current.cycle.start
-            transitionEndDay = applyToNextCycle ? nil : (isTransition ? current.budget.transitionEndDay : nil)
-        } else {
-            effectiveStart = current.cycle.end
-            transitionEndDay = Day.string(BudgetHistory.transitionEnd(after: effectiveStart, startDay: startDay, calendar: calendar), calendar: calendar)
-        }
+            ?? BudgetPeriod(budget: fallback, cycle: Cycle.month(containing: date, calendar: calendar))
+        // Switching kind, or editing a goal, replaces the version from the same start.
+        let goal = totalUntil != nil || current.budget.totalUntilDay != nil
+        let effectiveStart = applyToNextCycle && !goal ? current.cycle.end : current.cycle.start
         let effectiveDay = Day.string(effectiveStart, calendar: calendar)
         let id = history.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
         let totalUntilDay = totalUntil.map { Day.string($0, calendar: calendar) }
         if let totalUntilDay { guard totalUntilDay >= effectiveDay else { throw BudgetError.invalidEffectiveDate } }
         let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
-                                   startDay: startDay, categoryLimits: categoryLimits, transitionEndDay: transitionEndDay,
+                                   startDay: 1, categoryLimits: categoryLimits, transitionEndDay: nil,
                                    totalUntilDay: totalUntilDay)
         var proposed = settings
         // A goal doesn't change the fallback cycle budget that applies once the goal has ended.
-        if totalUntilDay == nil { proposed.budget = overallLimit; proposed.startDay = startDay }
+        if totalUntilDay == nil { proposed.budget = overallLimit; proposed.startDay = 1 }
         try performWorkspaceCommand {
             try expenseService.save(budget, in: cardID)
             if isActive { try requireState().saveSettings(proposed) }
         }
         if isActive { settings = proposed }
-        invalidateExpenseCaches()
-    }
-
-    /// Payday came early: the running cycle ends yesterday, and a new one with the same budget starts today and runs to the
-    /// usual start day after next, so later cycles fall back on their usual day.
-    func startCycleToday(cardID: UUID, date: Date = .now, calendar: Calendar = .current) throws {
-        guard let expenseService else { throw EntryError.corruptStore }
-        let history = try expenseService.budgets(for: cardID)
-        let today = Day.string(date, calendar: calendar)
-        guard let current = BudgetHistory.period(containing: date, budgets: history, calendar: calendar),
-              current.budget.totalUntilDay == nil, today != Day.string(current.cycle.start, calendar: calendar) else { return }
-        var budget = current.budget
-        budget.id = history.first { $0.effectiveDay == today }?.id ?? UUID()
-        budget.effectiveDay = today
-        budget.transitionEndDay = Day.string(BudgetHistory.transitionEnd(after: current.cycle.end, startDay: budget.startDay, calendar: calendar), calendar: calendar)
-        try performWorkspaceCommand { try expenseService.save(budget, in: cardID) }
         invalidateExpenseCaches()
     }
 

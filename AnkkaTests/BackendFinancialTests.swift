@@ -157,20 +157,20 @@ final class BackendFinancialTests: XCTestCase {
         XCTAssertEqual(try draft.expense().day, "2026-10-07")
     }
 
-    func testBudgetTransitionUsesInclusiveStartAndExclusiveEnd() throws {
+    func testBudgetPeriodUsesInclusiveStartAndExclusiveEnd() throws {
         let budget = BudgetVersion(effectiveDay: "2026-10-01", overallLimit: 100_000, startDay: 25, transitionEndDay: "2026-10-25")
         let period = try XCTUnwrap(BudgetHistory.period(containing: XCTUnwrap(Day.date("2026-10-01", calendar: utc)), budgets: [budget], calendar: utc))
         XCTAssertEqual(utc.component(.hour, from: period.cycle.start), 0)
         XCTAssertTrue(period.cycle.contains(expense(day: "2026-10-01")))
-        // Expense days are local; compare civil boundaries explicitly for UTC test fixture.
-        XCTAssertEqual(Day.string(period.cycle.end, calendar: utc), "2026-10-25")
+        XCTAssertFalse(period.cycle.contains(expense(day: "2026-11-01")))
+        XCTAssertEqual(Day.string(period.cycle.end, calendar: utc), "2026-11-01")
     }
 
     func testScopedCardReportUsesItsBudgetAndAggregateUsesCalendarMonth() throws {
         let now = try XCTUnwrap(Day.date("2026-10-05", calendar: utc))
         let cardBudget = BudgetVersion(effectiveDay: "2026-09-25", overallLimit: 1_000, startDay: 25)
-        let selected = AnalyticsReport.build(data: .init(expenses: [expense(day: "2026-09-28")], budgets: [cardBudget]), horizon: .thisCycle, calendar: utc, now: now)
-        XCTAssertEqual(selected.range.startDay, "2026-09-25")
+        let selected = AnalyticsReport.build(data: .init(expenses: [expense(day: "2026-10-02")], budgets: [cardBudget]), horizon: .thisCycle, calendar: utc, now: now)
+        XCTAssertEqual(selected.range.startDay, "2026-10-01")
         XCTAssertEqual(selected.metrics.totalSpend, 150)
         XCTAssertEqual(selected.period?.budget.overallLimit, 1_000)
         let aggregate = AnalyticsReport.build(data: .init(expenses: [expense(day: "2026-09-28")]), horizon: .thisCycle, calendar: utc, now: now)

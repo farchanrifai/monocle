@@ -11,7 +11,6 @@ struct BudgetsView: View {
     @State private var dismissedNudges: Set<UUID> = []
     /// A finished cycle picked from the Cycles chart; nil is the running one.
     @State private var viewing: Cycle?
-    @State private var confirmingEarlyStart = false
     @State private var editingStack: UUID?
 
     private var subject: BudgetSubject { picked ?? defaultSubject }
@@ -65,7 +64,7 @@ struct BudgetsView: View {
                     }
                     let shownCycles = Array(cycles.suffix(7))
                     if shownCycles.count > 1 {
-                        section("Cycles") {
+                        section("Months") {
                             panel {
                                 PastCyclesChart(results: shownCycles, currency: status.currency, selected: status.cycle.start) { result in
                                     withAnimation(.smooth) { viewing = result.isCurrent ? nil : result.cycle }
@@ -128,7 +127,7 @@ struct BudgetsView: View {
             ForEach(cycles.reversed()) { result in
                 Button { withAnimation(.smooth) { viewing = result.isCurrent ? nil : result.cycle } } label: {
                     if result.cycle.start == status.cycle.start { Label(result.cycle.label, systemImage: "checkmark") } else { Text(result.cycle.label) }
-                    if result.isCurrent { Text("This cycle") }
+                    if result.isCurrent { Text("This month") }
                 }
             }
         } label: {
@@ -184,18 +183,6 @@ struct BudgetsView: View {
             Text(over ? "of \(Money.format(status.limit, code: status.currency)) · \(days)"
                       : "of \(Money.format(status.limit, code: status.currency)) · \(days) · about \(prefix)\(Money.format(shown(status.remaining / Int64(daysLeft), status.currency), code: status.currency)) a day")
                 .font(.subheadline).foregroundStyle(.secondary)
-            if case .card(let id) = subject, !status.isGoal, daysLeft <= 7, elapsed > 1 {
-                Button("Paid early? Start the next cycle today") { confirmingEarlyStart = true }
-                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(MC.red).padding(.top, 2)
-                    .accessibilityIdentifier("budgetStartCycleToday")
-                    .confirmationDialog("Start a new cycle today?", isPresented: $confirmingEarlyStart, titleVisibility: .visible) {
-                        Button("Start today") {
-                            do { try model.startCycleToday(cardID: id) } catch { model.error = error.localizedDescription }
-                        }
-                    } message: {
-                        Text("This cycle ends yesterday. The next one runs from today until your usual start day after that.")
-                    }
-            }
         }
         .padding(.horizontal, 4).padding(.top, 8)
         .accessibilityElement(children: .contain)
@@ -553,7 +540,6 @@ struct BudgetEditor: View {
     private var categories: [ExpenseCategory] { model.activeCategories(for: cardID) }
     @Environment(\.dismiss) private var dismiss
     @State private var amount = ""
-    @State private var startDay = 1
     @State private var applyToNextCycle = false
     @State private var categoryAmounts: [UUID: String] = [:]
     @State private var originalBudget: BudgetVersion?
@@ -565,12 +551,8 @@ struct BudgetEditor: View {
         if let previous, input == Money.format(previous, currency: false) { return previous }
         return try Money.parse(input)
     }
-    private var changingStartDay: Bool { startDay != budget.startDay }
     /// A goal starts at this cycle's start, so it takes the place of a monthly budget that starts there.
     private var replacesMonthly: Bool { budget.totalUntilDay == nil && budget.effectiveDay == Day.string(cycle.start) }
-    private var transitionCycle: Cycle {
-        .init(start: cycle.end, end: BudgetHistory.transitionEnd(after: cycle.end, startDay: startDay))
-    }
 
     var body: some View {
         NavigationStack {
@@ -585,30 +567,19 @@ struct BudgetEditor: View {
                     }
                 } footer: {
                     Text(isTotal ? "One amount for the whole period, from \(Day.title(Day.string(cycle.start))) through the last day. Use it for a trip or a goal."
-                                    + (replacesMonthly ? " It replaces this cycle's monthly budget, category limits included; the monthly total comes back when the goal ends, the category limits do not." : "")
-                                 : "The budget repeats every cycle.")
+                                    + (replacesMonthly ? " It replaces this month's budget, category limits included; the monthly total comes back when the goal ends, the category limits do not." : "")
+                                 : "The budget repeats every month.")
                 }
                 Section("Overall budget · \(model.currency(ofCard: cardID))") {
                     TextField(Money.format(450_000_000, currency: false), text: $amount.groupedAmount(code: model.currency(ofCard: cardID))).keyboardType(.numberPad)
                 }
                 if !isTotal { Section {
-                    Picker("Day of month", selection: $startDay) {
-                        ForEach(1...31, id: \.self) { Text("Day \($0)").tag($0) }
+                    Picker("Apply change", selection: $applyToNextCycle) {
+                        Text("This month").tag(false)
+                        Text("Next month").tag(true)
                     }
-                    if changingStartDay {
-                        LabeledContent("Starts", value: "Next boundary · \(Day.title(Day.string(cycle.end)))")
-                        LabeledContent("Transition period", value: transitionCycle.label)
-                    } else {
-                        Picker("Apply change", selection: $applyToNextCycle) {
-                            Text("This cycle").tag(false)
-                            Text("Next cycle").tag(true)
-                        }
-                    }
-                } header: { Text("Cycle starts")
                 } footer: {
-                    Text(changingStartDay
-                         ? "The new amount applies during this transition period. Future cycles begin on day \(startDay)."
-                         : "Historical cycles keep their saved budget. Only this version and later periods use the new amount.")
+                    Text("Past months keep their saved budget.")
                 } }
                 Section {
                     ForEach(categories) { category in
@@ -632,11 +603,8 @@ struct BudgetEditor: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("From \(Day.title(budget.effectiveDay))")
-                                    Text(budget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Cycle starts on day \(budget.startDay)")
+                                    Text(budget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Monthly")
                                         .font(.caption).foregroundStyle(.secondary)
-                                    if let transitionEndDay = budget.transitionEndDay {
-                                        Text("Transition ends \(Day.title(transitionEndDay))").font(.caption).foregroundStyle(.secondary)
-                                    }
                                 }
                                 Spacer()
                                 Text(Money.format(budget.overallLimit, code: input.currency)).font(.subheadline.monospacedDigit())
@@ -644,7 +612,7 @@ struct BudgetEditor: View {
                         }
                     } header: { Text("History")
                     } footer: {
-                        Text("Each change starts on a date, so past cycles keep the budget they had.")
+                        Text("Each change starts on a date, so past months keep the budget they had.")
                     }
                 }
             }.navigationTitle("Budget settings").navigationBarTitleDisplayMode(.inline)
@@ -659,9 +627,8 @@ struct BudgetEditor: View {
                                     return CategoryBudget(categoryID: category.id, limit: try resolveInput(value, preserving: originalBudget?.limit(for: category.id)))
                                 }
                                 try model.saveBudget(overallLimit: try resolveInput(amount, preserving: originalBudget?.overallLimit),
-                                                     startDay: isTotal ? budget.startDay : startDay,
                                                      categoryLimits: limits,
-                                                     applyToNextCycle: !isTotal && !changingStartDay && applyToNextCycle,
+                                                     applyToNextCycle: !isTotal && applyToNextCycle,
                                                      totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
                                 dismiss()
                             } catch { self.error = error.localizedDescription }
@@ -671,7 +638,6 @@ struct BudgetEditor: View {
                 .onAppear {
                     originalBudget = budget
                     amount = Money.format(budget.overallLimit, currency: false)
-                    startDay = budget.startDay
                     isTotal = budget.totalUntilDay != nil
                     totalUntil = budget.totalUntilDay.flatMap { Day.date($0) }
                         ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now

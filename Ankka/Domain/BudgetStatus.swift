@@ -24,7 +24,6 @@ struct BudgetStatus: Equatable, Sendable {
     let limit: Int64
     let spent: Int64
     let isGoal: Bool
-    let isTransition: Bool
     let pace: SpendingPaceStatus?
     let projected: Int64?
     let lines: [BudgetLine]
@@ -50,7 +49,8 @@ struct BudgetCycleResult: Identifiable, Equatable, Sendable {
 struct CardPeriodTotal: Equatable, Sendable {
     let total: Int64
     let count: Int
-    let cycle: Cycle
+    /// nil when it counts all time.
+    let cycle: Cycle?
 }
 
 struct BudgetCardInput {
@@ -82,7 +82,7 @@ enum BudgetReport {
         return BudgetStatus(
             subject: .card(input.card.id), currency: input.currency, cycle: period.cycle,
             limit: period.budget.overallLimit, spent: spent,
-            isGoal: period.budget.totalUntilDay != nil, isTransition: period.isTransition,
+            isGoal: period.budget.totalUntilDay != nil,
             pace: AnalyticsEngine.paceStatus(spent: spent, budget: period.budget.overallLimit, daysElapsed: elapsed, totalDays: total),
             projected: try? Money.checkedScale(spent, numerator: total, denominator: elapsed),
             lines: categoryLines(input, budget: period.budget, expenses: inCycle), approximate: false)
@@ -105,12 +105,12 @@ enum BudgetReport {
     // MARK: Stack
 
     static func stack(_ input: BudgetStackInput, now: Date = .now, calendar: Calendar = Day.calendar) -> BudgetStatus? {
-        let cycle = Cycle.containing(now, startDay: input.stack.capStartDay ?? 1, calendar: calendar)
+        let cycle = Cycle.month(containing: now, calendar: calendar)
         guard let value = stackCycle(input, cycle: cycle, now: now, calendar: calendar) else { return nil }
         let (elapsed, total) = days(in: cycle, now: now)
         return BudgetStatus(
             subject: .stack(input.stack.id), currency: input.reportingCurrency, cycle: cycle,
-            limit: value.limit, spent: value.spent, isGoal: false, isTransition: false,
+            limit: value.limit, spent: value.spent, isGoal: false,
             pace: AnalyticsEngine.paceStatus(spent: value.spent, budget: value.limit, daysElapsed: elapsed, totalDays: total),
             projected: try? Money.checkedScale(value.spent, numerator: total, denominator: elapsed),
             lines: value.lines, approximate: value.approximate)
@@ -121,7 +121,7 @@ enum BudgetReport {
         var results: [BudgetCycleResult] = []
         var date = now
         while results.count < count {
-            let cycle = Cycle.containing(date, startDay: input.stack.capStartDay ?? 1, calendar: calendar)
+            let cycle = Cycle.month(containing: date, calendar: calendar)
             guard let value = stackCycle(input, cycle: cycle, now: now, calendar: calendar) else { break }
             results.append(BudgetCycleResult(cycle: cycle, limit: value.limit, spent: value.spent, isCurrent: results.isEmpty, isGoal: false))
             guard let previous = cycle.calendar.date(byAdding: .day, value: -1, to: cycle.start) else { break }
