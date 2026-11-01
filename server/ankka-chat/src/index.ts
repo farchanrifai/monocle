@@ -16,6 +16,10 @@ export interface Env {
   MAX_BODY_BYTES: string
   CAP_MONTHLY_USD_USER: string
   CAP_MONTHLY_USD_GLOBAL: string
+  /** TestFlight and App Review buy in the sandbox; they get their own pool so they can't use up paying users' cap. */
+  CAP_MONTHLY_USD_SANDBOX?: string
+  /** Workers rate limiting binding (wrangler.toml [[ratelimits]]); the vote routes are open, so cap them per IP. */
+  VOTE_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> }
   BUNDLE_ID: string
   PRODUCT_IDS: string
   ENVIRONMENTS: string
@@ -40,7 +44,7 @@ export default {
     if (capped) return fail(429, 'ankka_cap_error', capped)
 
     const raw = await req.text()
-    if (raw.length > Number(env.MAX_BODY_BYTES)) return fail(413, 'request_too_large', 'Request body too large')
+    if (new TextEncoder().encode(raw).length > Number(env.MAX_BODY_BYTES)) return fail(413, 'request_too_large', 'Request body too large')
     let body: any
     try { body = JSON.parse(raw) } catch { return fail(400, 'invalid_request_error', 'Body is not JSON') }
     const problem = clamp(body, env)
@@ -69,7 +73,15 @@ export function parseVote(body: any): { version: string; up: boolean } | null {
 
 // ponytail: open and anonymous, so anyone can inflate a count with curl; the app sends one vote per version. Add a
 // per-install id (and a privacy label change) if the numbers ever look gamed.
+/** True when this IP has voted too often in the last minute. D1 writes are shared with chat metering. */
+async function limited(req: Request, env: Env): Promise<boolean> {
+  if (!env.VOTE_LIMITER) return false
+  const { success } = await env.VOTE_LIMITER.limit({ key: req.headers.get('cf-connecting-ip') ?? 'unknown' })
+  return !success
+}
+
 async function vote(req: Request, env: Env): Promise<Response> {
+  if (await limited(req, env)) return fail(429, 'rate_limit_error', 'Too many votes')
   let v: ReturnType<typeof parseVote> = null
   try { v = parseVote(await req.json()) } catch {}
   if (!v) return fail(400, 'invalid_request_error', 'Expected {version, up}')
@@ -100,6 +112,7 @@ export function parseRoadmapVote(body: any): { id: string; vote: number; previou
 
 // ponytail: same open, anonymous counters as `vote`; MAX(0, …) only stops a forged undo from going negative.
 async function roadmapVote(req: Request, env: Env): Promise<Response> {
+  if (await limited(req, env)) return fail(429, 'rate_limit_error', 'Too many votes')
   let v: ReturnType<typeof parseRoadmapVote> = null
   try { v = parseRoadmapVote(await req.json()) } catch {}
   if (!v) return fail(400, 'invalid_request_error', 'Expected {id, vote, previous}')
@@ -121,7 +134,7 @@ export function clamp(body: any, env: Pick<Env, 'MODEL' | 'MAX_TOKENS_CEILING'>)
   return null
 }
 
-/** The subscription behind the request (its originalTransactionId), or the error to send back. */
+/** The subscription behind the request (its originalTransactionId, `sandbox:`-prefixed for test purchases), or the error to send back. */
 async function identify(req: Request, env: Env): Promise<string | Response> {
   const owner = req.headers.get('x-ankka-owner')
   if (owner) return env.OWNER_KEY && (await sha256(owner)) === (await sha256(env.OWNER_KEY)) ? 'owner' : fail(403, 'permission_error', 'Owner key rejected')
@@ -129,13 +142,13 @@ async function identify(req: Request, env: Env): Promise<string | Response> {
   const jws = req.headers.get('x-ankka-receipt')
   if (!jws) return fail(401, 'ankka_receipt_error', 'Claude chat is part of Ankka Pro.')
   const hash = await sha256(jws)
-  let row = await env.DB.prepare('SELECT user, expires_ms FROM receipts WHERE hash = ?1').bind(hash).first<{ user: string; expires_ms: number }>()
+  let row = await env.DB.prepare('SELECT user, expires_ms, environment FROM receipts WHERE hash = ?1').bind(hash).first<{ user: string; expires_ms: number; environment: string }>()
   if (!row) {
     try {
       const r = await verifyReceipt(jws, {
         bundleId: env.BUNDLE_ID, productIds: env.PRODUCT_IDS.split(','), environments: env.ENVIRONMENTS.split(','), rootSha256: APPLE_ROOT_G3_SHA256,
       })
-      row = { user: r.originalTransactionId, expires_ms: r.expiresMs }
+      row = { user: r.originalTransactionId, expires_ms: r.expiresMs, environment: r.environment }
       await env.DB.prepare('INSERT OR IGNORE INTO receipts (hash, user, expires_ms, environment, created_at) VALUES (?1,?2,?3,?4,?5)')
         .bind(hash, r.originalTransactionId, r.expiresMs, r.environment, Date.now()).run()
     } catch (e) {
@@ -145,16 +158,21 @@ async function identify(req: Request, env: Env): Promise<string | Response> {
     }
   }
   if (row.expires_ms <= Date.now()) return fail(401, 'ankka_receipt_error', 'Your Ankka Pro subscription has ended.')
-  return row.user
+  return row.environment === 'Sandbox' ? `sandbox:${row.user}` : row.user
 }
 
-/** A user-facing message when this month's cap is reached, or null. Per subscription, then for the whole app. */
+/** A user-facing message when this month's cap is reached, or null. Per subscription, then for its pool: paying users
+ *  (and the owner) share the global cap, sandbox (TestFlight, App Review) users share their own. */
 export async function capMessage(env: Env, user: string, now = new Date()): Promise<string | null> {
+  const sandbox = user.startsWith('sandbox:')
   const s = await env.DB.prepare(
-    'SELECT COALESCE(SUM(CASE WHEN user = ?2 THEN cost_micro END), 0) AS mine, COALESCE(SUM(cost_micro), 0) AS total FROM usage WHERE month = ?1',
-  ).bind(now.toISOString().slice(0, 7), user).first<{ mine: number; total: number }>()
+    "SELECT COALESCE(SUM(CASE WHEN user = ?2 THEN cost_micro END), 0) AS mine, COALESCE(SUM(CASE WHEN (user LIKE 'sandbox:%') = ?3 THEN cost_micro END), 0) AS total FROM usage WHERE month = ?1",
+  ).bind(now.toISOString().slice(0, 7), user, sandbox ? 1 : 0).first<{ mine: number; total: number }>()
   if (user !== 'owner' && s!.mine >= Number(env.CAP_MONTHLY_USD_USER) * 1e6) return "You've reached this month's chat limit. It resets on the 1st."
-  if (s!.total >= Number(env.CAP_MONTHLY_USD_GLOBAL) * 1e6) return 'Claude chat is paused until the 1st. On-device chat still works where available.'
+  const pool = Number(sandbox ? env.CAP_MONTHLY_USD_SANDBOX ?? '5' : env.CAP_MONTHLY_USD_GLOBAL)
+  if (s!.total >= pool * 1e6) return sandbox
+    ? 'Claude chat for test purchases is paused until the 1st. On-device chat still works where available.'
+    : 'Claude chat is paused until the 1st. On-device chat still works where available.'
   return null
 }
 

@@ -13,6 +13,7 @@ MAX_TOKENS_CEILING = "16000"
 MAX_BODY_BYTES = "1000000"
 CAP_MONTHLY_USD_USER = "1"      # ~1,000 Haiku messages per subscriber a month
 CAP_MONTHLY_USD_GLOBAL = "25"
+CAP_MONTHLY_USD_SANDBOX = "5"   # TestFlight and App Review purchases, separate from paying users
 BUNDLE_ID = "com.farchan.ankka"
 PRODUCT_IDS = "com.farchan.ankka.pro.yearly,com.farchan.ankka.pro.monthly"
 ENVIRONMENTS = "Production,Sandbox"
@@ -23,3 +24,9 @@ binding = "DB"
 database_name = "ankka-chat"
 database_id = "80f844bc-58b7-4c6c-9ebb-a1c8b3e252f3"
 migrations_dir = "migrations"
+
+# Per-IP limit on the open vote routes (D1 write quota is shared with chat metering).
+[[ratelimits]]
+name = "VOTE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
