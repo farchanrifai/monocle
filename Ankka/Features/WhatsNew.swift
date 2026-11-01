@@ -4,11 +4,10 @@ import SwiftUI
 /// Add an entry when the version goes out; a version without one shows no sheet.
 enum WhatsNew {
     static let releases: [(version: String, notes: [String])] = [
-        ("0.9.9", [
-            "Budgets run by calendar month. A budget can repeat every month or cover just one.",
-            "New Analytics tab: see any month or pick your own dates.",
-            "Add an expense in any currency and see what it comes to in yours.",
-            "Chat can add several expenses from one message, and learns your categories as you go.",
+        ("1.0.0", [
+            "Welcome to Ankka 1.0. Make a card for every purpose: everyday spending, a trip, a project.",
+            "Monthly budgets, recurring bills and Analytics, with expenses in any currency.",
+            "Ask Ankka in chat: add expenses in plain words, or ask where your money goes.",
         ]),
     ]
 
