@@ -94,6 +94,27 @@ final class BackendModelTests: XCTestCase {
         XCTAssertNil(model.selectedCardID, "Add from Budgets or the deck must not open a card")
     }
 
+    func testToastHidesItselfAndAnUndoToastTakesTheUndoWithIt() async throws {
+        let (directory, _, service, state) = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let model = AppModel(expenses: service, state: state)
+        let saved = AppModel.toastDuration
+        AppModel.toastDuration = .milliseconds(50)
+        defer { AppModel.toastDuration = saved }
+        model.showToast("Expense added")
+        XCTAssertEqual(model.toast, "Expense added")
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertNil(model.toast)
+
+        model.undoExpense = Expense(amount: 1, day: Day.string(.now), note: "", splits: [])
+        model.showToast("Expense deleted")
+        try await Task.sleep(for: .milliseconds(60))
+        XCTAssertNotNil(model.toast, "an undo toast stays longer")
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertNil(model.toast)
+        XCTAssertNil(model.undoExpense)
+    }
+
     func testDirectServiceCommitInvalidatesWarmedInactiveCardCache() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }

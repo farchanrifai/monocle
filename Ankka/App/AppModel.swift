@@ -1555,7 +1555,21 @@ final class AppModel {
         }
     }
 
-    func showToast(_ text: String) { toast = text; toastID = UUID() }
+    /// How long a toast stays; one with Undo stays longer, then the chance to undo goes with it.
+    static var toastDuration: Duration = .seconds(2.8)
+    @ObservationIgnored private var toastDismissal: Task<Void, Never>?
+
+    /// The model hides the toast itself, so it goes even when the bottom bar that shows it is off screen meanwhile.
+    func showToast(_ text: String) {
+        toast = text; toastID = UUID()
+        let id = toastID, duration = undoExpense == nil ? Self.toastDuration : Self.toastDuration * 2
+        toastDismissal?.cancel()
+        toastDismissal = Task { [weak self] in
+            try? await Task.sleep(for: duration)
+            guard let self, !Task.isCancelled, self.toastID == id else { return }
+            self.toast = nil; self.undoExpense = nil
+        }
+    }
 
     func importExpenses(_ batch: [Expense], to cardID: UUID) throws {
         try expenseService?.saveExpenses(batch, in: cardID)

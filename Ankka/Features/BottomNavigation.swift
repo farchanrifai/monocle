@@ -55,12 +55,6 @@ struct BottomNavigation: View {
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.44, dampingFraction: 0.76), value: isDetail)
         .sensoryFeedback(.selection, trigger: model.filterScope)
         .sensoryFeedback(.selection, trigger: model.activeStackID)
-        .task(id: model.toastID) {
-            guard model.toast != nil, model.undoExpense == nil else { return }
-            do { try await Task.sleep(for: .seconds(2.8)) } catch { return }
-            guard !Task.isCancelled else { return }
-        model.toast = nil
-        }
     }
 
     private var tabSwitcher: some View {
