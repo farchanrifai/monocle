@@ -5,10 +5,13 @@ struct AnalyticsView: View {
     @Bindable var model: AppModel
     @State private var selectedHorizon: AnalyticsTimeHorizon = .thisCycle
     @State private var selectedScope: AnalyticsFilterScope = .allCards
+    /// A picked month or date range; it replaces the horizon chips until one of them is tapped.
+    @State private var customRange: ClosedRange<Date>?
 
     var body: some View {
-        let report = AnalyticsReport.build(data: model.reportingData(for: selectedScope), horizon: selectedHorizon)
-        AnalyticsReportView(model: model, selectedHorizon: $selectedHorizon, selectedScope: $selectedScope, report: report)
+        let report = AnalyticsReport.build(data: model.reportingData(for: selectedScope), horizon: selectedHorizon,
+                                           custom: customRange.map { ($0.lowerBound, $0.upperBound) })
+        AnalyticsReportView(model: model, selectedHorizon: $selectedHorizon, selectedScope: $selectedScope, customRange: $customRange, report: report)
     }
 }
 
@@ -18,7 +21,9 @@ private struct AnalyticsReportView: View {
 
     @Binding var selectedHorizon: AnalyticsTimeHorizon
     @Binding var selectedScope: AnalyticsFilterScope
+    @Binding var customRange: ClosedRange<Date>?
     let report: AnalyticsReport
+    @State private var pickingPeriod = false
     @State private var scrubbedDate: Date? = nil
     @State private var selectedCategoryID: UUID? = nil
     @State private var selectedChartAngle: Int64? = nil
@@ -106,7 +111,20 @@ private struct AnalyticsReportView: View {
     // MARK: - Filtered Data Queries
 
     private var currentRange: (startDate: Date, endDate: Date, startDay: String, endDay: String) { report.range }
-    private var budgetLimit: Int64? { selectedHorizon == .thisCycle ? report.period?.budget.overallLimit : nil }
+    private var budgetLimit: Int64? { selectedHorizon == .thisCycle && customRange == nil ? report.period?.budget.overallLimit : nil }
+    private var horizonTitle: String {
+        customRange.map(Self.rangeTitle) ?? selectedHorizon.title(cycleIsMonth: report.period?.cycle.isCalendarMonth ?? true)
+    }
+    /// "September 2026" for a whole month, otherwise "Sep 3 – Oct 12".
+    static func rangeTitle(_ range: ClosedRange<Date>) -> String {
+        let month = Cycle.month(containing: range.lowerBound)
+        if Day.string(month.start) == Day.string(range.lowerBound),
+           Day.string(Calendar.current.date(byAdding: .day, value: -1, to: month.end) ?? month.end) == Day.string(range.upperBound) {
+            let thisYear = Calendar.current.isDate(range.lowerBound, equalTo: .now, toGranularity: .year)
+            return range.lowerBound.formatted(thisYear ? .dateTime.month(.wide) : .dateTime.month(.wide).year())
+        }
+        return range.lowerBound.formatted(.dateTime.day().month(.abbreviated)) + " – " + range.upperBound.formatted(.dateTime.day().month(.abbreviated))
+    }
     private var dailyPoints: [DailySpendPoint] { report.dailyPoints }
     private var categoryPoints: [CategorySpendPoint] { report.categoryPoints }
     private var cardPoints: [CardSpendPoint] { report.cardPoints }
@@ -129,11 +147,22 @@ private struct AnalyticsReportView: View {
             // Horizon Chips
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    Button { pickingPeriod = true } label: {
+                        Label(customRange.map(Self.rangeTitle) ?? "Pick dates", systemImage: "calendar")
+                            .font(.caption.weight(customRange != nil ? .semibold : .medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(customRange != nil ? MC.red : MC.surface, in: Capsule())
+                            .foregroundStyle(customRange != nil ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(PressFeedbackStyle())
+                    .accessibilityIdentifier("horizon-custom")
                     // When the cycle is the calendar month, "This month" would be the same chip twice.
                     ForEach(AnalyticsTimeHorizon.allCases.filter { $0 != .thisMonth || !(report.period?.cycle.isCalendarMonth ?? true) }) { horizon in
-                        let isSelected = selectedHorizon == horizon
+                        let isSelected = customRange == nil && selectedHorizon == horizon
                         Button {
                             selectedHorizon = horizon
+                            customRange = nil
                             scrubbedDate = nil
                         } label: {
                             Text(horizon.title(cycleIsMonth: report.period?.cycle.isCalendarMonth ?? true))
@@ -147,6 +176,12 @@ private struct AnalyticsReportView: View {
                         .accessibilityIdentifier("horizon-\(horizon.rawValue)")
                     }
                 }
+            }
+        }
+        .sheet(isPresented: $pickingPeriod) {
+            AnalyticsPeriodPicker(range: customRange ?? report.range.startDate...report.range.endDate) { picked in
+                customRange = picked
+                scrubbedDate = nil
             }
         }
     }
@@ -236,7 +271,7 @@ private struct AnalyticsReportView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Eyebrow(text: "\(selectedHorizon.title(cycleIsMonth: report.period?.cycle.isCalendarMonth ?? true)) spending")
+                    Eyebrow(text: "\(horizonTitle) spending")
                     Text(Money.format(metrics.totalSpend))
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(Color.primary)
@@ -256,7 +291,7 @@ private struct AnalyticsReportView: View {
             HStack(spacing: 16) {
                 metricColumn(title: "Expenses", value: "\(metrics.transactionCount)")
                 metricColumn(title: "Daily average", value: Money.format(metrics.dailyAverage))
-                if selectedHorizon == .thisCycle || selectedHorizon == .thisMonth {
+                if customRange == nil && (selectedHorizon == .thisCycle || selectedHorizon == .thisMonth) {
                     metricColumn(title: "Projected", value: metrics.projectedPeriodTotal.map { Money.format($0) } ?? "Exceeds supported total")
                 } else if let highest = metrics.highestSpendDay {
                     metricColumn(title: "Peak day", value: Money.format(highest.amount))
@@ -1016,5 +1051,60 @@ private struct AnalyticsReportView: View {
             .padding(.vertical, 32)
             Spacer()
         }
+    }
+}
+
+/// A month from the last two years, or any first and last day.
+private struct AnalyticsPeriodPicker: View {
+    @State var range: ClosedRange<Date>
+    let apply: (ClosedRange<Date>) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var start = Date.now
+    @State private var end = Date.now
+
+    init(range: ClosedRange<Date>, apply: @escaping (ClosedRange<Date>) -> Void) {
+        _range = State(initialValue: range)
+        _start = State(initialValue: range.lowerBound)
+        _end = State(initialValue: range.upperBound)
+        self.apply = apply
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Month") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(0..<24, id: \.self) { offset in
+                                let month = AppModel.month(offset: offset)
+                                let last = Calendar.current.date(byAdding: .day, value: -1, to: month.end) ?? month.end
+                                let selected = Day.string(start) == Day.string(month.start) && Day.string(end) == Day.string(last)
+                                Button {
+                                    start = month.start; end = last
+                                } label: {
+                                    Text(month.start.formatted(Calendar.current.isDate(month.start, equalTo: .now, toGranularity: .year)
+                                                               ? .dateTime.month(.abbreviated) : .dateTime.month(.abbreviated).year(.twoDigits)))
+                                        .font(.subheadline.weight(selected ? .semibold : .regular))
+                                        .padding(.horizontal, 12).padding(.vertical, 7)
+                                        .background(selected ? MC.red : MC.surface, in: Capsule())
+                                        .foregroundStyle(selected ? Color.white : Color.primary)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                Section("Dates") {
+                    DatePicker("From", selection: $start, in: ...end, displayedComponents: .date)
+                    DatePicker("To", selection: $end, in: start..., displayedComponents: .date)
+                }
+            }
+            .navigationTitle("Period").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Show") { apply(min(start, end)...max(start, end)); dismiss() }.accessibilityIdentifier("applyPeriod")
+                }
+            }
+        }.presentationDetents([.medium, .large])
     }
 }

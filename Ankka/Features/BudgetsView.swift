@@ -91,6 +91,7 @@ struct BudgetsView: View {
                 ToolbarItem(placement: .topBarLeading) { subjectMenu }.sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Analytics", systemImage: "chart.line.uptrend.xyaxis") { showingAnalytics = true }
+                        .tint(.primary) // toolbar icons are black, like Home's
                         .accessibilityIdentifier("budgetsAnalyticsButton")
                 }
                 if subject != .all { // All cards has nothing of its own to set
@@ -102,6 +103,7 @@ struct BudgetsView: View {
                             case .all: break
                             }
                         }
+                        .tint(.primary)
                         .accessibilityIdentifier("budgetSettingsButton")
                     }
                 }
@@ -277,10 +279,11 @@ struct BudgetsView: View {
                 Text(subjectName).font(.system(size: 14, weight: .semibold)).lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
             }
-            .foregroundStyle(MC.red)
+            .foregroundStyle(.primary)
             .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(MC.red.opacity(0.12), in: Capsule())
+            .background(Color.primary.opacity(0.06), in: Capsule())
         }
+        .tint(.primary)
         .accessibilityLabel("Budget for \(subjectName)")
         .accessibilityIdentifier("budgetSubjectMenu")
     }

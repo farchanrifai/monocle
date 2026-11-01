@@ -1365,7 +1365,7 @@ struct CardPresentationView: View {
         } label: {
             Image(systemName: "line.3.horizontal.decrease")
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(model.homeMonthOffset == 0 ? ink : MC.red)
+                .foregroundStyle(ink)
                 .frame(width: HomeMetrics.hitTarget, height: HomeMetrics.hitTarget)
                 .glassEffect(.regular.interactive(), in: .circle)
                 .contentShape(Circle())

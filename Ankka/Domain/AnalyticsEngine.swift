@@ -588,10 +588,13 @@ struct AnalyticsReport {
     let metrics: AnalyticsMetrics
     let errorMessage: String?
 
-    static func build(data: AnalyticsReportingData, horizon: AnalyticsTimeHorizon, calendar: Calendar = Day.calendar, now: Date = .now) -> Self {
+    /// `custom` (first and last day) replaces the horizon's range; it has no budget to pace against.
+    static func build(data: AnalyticsReportingData, horizon: AnalyticsTimeHorizon, custom: (start: Date, end: Date)? = nil,
+                      calendar: Calendar = Day.calendar, now: Date = .now) -> Self {
         let period = BudgetHistory.period(containing: now, budgets: data.budgets, calendar: calendar)
-        let range = AnalyticsEngine.dateRange(for: horizon, currentCycle: period?.cycle, calendar: calendar, now: now)
-        let budget = horizon == .thisCycle ? period?.budget : nil
+        let range = custom.map { (startDate: $0.start, endDate: $0.end, startDay: Day.string($0.start, calendar: calendar), endDay: Day.string($0.end, calendar: calendar)) }
+            ?? AnalyticsEngine.dateRange(for: horizon, currentCycle: period?.cycle, calendar: calendar, now: now)
+        let budget = horizon == .thisCycle && custom == nil ? period?.budget : nil
         let filtered = AnalyticsEngine.filterExpenses(data.expenses, startDay: range.startDay, endDay: range.endDay)
         let overflow = (try? Money.checkedSum(data.expenses.map(\.amount))) == nil
         let error = data.errorMessage ?? (overflow ? EntryError.aggregateOverflow.localizedDescription : nil)
