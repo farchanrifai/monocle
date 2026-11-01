@@ -66,23 +66,11 @@ struct StackCustomizerView: View {
         workingStacks.first(where: { $0.id == currentStackID }) ?? workingStacks.first!
     }
 
-    private func cardColor(for card: Card) -> Color {
-        let custom = model.customization(for: card.id)
-        switch custom.style {
-        case .palette(let index):
-            return CardPalette.color(for: index)
-        case .customColor(let hex):
-            return CardPalette.color(fromHex: hex)
-        default:
-            return CardPalette.color(for: card.colorIndex)
-        }
-    }
-
     private func miniCardLayers(for assignedCards: [Card]) -> [MiniCardLayer] {
         let topCards = Array(assignedCards.prefix(3))
         var layers: [MiniCardLayer] = []
         for (idx, card) in topCards.enumerated() {
-            let color = cardColor(for: card)
+            let color = model.cardColor(card)
             layers.append(MiniCardLayer(id: card.id, index: idx, color: color))
         }
         return layers.reversed()
@@ -380,7 +368,7 @@ struct StackCustomizerView: View {
             } else {
                 VStack(spacing: 8) {
                     ForEach(Array(currentAssigned.enumerated()), id: \.element.id) { index, card in
-                        let cardCol = cardColor(for: card)
+                        let cardCol = model.cardColor(card)
 
                         HStack(spacing: 10) {
                             // Rank / Front badge
@@ -513,7 +501,7 @@ struct StackCustomizerView: View {
                         .padding(.top, 6)
 
                     ForEach(unassignedCards) { card in
-                        let cardCol = cardColor(for: card)
+                        let cardCol = model.cardColor(card)
 
                         HStack(spacing: 12) {
                             RoundedRectangle(cornerRadius: 8)
@@ -582,7 +570,7 @@ struct StackCustomizerView: View {
             VStack(spacing: 8) {
                 ForEach(model.cards) { card in
                     let isAlwaysHidden = alwaysHiddenIDs.contains(card.id)
-                    let cardCol = cardColor(for: card)
+                    let cardCol = model.cardColor(card)
 
                     HStack(spacing: 12) {
                         RoundedRectangle(cornerRadius: 8)

@@ -523,6 +523,23 @@ final class AppModel {
         }
         showEntry = true
     }
+    /// Add Expense's card pill: what's been typed moves to another card instead of swapping in that card's draft, which
+    /// it replaces. A category the new card doesn't use is cleared. Editing a saved expense can't change its card.
+    func moveDraft(to id: UUID) {
+        guard !draft.editing, draft.cardID != id else { return }
+        var moving = draft
+        let from = draft.cardID ?? activeCardID
+        let openCardID = selectedCardID
+        guard selectCard(id) else { return }
+        if openCardID == nil { selectedCardID = nil } // as in openEntry: adding from the deck doesn't open the card
+        moving.cardID = id
+        if let category = moving.categoryID, !activeCategories(for: id).contains(where: { $0.id == category }) { moving.categoryID = nil }
+        draft = moving
+        var cleared = ExpenseDraft(); cleared.cardID = from
+        try? requireState().saveDraft(cleared, for: from)
+        persistDraft()
+    }
+
     func edit(_ expense: Expense) {
         if draftNeedsConfirmation { pendingRepeat = false; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense)
@@ -732,6 +749,15 @@ final class AppModel {
 
     func performUIAction(_ action: () throws -> Void) {
         do { try action() } catch { report(error) }
+    }
+
+    /// The card's colour as a plain swatch (photo styles fall back to the card's palette colour).
+    func cardColor(_ card: Card) -> Color {
+        switch customization(for: card.id).style {
+        case .palette(let index): CardPalette.color(for: index)
+        case .customColor(let hex): CardPalette.color(fromHex: hex)
+        default: CardPalette.color(for: card.colorIndex)
+        }
     }
 
     func customization(for cardID: UUID) -> CardCustomization {

@@ -48,7 +48,6 @@ struct EntryView: View {
                                     .font(.subheadline.weight(.semibold))
                              }.tint(MC.red).accessibilityIdentifier("editSplits") }
                         }
-                        if showsPaidWith { paidWithMenu }
                         if showsNote {
                             HStack(spacing: 10) {
                                 Image(systemName: "text.alignleft").foregroundStyle(.secondary).accessibilityHidden(true)
@@ -151,12 +150,61 @@ struct EntryView: View {
                 .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: amount)
                 .accessibilityLabel("Amount \(Money.format(amount))").accessibilityIdentifier("amountDisplay")
             if model.draft.isForeign(reporting: model.reportingCurrency) { conversionLine }
-            if showsDate {
-                Button { focusedField = nil; showDate = true } label: {
-                    Label(Day.title(model.draft.civilDay), systemImage: "calendar").font(.caption)
-                }.tint(.secondary).frame(minHeight: 32)
-            }
+            detailPills.padding(.top, 6)
         }.frame(maxWidth: .infinity)
+    }
+    /// Where, when and how it was paid, as one row of pills under the amount; two lines when they don't fit.
+    private var detailPills: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { cardPill; datePill; paidWithPill }
+            VStack(spacing: 8) {
+                HStack(spacing: 8) { cardPill; datePill }
+                paidWithPill
+            }
+        }
+    }
+    private var draftCard: Card? { model.cards.first { $0.id == (model.draft.cardID ?? model.activeCardID) } }
+    /// The card the expense goes to. Tap to move what's typed to another card; a saved expense keeps its card.
+    @ViewBuilder private var cardPill: some View {
+        let label = DetailPill(text: draftCard?.name ?? "Card", chevron: !model.draft.editing && model.cards.count > 1) {
+            Circle().fill(draftCard.map(model.cardColor) ?? .secondary).frame(width: 10, height: 10)
+        }
+        if model.draft.editing || model.cards.count < 2 {
+            label.accessibilityLabel("Card \(draftCard?.name ?? "")").accessibilityIdentifier("entryCard")
+        } else {
+            Menu {
+                Picker("Card", selection: Binding(get: { model.draft.cardID ?? model.activeCardID }, set: { model.moveDraft(to: $0) })) {
+                    ForEach(model.orderedCards) { Text($0.name).tag($0.id) }
+                }
+            } label: { label }
+            .tint(.primary)
+            .accessibilityLabel("Card \(draftCard?.name ?? "")").accessibilityIdentifier("entryCard")
+        }
+    }
+    @ViewBuilder private var datePill: some View {
+        if showsDate {
+            Button { focusedField = nil; showDate = true } label: {
+                DetailPill(text: Day.title(model.draft.civilDay), chevron: false) { Image(systemName: "calendar").foregroundStyle(.secondary) }
+            }
+            .buttonStyle(.plain).accessibilityIdentifier("entryDate")
+        }
+    }
+    @ViewBuilder private var paidWithPill: some View {
+        if showsPaidWith {
+            let method = model.paymentMethod(model.draft.paidWithID)
+            Menu {
+                Picker("Paid with", selection: $model.draft.paidWithID) {
+                    Text("Not set").tag(UUID?.none)
+                    ForEach(model.paymentMethods) { method in Label(method.name, systemImage: method.kind.symbol).tag(UUID?.some(method.id)) }
+                }
+            } label: {
+                DetailPill(text: method?.name ?? "Paid with", chevron: true, dimmed: method == nil) {
+                    Image(systemName: method?.kind.symbol ?? "creditcard").foregroundStyle(.secondary)
+                }
+            }
+            .tint(.primary)
+            .accessibilityLabel("Paid with \(method?.name ?? "not set")").accessibilityIdentifier("paidWithMenu")
+        }
     }
     /// The currency the amount is typed in; any card can record in any currency.
     private var currencyMenu: some View {
@@ -233,22 +281,6 @@ struct EntryView: View {
         codes += Money.commonCurrencies
         var seen = Set<String>()
         return codes.filter { seen.insert($0).inserted }
-    }
-    private var paidWithMenu: some View {
-        Menu {
-            Picker("Paid with", selection: $model.draft.paidWithID) {
-                Text("Not set").tag(UUID?.none)
-                ForEach(model.paymentMethods) { method in Label(method.name, systemImage: method.kind.symbol).tag(UUID?.some(method.id)) }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: model.paymentMethod(model.draft.paidWithID)?.kind.symbol ?? "creditcard").foregroundStyle(.secondary)
-                Text("Paid with").foregroundStyle(.secondary)
-                Spacer()
-                Text(model.paymentMethod(model.draft.paidWithID)?.name ?? "Not set").foregroundStyle(.primary)
-                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.secondary)
-            }.font(.subheadline).frame(minHeight: 44)
-        }.accessibilityIdentifier("paidWithMenu")
     }
     private var splitSummary: some View {
         Button {
@@ -529,5 +561,25 @@ private struct SplitEditor: View {
             model.draft.splitParts[index].amount = Money.format(value, currency: false)
             model.draft.splitParts[index].preservedAmount = nil
         }
+    }
+}
+
+/// One of Add Expense's detail pills: icon, text, optional chevron, in the same capsule as the currency pill.
+private struct DetailPill<Icon: View>: View {
+    let text: String
+    let chevron: Bool
+    var dimmed = false
+    @ViewBuilder let icon: Icon
+
+    var body: some View {
+        HStack(spacing: 6) {
+            icon
+            Text(text).foregroundStyle(dimmed ? .secondary : .primary).lineLimit(1)
+            if chevron { Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold)).foregroundStyle(.secondary) }
+        }
+        .font(.footnote.weight(.medium))
+        .padding(.horizontal, 12).frame(minHeight: 34)
+        .background(Color.primary.opacity(0.06), in: Capsule())
+        .contentShape(Capsule())
     }
 }

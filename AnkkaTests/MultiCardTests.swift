@@ -205,6 +205,31 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(model.preferredColorScheme, .dark)
     }
 
+    func testMovingTheDraftToAnotherCardKeepsWhatWasTyped() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleCard()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let state = FileLocalStateStore(directory: tempDir)
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: state)
+        let first = model.activeCardID
+        let trip = try model.createCard(named: "Trip")
+        model.openEntry(for: first)
+        model.draft.amount = "25"
+        model.draft.note = "taxi"
+
+        model.moveDraft(to: trip.id)
+
+        XCTAssertEqual(model.draft.cardID, trip.id)
+        XCTAssertEqual(model.draft.amount, "25")
+        XCTAssertEqual(model.draft.note, "taxi")
+        XCTAssertEqual(model.activeCardID, trip.id)
+        XCTAssertNil(model.selectedCardID, "adding from the deck doesn't open the card")
+        XCTAssertFalse(try state.loadDraft(for: first).hasContent, "the old card's draft is cleared")
+        XCTAssertEqual(try state.loadDraft(for: trip.id).note, "taxi")
+    }
+
     func testCardCustomizationColorAndLuminance() {
         XCTAssertTrue(CardPalette.isDark(hex: "#000000"))
         XCTAssertTrue(CardPalette.isDark(hex: "#212124"))
