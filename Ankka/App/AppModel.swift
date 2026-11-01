@@ -510,7 +510,10 @@ final class AppModel {
         originalDraft = nil
         let targetCardID = cardID ?? selectedCardID ?? activeCardID
         if targetCardID != activeCardID || draft.cardID != targetCardID {
+            let openCardID = selectedCardID
             guard selectCard(targetCardID) else { return }
+            // Adding from the deck or Budgets switches the card without opening it.
+            if openCardID == nil { selectedCardID = nil }
         }
         draft.cardID = targetCardID
         if let categoryID, let cat = activeCategories(for: targetCardID).first(where: { $0.id == categoryID }) {

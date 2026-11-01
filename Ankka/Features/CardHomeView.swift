@@ -988,11 +988,10 @@ private struct ActivityList: View, @MainActor Equatable {
     }
 }
 
-/// The card's printed side: name, number, total and count. Equatable on what it shows, so fanning and cycling
+/// The card's printed side: name, total and count. Equatable on what it shows, so fanning and cycling
 /// the stack, which re-render every card each frame, only move it. Model reads inside still refresh it on data changes.
 private struct CardFaceText: View, @MainActor Equatable {
     let card: Card
-    let index: Int
     let showsFlip: Bool
     let textStyle: Color
     let amountFont: Font
@@ -1002,7 +1001,7 @@ private struct CardFaceText: View, @MainActor Equatable {
     let onFlip: () -> Void
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.card == rhs.card && lhs.index == rhs.index && lhs.showsFlip == rhs.showsFlip
+        lhs.card == rhs.card && lhs.showsFlip == rhs.showsFlip
             && lhs.textStyle == rhs.textStyle && lhs.amountFont == rhs.amountFont && lhs.revision == rhs.revision
     }
 
@@ -1032,10 +1031,6 @@ private struct CardFaceText: View, @MainActor Equatable {
                         .accessibilityLabel("Flip card")
                         .accessibilityIdentifier("cardFlipButton")
                     }
-
-                    Text(String(format: "%02d", index + 1))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(textStyle.opacity(0.8))
                 }
             }
             .frame(minHeight: 28, alignment: .top)
@@ -1208,7 +1203,7 @@ struct CardPresentationView: View {
     private func cardFrontView(tiltShiftX: CGFloat, tiltShiftY: CGFloat) -> some View {
         let customization = appearancePreview[card.id] ?? model.customization(for: card.id)
 
-        return CardFaceText(card: card, index: index, showsFlip: isCurrent && expanded,
+        return CardFaceText(card: card, showsFlip: isCurrent && expanded,
                             textStyle: CardPalette.resolvedTextColor(for: customization),
                             amountFont: amountFont, model: model, revision: model.dataRevision, onFlip: onFlip)
             .equatable()

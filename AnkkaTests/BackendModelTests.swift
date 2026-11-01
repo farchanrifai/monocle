@@ -84,6 +84,16 @@ final class BackendModelTests: XCTestCase {
         XCTAssertTrue(relaunched.draft.splitParts.isEmpty)
     }
 
+    func testAddingWithNoCardOpenLeavesTheDeckClosed() throws {
+        let (directory, _, service, state) = try fixture()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let model = AppModel(expenses: service, state: state)
+        model.draft.cardID = nil // a draft that does not name the active card makes openEntry switch cards
+        model.openEntry()
+        XCTAssertTrue(model.showEntry)
+        XCTAssertNil(model.selectedCardID, "Add from Budgets or the deck must not open a card")
+    }
+
     func testDirectServiceCommitInvalidatesWarmedInactiveCardCache() throws {
         let (directory, _, service, state) = try fixture()
         defer { try? FileManager.default.removeItem(at: directory) }

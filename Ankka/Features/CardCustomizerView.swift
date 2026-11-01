@@ -468,7 +468,6 @@ struct CardCustomizerView: View {
         let total = period?.total ?? 0
         let count = period?.count ?? 0
         let isActive = (card.id == currentCardID)
-        let cardIndex = (customizerCards.firstIndex(where: { $0.id == card.id }) ?? 0) + 1
         let displayName = draftNames[card.id] ?? card.name
 
         return VStack(alignment: .leading, spacing: 12) {
@@ -491,9 +490,6 @@ struct CardCustomizerView: View {
                     .accessibilityLabel("Discard draft card")
                     .accessibilityIdentifier("discardDraftCardButton-\(card.id)")
                 }
-
-                Text(String(format: "%02d", cardIndex))
-                    .font(.caption.monospaced())
             }
 
             Spacer(minLength: 0)
