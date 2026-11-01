@@ -132,14 +132,32 @@ public enum CardBackgroundStyle: Codable, Equatable, Hashable, Sendable {
 public struct CardCustomization: Codable, Equatable, Hashable, Sendable {
     public var style: CardBackgroundStyle
     public var textTone: CardTextTone
+    /// The card's initial, big and made of dots, over the background.
+    public var monogram: Bool
 
-    public init(style: CardBackgroundStyle = .palette(index: 0), textTone: CardTextTone = .auto) {
+    public init(style: CardBackgroundStyle = .palette(index: 0), textTone: CardTextTone = .auto, monogram: Bool = false) {
         self.style = style
         self.textTone = textTone
+        self.monogram = monogram
+    }
+
+    private enum CodingKeys: String, CodingKey { case style, textTone, monogram }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        style = try container.decode(CardBackgroundStyle.self, forKey: .style)
+        textTone = try container.decode(CardTextTone.self, forKey: .textTone)
+        // Saved before the letter existed: those cards keep their plain look.
+        monogram = try container.decodeIfPresent(Bool.self, forKey: .monogram) ?? false
     }
 
     public static func defaultFor(colorIndex: Int) -> Self {
         Self(style: .palette(index: colorIndex), textTone: .auto)
+    }
+
+    /// What a card made from now on starts with.
+    public static func newCard(colorIndex: Int) -> Self {
+        Self(style: .palette(index: colorIndex), textTone: .auto, monogram: true)
     }
 }
 

@@ -437,3 +437,64 @@ struct MinimalStockView: View {
         }
     }
 }
+
+// MARK: - Big letter
+
+/// The card's initial on the right, drawn in rings of dots that grow outward, coloured by a rainbow that turns as the card
+/// tilts. Only the gradient moves; the dot letter is a static mask, so a tilt frame redraws one gradient.
+struct CardMonogram: View {
+    let name: String
+    /// Bright dots for a dark card, deeper ones for a light card.
+    let onDark: Bool
+    /// About -1…1 on each axis.
+    var tilt: CGSize = .zero
+
+    static func letter(of name: String) -> String {
+        (name.first(where: \.isLetter) ?? name.first).map { String($0).uppercased() } ?? ""
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let hues = (0...6).map { Color(hue: Double($0 % 6) / 6, saturation: onDark ? 0.55 : 0.85, brightness: onDark ? 1 : 0.55) }
+            AngularGradient(colors: hues, center: UnitPoint(x: 0.8, y: 0.75),
+                            angle: .degrees(tilt.width * 140 + tilt.height * 90))
+                .mask { MonogramDots(letter: Self.letter(of: name), size: geo.size) }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Rings of dots around a point low on the right, cut to the letter's shape.
+private struct MonogramDots: View, Equatable {
+    let letter: String
+    let size: CGSize
+
+    var body: some View {
+        let center = CGPoint(x: size.width * 0.8, y: size.height * 0.75)
+        Canvas { context, canvas in
+            let step: CGFloat = 5
+            var radius = step
+            while radius < canvas.width {
+                // Dots grow away from the centre, the halftone of a lit sphere.
+                let dot = step * 0.44 * (0.3 + 0.7 * min(1, radius / (canvas.height * 0.8)))
+                let count = max(6, Int(2 * .pi * radius / step))
+                for index in 0..<count {
+                    let angle = Double(index) / Double(count) * 2 * .pi
+                    let x = center.x + radius * cos(angle), y = center.y + radius * sin(angle)
+                    guard x > canvas.width * 0.3, x < canvas.width + dot, y > -dot, y < canvas.height + dot else { continue }
+                    context.fill(Path(ellipseIn: CGRect(x: x - dot, y: y - dot, width: dot * 2, height: dot * 2)), with: .color(.white))
+                }
+                radius += step
+            }
+        }
+        // Bodoni (built into iOS): thick strokes fill with dots, hairlines become a single row. The letter runs off the
+        // right and bottom edges; the card's clip cuts it.
+        .mask(alignment: .bottomTrailing) {
+            Text(letter)
+                .font(.custom("BodoniSvtyTwoITCTT-Bold", fixedSize: size.height * 1.1))
+                .fixedSize()
+                .offset(x: size.width * 0.03, y: size.height * 0.32)
+        }
+    }
+}

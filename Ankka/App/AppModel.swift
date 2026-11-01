@@ -613,6 +613,7 @@ final class AppModel {
         try performWorkspaceCommand {
             let card = try expenseService.createCard(named: name, initialCategories: initialCategories)
             created = card
+            proposed.cardCustomizations[card.id] = .newCard(colorIndex: card.colorIndex)
             proposed.cardOrder.append(card.id)
             if let index = proposed.stacks.firstIndex(where: { $0.id == proposed.activeStackID }) { proposed.stacks[index].cardIDs.append(card.id) }
             try requireState().saveWorkspacePreferences(proposed)

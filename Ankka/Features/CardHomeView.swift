@@ -1062,6 +1062,22 @@ private struct CardFaceText: View, @MainActor Equatable {
     }
 }
 
+/// The big letter, its colours following the phone's tilt while it's the card in front. Reading the tilt here, not in the
+/// card, keeps the 60 Hz updates to this one layer.
+private struct LiveCardMonogram: View {
+    let name: String
+    let onDark: Bool
+    let live: Bool
+    let drag: CGSize
+
+    var body: some View {
+        let motion = live ? CGSize(width: DeviceTilt.cards.x, height: DeviceTilt.cards.y) : .zero
+        CardMonogram(name: name, onDark: onDark, tilt: CGSize(width: motion.width + drag.width, height: motion.height + drag.height))
+            .onChange(of: live, initial: true) { _, isLive in if isLive { DeviceTilt.cards.start() } }
+            .onDisappear { if live { DeviceTilt.cards.stop() } }
+    }
+}
+
 /// Card background art. Value inputs only, so SwiftUI skips it while the card moves.
 private struct CardArtwork: View {
     let customization: CardCustomization
@@ -1199,6 +1215,11 @@ struct CardPresentationView: View {
             .background(
                 ZStack {
                     CardArtwork(customization: customization, fallbackColorIndex: card.colorIndex)
+                    if customization.monogram {
+                        LiveCardMonogram(name: card.name, onDark: CardPalette.resolvedTextColor(for: customization) == .white,
+                                         live: isCurrent && expanded && !reduceMotion,
+                                         drag: CGSize(width: tiltShiftX * 3, height: tiltShiftY * 3))
+                    }
                     specularSheen(shiftX: tiltShiftX, shiftY: tiltShiftY)
                 }
             )

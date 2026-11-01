@@ -9,7 +9,7 @@ struct OnboardingIntro: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var m = IntroMotion()
-    @State private var tilt = IntroTilt()
+    @State private var tilt = DeviceTilt()
 
     static let canvas = CGSize(width: 402, height: 874)
     static let nextCentre = CGPoint(x: 346, y: 784)
@@ -801,7 +801,10 @@ final class IntroMotion {
 
 /// Phone tilt for the parallax: roll and pitch away from how the phone was held at the start, ±12° mapped to ±1.
 @MainActor @Observable
-final class IntroTilt {
+final class DeviceTilt {
+    /// The one the card stack reads (Apple asks for a single motion manager per app; the intro never runs with Home).
+    static let cards = DeviceTilt()
+
     var x = 0.0
     var y = 0.0
     @ObservationIgnored private let manager = CMMotionManager()
@@ -824,5 +827,5 @@ final class IntroTilt {
         }
     }
 
-    func stop() { manager.stopDeviceMotionUpdates() }
+    func stop() { manager.stopDeviceMotionUpdates(); reference = nil }
 }

@@ -84,7 +84,7 @@ struct CardCustomizerView: View {
 
             cardsList.append(newDraftCard)
             initialNewIDs.insert(newID)
-            initialDrafts[newID] = CardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
+            initialDrafts[newID] = CardCustomization.newCard(colorIndex: defaultPaletteIndex)
             initialNames[newID] = defaultName
             let defaults = Set(model.globalCategories.filter(\.defaultActiveForNewCards).map(\.id))
             initialCategorySelections[newID] = defaults.isEmpty ? Set(model.globalCategories.map(\.id)) : defaults
@@ -266,7 +266,7 @@ struct CardCustomizerView: View {
 
         customizerCards.append(newCard)
         newCardIDs.insert(newID)
-        drafts[newID] = CardCustomization(style: .palette(index: defaultPaletteIndex), textTone: .auto)
+        drafts[newID] = CardCustomization.newCard(colorIndex: defaultPaletteIndex)
         draftNames[newID] = defaultName
 
         withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
@@ -510,7 +510,10 @@ struct CardCustomizerView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .aspectRatio(1 / CardStackMetrics.aspect, contentMode: .fit)
         .foregroundStyle(textStyle)
-        .background(cardBackgroundView(for: custom, card: card))
+        .background {
+            cardBackgroundView(for: custom, card: card)
+            if custom.monogram { CardMonogram(name: displayName, onDark: textStyle == .white) }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -714,6 +717,11 @@ struct CardCustomizerView: View {
             .pickerStyle(.segmented)
             .padding(14)
             .accessibilityIdentifier("cardTextTonePicker")
+            Divider().padding(.leading, 14)
+            Toggle("Big letter", isOn: currentDraft.monogram)
+                .tint(MC.red)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .accessibilityIdentifier("cardMonogramToggle")
         }
     }
 
