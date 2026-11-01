@@ -54,9 +54,9 @@ struct BackupView: View {
                             throw BackupError.invalid
                         }
                         document = BackupDocument(data: data); exporting = true
-                    } catch { message = "No readable safety backup is available yet. One is created before each restoration." }
+                    } catch { message = "No readable safety backup is available yet. One is made before a restore, a reset, clearing expenses or deleting a card." }
                 }
-            } header: { Text("Safety backup") } footer: { Text("Restoring replaces this card, including its draft and settings. A local safety backup preserves the previous state. Export it before another restoration if you want to keep it.") }
+            } header: { Text("Safety backup") } footer: { Text("Restoring replaces all cards, expenses, drafts and settings. Before that, and before a reset, clearing expenses or deleting a card, Ankka keeps the previous state here. Export it before the next one if you want to keep it.") }
         }.navigationTitle("Backup & restore").navigationBarTitleDisplayMode(.inline)
             .fileExporter(isPresented: $exporting, document: document, contentType: BackupDocument.backupType, defaultFilename: "ankka-\(Day.string(.now)).ankkabackup") { result in
                 switch result {

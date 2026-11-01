@@ -37,10 +37,12 @@ final class BackupService {
 
     /// Coordinate compound workspace commands under a single SQLite transaction
     /// and a durable rollback document for the accompanying JSON/artwork writes.
-    func withRecovery<T>(currentDraft: ExpenseDraft, settings: PrototypeSettings, operation: () throws -> T) throws -> T {
+    /// `safetyCopy` also keeps the prior state as the exportable safety backup: only for commands that delete or
+    /// replace data, so an ordinary edit afterwards can't overwrite the copy made before a restore or reset.
+    func withRecovery<T>(currentDraft: ExpenseDraft, settings: PrototypeSettings, safetyCopy: Bool = false, operation: () throws -> T) throws -> T {
         try admitMutation()
         let original = try workspaceSnapshot(currentDraft: currentDraft, settings: settings).encoded()
-        try original.write(to: safetyURL, options: .atomic)
+        if safetyCopy { try original.write(to: safetyURL, options: .atomic) }
         try original.write(to: journal, options: .atomic)
         do {
             try fault?(.journalWritten)
@@ -122,7 +124,7 @@ final class BackupService {
         let profile = try Card.real(named: name)
         var updated = settings
         updated.card = profile
-        return try withRecovery(currentDraft: currentDraft, settings: settings) {
+        return try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
             try repository.startEmptyRealCard(profile)
             try state.saveDraft(ExpenseDraft(), for: Card.demo.id)
             try state.saveDraft(ExpenseDraft(), for: profile.id)
@@ -153,7 +155,7 @@ final class BackupService {
     }
 
     func clearExpenses(in cardID: UUID? = nil, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
-        try withRecovery(currentDraft: currentDraft, settings: settings) {
+        try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
             try repository.clearExpenses(in: cardID)
             for id in try cardID.map({ [$0] }) ?? repository.cards().map(\.id) {
                 try state.saveDraft(ExpenseDraft(), for: id)
@@ -162,7 +164,7 @@ final class BackupService {
     }
 
     func resetAllData(cardName: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
-        try withRecovery(currentDraft: currentDraft, settings: settings) {
+        try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
             let resolvedName = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
             let finalName = resolvedName.isEmpty ? "My expenses" : resolvedName
             let defaultCategories = ExpenseCategory.defaults
@@ -222,7 +224,7 @@ final class BackupService {
     func restoreWorkspace(_ candidate: WorkspaceBackup, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
         try admitMutation()
         let candidate = try materializedPreview(candidate)
-        try withRecovery(currentDraft: currentDraft, settings: settings) {
+        try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
             try activate(candidate)
         }
     }
@@ -231,7 +233,7 @@ final class BackupService {
         try admitMutation()
         _ = try preview(data: candidate.encoded())
         let workspace = try materializedPreview(WorkspaceBackup(singleCard: candidate))
-        try withRecovery(currentDraft: currentDraft, settings: settings) {
+        try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
             try activate(workspace)
         }
     }
