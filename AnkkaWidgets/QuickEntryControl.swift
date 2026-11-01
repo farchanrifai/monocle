@@ -6,11 +6,11 @@ import WidgetKit
 struct OpenQuickEntryControlIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Quick Entry"
     static let description = IntentDescription("Opens Ankka to log a new expense.")
-    static var openAppWhenRun: Bool { true }
 
+    /// The app handles ankka://entry (AnkkaApp.onOpenURL) by opening Add Expense; this extension can't reach the app's model.
     @MainActor
-    func perform() async throws -> some IntentResult {
-        return .result()
+    func perform() async throws -> some IntentResult & OpensIntent {
+        .result(opensIntent: OpenURLIntent(URL(string: "ankka://entry")!))
     }
 }
 

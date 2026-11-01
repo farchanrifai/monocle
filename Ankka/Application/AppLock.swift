@@ -59,7 +59,8 @@ final class AppLockController {
     var blocksContent: Bool { privacyShieldVisible || needsAuthentication }
 
     func suspend(now: Date = .now) {
-        guard timeout != nil else { return }
+        // Face ID and the passcode sheet make the scene inactive; that isn't leaving the app.
+        guard timeout != nil, !isAuthenticating else { return }
         if suspendedAt == nil { suspendedAt = now }
         privacyShieldVisible = true
     }

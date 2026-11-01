@@ -217,8 +217,10 @@ extension ChatSession {
             pacer.reset()
             let fallback = fallback ?? AppleChatAgent(model: model)
             self.fallback = fallback
-            let why = if case .offline = failure { "You're offline" } else { failure.localizedDescription }
-            outputs = [.notice("\(why). Answered by Apple Intelligence on this iPhone.")] + (await fallback.send(text, scope: scope, now: .now))
+            // The error texts end in a full stop already; don't add a second one.
+            var why = if case .offline = failure { "You're offline." } else { failure.localizedDescription }
+            if !why.hasSuffix(".") { why += "." }
+            outputs = [.notice("\(why) Answered by Apple Intelligence on this iPhone.")] + (await fallback.send(text, scope: scope, now: .now))
         }
         // Nothing could answer (offline without Apple Intelligence, or a language it doesn't read): the app still adds
         // the purchases it can read itself.

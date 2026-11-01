@@ -88,6 +88,8 @@ struct RootView: View {
             } else {
                 model.appLock.resume()
                 do { try model.reload() } catch { model.report(error) }
+                // A subscription that lapsed while the app sat in the background sends no transaction update.
+                Task { await model.pro?.refresh() }
             }
         }
         .onChange(of: model.draft) { _, _ in model.persistDraft() }
