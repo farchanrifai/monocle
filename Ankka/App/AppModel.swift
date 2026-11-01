@@ -1022,7 +1022,7 @@ final class AppModel {
         let cards = stack.cardIDs.compactMap { id in cards.first { $0.id == id } }.filter { !alwaysHiddenCardIDs.contains($0.id) }
         let limits = cards.compactMap { card -> Int64? in
             guard let budgets = try? expenseService?.budgets(for: card.id),
-                  let active = BudgetHistory.active(on: .now, budgets: budgets), active.totalUntilDay == nil else { return nil }
+                  let active = BudgetHistory.active(on: .now, budgets: budgets), !active.isGoal else { return nil }
             return active.overallLimit
         }
         return stack.budgetLimit(cardLimits: limits)
@@ -1924,30 +1924,40 @@ final class AppModel {
     }
 
     /// `totalUntil` makes a "Total until" budget (a goal): one amount from the current period's start through that day.
-    func saveBudget(overallLimit: Int64, categoryLimits: [CategoryBudget], applyToNextCycle: Bool,
-                    totalUntil: Date? = nil, date: Date = .now, calendar: Calendar = .current, cardID: UUID? = nil) throws {
+    /// Saves a card's budget for the month containing `month`. A repeating budget carries on to later months and replaces
+    /// the monthly changes saved after it. One that doesn't repeat (or a "Total until" goal) covers its own dates, and the
+    /// repeating budget applies again after it.
+    func saveBudget(overallLimit: Int64, categoryLimits: [CategoryBudget], month date: Date = .now, repeats: Bool = true,
+                    totalUntil: Date? = nil, calendar: Calendar = .current, cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         // Another card's budget saves the same way but leaves the active card's settings alone.
         let cardID = cardID ?? activeCardID
         let isActive = cardID == activeCardID
         let history = try expenseService.budgets(for: cardID)
-        let fallback = BudgetVersion.initial(overallLimit: settings.budget, startDay: settings.startDay, date: date, calendar: calendar)
-        let current = BudgetHistory.period(containing: date, budgets: history, calendar: calendar)
-            ?? BudgetPeriod(budget: fallback, cycle: Cycle.month(containing: date, calendar: calendar))
-        // Switching kind, or editing a goal, replaces the version from the same start.
-        let goal = totalUntil != nil || current.budget.totalUntilDay != nil
-        let effectiveStart = applyToNextCycle && !goal ? current.cycle.end : current.cycle.start
-        let effectiveDay = Day.string(effectiveStart, calendar: calendar)
-        let id = history.first(where: { $0.effectiveDay == effectiveDay })?.id ?? UUID()
-        let totalUntilDay = totalUntil.map { Day.string($0, calendar: calendar) }
-        if let totalUntilDay { guard totalUntilDay >= effectiveDay else { throw BudgetError.invalidEffectiveDate } }
-        let budget = BudgetVersion(id: id, effectiveDay: effectiveDay, overallLimit: overallLimit,
-                                   startDay: 1, categoryLimits: categoryLimits, transitionEndDay: nil,
-                                   totalUntilDay: totalUntilDay)
+        let month = Cycle.month(containing: date, calendar: calendar)
+        let start = Day.string(month.start, calendar: calendar)
+        let lastDay = Day.string(calendar.date(byAdding: .day, value: -1, to: month.end) ?? month.end, calendar: calendar)
+        let untilDay = totalUntil.map { Day.string($0, calendar: calendar) } ?? (repeats ? nil : lastDay)
+        if let untilDay { guard untilDay >= start else { throw BudgetError.invalidEffectiveDate } }
+        // A repeating budget that starts this month would be replaced by a budget with an end; it moves to the month after
+        // that end instead, so it still applies once this one is over.
+        var moved: BudgetVersion?
+        if let untilDay, var replaced = history.first(where: { $0.effectiveDay == start && $0.totalUntilDay == nil }),
+           let last = Day.date(untilDay, calendar: calendar) {
+            let resume = Day.string(Cycle.month(containing: last, calendar: calendar).end, calendar: calendar)
+            if !history.contains(where: { $0.effectiveDay == resume }) { replaced.effectiveDay = resume; moved = replaced }
+        }
+        let id = history.first { $0.effectiveDay == start && $0.id != moved?.id }?.id ?? UUID()
+        let budget = BudgetVersion(id: id, effectiveDay: start, overallLimit: overallLimit, startDay: 1,
+                                   categoryLimits: categoryLimits, transitionEndDay: nil, totalUntilDay: untilDay)
         var proposed = settings
-        // A goal doesn't change the fallback cycle budget that applies once the goal has ended.
-        if totalUntilDay == nil { proposed.budget = overallLimit; proposed.startDay = 1 }
+        // Only a repeating budget changes the fallback that applies to a card without one.
+        if untilDay == nil { proposed.budget = overallLimit; proposed.startDay = 1 }
         try performWorkspaceCommand {
+            if untilDay == nil {
+                for later in history where later.effectiveDay > start && !later.isGoal { try expenseService.deleteBudget(later.id, in: cardID) }
+            }
+            if let moved { try expenseService.save(moved, in: cardID) }
             try expenseService.save(budget, in: cardID)
             if isActive { try requireState().saveSettings(proposed) }
         }

@@ -151,6 +151,7 @@ private final class PostCommitReadFailingStore: ExpenseStore {
     func billOccurrences(in cardID: UUID) throws -> [BillOccurrence] { try repository.billOccurrences(in: cardID) }
     func save(_ expense: Expense, in cardID: UUID) throws { try repository.save(expense, in: cardID); wrote = true }
     func save(_ budget: BudgetVersion, in cardID: UUID) throws { try repository.save(budget, in: cardID); wrote = true }
+    func deleteBudget(_ id: UUID, in cardID: UUID) throws { try repository.deleteBudget(id, in: cardID); wrote = true }
     func saveBill(_ bill: Bill, in cardID: UUID) throws { try repository.saveBill(bill, in: cardID); wrote = true }
     func deleteBill(_ id: UUID, in cardID: UUID) throws { try repository.deleteBill(id, in: cardID); wrote = true }
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws { try repository.saveOccurrence(occurrence, in: cardID); wrote = true }

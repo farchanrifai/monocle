@@ -118,7 +118,8 @@ private struct BudgetEditor: View {
     let close: () -> Void
     @State private var amount: String
     @State private var categoryAmounts: [UUID: String]
-    @State private var nextCycle = false
+    @State private var repeats = true
+    @State private var askingScope = false
     @State private var error: String?
     @State private var isTotal: Bool
     @State private var totalUntil: Date
@@ -128,7 +129,8 @@ private struct BudgetEditor: View {
         let budget_ = model.budgetPeriod(for: cardID).budget
         _amount = State(initialValue: Money.format(budget_.overallLimit, currency: false))
         _categoryAmounts = State(initialValue: Dictionary(uniqueKeysWithValues: budget_.categoryLimits.map { ($0.categoryID, Money.format($0.limit, currency: false)) }))
-        _isTotal = State(initialValue: budget_.totalUntilDay != nil)
+        _isTotal = State(initialValue: budget_.isGoal)
+        _repeats = State(initialValue: !budget_.isOneMonth)
         _totalUntil = State(initialValue: budget_.totalUntilDay.flatMap { Day.date($0) }
             ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now)
     }
@@ -147,7 +149,7 @@ private struct BudgetEditor: View {
                     Text("One amount from \(Day.title(Day.string(model.budgetPeriod(for: cardID).cycle.start))) through the last day. Use it for a trip or a goal.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Toggle("Apply from next month", isOn: $nextCycle)
+                    Toggle("Repeat every month", isOn: $repeats)
                 }
                 Section("Categories") {
                     ForEach(model.activeCategories(for: cardID)) { category in
@@ -156,18 +158,27 @@ private struct BudgetEditor: View {
                 }
             }.formStyle(.grouped)
             if let error { Text(error).foregroundStyle(.red) }
-            HStack { Spacer(); Button("Cancel", role: .cancel, action: close); Button("Save") { save() }.buttonStyle(.borderedProminent).keyboardShortcut(.return, modifiers: .command) }
+            HStack { Spacer(); Button("Cancel", role: .cancel, action: close); Button("Save") {
+                // Changing a repeating budget asks whether it's for this month only or this month and later.
+                if !isTotal && repeats && model.budgetPeriod(for: cardID).budget.totalUntilDay == nil && model.budgetCardInput(cardID)?.budgets.isEmpty == false {
+                    askingScope = true
+                } else { save() }
+            }.buttonStyle(.borderedProminent).keyboardShortcut(.return, modifiers: .command) }
         }.padding(24).frame(width: 500, height: 570)
+        .confirmationDialog("Apply this budget to", isPresented: $askingScope) {
+            Button("Just \(Date.now.formatted(.dateTime.month(.wide)))") { save(repeating: false) }
+            Button("\(Date.now.formatted(.dateTime.month(.wide))) and later months") { save() }
+        }
     }
-    private func save() {
+    private func save(repeating: Bool? = nil) {
         do {
             let total = try Money.parse(amount)
             let categories = try categoryAmounts.compactMap { id, value -> CategoryBudget? in
                 guard !value.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
                 return CategoryBudget(categoryID: id, limit: try Money.parse(value))
             }
-            try model.saveBudget(overallLimit: total, categoryLimits: categories,
-                                 applyToNextCycle: !isTotal && nextCycle, totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
+            try model.saveBudget(overallLimit: total, categoryLimits: categories, repeats: repeating ?? repeats,
+                                 totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
             close()
         } catch { self.error = error.localizedDescription }
     }

@@ -58,21 +58,46 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(model.settings.startDay, 1)
     }
 
-    func testBudgetSaveStartsThisMonthOrNext() throws {
+    func testBudgetSaveRepeatsOrCoversOneMonth() throws {
         let store = TestExpenseStore()
         let service = try ExpenseService(store: store)
-        let state = TestState()
-        let model = AppModel(expenses: service, state: state)
+        let model = AppModel(expenses: service, state: TestState())
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let date = try XCTUnwrap(Day.date("2026-09-08", calendar: calendar))
-        try model.saveBudget(overallLimit: 500_000_000, categoryLimits: [], applyToNextCycle: false, date: date, calendar: calendar)
-        try model.saveBudget(overallLimit: 600_000_000, categoryLimits: [], applyToNextCycle: true, date: date, calendar: calendar)
-        XCTAssertEqual(store.budgetValues.first { $0.effectiveDay == "2026-09-01" }?.overallLimit, 500_000_000)
-        let next = try XCTUnwrap(store.budgetValues.first { $0.effectiveDay == "2026-10-01" })
-        XCTAssertEqual(next.overallLimit, 600_000_000)
-        XCTAssertNil(next.transitionEndDay)
-        XCTAssertEqual(model.settings.budget, 600_000_000)
+        func day(_ value: String) throws -> Date { try XCTUnwrap(Day.date(value, calendar: calendar)) }
+        func limit(on value: String) throws -> Int64? { BudgetHistory.active(on: try day(value), budgets: store.budgetValues, calendar: calendar)?.overallLimit }
+
+        try model.saveBudget(overallLimit: 500, categoryLimits: [], month: try day("2026-09-08"), calendar: calendar)
+        try model.saveBudget(overallLimit: 900, categoryLimits: [], month: try day("2026-12-03"), calendar: calendar)
+        XCTAssertEqual(try limit(on: "2026-11-15"), 500)
+        XCTAssertEqual(try limit(on: "2027-01-15"), 900)
+        XCTAssertEqual(model.settings.budget, 900)
+
+        // Just October: September's budget applies again in November.
+        try model.saveBudget(overallLimit: 700, categoryLimits: [], month: try day("2026-10-20"), repeats: false, calendar: calendar)
+        XCTAssertEqual(try limit(on: "2026-10-31"), 700)
+        XCTAssertEqual(try limit(on: "2026-11-01"), 500)
+        XCTAssertTrue(try XCTUnwrap(store.budgetValues.first { $0.effectiveDay == "2026-10-01" }).isOneMonth)
+        XCTAssertFalse(try XCTUnwrap(store.budgetValues.first { $0.effectiveDay == "2026-10-01" }).isGoal)
+        XCTAssertEqual(model.settings.budget, 900, "a one-month budget leaves the fallback alone")
+
+        // From November on: the December change goes, so November's amount carries forward.
+        try model.saveBudget(overallLimit: 650, categoryLimits: [], month: try day("2026-11-02"), calendar: calendar)
+        XCTAssertEqual(try limit(on: "2027-02-01"), 650)
+        XCTAssertNil(store.budgetValues.first { $0.effectiveDay == "2026-12-01" })
+    }
+
+    func testOneMonthBudgetWhereTheRepeatingOneStartsMovesItToTheNextMonth() throws {
+        let store = TestExpenseStore()
+        let model = AppModel(expenses: try ExpenseService(store: store), state: TestState())
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let september = try XCTUnwrap(Day.date("2026-09-08", calendar: calendar))
+        try model.saveBudget(overallLimit: 500, categoryLimits: [], month: september, calendar: calendar)
+        try model.saveBudget(overallLimit: 800, categoryLimits: [], month: september, repeats: false, calendar: calendar)
+        XCTAssertEqual(BudgetHistory.active(on: september, budgets: store.budgetValues, calendar: calendar)?.overallLimit, 800)
+        let october = try XCTUnwrap(Day.date("2026-10-08", calendar: calendar))
+        XCTAssertEqual(BudgetHistory.active(on: october, budgets: store.budgetValues, calendar: calendar)?.overallLimit, 500)
     }
 
     func testExistingStateEncodingReopensAndCorruptionIsPreserved() throws {
@@ -256,6 +281,7 @@ private final class TestExpenseStore: ExpenseStore {
     func billOccurrences(in cardID: UUID) throws -> [BillOccurrence] { try billOccurrences() }
     func save(_ expense: Expense, in cardID: UUID) throws { try save(expense) }
     func save(_ budget: BudgetVersion, in cardID: UUID) throws { try save(budget) }
+    func deleteBudget(_ id: UUID, in cardID: UUID) throws { budgetValues.removeAll { $0.id == id } }
     func saveBill(_ bill: Bill, in cardID: UUID) throws { try saveBill(bill) }
     func deleteBill(_ id: UUID, in cardID: UUID) throws { try deleteBill(id) }
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws { try saveOccurrence(occurrence) }

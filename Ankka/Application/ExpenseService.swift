@@ -21,6 +21,7 @@ protocol ExpenseStore {
     func saveExpenses(_ batch: [Expense], in cardID: UUID) throws
     func save(_ expense: Expense, in cardID: UUID) throws
     func save(_ budget: BudgetVersion, in cardID: UUID) throws
+    func deleteBudget(_ id: UUID, in cardID: UUID) throws
     func saveBill(_ bill: Bill, in cardID: UUID) throws
     func deleteBill(_ id: UUID, in cardID: UUID) throws
     func saveOccurrence(_ occurrence: BillOccurrence, in cardID: UUID) throws
@@ -526,6 +527,14 @@ final class ExpenseService {
             budgets.append(budget)
             budgets.sort { $0.effectiveDay < $1.effectiveDay }
         }
+        didCommit()
+    }
+
+    func deleteBudget(_ id: UUID, in cardID: UUID) throws {
+        guard !isBlocked else { throw BackupError.recoveryRequired }
+        try checkWritable(cardID)
+        try store.deleteBudget(id, in: cardID)
+        if transactionDepth == 0, cardID == activeCardID { budgets.removeAll { $0.id == id } }
         didCommit()
     }
 

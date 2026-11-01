@@ -10,7 +10,6 @@ struct BudgetsView: View {
     @State private var dismissedNudges: Set<UUID> = []
     /// A finished cycle picked from the Cycles chart; nil is the running one.
     @State private var viewing: Cycle?
-    @State private var editingStack: UUID?
 
     init(model: AppModel, subject: BudgetSubject? = nil) {
         self.model = model
@@ -36,6 +35,18 @@ struct BudgetsView: View {
         case .stack(let id): .stack(id: id, name: subjectName)
         case .all: .allCards
         }
+    }
+
+    /// The editor opens on `card`, or the page's card, or the active card when it's among the page's cards.
+    private func editTarget(card: UUID? = nil) -> BudgetEditTarget {
+        let choices: [UUID] = switch subject {
+        case .card: model.unhiddenCards.map(\.id)
+        case .stack(let id): model.cards(in: .stack(id: id, name: "")).map(\.id)
+        case .all: model.unhiddenCards.map(\.id)
+        }
+        let pageCard: UUID? = if case .card(let id) = subject { id } else { nil }
+        let id = card ?? pageCard ?? (choices.contains(model.activeCardID) ? model.activeCardID : choices.first ?? model.activeCardID)
+        return BudgetEditTarget(id: id, month: viewing?.start ?? .now, choices: choices.isEmpty ? [id] : choices)
     }
 
     private var subjectName: String {
@@ -79,7 +90,7 @@ struct BudgetsView: View {
                     if isStack {
                         Text(subject == .all
                              ? "All cards adds up every visible card's monthly budget and spending, by calendar month."
-                             : "A stack budget is its cap, or the sum of its cards' monthly budgets. Set the cap with the settings button.")
+                             : "A stack budget is its cap, or the sum of its cards' monthly budgets. Set the cap under Cards & Stacks.")
                             .font(.footnote).foregroundStyle(.secondary).padding(.horizontal, 4)
                     }
                 } else {
@@ -89,28 +100,18 @@ struct BudgetsView: View {
             .padding(.horizontal, 20).padding(.top, 4).padding(.bottom, 32)
         }.background(MC.paper)
             .navigationTitle("Budgets").navigationBarTitleDisplayMode(.inline)
-            .toolbar(removing: .title) // the card menu names the page
             .toolbar {
-                // Leading, not principal: a centred title moves aside when the name is long, so its place would depend on the card.
-                ToolbarItem(placement: .topBarLeading) { subjectMenu }.sharedBackgroundVisibility(.hidden)
-                if subject != .all { // All cards has nothing of its own to set
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Budget settings", systemImage: "slider.horizontal.3") {
-                            switch subject {
-                            case .card(let id): editing = BudgetEditTarget(id: id)
-                            case .stack(let id): editingStack = id
-                            case .all: break
-                            }
-                        }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Edit budget", systemImage: "pencil") { editing = editTarget() }
                         .tint(.primary) // toolbar icons are black, like Home's
                         .accessibilityIdentifier("budgetSettingsButton")
-                    }
                 }
             }
             .onChange(of: subject) { viewing = nil }
-            .sheet(item: $editing) { BudgetEditor(model: model, cardID: $0.id).scrollEdgeEffectStyle(.soft, for: .all) }
-            .sheet(isPresented: Binding(get: { editingStack != nil }, set: { if !$0 { editingStack = nil } })) {
-                StackCustomizerView(model: model, stackID: editingStack) { editingStack = nil }.scrollEdgeEffectStyle(.soft, for: .all)
+            .sheet(item: $editing) { target in
+                BudgetEditor(model: model, cardID: target.id, month: target.month,
+                             cardChoices: target.choices.compactMap { id in model.cards.first { $0.id == id } })
+                    .scrollEdgeEffectStyle(.soft, for: .all)
             }
     }
 
@@ -135,11 +136,18 @@ struct BudgetsView: View {
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Color.primary.opacity(0.06), in: Capsule())
-            .padding(.leading, -10)
         }
         .tint(.primary)
         .accessibilityLabel("Period, \(status.cycle.label)")
         .accessibilityIdentifier("budgetPeriodMenu")
+    }
+
+    /// Which card or stack, and which month, side by side above the headline.
+    private func pickers(_ status: BudgetStatus, cycles: [BudgetCycleResult]) -> some View {
+        HStack(spacing: 8) {
+            subjectMenu
+            periodMenu(status, cycles: cycles)
+        }.padding(.leading, -10) // the pills' text lines up with the headline
     }
 
     /// A finished cycle: how it ended.
@@ -147,7 +155,7 @@ struct BudgetsView: View {
         let over = status.remaining < 0
         let prefix = status.approximate ? "≈ " : ""
         return VStack(alignment: .leading, spacing: 8) {
-            periodMenu(status, cycles: cycles)
+            pickers(status, cycles: cycles)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(prefix + Money.format(abs(status.remaining), code: status.currency))
                     .font(.system(size: 44, weight: .semibold)).tracking(-1).monospacedDigit()
@@ -170,7 +178,7 @@ struct BudgetsView: View {
         let prefix = status.approximate ? "≈ " : ""
         let days = daysLeft == 1 ? "last day" : "\(daysLeft) days left"
         return VStack(alignment: .leading, spacing: 8) {
-            periodMenu(status, cycles: cycles)
+            pickers(status, cycles: cycles)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(prefix + Money.format(abs(status.remaining), code: status.currency))
                     .font(.system(size: 44, weight: .semibold)).tracking(-1).monospacedDigit()
@@ -214,7 +222,7 @@ struct BudgetsView: View {
                         Text("\(line.name) is \(Money.format(line.spent - limit, code: status.currency)) over its \(Money.format(limit, code: status.currency)) limit.")
                             .font(.system(size: 14, weight: .semibold))
                         HStack(spacing: 8) {
-                            Button("Raise the limit") { editing = BudgetEditTarget(id: id) }
+                            Button("Raise the limit") { editing = editTarget(card: id) }
                                 .buttonStyle(.borderedProminent).tint(MC.red).controlSize(.small)
                             Button("Not now") { withAnimation(.smooth) { _ = dismissedNudges.insert(line.id) } }
                                 .buttonStyle(.bordered).tint(.secondary).controlSize(.small)
@@ -271,12 +279,10 @@ struct BudgetsView: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: scope.icon).font(.system(size: 11, weight: .bold))
-                Text(subjectName).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
+                Eyebrow(text: subjectName).lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold)).foregroundStyle(.secondary)
             }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 12).padding(.vertical, 6)
+            .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Color.primary.opacity(0.06), in: Capsule())
         }
         .tint(.primary)
@@ -296,7 +302,10 @@ struct BudgetsView: View {
         let lines = report.categoryPoints.filter { $0.amount > 0 }
             .map { BudgetLine(id: $0.categoryID, name: $0.categoryName, limit: nil, spent: $0.amount) }
         VStack(alignment: .leading, spacing: 8) {
-            Eyebrow(text: range.label)
+            HStack(spacing: 8) {
+                subjectMenu
+                Eyebrow(text: range.label)
+            }.padding(.leading, -10)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(Money.format(report.metrics.totalSpend, code: currency))
                     .font(.system(size: 44, weight: .semibold)).tracking(-1).monospacedDigit()
@@ -321,10 +330,8 @@ struct BudgetsView: View {
                                       : "A stack's budget comes from its cards' budgets, or a cap set under Stacks.")
                             .font(.system(size: 12.5)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
-                    if case .card(let id) = subject {
-                        Button("Set a budget") { editing = BudgetEditTarget(id: id) }
-                            .buttonStyle(.borderedProminent).tint(MC.red).controlSize(.small)
-                    }
+                    Button("Set a budget") { editing = editTarget() }
+                        .buttonStyle(.borderedProminent).tint(MC.red).controlSize(.small)
                 }
                 Spacer(minLength: 0)
             }
@@ -533,60 +540,103 @@ private struct PastCyclesChart: View {
 
 struct BudgetEditor: View {
     let model: AppModel
-    let cardID: UUID
-    private var budget: BudgetVersion { model.budgetPeriod(for: cardID).budget }
-    private var cycle: Cycle { model.budgetPeriod(for: cardID).cycle }
-    private var categories: [ExpenseCategory] { model.activeCategories(for: cardID) }
+    /// The cards the picker offers: the page's card, stack or all visible cards.
+    let cardChoices: [Card]
+    @State private var cardID: UUID
+    /// Any day in the month being edited.
+    @State private var month: Date
     @Environment(\.dismiss) private var dismiss
     @State private var amount = ""
-    @State private var applyToNextCycle = false
     @State private var categoryAmounts: [UUID: String] = [:]
     @State private var originalBudget: BudgetVersion?
     @State private var error: String?
     @State private var isTotal = false
+    @State private var repeats = true
     @State private var totalUntil = Date.now
+    @State private var askingScope = false
+
+    init(model: AppModel, cardID: UUID, month: Date = .now, cardChoices: [Card]) {
+        self.model = model
+        self.cardChoices = cardChoices
+        _cardID = State(initialValue: cardID)
+        _month = State(initialValue: Cycle.month(containing: month).start)
+    }
+
+    private var history: [BudgetVersion] { model.budgetCardInput(cardID)?.budgets ?? [] }
+    private var monthCycle: Cycle { Cycle.month(containing: month) }
+    /// The budget in effect for the month being edited, saved for it or carried over from an earlier one.
+    private var budget: BudgetVersion? { BudgetHistory.period(containing: monthCycle.start, budgets: history)?.budget }
+    private var categories: [ExpenseCategory] { model.activeCategories(for: cardID) }
+    private var currency: String { model.currency(ofCard: cardID) }
+    private var monthName: String { Self.name(of: monthCycle.start) }
+    /// Next month, this month and the eleven before it.
+    private var monthChoices: [Date] { (-1...11).map { AppModel.month(offset: $0).start } }
+    /// Earlier months that had a monthly budget for this card, newest first.
+    private var copyChoices: [(month: Date, budget: BudgetVersion)] {
+        (1...12).compactMap { back in
+            guard let start = Calendar.current.date(byAdding: .month, value: -back, to: monthCycle.start),
+                  let budget = BudgetHistory.period(containing: start, budgets: history)?.budget, !budget.isGoal else { return nil }
+            return (start, budget)
+        }
+    }
+
+    static func name(of month: Date) -> String {
+        month.formatted(Calendar.current.isDate(month, equalTo: .now, toGranularity: .year) ? .dateTime.month(.wide) : .dateTime.month(.wide).year())
+    }
 
     private func resolveInput(_ input: String, preserving previous: Int64?) throws -> Int64 {
         if let previous, input == Money.format(previous, currency: false) { return previous }
         return try Money.parse(input)
     }
-    /// A goal starts at this cycle's start, so it takes the place of a monthly budget that starts there.
-    private var replacesMonthly: Bool { budget.totalUntilDay == nil && budget.effectiveDay == Day.string(cycle.start) }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Card", selection: $cardID) {
+                        ForEach(cardChoices) { Text($0.name).tag($0.id) }
+                    }.accessibilityIdentifier("budgetEditorCard")
+                    Picker("Month", selection: $month) {
+                        ForEach(monthChoices, id: \.self) { Text(Self.name(of: $0)).tag($0) }
+                    }.accessibilityIdentifier("budgetEditorMonth")
+                }
                 Section {
                     Picker("Budget", selection: $isTotal) {
                         Text("Monthly").tag(false)
                         Text("Total until").tag(true)
                     }.pickerStyle(.segmented)
                     if isTotal {
-                        DatePicker("Last day", selection: $totalUntil, in: cycle.start..., displayedComponents: .date)
+                        DatePicker("Last day", selection: $totalUntil, in: monthCycle.start..., displayedComponents: .date)
+                    } else {
+                        Toggle("Repeat every month", isOn: $repeats).accessibilityIdentifier("budgetRepeats")
                     }
                 } footer: {
-                    Text(isTotal ? "One amount for the whole period, from \(Day.title(Day.string(cycle.start))) through the last day. Use it for a trip or a goal."
-                                    + (replacesMonthly ? " It replaces this month's budget, category limits included; the monthly total comes back when the goal ends, the category limits do not." : "")
-                                 : "The budget repeats every month.")
+                    Text(isTotal ? "One amount from \(Day.title(Day.string(monthCycle.start))) through the last day. Use it for a trip or a goal. The monthly budget applies again after it."
+                         : repeats ? "The budget carries on every month until you change it."
+                         : "For \(monthName) only. The month after, the repeating budget applies again.")
                 }
-                Section("Overall budget · \(model.currency(ofCard: cardID))") {
-                    TextField(Money.format(450_000_000, currency: false), text: $amount.groupedAmount(code: model.currency(ofCard: cardID))).keyboardType(.numberPad)
-                }
-                if !isTotal { Section {
-                    Picker("Apply change", selection: $applyToNextCycle) {
-                        Text("This month").tag(false)
-                        Text("Next month").tag(true)
+                Section {
+                    TextField(Money.format(450_000_000, currency: false), text: $amount.groupedAmount(code: currency)).keyboardType(.numberPad)
+                    if !copyChoices.isEmpty {
+                        Menu {
+                            ForEach(copyChoices, id: \.month) { choice in
+                                Button { fill(from: choice.budget) } label: {
+                                    Text(Self.name(of: choice.month))
+                                    Text(Money.format(choice.budget.overallLimit, code: currency))
+                                }
+                            }
+                        } label: {
+                            Label("Copy from a previous month", systemImage: "doc.on.doc")
+                        }.accessibilityIdentifier("budgetCopyFrom")
                     }
-                } footer: {
-                    Text("Past months keep their saved budget.")
-                } }
+                } header: { Text("Overall budget · \(currency)") }
                 Section {
                     ForEach(categories) { category in
                         LabeledContent(category.name) {
                             TextField("No limit", text: Binding(
                                 get: { categoryAmounts[category.id] ?? "" },
                                 set: { categoryAmounts[category.id] = $0 }
-                            ).groupedAmount(code: model.currency(ofCard: cardID)))
+                            ).groupedAmount(code: currency))
                             .keyboardType(.numberPad).multilineTextAlignment(.trailing)
                             .accessibilityLabel("\(category.name) limit")
                         }
@@ -596,54 +646,80 @@ struct BudgetEditor: View {
                     Text("Category limits are independent from the overall budget. Leave a category blank for no limit.")
                 }
                 if let error { Section { Text(error).foregroundStyle(MC.red) } }
-                if let input = model.budgetCardInput(cardID), !input.budgets.isEmpty {
+                if !history.isEmpty {
                     Section {
-                        ForEach(input.budgets.reversed()) { budget in
+                        ForEach(history.reversed()) { budget in
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("From \(Day.title(budget.effectiveDay))")
-                                    Text(budget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? "Monthly")
+                                    Text(budget.isGoal ? budget.totalUntilDay.map { "Total until \(Day.title($0))" } ?? ""
+                                         : budget.isOneMonth ? "That month only" : "Monthly")
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text(Money.format(budget.overallLimit, code: input.currency)).font(.subheadline.monospacedDigit())
+                                Text(Money.format(budget.overallLimit, code: currency)).font(.subheadline.monospacedDigit())
                             }
                         }
                     } header: { Text("History")
                     } footer: {
-                        Text("Each change starts on a date, so past months keep the budget they had.")
+                        Text("Each change starts on a month, so past months keep the budget they had.")
                     }
                 }
-            }.navigationTitle("Budget settings").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("Edit budget").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
-                            do {
-                                let limits = try categories.compactMap { category -> CategoryBudget? in
-                                    let value = categoryAmounts[category.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                                    guard !value.isEmpty else { return nil }
-                                    return CategoryBudget(categoryID: category.id, limit: try resolveInput(value, preserving: originalBudget?.limit(for: category.id)))
-                                }
-                                try model.saveBudget(overallLimit: try resolveInput(amount, preserving: originalBudget?.overallLimit),
-                                                     categoryLimits: limits,
-                                                     applyToNextCycle: !isTotal && applyToNextCycle,
-                                                     totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
-                                dismiss()
-                            } catch { self.error = error.localizedDescription }
-                        }
+                            // Changing a repeating budget: this month only, or this month and later?
+                            if !isTotal && repeats, let budget, budget.totalUntilDay == nil { askingScope = true } else { save(repeating: repeats) }
+                        }.accessibilityIdentifier("budgetSave")
                     }
                 }
-                .onAppear {
-                    originalBudget = budget
-                    amount = Money.format(budget.overallLimit, currency: false)
-                    isTotal = budget.totalUntilDay != nil
-                    totalUntil = budget.totalUntilDay.flatMap { Day.date($0) }
-                        ?? Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now
-                    categoryAmounts = Dictionary(uniqueKeysWithValues: categories.map { category in
-                        (category.id, budget.limit(for: category.id).map { Money.format($0, currency: false) } ?? "")
-                    })
+                .confirmationDialog("Apply this budget to", isPresented: $askingScope, titleVisibility: .visible) {
+                    Button("Just \(monthName)") { save(repeating: false) }
+                    Button("\(monthName) and later months") { save(repeating: true) }
+                } message: {
+                    Text("\(monthName) and later months also replaces any budget you set for a later month.")
                 }
+                .onAppear(perform: load)
+                .onChange(of: cardID) { load() }
+                .onChange(of: month) { load() }
         }
+    }
+
+    private func load() {
+        error = nil
+        let budget = budget
+        originalBudget = budget
+        amount = budget.map { Money.format($0.overallLimit, currency: false) } ?? ""
+        isTotal = budget?.isGoal ?? false
+        repeats = !(budget?.isOneMonth ?? false)
+        totalUntil = budget?.totalUntilDay.flatMap { Day.date($0) }
+            ?? Calendar.current.date(byAdding: .day, value: 30, to: monthCycle.start) ?? monthCycle.start
+        categoryAmounts = Dictionary(uniqueKeysWithValues: categories.map { category in
+            (category.id, budget?.limit(for: category.id).map { Money.format($0, currency: false) } ?? "")
+        })
+    }
+
+    /// Fills the amounts from an earlier month's budget; nothing is saved until Save.
+    private func fill(from source: BudgetVersion) {
+        originalBudget = source
+        amount = Money.format(source.overallLimit, currency: false)
+        categoryAmounts = Dictionary(uniqueKeysWithValues: categories.map { category in
+            (category.id, source.limit(for: category.id).map { Money.format($0, currency: false) } ?? "")
+        })
+    }
+
+    private func save(repeating: Bool) {
+        do {
+            let limits = try categories.compactMap { category -> CategoryBudget? in
+                let value = categoryAmounts[category.id]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard !value.isEmpty else { return nil }
+                return CategoryBudget(categoryID: category.id, limit: try resolveInput(value, preserving: originalBudget?.limit(for: category.id)))
+            }
+            try model.saveBudget(overallLimit: try resolveInput(amount, preserving: originalBudget?.overallLimit), categoryLimits: limits,
+                                 month: monthCycle.start, repeats: repeating, totalUntil: isTotal ? totalUntil : nil, cardID: cardID)
+            dismiss()
+        } catch { self.error = error.localizedDescription }
     }
 }

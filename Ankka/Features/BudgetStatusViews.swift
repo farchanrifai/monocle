@@ -6,6 +6,10 @@ import Charts
 /// Names a card whose budget is being edited, for `.sheet(item:)`.
 struct BudgetEditTarget: Identifiable {
     let id: UUID
+    /// Any day in the month to edit.
+    var month: Date = .now
+    /// The cards the editor's picker offers.
+    var choices: [UUID] = []
 }
 
 /// Rows of spent against limit. Rows without a limit show only the spend, as a share of the biggest row.

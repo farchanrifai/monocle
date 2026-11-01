@@ -623,6 +623,16 @@ struct BudgetVersion: Identifiable, Codable, Equatable, Sendable {
         categoryLimits.first { $0.categoryID == categoryID }?.limit
     }
 
+    /// A monthly budget that doesn't repeat, stored as a "Total until" covering exactly its calendar month.
+    var isOneMonth: Bool {
+        guard let totalUntilDay, let start = Day.date(effectiveDay) else { return false }
+        let month = Cycle.month(containing: start)
+        let last = month.calendar.date(byAdding: .day, value: -1, to: month.end) ?? month.end
+        return Day.string(month.start) == effectiveDay && Day.string(last) == totalUntilDay
+    }
+    /// A "Total until" budget for a trip or goal (not a single month).
+    var isGoal: Bool { totalUntilDay != nil && !isOneMonth }
+
     static func == (lhs: BudgetVersion, rhs: BudgetVersion) -> Bool {
         lhs.id == rhs.id &&
         lhs.effectiveDay == rhs.effectiveDay &&

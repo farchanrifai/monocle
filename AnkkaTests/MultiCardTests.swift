@@ -481,10 +481,10 @@ final class MultiCardTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
-        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [])
         let activeBefore = model.activeBudget, settingsBefore = model.settings.budget
 
-        try model.saveBudget(overallLimit: 7_000_000_00, categoryLimits: [], applyToNextCycle: false, cardID: other.id)
+        try model.saveBudget(overallLimit: 7_000_000_00, categoryLimits: [], cardID: other.id)
 
         XCTAssertEqual(model.budgetPeriod(for: other.id).budget.overallLimit, 7_000_000_00)
         XCTAssertEqual(model.activeBudget, activeBefore)
@@ -516,17 +516,20 @@ final class MultiCardTests: XCTestCase {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
-        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [])
         let lastDay = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 45, to: .now))
-        try model.saveBudget(overallLimit: 25_000_000_00, categoryLimits: [], applyToNextCycle: false, totalUntil: lastDay)
+        try model.saveBudget(overallLimit: 25_000_000_00, categoryLimits: [], totalUntil: lastDay)
         XCTAssertEqual(model.activeBudget.totalUntilDay, Day.string(lastDay, calendar: .current))
         XCTAssertEqual(model.activeBudget.overallLimit, 25_000_000_00)
         XCTAssertEqual(Day.string(model.cycle.end), Day.string(try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: lastDay))))
-        XCTAssertEqual(model.budgetHistory.count, 1)
-        try model.saveBudget(overallLimit: 4_000_000_00, categoryLimits: [], applyToNextCycle: false)
+        // The monthly budget the goal replaced moves to the month after the goal, so it applies again then.
+        XCTAssertEqual(model.budgetHistory.count, 2)
+        XCTAssertEqual(model.budgetHistory.last?.overallLimit, 3_000_000_00)
+        XCTAssertEqual(model.budgetHistory.last?.effectiveDay, Day.string(Cycle.month(containing: lastDay).end))
+        try model.saveBudget(overallLimit: 4_000_000_00, categoryLimits: [])
         XCTAssertNil(model.activeBudget.totalUntilDay)
         XCTAssertEqual(model.budgetHistory.count, 1)
-        XCTAssertThrowsError(try model.saveBudget(overallLimit: 1_00, categoryLimits: [], applyToNextCycle: false,
+        XCTAssertThrowsError(try model.saveBudget(overallLimit: 1_00, categoryLimits: [],
                                                   totalUntil: XCTUnwrap(Calendar.current.date(byAdding: .day, value: -60, to: .now))))
     }
 

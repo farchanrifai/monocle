@@ -62,7 +62,7 @@ final class CurrencyTests: XCTestCase {
         let (model, _, dir) = try makeModel()
         defer { try? FileManager.default.removeItem(at: dir) }
         let cardID = model.activeCardID
-        try model.saveBudget(overallLimit: 2_000_000_00, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 2_000_000_00, categoryLimits: [])
 
         // Paid ¥1,000 at Rp100 on a rupiah card: the row shows yen, the card Rp100,000, and the app offers JPY.
         model.draft = ExpenseDraft(); model.draft.cardID = cardID
@@ -95,7 +95,7 @@ final class CurrencyTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: dir) }
         let cardID = model.activeCardID
         let category = try XCTUnwrap(model.activeCategories.first?.id)
-        try model.saveBudget(overallLimit: 2_000_000_00, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 2_000_000_00, categoryLimits: [])
         try await model.setCardCurrencies(budget: "JPY", spending: nil, for: cardID)
         // ¥1,000 typed at a manual Rp120 (today's cached rate is Rp100): the ledger keeps Rp120,000.
         let yen = Expense(amount: 12_000_000, day: Day.string(.now), note: "Ramen", splits: [.init(categoryID: category, amount: 12_000_000)], cardID: cardID,
@@ -113,7 +113,7 @@ final class CurrencyTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: dir) }
         let cardID = model.activeCardID
         let category = try XCTUnwrap(model.activeCategories.first?.id)
-        try model.saveBudget(overallLimit: 5_000_000_00, categoryLimits: [], applyToNextCycle: false)
+        try model.saveBudget(overallLimit: 5_000_000_00, categoryLimits: [])
         let stack = try model.createStack(name: "Everyday", cardIDs: [cardID])
         var capped = stack; capped.capLimit = 3_000_000_00; try model.updateStack(capped)
         // Rp50,000 paid in rupiah, and ¥1,000 typed at a manual Rp120.

@@ -592,6 +592,14 @@ final class ExpenseRepository: ExpenseStore {
         try save(budget, in: budget.cardID ?? defaultCardID())
     }
 
+    func deleteBudget(_ id: UUID, in cardID: UUID) throws {
+        let card = try cardRow(for: cardID)
+        do {
+            if let row = try findBudget("BudgetRecord", id: id, in: card) { context.delete(row) }
+            try commitIfNeeded()
+        } catch { context.rollback(); throw error }
+    }
+
     func saveCategory(_ category: ExpenseCategory, in cardID: UUID) throws {
         categoryCache.removeValue(forKey: cardID)
         let card = try cardRow(for: cardID)

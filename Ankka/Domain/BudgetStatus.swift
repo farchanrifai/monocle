@@ -82,7 +82,7 @@ enum BudgetReport {
         return BudgetStatus(
             subject: .card(input.card.id), currency: input.currency, cycle: period.cycle,
             limit: period.budget.overallLimit, spent: spent,
-            isGoal: period.budget.totalUntilDay != nil,
+            isGoal: period.budget.isGoal,
             pace: AnalyticsEngine.paceStatus(spent: spent, budget: period.budget.overallLimit, daysElapsed: elapsed, totalDays: total),
             projected: try? Money.checkedScale(spent, numerator: total, denominator: elapsed),
             lines: categoryLines(input, budget: period.budget, expenses: inCycle), approximate: false)
@@ -95,7 +95,7 @@ enum BudgetReport {
         while results.count < count, let period = BudgetHistory.period(containing: date, budgets: input.budgets, calendar: calendar) {
             let spent = Money.sum(input.expenses.filter { period.cycle.contains($0) }.map(input.amount))
             results.append(BudgetCycleResult(cycle: period.cycle, limit: period.budget.overallLimit, spent: spent,
-                                             isCurrent: results.isEmpty, isGoal: period.budget.totalUntilDay != nil))
+                                             isCurrent: results.isEmpty, isGoal: period.budget.isGoal))
             guard let previous = period.cycle.calendar.date(byAdding: .day, value: -1, to: period.cycle.start) else { break }
             date = previous
         }
@@ -145,7 +145,7 @@ enum BudgetReport {
             let cardSpent = Money.sum(inCycle.map(\.amount))
             spent += cardSpent
             var cardLimit: Int64?
-            if let version = BudgetHistory.active(on: asOf, budgets: card.budgets, calendar: calendar), version.totalUntilDay == nil {
+            if let version = BudgetHistory.active(on: asOf, budgets: card.budgets, calendar: calendar), !version.isGoal {
                 if card.currency != input.reportingCurrency { approximate = true }
                 let limit = card.currency == input.reportingCurrency ? version.overallLimit
                     : input.convert(version.overallLimit, card.currency, input.reportingCurrency) ?? version.overallLimit
