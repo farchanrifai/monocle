@@ -36,17 +36,15 @@ struct MacExpenseForm: View {
                         .focused($focus, equals: .amount)
                         .accessibilityLabel("Amount")
                         .accessibilityIdentifier("expenseAmount")
-                    if model.isEntryFieldShown(.currency) || isForeign {
-                        PopUpPicker(title: "Currency", options: currencyChoices.map { .init(id: $0, name: $0, symbol: nil) },
-                                    selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
-                                        guard let code else { return }
-                                        model.draft.currency = code == model.reportingCurrency ? nil : code
-                                        model.draft.rate = ""; model.draft.rateSource = nil
-                                    }))
-                            .frame(width: 92) // a real popup so Tab reaches it; a SwiftUI Picker is skipped without Keyboard Navigation
-                    }
+                    PopUpPicker(title: "Currency", options: currencyChoices.map { .init(id: $0, name: $0, symbol: nil) },
+                                selection: Binding(get: { model.draft.currency ?? model.reportingCurrency }, set: { code in
+                                    guard let code else { return }
+                                    model.draft.currency = code == model.reportingCurrency ? nil : code
+                                    model.draft.rate = ""; model.draft.rateSource = nil
+                                }))
+                        .frame(width: 92) // a real popup so Tab reaches it; a SwiftUI Picker is skipped without Keyboard Navigation
                 }
-                if isForeign { // a hidden currency field still shows when the expense already has one
+                if isForeign {
                     HStack(spacing: 6) {
                         // The answer on the left, the rate that produced it (editable) on the right.
                         if let equivalent = model.draft.reportingEquivalent(reporting: model.reportingCurrency) {

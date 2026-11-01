@@ -150,7 +150,7 @@ struct EntryFormSettingsView: View {
     var body: some View {
         Form {
             Section {
-                ForEach(EntryFormField.allCases, id: \.self) { field in
+                ForEach(EntryFormField.allCases.filter { $0 != .currency }, id: \.self) { field in // the currency pill is always shown
                     Toggle(field.title, isOn: Binding(get: { model.isEntryFieldShown(field) },
                                                       set: { model.setEntryField(field, shown: $0) }))
                         .accessibilityIdentifier("entryField-\(field.rawValue)")
