@@ -65,6 +65,15 @@ struct MacRootView: View {
                     var frame = window.frame; frame.size.width = width; window.setFrame(frame, display: true)
                 }
             }
+            // Marketing captures (-DemoData YES): a 1440×900 window; -DemoQuickChat "<question>" asks it in Quick Chat.
+            if DemoData.isEnabled {
+                DispatchQueue.main.async {
+                    NSApp.windows.first { $0.identifier?.rawValue.hasPrefix("main") == true }?.setFrame(NSRect(x: 60, y: 60, width: 1440, height: 900), display: true)
+                    guard let question = UserDefaults.standard.string(forKey: "DemoQuickChat") else { return }
+                    state.showQuickChat()
+                    Task { await state.model.chat.send(question, model: state.model, scope: .allCards) }
+                }
+            }
         }
         #endif
         .background(MacTheme.paper)

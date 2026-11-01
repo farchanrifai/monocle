@@ -42,7 +42,11 @@ final class AppEnvironment {
                 }
             }
             #endif
+            #if DEBUG
+            let expenses = try ExpenseService(store: repository, notifications: DemoData.isEnabled ? DemoData.notifications : .shared)
+            #else
             let expenses = try ExpenseService(store: repository)
+            #endif
             expenses.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             self.expenses = expenses
             let backups = BackupService(directory: directory, repository: repository, state: state, expenses: expenses)
@@ -61,6 +65,10 @@ final class AppEnvironment {
             #if DEBUG
             // UI runs see every feature unless they test the plan (ANKKA_TEST_PLAN=1, with -ankkaPro YES/NO).
             if directory.lastPathComponent.hasPrefix("ankka-ui-test-") { usesPlan = ProcessInfo.processInfo.environment["ANKKA_TEST_PLAN"] == "1" }
+            if DemoData.isEnabled { // every feature, and widgets show Pro content
+                usesPlan = false
+                UserDefaults(suiteName: ProStore.appGroupID)?.set(true, forKey: ProStore.cacheKey)
+            }
             #endif
             if usesPlan { model.pro = ProStore() }
             #endif
@@ -81,6 +89,15 @@ final class AppEnvironment {
                 try model.restoreWorkspaceBackup(DemoWorkspace.make())
                 try Data("1".utf8).write(to: demoMarker, options: .atomic)
             }
+            // -DemoData YES or the Demo build: marketing data, seeded once into its own folder (see DemoData).
+            let demoDataMarker = directory.appendingPathComponent("demo-data-seeded")
+            if DemoData.isEnabled, !FileManager.default.fileExists(atPath: demoDataMarker.path) {
+                try model.restoreWorkspaceBackup(DemoData.make())
+                try Data("1".utf8).write(to: demoDataMarker, options: .atomic)
+                if let everyday = model.orderedCards.last { model.selectCard(everyday.id) } // Everyday, the open card
+                model.selectedCardID = nil // Home opens on the card deck
+                model.showOnboarding = false
+            }
             #endif
         } catch {
             expenses = nil
@@ -89,6 +106,9 @@ final class AppEnvironment {
     }
 
     private static func storageDirectory() throws -> URL {
+        #if DEBUG
+        if DemoData.isEnabled { return try DemoData.directory() }
+        #endif
         let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         #if os(macOS)
         var folder = "ankka-mac"

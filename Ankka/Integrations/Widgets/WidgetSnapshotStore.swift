@@ -3,7 +3,11 @@ import WidgetKit
 import OSLog
 
 public enum WidgetSnapshotStore {
+    #if ANKKA_DEMO_BUILD
+    public static let appGroupID = "group.com.farchan.ankka.demo" // the Demo build never touches the real app's group
+    #else
     public static let appGroupID = "group.com.farchan.ankka"
+    #endif
     public static let snapshotFileName = "widget_snapshot.json"
     private static let logger = Logger(subsystem: "com.farchan.ankka", category: "WidgetSnapshot")
 

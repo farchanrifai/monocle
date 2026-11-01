@@ -16,7 +16,7 @@ final class ProStore {
     @ObservationIgnored private let defaults: UserDefaults
 
     /// Starts from the last known state so launch doesn't flash Free, then asks StoreKit.
-    init(defaults: UserDefaults = UserDefaults(suiteName: "group.com.farchan.ankka") ?? .standard, listen: Bool = true) {
+    init(defaults: UserDefaults = UserDefaults(suiteName: ProStore.appGroupID) ?? .standard, listen: Bool = true) {
         self.defaults = defaults
         isPro = defaults.bool(forKey: Self.cacheKey)
         guard listen else { return }
@@ -31,6 +31,11 @@ final class ProStore {
 
     /// The app group key widgets read to show Pro content.
     static let cacheKey = "isPro"
+    #if ANKKA_DEMO_BUILD
+    static let appGroupID = "group.com.farchan.ankka.demo" // the Demo build never touches the real app's group
+    #else
+    static let appGroupID = "group.com.farchan.ankka"
+    #endif
 
     func refresh() async {
         var active = false
