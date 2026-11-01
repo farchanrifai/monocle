@@ -312,8 +312,10 @@ struct MentionChipRenderer: TextRenderer {
     }
 }
 
-/// The composer's text field with @ and # mentions in colour. SwiftUI's TextField can't colour part of its text, so the
-/// field's own text is clear and a Text with the same font and width is drawn over it; the caret and selection stay native.
+/// The composer's text field with @ and # mentions in colour. SwiftUI's TextField can't colour part of its text, so while
+/// the text has a mention the field's own text is clear and a Text with the same font and width is drawn over it; the caret
+/// and selection stay native. Without a mention the field shows its own text: the copy wraps a long line slightly differently
+/// and would flicker between the two layouts.
 struct MentionTextField: View {
     let prompt: String
     @Binding var text: String
@@ -321,16 +323,19 @@ struct MentionTextField: View {
     var identifier = "chatInput"
 
     var body: some View {
+        let styled = !ChatMentionList.mentionRanges(text, names: names, typing: true).isEmpty
         TextField(prompt, text: $text, axis: .vertical)
-            .foregroundStyle(.clear)
+            .foregroundStyle(styled ? AnyShapeStyle(.clear) : AnyShapeStyle(.primary))
             .accessibilityIdentifier(identifier)
             .overlay(alignment: .topLeading) {
-                ChatMentionList.styled(text, names: names, color: .white, bold: false, typing: true)
-                    .textRenderer(MentionChipRenderer(chip: MC.red.opacity(0.75), outset: 2))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transaction { $0.animation = nil } // the typed text mirrors the field exactly, never mid-transition
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                if styled {
+                    ChatMentionList.styled(text, names: names, color: .white, bold: false, typing: true)
+                        .textRenderer(MentionChipRenderer(chip: MC.red.opacity(0.75), outset: 2))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transaction { $0.animation = nil } // the typed text mirrors the field exactly, never mid-transition
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
             }
     }
 }
