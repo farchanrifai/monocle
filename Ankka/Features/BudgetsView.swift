@@ -568,6 +568,8 @@ struct BudgetEditor: View {
     private var budget: BudgetVersion? { BudgetHistory.period(containing: monthCycle.start, budgets: history)?.budget }
     private var categories: [ExpenseCategory] { model.activeCategories(for: cardID) }
     private var currency: String { model.currency(ofCard: cardID) }
+    /// Cents for dollars and euros; rupiah and yen are whole.
+    private var keyboard: UIKeyboardType { Money.fractionDigits(currency) > 0 ? .decimalPad : .numberPad }
     private var monthName: String { Self.name(of: monthCycle.start) }
     /// Next month, this month and the eleven before it.
     private var monthChoices: [Date] { (-1...11).map { AppModel.month(offset: $0).start } }
@@ -586,7 +588,7 @@ struct BudgetEditor: View {
 
     private func resolveInput(_ input: String, preserving previous: Int64?) throws -> Int64 {
         if let previous, input == Money.format(previous, currency: false) { return previous }
-        return try Money.parse(input)
+        return try Money.parse(input, code: currency)
     }
 
     var body: some View {
@@ -616,7 +618,7 @@ struct BudgetEditor: View {
                          : "For \(monthName) only. The month after, the repeating budget applies again.")
                 }
                 Section {
-                    TextField(Money.format(450_000_000, currency: false), text: $amount.groupedAmount(code: currency)).keyboardType(.numberPad)
+                    TextField("Amount", text: $amount.groupedAmount(code: currency)).keyboardType(keyboard)
                     if !copyChoices.isEmpty {
                         Menu {
                             ForEach(copyChoices, id: \.month) { choice in
@@ -637,7 +639,7 @@ struct BudgetEditor: View {
                                 get: { categoryAmounts[category.id] ?? "" },
                                 set: { categoryAmounts[category.id] = $0 }
                             ).groupedAmount(code: currency))
-                            .keyboardType(.numberPad).multilineTextAlignment(.trailing)
+                            .keyboardType(keyboard).multilineTextAlignment(.trailing)
                             .accessibilityLabel("\(category.name) limit")
                         }
                     }

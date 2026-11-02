@@ -33,7 +33,7 @@ struct SpendingActivityWidget: Widget {
 
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(WMC.formatIDR(context.state.currentSpent))
+                        Text(WMC.formatIDR(context.state.currentSpent)).privacySensitive()
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(WMC.red)
                         Text("\(context.state.itemCount) \(context.state.itemCount == 1 ? "item" : "items")")
@@ -49,9 +49,9 @@ struct SpendingActivityWidget: Widget {
                             ProgressView(value: ratio)
                                 .tint(ratio > 0.9 ? WMC.red : .primary)
                             HStack {
-                                Text("Budget: \(WMC.compactIDR(limit))")
+                                Text("Budget: \(WMC.compactIDR(limit))").privacySensitive()
                                 Spacer()
-                                Text("\(WMC.compactIDR(max(0, limit - context.state.currentSpent))) left")
+                                Text("\(WMC.compactIDR(max(0, limit - context.state.currentSpent))) left").privacySensitive()
                             }
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -87,11 +87,11 @@ struct SpendingActivityWidget: Widget {
                     .font(.caption2)
                     .foregroundStyle(WMC.red)
             } compactTrailing: {
-                Text(WMC.compactIDR(context.state.currentSpent))
+                Text(WMC.compactIDR(context.state.currentSpent)).privacySensitive()
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(WMC.red)
             } minimal: {
-                Text(WMC.compactIDR(context.state.currentSpent))
+                Text(WMC.compactIDR(context.state.currentSpent)).privacySensitive()
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(WMC.red)
             }
@@ -132,7 +132,7 @@ private struct LockScreenLiveActivityView: View {
                     Text("SESSION SPENT")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(WMC.formatIDR(context.state.currentSpent))
+                    Text(WMC.formatIDR(context.state.currentSpent)).privacySensitive()
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(WMC.red)
                 }
@@ -143,7 +143,7 @@ private struct LockScreenLiveActivityView: View {
                     Text("\(context.state.itemCount) \(context.state.itemCount == 1 ? "expense" : "expenses")")
                         .font(.caption.weight(.medium))
                     if let limit = context.state.sessionBudgetLimit {
-                        Text("\(WMC.compactIDR(max(0, limit - context.state.currentSpent))) remaining")
+                        Text("\(WMC.compactIDR(max(0, limit - context.state.currentSpent))) remaining").privacySensitive()
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }

@@ -115,7 +115,7 @@ final class MultiCardTests: XCTestCase {
         var prefs = WorkspacePreferences()
         XCTAssertEqual(prefs.direction, .light)
         XCTAssertEqual(prefs.visualDirection, "Light")
-        XCTAssertFalse(prefs.autoAppearance)
+        XCTAssertTrue(prefs.autoAppearance, "a new install follows the system")
 
         prefs.autoAppearance = true
         XCTAssertTrue(prefs.autoAppearance)
@@ -166,13 +166,13 @@ final class MultiCardTests: XCTestCase {
         let expenseService = try ExpenseService(store: repo)
         let model = AppModel(expenses: expenseService, state: state)
 
-        // Default: Light mode, auto switch is false
+        // Default: a new install follows the system
         XCTAssertEqual(model.visualDirection, .light)
         XCTAssertEqual(model.manualAppearance, .light)
-        XCTAssertFalse(model.autoAppearance)
-        XCTAssertEqual(model.preferredColorScheme, .light)
+        XCTAssertTrue(model.autoAppearance)
+        XCTAssertNil(model.preferredColorScheme)
         XCTAssertEqual(model.effectiveDirection(for: .light), .light)
-        XCTAssertEqual(model.effectiveDirection(for: .dark), .light)
+        XCTAssertEqual(model.effectiveDirection(for: .dark), .instrument)
 
         // Switch to Dark mode manually
         model.manualAppearance = .dark
@@ -228,6 +228,27 @@ final class MultiCardTests: XCTestCase {
         XCTAssertNil(model.selectedCardID, "adding from the deck doesn't open the card")
         XCTAssertFalse(try state.loadDraft(for: first).hasContent, "the old card's draft is cleared")
         XCTAssertEqual(try state.loadDraft(for: trip.id).note, "taxi")
+    }
+
+    func testBillReminderOpensThatCardsBills() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleCard()
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
+        let first = model.activeCardID
+        let trip = try model.createCard(named: "Trip")
+        XCTAssertTrue(model.selectCard(trip.id))
+        model.selectedCardID = nil
+        model.showSettings = true; model.selectedTab = 1
+
+        model.openBills(cardID: first)
+        XCTAssertEqual(model.activeCardID, first)
+        XCTAssertTrue(model.showBills)
+        XCTAssertFalse(model.showSettings)
+        XCTAssertEqual(model.selectedTab, 0)
+        XCTAssertNil(model.selectedCardID, "Bills goes over Home without opening the card")
     }
 
     func testCardCustomizationColorAndLuminance() {

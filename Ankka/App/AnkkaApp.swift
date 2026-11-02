@@ -1,13 +1,32 @@
 import StoreKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct AnkkaApp: App {
+    @UIApplicationDelegateAdaptor private var delegate: AppDelegate
     @State private var model = AppModel.shared
     var body: some Scene {
         WindowGroup {
             RootView(model: model)
         }
+    }
+}
+
+/// Bill reminders: a tap opens that card's Bills, and one that fires while the app is open still shows.
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self // before launch ends, or a tap that launched the app is missed
+        return true
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let cardID = (response.notification.request.content.userInfo["bookID"] as? String).flatMap(UUID.init)
+        await MainActor.run { AppModel.shared.openBills(cardID: cardID) }
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }
 

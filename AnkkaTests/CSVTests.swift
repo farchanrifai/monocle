@@ -280,6 +280,25 @@ final class CSVTests: XCTestCase {
         XCTAssertEqual(summary.totalSpending, 25_000_00)
     }
 
+    func testCreditsInABankExportAreShownButNotTicked() {
+        let food = ExpenseCategory(id: UUID(), name: "Food", symbol: "cup.and.saucer")
+        let mapping = CSVColumnMapping(dateIndex: 0, amountIndex: 1, noteIndex: 2)
+        func rows(_ table: [[String]]) -> [CSVImportRow] {
+            CSVImportParser.processRows(rawRows: [["Date", "Amount", "Note"]] + table, hasHeader: true, mapping: mapping,
+                                        targetCardID: UUID(), categories: [food], defaultCategoryID: food.id, existingExpenses: [])
+        }
+        let bank = rows([["2026-10-01", "-28000", "Kopi"], ["2026-10-02", "(45.000)", "Lunch"], ["2026-10-25", "9500000", "Salary"]])
+        XCTAssertEqual(bank.map(\.isCredit), [false, false, true])
+        XCTAssertEqual(bank.map(\.isSelectedForImport), [true, true, false])
+        XCTAssertEqual(bank[2].parsedExpense?.amount, 9_500_000_00, "still parsed, so ticking it adds it")
+        XCTAssertEqual(CSVImportParser.summarize(rows: bank).totalSpending, 73_000_00)
+
+        let positive = rows([["2026-10-01", "28000", "Kopi"], ["2026-10-05", "-28000", "Refund"], ["2026-10-02", "45000", "Lunch"]])
+        XCTAssertEqual(positive.map(\.isCredit), [false, true, false], "spending written as positive numbers")
+        XCTAssertFalse(rows([["2026-10-01", "-28000", "Kopi"], ["2026-10-02", "-45000", "Lunch"]]).contains(where: \.isCredit),
+                       "one sign is all spending")
+    }
+
     // MARK: - Batch Persistence
 
     @MainActor

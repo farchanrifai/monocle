@@ -74,7 +74,7 @@ struct StackWidgetEntryView: View {
                 Text("STACK SPENT")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
-                Text(WMC.formatIDR(stack.totalSpent))
+                Text(WMC.formatIDR(stack.totalSpent)).privacySensitive()
                     .font(.system(size: 19, weight: .bold))
                     .minimumScaleFactor(0.65)
                     .lineLimit(1)
@@ -123,7 +123,7 @@ struct StackWidgetEntryView: View {
                     Text("TOTAL STACK SPEND")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(WMC.formatIDR(stack.totalSpent))
+                    Text(WMC.formatIDR(stack.totalSpent)).privacySensitive()
                         .font(.system(size: 18, weight: .bold))
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
@@ -182,7 +182,7 @@ struct StackWidgetEntryView: View {
                 Text(stack.name)
                     .font(.caption.weight(.semibold))
             }
-            Text("\(WMC.compactIDR(stack.totalSpent)) spent")
+            Text("\(WMC.compactIDR(stack.totalSpent)) spent").privacySensitive()
                 .font(.headline.weight(.semibold).monospaced())
             Text("\(stack.cardCount) cards in stack")
                 .font(.caption2)
@@ -191,7 +191,7 @@ struct StackWidgetEntryView: View {
     }
 
     private var inlineView: some View {
-        Text("\(stack.name) stack · \(WMC.compactIDR(stack.totalSpent))")
+        Text("\(stack.name) stack · \(WMC.compactIDR(stack.totalSpent))").privacySensitive()
     }
 }
 

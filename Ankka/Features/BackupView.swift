@@ -18,6 +18,7 @@ struct BackupView: View {
     @State private var candidate: WorkspaceBackup?
     @State private var confirm = false
     @State private var message: String?
+    @AppStorage("lastBackupExport") private var lastExport: Double = 0 // shown on the Settings row
     var body: some View {
         Form {
             Section {
@@ -30,7 +31,7 @@ struct BackupView: View {
                 }.accessibilityIdentifier("exportBackup")
                 Button("Choose backup to restore", systemImage: "arrow.counterclockwise") { importing = true }
                     .accessibilityIdentifier("importBackup")
-            } header: { Text("Backup") } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. Older JSON backups remain supported.") }
+            } header: { Text("Backup") } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. When iCloud Backup is on for this iPhone, it includes Ankka too. Older JSON backups remain supported.") }
             if let candidate {
                 Section("Review replacement") {
                     LabeledContent("Cards", value: String(candidate.cards.count))
@@ -60,7 +61,7 @@ struct BackupView: View {
         }.navigationTitle("Backup & restore").navigationBarTitleDisplayMode(.inline)
             .fileExporter(isPresented: $exporting, document: document, contentType: BackupDocument.backupType, defaultFilename: "ankka-\(Day.string(.now)).ankkabackup") { result in
                 switch result {
-                case .success: message = "Backup exported."
+                case .success: message = "Backup exported."; lastExport = Date.now.timeIntervalSinceReferenceDate
                 case .failure(let error): message = error.localizedDescription
                 }
             }

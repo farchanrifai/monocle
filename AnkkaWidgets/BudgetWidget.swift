@@ -73,7 +73,7 @@ struct BudgetWidgetEntryView: View {
                 Text("REMAINING")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
-                Text(WMC.formatIDR(budget.remaining))
+                Text(WMC.formatIDR(budget.remaining)).privacySensitive()
                     .font(.system(size: 18, weight: .bold))
                     .minimumScaleFactor(0.65)
                     .lineLimit(1)
@@ -114,7 +114,7 @@ struct BudgetWidgetEntryView: View {
                     Text("REMAINING BUDGET")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(WMC.formatIDR(budget.remaining))
+                    Text(WMC.formatIDR(budget.remaining)).privacySensitive()
                         .font(.system(size: 20, weight: .bold))
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
@@ -124,9 +124,9 @@ struct BudgetWidgetEntryView: View {
                     .tint(WMC.red)
 
                 HStack {
-                    Text("Spent \(WMC.compactIDR(budget.spent))")
+                    Text("Spent \(WMC.compactIDR(budget.spent))").privacySensitive()
                     Spacer()
-                    Text("of \(WMC.compactIDR(budget.limit))")
+                    Text("of \(WMC.compactIDR(budget.limit))").privacySensitive()
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -141,7 +141,7 @@ struct BudgetWidgetEntryView: View {
                     Text("DAILY PACE")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(WMC.formatIDR(budget.dailyPaceRemaining))
+                    Text(WMC.formatIDR(budget.dailyPaceRemaining)).privacySensitive()
                         .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
                     Text("for \(budget.daysRemaining) days left")
@@ -155,7 +155,7 @@ struct BudgetWidgetEntryView: View {
                     Text("SPENT TODAY")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Text(WMC.formatIDR(entry.snapshot.todaySpending.totalSpent))
+                    Text(WMC.formatIDR(entry.snapshot.todaySpending.totalSpent)).privacySensitive()
                         .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
                 }
@@ -184,16 +184,16 @@ struct BudgetWidgetEntryView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            Text("\(WMC.compactIDR(budget.remaining)) left")
+            Text("\(WMC.compactIDR(budget.remaining)) left").privacySensitive()
                 .font(.headline.weight(.semibold).monospaced())
-            Text("\(budget.daysRemaining)d left · \(WMC.compactIDR(budget.dailyPaceRemaining))/day")
+            Text("\(budget.daysRemaining)d left · \(WMC.compactIDR(budget.dailyPaceRemaining))/day").privacySensitive()
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var inlineView: some View {
-        Text("\(WMC.compactIDR(budget.remaining)) left · \(budget.daysRemaining)d")
+        Text("\(WMC.compactIDR(budget.remaining)) left · \(budget.daysRemaining)d").privacySensitive()
     }
 }
 

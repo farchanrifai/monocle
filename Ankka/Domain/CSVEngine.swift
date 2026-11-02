@@ -41,6 +41,8 @@ struct CSVImportRow: Identifiable, Sendable {
     let rawValues: [String]
     var parsedExpense: Expense?
     var isDuplicate: Bool
+    /// The file's less common sign (salary, a refund): shown, but not ticked. Ankka tracks spending only.
+    var isCredit: Bool
     var errorMessage: String?
     var isSelectedForImport: Bool
 
@@ -50,6 +52,7 @@ struct CSVImportRow: Identifiable, Sendable {
         rawValues: [String],
         parsedExpense: Expense? = nil,
         isDuplicate: Bool = false,
+        isCredit: Bool = false,
         errorMessage: String? = nil,
         isSelectedForImport: Bool = true
     ) {
@@ -58,6 +61,7 @@ struct CSVImportRow: Identifiable, Sendable {
         self.rawValues = rawValues
         self.parsedExpense = parsedExpense
         self.isDuplicate = isDuplicate
+        self.isCredit = isCredit
         self.errorMessage = errorMessage
         self.isSelectedForImport = isSelectedForImport
     }
@@ -391,6 +395,12 @@ enum CSVImportParser {
         return nil
     }
 
+    /// A minus sign or accounting brackets: "-28,000", "Rp -28.000", "(28.000)".
+    static func isNegative(_ input: String) -> Bool {
+        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.contains("-") || (value.hasPrefix("(") && value.hasSuffix(")"))
+    }
+
     /// Flexible amount parser returning minor units (100 = Rp 1).
     static func parseAmount(_ input: String) -> Int64? {
         var str = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -460,6 +470,14 @@ enum CSVImportParser {
         var seen = Set(existingExpenses.map { DuplicateKey(day: $0.day, amount: $0.amount, note: $0.note) })
 
         let categoryByName = Dictionary(categories.map { ($0.name.trimmingCharacters(in: .whitespaces).lowercased(), $0.id) }) { first, _ in first }
+        // A bank export with both signs: the more common one is spending (a tie: minus, as banks write debits),
+        // the other is credits. A file with one sign is all spending, whichever it is.
+        let signs = rowsToProcess.compactMap { row -> Bool? in
+            guard let index = mapping.amountIndex, row.indices.contains(index), parseAmount(row[index]) != nil else { return nil }
+            return isNegative(row[index])
+        }
+        let negatives = signs.filter { $0 }.count
+        let creditIsNegative: Bool? = negatives == 0 || negatives == signs.count ? nil : negatives * 2 < signs.count
 
         for (offset, rowValues) in rowsToProcess.enumerated() {
             if Task.isCancelled { return [] }
@@ -566,12 +584,14 @@ enum CSVImportParser {
                 continue
             }
             let duplicate = !seen.insert(DuplicateKey(day: dateParsed.day, amount: amountParsed, note: note)).inserted
+            let credit = creditIsNegative.map { isNegative(amountRaw) == $0 } ?? false
             result.append(CSVImportRow(
                 rowNumber: rowNumber,
                 rawValues: rowValues,
                 parsedExpense: expense,
                 isDuplicate: duplicate,
-                isSelectedForImport: !duplicate
+                isCredit: credit,
+                isSelectedForImport: !duplicate && !credit
             ))
         }
 

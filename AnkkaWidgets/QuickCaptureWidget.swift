@@ -33,7 +33,7 @@ struct QuickCaptureWidgetView: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("Spent \(WMC.formatIDR(entry.snapshot.todaySpending.totalSpent))")
+                Text("Spent \(WMC.formatIDR(entry.snapshot.todaySpending.totalSpent))").privacySensitive()
                     .font(.caption.weight(.semibold).monospaced())
                     .foregroundStyle(.secondary)
             }

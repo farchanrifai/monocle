@@ -389,9 +389,15 @@ struct CSVInterchangeView: View {
                 }
 
                 // Parsed Rows Preview
-                Section("Rows to Import (\(processedRows.filter(\.isSelectedForImport).count))") {
+                Section {
                     ForEach(processedRows) { row in
                         importRowView(row)
+                    }
+                } header: {
+                    Text("Rows to Import (\(processedRows.filter(\.isSelectedForImport).count))")
+                } footer: {
+                    if processedRows.contains(where: \.isCredit) {
+                        Text("Credit rows have the file's other sign, like salary or a refund, and aren't ticked. Ankka tracks spending only; tick one to add it as an expense.")
                     }
                 }
 
@@ -459,6 +465,14 @@ struct CSVInterchangeView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                         Spacer()
+                        if row.isCredit {
+                            Text("CREDIT")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(Color.blue.opacity(0.15)))
+                        }
                         if row.isDuplicate {
                             Text("DUPLICATE")
                                 .font(.system(size: 8, weight: .bold))
@@ -569,7 +583,7 @@ struct CSVInterchangeView: View {
                 var parsed = CSVImportParser.processRows(rawRows: rows, hasHeader: true, mapping: mapping,
                     targetCardID: destination, categories: categories, defaultCategoryID: defaultCat, existingExpenses: existing,
                     paymentMethods: methods)
-                for index in parsed.indices where parsed[index].isDuplicate { parsed[index].isSelectedForImport = !skip }
+                for index in parsed.indices where parsed[index].isDuplicate && !parsed[index].isCredit { parsed[index].isSelectedForImport = !skip }
                 try Task.checkCancellation()
                 return parsed
             }

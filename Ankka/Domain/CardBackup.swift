@@ -392,7 +392,8 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
     var cardOrder: [UUID] = []
     var allActivitiesScope: Bool = false
     var visualDirection: String = "Light"
-    var autoAppearance: Bool = false
+    /// New installs follow the system; files written before this key existed decode as pinned (false).
+    var autoAppearance: Bool = true
     var cardCustomizations: [UUID: CardCustomization] = [:]
     var alwaysHiddenCardIDs: [UUID] = []
     var stacks: [Stack] = []
@@ -428,7 +429,7 @@ struct WorkspacePreferences: Codable, Equatable, Sendable {
         cardOrder: [UUID] = [],
         allActivitiesScope: Bool = false,
         visualDirection: String = "Light",
-        autoAppearance: Bool = false,
+        autoAppearance: Bool = true,
         cardCustomizations: [UUID: CardCustomization] = [:],
         alwaysHiddenCardIDs: [UUID] = [],
         stacks: [Stack] = [],

@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.requestReview) private var requestReview
     @AppStorage(ClaudeConsent.key) private var claudeChoice: Bool?
+    @AppStorage("lastBackupExport") private var lastBackupExport: Double = 0
 
     /// Icon badge + title, with an optional trailing value. One look for every settings row.
     @ViewBuilder
@@ -21,11 +22,13 @@ struct SettingsView: View {
         }
     }
 
-    /// System follows iOS; Light and Dark pin it.
-    private var appearance: Binding<AppearanceMode?> {
-        Binding(get: { model.autoAppearance ? nil : model.manualAppearance },
-                set: { mode in
-                    if let mode { model.manualAppearance = mode } else { model.autoAppearance = true }
+    /// System follows iOS (Light by day, Dark at night); the other choices pin one look.
+    private var appearance: Binding<CardVisualDirection?> {
+        Binding(get: { model.autoAppearance ? nil : model.visualDirection },
+                set: { direction in
+                    guard let direction else { model.autoAppearance = true; return }
+                    model.autoAppearance = false
+                    model.visualDirection = direction
                 })
     }
 
@@ -72,22 +75,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    // One choice: a second "theme" picker that also pinned light or dark read as a bug.
                     Picker(selection: appearance) {
-                        Text("System").tag(AppearanceMode?.none)
-                        Text("Light").tag(AppearanceMode?.some(.light))
-                        Text("Dark").tag(AppearanceMode?.some(.dark))
+                        Text("System").tag(CardVisualDirection?.none)
+                        ForEach(CardVisualDirection.allCases) { Text($0 == .instrument ? "Dark" : $0.rawValue).tag(Optional($0)) }
                     } label: {
                         Label { Text("Appearance") } icon: { SettingsIcon(symbol: "circle.lefthalf.filled", color: .blue) }
                     }
                     .accessibilityIdentifier("appearancePicker")
-                    Picker(selection: $model.visualDirection) {
-                        ForEach(CardVisualDirection.allCases) { Text($0.rawValue).tag($0) }
-                    } label: {
-                        Label { Text("Theme style") } icon: { SettingsIcon(symbol: "paintpalette.fill", color: .purple) }
-                    }
-                    .accessibilityIdentifier("themeStylePicker")
                 } header: {
                     Text("Appearance")
+                } footer: {
+                    Text("System switches between Light and Dark with your iPhone. Ledger is a light look, Signal a dark one.")
                 }
 
                 Section {
@@ -112,7 +111,8 @@ struct SettingsView: View {
                     NavigationLink {
                         BackupView(model: model)
                     } label: {
-                        row("Backup & restore", "arrow.triangle.2.circlepath", .blue)
+                        row("Backup & restore", "arrow.triangle.2.circlepath", .blue,
+                            value: lastBackupExport == 0 ? "Not exported" : Date(timeIntervalSinceReferenceDate: lastBackupExport).formatted(.dateTime.day().month(.abbreviated)))
                     }
                     .accessibilityIdentifier("backupSettings")
                     NavigationLink {
@@ -183,6 +183,7 @@ private struct SubscriptionSection: View {
     @State private var managing = false
     @State private var redeeming = false
     @State private var restoring = false
+    @State private var restoreResult: String?
 
     private func proLabel(_ title: LocalizedStringKey, _ symbol: String, _ color: Color) -> some View {
         Label { Text(title).foregroundStyle(Color.primary) } icon: { SettingsIcon(symbol: symbol, color: color) }
@@ -214,7 +215,11 @@ private struct SubscriptionSection: View {
             Button {
                 restoring = true
                 Task {
-                    do { try await model.pro?.restore() } catch { model.error = error.localizedDescription }
+                    do {
+                        try await model.pro?.restore()
+                        restoreResult = model.isPro ? "Ankka Pro is active." : "No Ankka Pro purchase was found for this Apple Account."
+                    } catch StoreKitError.userCancelled {
+                    } catch { restoreResult = error.localizedDescription }
                     restoring = false
                 }
             } label: {
@@ -222,6 +227,9 @@ private struct SubscriptionSection: View {
             }
             .disabled(restoring)
             Button { redeeming = true } label: { proLabel("Redeem code", "gift.fill", .pink) }
+        }
+        .alert(restoreResult ?? "", isPresented: Binding(get: { restoreResult != nil }, set: { if !$0 { restoreResult = nil } })) {
+            Button("OK") { restoreResult = nil }
         }
         .manageSubscriptionsSheet(isPresented: $managing)
         .offerCodeRedemption(isPresented: $redeeming) { _ in Task { await model.pro?.refresh() } }

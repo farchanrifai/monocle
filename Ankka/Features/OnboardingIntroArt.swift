@@ -418,7 +418,7 @@ struct IntroText: View {
         case 3: ("Kopi 28rb.", "Done.", "Type it like you’d text a friend, in English or Bahasa.")
         case 4: ("Spend", "in yen.", "Log any currency. Ankka shows it in rupiah too.")
         case 5: ("Know", "what’s left.", "Budgets and upcoming bills, right on your card.")
-        default: ("Yours,", "privately.", "No bank login. No account. Your records stay on your iPhone.")
+        default: ("Yours,", "privately.", "No bank login. No account. Your records live on your iPhone.")
         }
     }
 

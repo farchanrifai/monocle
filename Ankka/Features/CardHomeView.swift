@@ -320,7 +320,6 @@ struct CardHomeView: View {
     @State private var expanded = false
     @State private var selectedID: UUID?
     @State private var managing = false
-    @State private var showingBills = false
     @State private var draggedCardID: UUID?
     @State private var dragAmount: CGFloat = 0
     @State private var dismissAmount: CGFloat = 0
@@ -471,7 +470,7 @@ struct CardHomeView: View {
             .proPaywall(model)
         }
         // Pushed on the root stack, so the system back button and the edge swipe work.
-        .navigationDestination(isPresented: $showingBills) {
+        .navigationDestination(isPresented: $model.showBills) {
             BillsView(model: model).hidesBottomNavigation(model)
         }
         .sheet(isPresented: $model.showCSVInterchange) {
@@ -1439,7 +1438,7 @@ struct CardPresentationView: View {
             // Tools & Insights
             Menu {
                 Button {
-                    showingBills = true
+                    model.showBills = true
                 } label: {
                     Label("Recurring Bills", systemImage: "calendar")
                 }
@@ -1622,7 +1621,7 @@ struct CardPresentationView: View {
                 Section("Session Info") {
                     TextField("Session Name (e.g. Shopping Trip)", text: $model.sessionSheetName)
                     TextField("Budget limit (optional)", text: $model.sessionSheetBudget.groupedAmount())
-                        .keyboardType(.numberPad)
+                        .keyboardType(Money.fractionDigits(model.reportingCurrency) > 0 ? .decimalPad : .numberPad)
                 }
 
                 Section("Quick Presets") {

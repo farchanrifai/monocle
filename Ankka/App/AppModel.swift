@@ -106,6 +106,8 @@ final class AppModel {
     var selectedTab = 0
     /// The Budgets page, pushed over the Analytics tab (links and screenshots).
     var showBudgets = false
+    /// The active card's Bills, pushed over Home (the Home menu, a bill reminder).
+    var showBills = false
     var error: String?
     var startupError: String?
     var backups: BackupService?
@@ -597,6 +599,18 @@ final class AppModel {
         showSettings = false
         selectedCardID = nil
         setActiveStack(id: id)
+    }
+
+    /// A tapped bill reminder: that card's Bills over Home. Switching cards doesn't open the card, as in openEntry.
+    func openBills(cardID: UUID?) {
+        showEntry = false; showSettings = false; showChat = false
+        selectedTab = 0
+        if let cardID, cardID != activeCardID {
+            let openCardID = selectedCardID
+            guard selectCard(cardID) else { return }
+            if openCardID == nil { selectedCardID = nil }
+        }
+        showBills = true
     }
 
     @discardableResult
