@@ -506,7 +506,7 @@ struct CardCustomizerView: View {
                 .font(.title.bold())
                 .monospacedDigit()
                 .minimumScaleFactor(0.65)
-            Text(period?.cycle.map { "\($0.label.uppercased()) · \(count) EXPENSES" } ?? "\(count) EXPENSES")
+            Text((period?.cycle.map { "\($0.label.uppercased()) · " } ?? "") + "\(count) \(count == 1 ? "EXPENSE" : "EXPENSES")")
                 .font(.caption.monospaced())
                 .lineLimit(1).minimumScaleFactor(0.8)
         }

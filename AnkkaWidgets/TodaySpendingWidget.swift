@@ -120,7 +120,7 @@ struct TodaySpendingWidgetEntryView: View {
 
                     Spacer()
 
-                    Text("\(today.transactionCount) expenses added")
+                    Text("\(today.transactionCount) \(today.transactionCount == 1 ? "expense" : "expenses") added")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

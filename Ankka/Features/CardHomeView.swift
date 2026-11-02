@@ -106,7 +106,7 @@ struct CardAccessibilityModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .accessibilityElement(children: isSelected ? .contain : .combine)
-            .accessibilityLabel(isSelected ? card.name + " selected card" : "Open \(card.name), \(expenseCount) expenses")
+            .accessibilityLabel(isSelected ? card.name + " selected card" : "Open \(card.name), \(expenseCount) \(expenseCount == 1 ? "expense" : "expenses")")
             .accessibilityIdentifier("stack-book-\(card.id)")
             .accessibilityAddTraits(.isButton)
             .accessibilityHidden(expanded && !isSelected)
@@ -1049,7 +1049,7 @@ private struct CardFaceText: View, @MainActor Equatable {
                     .font(.caption.monospacedDigit())
                     .opacity(0.8)
             }
-            Text("\(period.cycle?.label.uppercased() ?? "ALL TIME") · \(period.count) EXPENSES")
+            Text("\(period.cycle?.label.uppercased() ?? "ALL TIME") · \(period.count) \(period.count == 1 ? "EXPENSE" : "EXPENSES")")
                 .font(.system(size: 11, weight: .medium).monospaced())
                 .lineLimit(1).minimumScaleFactor(0.8)
         }

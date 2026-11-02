@@ -891,7 +891,7 @@ private struct AnalyticsReportView: View {
                                     .frame(height: 5)
 
                                     HStack {
-                                        Text("\(cat.transactionCount) expenses")
+                                        Text("\(cat.transactionCount) \(cat.transactionCount == 1 ? "expense" : "expenses")")
                                         Spacer()
                                         if let limit = cat.budgetLimit, limit > 0 {
                                             if cat.amount > limit {

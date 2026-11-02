@@ -134,7 +134,7 @@ struct CSVInterchangeView: View {
             } message: {
                 let count = processedRows.filter { $0.isSelectedForImport && $0.parsedExpense != nil }.count
                 let cardName = model.cards.first { $0.id == targetCardID }?.name ?? "selected card"
-                Text("Are you sure you want to import \(count) expenses into \(cardName)?")
+                Text("Are you sure you want to import \(count) \(count == 1 ? "expense" : "expenses") into \(cardName)?")
             }
             .onDisappear { cancelProcessing() }
             .onAppear {

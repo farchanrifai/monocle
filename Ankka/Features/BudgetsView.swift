@@ -312,7 +312,7 @@ struct BudgetsView: View {
                     .minimumScaleFactor(0.5).lineLimit(1)
                 Text("spent").font(.title3.weight(.medium)).foregroundStyle(.secondary)
             }
-            Text("\(report.metrics.transactionCount) expenses · about \(Money.format(report.metrics.dailyAverage, code: currency)) a day")
+            Text("\(report.metrics.transactionCount) \(report.metrics.transactionCount == 1 ? "expense" : "expenses") · about \(Money.format(report.metrics.dailyAverage, code: currency)) a day")
                 .font(.subheadline).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 4).padding(.top, 8)
