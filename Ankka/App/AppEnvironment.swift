@@ -54,7 +54,7 @@ final class AppEnvironment {
             #if DEBUG
             if directory.lastPathComponent.hasPrefix("ankka-ui-test-"), ProcessInfo.processInfo.environment["ANKKA_TEST_APP_LOCK"] == "1" {
                 settings.appLockTimeout = .immediately // reload() re-applies the saved setting
-                appLock = AppLockController(timeout: .immediately, authenticator: TestAuthenticator())
+                appLock = AppLockController(timeout: .immediately, authenticator: TestAuthenticator(), promptsWhenShown: false)
             }
             #endif
             model = AppModel(expenses: expenses, state: state, draft: draft, settings: settings, appLock: appLock, backups: backups)

@@ -177,6 +177,11 @@ final class FoundationTests: XCTestCase {
         lock.resume(now: left.addingTimeInterval(59))
         XCTAssertFalse(lock.blocksContent, "Returning within the grace period should not prompt again")
 
+        lock.shield()
+        XCTAssertTrue(lock.privacyShieldVisible)
+        lock.resume(now: left.addingTimeInterval(600))
+        XCTAssertFalse(lock.blocksContent, "Control Center or a purchase sheet covers the screen without starting the timer")
+
         lock.suspend(now: left.addingTimeInterval(60))
         lock.resume(now: left.addingTimeInterval(120))
         XCTAssertTrue(lock.needsAuthentication)

@@ -14,11 +14,12 @@ struct AnkkaApp: App {
 struct RootView: View {
     @Bindable var model: AppModel
     @Environment(\.scenePhase) private var phase
+    @State private var shieldWindow = PrivacyShieldWindow()
     var body: some View {
         Group {
             if let failure = model.startupError {
                 ContentUnavailableView("Unable to open your workspace", systemImage: "externaldrive.badge.exclamationmark", description: Text(failure + "\nThe existing store has not been reset."))
-            } else if model.appLock.blocksContent {
+            } else if model.appLock.needsAuthentication {
                 AppLockView(lock: model.appLock)
             } else {
                 TabView(selection: $model.selectedTab) {
@@ -84,7 +85,8 @@ struct RootView: View {
         .onChange(of: phase) { _, phase in
             if phase != .active {
                 model.persistDraft()
-                model.appLock.suspend()
+                // Inactive only covers the screen; the lock timer starts once the app is in the background.
+                if phase == .background { model.appLock.suspend() } else { model.appLock.shield() }
             } else {
                 model.appLock.resume()
                 do { try model.reload() } catch { model.report(error) }
@@ -93,6 +95,7 @@ struct RootView: View {
             }
         }
         .onChange(of: model.draft) { _, _ in model.persistDraft() }
+        .onChange(of: model.appLock.privacyShieldVisible) { _, visible in shieldWindow.setVisible(visible, colorScheme: model.preferredColorScheme) }
         .onOpenURL { url in
             guard url.scheme == "ankka" else { return }
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
@@ -147,7 +150,9 @@ struct RootView: View {
 
 private struct AppLockView: View {
     @Bindable var lock: AppLockController
+    @Environment(\.scenePhase) private var phase
     @State private var error: String?
+    @State private var prompted = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -156,12 +161,7 @@ private struct AppLockView: View {
             Text("ankka is locked").font(.title2.weight(.semibold))
             Text("Unlock with Face ID or your device passcode.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Button {
-                Task {
-                    let result = await lock.unlock()
-                    if case let .failure(error) = result { self.error = error.localizedDescription }
-                }
-            } label: {
+            Button(action: unlock) {
                 Label(lock.isAuthenticating ? "Unlocking…" : "Unlock", systemImage: "faceid")
             }
             .buttonStyle(.borderedProminent).tint(MC.red).disabled(lock.isAuthenticating)
@@ -170,6 +170,38 @@ private struct AppLockView: View {
         }
         .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(MC.paper)
         .accessibilityIdentifier("appLockScreen")
+        // Ask once each time the lock shows; after a cancel, the button is there to try again.
+        .onChange(of: phase, initial: true) { _, phase in
+            guard lock.promptsWhenShown, phase == .active, !prompted else { return }
+            prompted = true
+            unlock()
+        }
+    }
+
+    private func unlock() {
+        Task {
+            let result = await lock.unlock()
+            if case let .failure(error) = result { self.error = error.localizedDescription }
+        }
+    }
+}
+
+/// The app-switcher cover, in its own window above every sheet. The app's views stay in place underneath,
+/// so an open sheet, a draft or a purchase waiting on the payment sheet survives Control Center.
+@MainActor private final class PrivacyShieldWindow {
+    private var window: UIWindow?
+
+    func setVisible(_ visible: Bool, colorScheme: ColorScheme?) {
+        guard visible else { window?.isHidden = true; window = nil; return }
+        guard window == nil, let scene = UIApplication.shared.connectedScenes.first(where: { $0 is UIWindowScene }) as? UIWindowScene else { return }
+        let window = UIWindow(windowScene: scene)
+        window.windowLevel = .alert + 1
+        window.overrideUserInterfaceStyle = colorScheme.map { $0 == .dark ? .dark : .light } ?? .unspecified
+        window.rootViewController = UIHostingController(rootView:
+            Image(systemName: "lock.fill").font(.system(size: 38)).foregroundStyle(MC.red)
+                .frame(maxWidth: .infinity, maxHeight: .infinity).background(MC.paper))
+        window.isHidden = false
+        self.window = window
     }
 }
 

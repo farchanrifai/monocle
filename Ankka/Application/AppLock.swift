@@ -49,14 +49,24 @@ final class AppLockController {
     private(set) var privacyShieldVisible = false
     private var suspendedAt: Date?
     private var configurationRevision: UInt64 = 0
+    /// The lock screen asks for Face ID as soon as it shows. UI tests turn this off to see the screen.
+    let promptsWhenShown: Bool
 
-    init(timeout: AppLockTimeout?, authenticator: any DeviceAuthenticating = DeviceAuthenticator()) {
+    init(timeout: AppLockTimeout?, authenticator: any DeviceAuthenticating = DeviceAuthenticator(), promptsWhenShown: Bool = true) {
         self.timeout = timeout
         self.authenticator = authenticator
+        self.promptsWhenShown = promptsWhenShown
         needsAuthentication = timeout != nil
     }
 
     var blocksContent: Bool { privacyShieldVisible || needsAuthentication }
+
+    /// Inactive but still on screen (app switcher, Control Center, a purchase sheet): cover the content
+    /// without starting the lock timer. `suspend()` starts it once the app is really in the background.
+    func shield() {
+        guard timeout != nil, !isAuthenticating else { return }
+        privacyShieldVisible = true
+    }
 
     func suspend(now: Date = .now) {
         // Face ID and the passcode sheet make the scene inactive; that isn't leaving the app.
