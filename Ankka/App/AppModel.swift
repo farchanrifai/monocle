@@ -82,6 +82,8 @@ final class AppModel {
         didSet { if showCSVInterchange, csvInterchangeInitialTab == 1, !requirePro("CSV import is part of Pro.") { showCSVInterchange = false } }
     }
     var csvInterchangeInitialTab = 0
+    /// Analytics pushed over the open card (its back face), so Back returns to that card. Free sees the totals, as on the tab.
+    var showAnalytics = false
     var showChat = false
     /// Text for the chat composer, set by `ankka://chat?q=`; ChatView takes it.
     var chatPrefill: String?

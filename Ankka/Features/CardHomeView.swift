@@ -464,6 +464,9 @@ struct CardHomeView: View {
             .scrollEdgeEffectStyle(.soft, for: .all)
             .proPaywall(model)
         }
+        .navigationDestination(isPresented: $model.showAnalytics) {
+            AnalyticsView(model: model).hidesBottomNavigation(model)
+        }
         .sheet(isPresented: $model.showStartSessionSheet) {
             startSessionSheet.scrollEdgeEffectStyle(.soft, for: .all)
         }
@@ -748,7 +751,7 @@ struct CardHomeView: View {
             amountFont: amountFont,
             model: model,
             onFlip: { toggleFlip(for: card.id) },
-            onOpenAnalytics: { model.selectedTab = 1 }, // the Analytics tab follows the open card
+            onOpenAnalytics: { model.showAnalytics = true },
             onCustomize: { openCustomizer(for: card) }
         )
         .frame(width: target.width, height: target.height)

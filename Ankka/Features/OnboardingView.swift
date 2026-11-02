@@ -45,6 +45,7 @@ struct OnboardingView: View {
         .scrollEdgeEffectStyle(.soft, for: .all)
         .interactiveDismissDisabled()
         .proPaywall(model)
+        .task { trialAvailable = await model.pro?.trialAvailable() ?? false } // settled long before the trial step
         // A restored backup with real cards needs no further setup.
         .onChange(of: model.needsOnboarding) { _, needs in
             if !needs, step != .trial {
@@ -127,7 +128,6 @@ struct OnboardingView: View {
                 .accessibilityIdentifier("onboardingNotNow")
         }
         .padding(24)
-        .task { trialAvailable = await model.pro?.trialAvailable() ?? false }
         // Buying or closing the paywall ends onboarding too.
         .onChange(of: model.showPaywall) { _, open in if !open { model.showOnboarding = false } }
     }
