@@ -244,10 +244,10 @@ final class IntroMotion {
     var dailyCount = 0.0
     var yen = [Double](repeating: 0, count: 4)
     var yenOpacity = 0.0
-    var rupiah = [Double](repeating: 0, count: 6)
-    var rupiahOpacity = 0.0
+    var converted = [Double](repeating: 0, count: IntroMoney.current.convertedTargets.count)
+    var convertedOpacity = 0.0
     var paidOpacity = 0.0
-    var budget = [0.0, 0.0]
+    var budget = [Double](repeating: 0, count: IntroMoney.current.leftTargets.count)
     var budgetOpacity = 0.0
     var budgetRing = 0.0
 
@@ -261,7 +261,7 @@ final class IntroMotion {
     var typed = 0
     var morph = 0.0
     var chipArc = 0.0
-    var chipWheels = [Double](repeating: 0, count: 5)
+    var chipWheels = [Double](repeating: 0, count: IntroMoney.current.chipTargets.count)
     var chip = Flyer(opacity: 1)
 
     // Step 4: yen coins and the paper plane
@@ -421,7 +421,7 @@ final class IntroMotion {
         names = 1
         mark = n >= 2 ? 1 : 0
         for kind in IntroCard.Kind.allCases {
-            totals[kind] = n >= 2 ? (kind == .daily && n >= 3 ? IntroCard.dailyAfterKopi : kind.totalTargets) : totals[kind]
+            totals[kind] = n >= 2 ? (kind == .daily && n >= 3 ? IntroMoney.current.dailyAfterChip : kind.totalTargets) : totals[kind]
         }
         totalOpacity[.daily] = n >= 2 && n < 5 ? 1 : 0
         captionOpacity[.daily] = n >= 2 && n < 5 ? 1 : 0
@@ -433,12 +433,12 @@ final class IntroMotion {
         if n >= 4 {
             yen = IntroCard.yenTargets.map { $0 + 1 }
             yenOpacity = 0
-            rupiah = IntroCard.rupiahTargets
-            rupiahOpacity = 1
+            converted = IntroMoney.current.convertedTargets
+            convertedOpacity = 1
             paidOpacity = 1
         }
         if n >= 5 {
-            budget = IntroCard.budgetTargets
+            budget = IntroMoney.current.leftTargets
             budgetOpacity = 1
             budgetRing = 0.7
         }
@@ -607,7 +607,7 @@ final class IntroMotion {
         at(1700, IntroSpring.restack) { self.setPoses(Poses.s2) }
     }
 
-    // MARK: Step 3, "Kopi 28rb. Done."
+    // MARK: Step 3, "Kopi 28rb. Done." ("Coffee 4.50." outside rupiah)
 
     private func beatKopi() {
         at(60, IntroSpring.hand) { self.setPoses(Poses.s3) }
@@ -616,24 +616,27 @@ final class IntroMotion {
         morph = 0
         chipArc = 0
         chip = Flyer(opacity: 1)
-        chipWheels = Array(repeating: 0, count: 5)
+        chipWheels = Array(repeating: 0, count: IntroMoney.current.chipTargets.count)
         at(780, IntroSpring.fade) { self.bubble.opacity = 1 }
         at(780, IntroSpring.pop) { self.bubble.s = 1; self.bubble.y = 0 }
-        for i in 1...9 { at(900 + 85 * Double(i), nil) { self.typed = i } }
+        for i in 1...IntroMoney.current.message.count { at(900 + 85 * Double(i), nil) { self.typed = i } }
         at(1980, IntroSpring.morph) { self.morph = 1 }
         at(1980, IntroSpring.squashIn) { self.bubble.s = 1.06 }
         at(2070, IntroSpring.release) { self.bubble.s = 1 }
-        for (i, target) in IntroCard.chipTargets.enumerated() {
+        for (i, target) in IntroMoney.current.chipTargets.enumerated() {
             at(2080 + 30 * Double(i), IntroSpring.total) { self.chipWheels[i] = target }
         }
         at(2880, IntroSpring.arc) { self.chipArc = 1 }
-        // The chip lands on Daily: it's absorbed, the card squashes and the total rolls up by Rp 28,000.
+        // The chip lands on Daily: it's absorbed, the card squashes and the total rolls up by the chip's amount.
         at(3205, IntroSpring.absorb) { self.chip.opacity = 0; self.chip.s = 0.4 }
         at(3205, nil) { self.light += 1 }
         at(3205, IntroSpring.squashIn) { self.squashX = 1.015; self.squashY = 0.97 }
         at(3295, IntroSpring.squashOut) { self.squashX = 1; self.squashY = 1 }
-        at(3245, IntroSpring.total) { self.totals[.daily]?[2] = IntroCard.dailyAfterKopi[2] }
-        at(3275, IntroSpring.total) { self.totals[.daily]?[3] = IntroCard.dailyAfterKopi[3] }
+        // Only the digits that change roll, 30 ms apart (rupiah: the 1 and the 8, as in the design).
+        let before = IntroCard.Kind.daily.totalTargets, after = IntroMoney.current.dailyAfterChip
+        for (k, i) in after.indices.filter({ after[$0] != before[$0] }).enumerated() {
+            at(3245 + 30 * Double(k), IntroSpring.total) { self.totals[.daily]?[i] = after[i] }
+        }
         at(3325, IntroSpring.counter) { self.dailyCount = 1 }
         for i in 0..<2 { at(3840 + 25 * Double(i), nil) { self.tick += 1 } }
     }
@@ -670,14 +673,14 @@ final class IntroMotion {
         routeOpacity = 1
         at(1250, IntroSpring.fade) { self.planeOpacity = 1 }
         at(1250, IntroSpring.fly) { self.plane = 1 }
-        // ¥1,200 rolls away and ≈ Rp 128,000 rolls in.
+        // ¥1,200 rolls away and its home-currency amount (≈ Rp 128,000) rolls in.
         at(2500, IntroSpring.fade) { self.yenOpacity = 0 }
         for (i, target) in IntroCard.yenTargets.enumerated() {
             at(2500 + 25 * Double(i), IntroSpring.rollOut) { self.yen[i] = target + 1 }
         }
-        at(2560, IntroSpring.fade) { self.rupiahOpacity = 1 }
-        for (i, target) in IntroCard.rupiahTargets.enumerated() {
-            at(2560 + 25 * Double(i), IntroSpring.total) { self.rupiah[i] = target }
+        at(2560, IntroSpring.fade) { self.convertedOpacity = 1 }
+        for (i, target) in IntroMoney.current.convertedTargets.enumerated() {
+            at(2560 + 25 * Double(i), IntroSpring.total) { self.converted[i] = target }
         }
         for i in 0..<6 { at(3295 + 25 * Double(i), nil) { self.tick += 1 } }
         at(2600, IntroSpring.fade) { self.captionOpacity[.tokyo] = 0 }
@@ -701,7 +704,7 @@ final class IntroMotion {
         at(60, IntroSpring.hand) { self.daily = pose.daily; self.bali = pose.bali }
         at(450, IntroSpring.fade) { self.totalOpacity[.daily] = 0; self.captionOpacity[.daily] = 0 }
         at(600, IntroSpring.fade) { self.budgetOpacity = 1 }
-        for (i, target) in IntroCard.budgetTargets.enumerated() {
+        for (i, target) in IntroMoney.current.leftTargets.enumerated() {
             at(600 + 40 * Double(i), IntroSpring.total) { self.budget[i] = target }
         }
         at(700, IntroSpring.ringfill) { self.budgetRing = 0.7 }
@@ -772,7 +775,7 @@ final class IntroMotion {
         case 3:
             setPoses(Poses.s3)
             bubble = Flyer(opacity: 1)
-            typed = 9
+            typed = IntroMoney.current.message.count
         case 4:
             setPoses(Poses.s4)
             tokyoFront = true

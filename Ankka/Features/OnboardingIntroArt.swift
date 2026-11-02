@@ -137,6 +137,47 @@ private struct PropSlot {
     }
 }
 
+// MARK: - Money
+
+/// The intro's amounts and the lines that name them: rupiah and Bahasa on an iPhone set to rupiah, dollars
+/// everywhere else (the app is English first). Odometer targets are glyph indices: digit + 1, plus 10 for each
+/// extra turn, so later digits spin longer; a target that rolls on to a new value must not be lower.
+struct IntroMoney {
+    let dailyTotal: String, dailyTargets: [Double]
+    /// Daily's wheels after the chip lands: dailyTotal plus chipAmount.
+    let dailyAfterChip: [Double]
+    let baliTotal: String, baliTargets: [Double]
+    /// Typed in step 3's bubble, then shown as the chip.
+    let message: String, chipName: String, chipAmount: String, chipTargets: [Double]
+    /// Step 4's ¥1,200 in the home currency.
+    let converted: String, convertedTargets: [Double]
+    /// Step 5's "left this month" and its budget.
+    let left: String, leftTargets: [Double], budgetCaption: String
+    /// Step 3's and step 4's lines.
+    let headline: String, typeLine: String, convertLine: String
+
+    static let rupiah = IntroMoney(
+        dailyTotal: "Rp 2,418,500", dailyTargets: [3, 5, 2, 19, 16, 21, 21], dailyAfterChip: [3, 5, 5, 27, 16, 21, 21],
+        baliTotal: "Rp 6,420,000", baliTargets: [7, 5, 3, 11, 11, 21, 21],
+        message: "kopi 28rb", chipName: "Kopi", chipAmount: "Rp 28,000", chipTargets: [3, 9, 11, 11, 21],
+        converted: "≈ Rp 128,000", convertedTargets: [2, 3, 19, 11, 21, 21],
+        left: "Rp 1.2 jt", leftTargets: [2, 13], budgetCaption: "RP 4 JT BUDGET · BILLS IN",
+        headline: "Kopi 28rb.", typeLine: "Type it like you’d text a friend, in English or Bahasa.",
+        convertLine: "Log any currency. Ankka shows it in rupiah too.")
+
+    static let dollar = IntroMoney(
+        dailyTotal: "$1,846.20", dailyTargets: [2, 9, 15, 17, 23, 21], dailyAfterChip: [2, 9, 16, 21, 28, 21],
+        baliTotal: "$1,420.00", baliTargets: [2, 5, 3, 11, 21, 21],
+        message: "coffee 4.50", chipName: "Coffee", chipAmount: "$4.50", chipTargets: [5, 16, 21],
+        converted: "≈ $8.10", convertedTargets: [9, 12, 21],
+        left: "$1.2k", leftTargets: [2, 13], budgetCaption: "$4K BUDGET · BILLS IN",
+        headline: "Coffee 4.50.", typeLine: "Type it like you’d text a friend.",
+        convertLine: "Log any currency. Ankka shows it in your currency too.")
+
+    /// Picked once, so a long intro never switches halfway.
+    static let current: IntroMoney = Locale.current.currency?.identifier == "IDR" ? .rupiah : .dollar
+}
+
 // MARK: - Hero card
 
 struct IntroCard: View {
@@ -148,12 +189,8 @@ struct IntroCard: View {
     var back = false
 
     static let wordmarkTargets: [Double] = [11, 13, 15, 17, 19]
-    /// Odometer resting indices (blank first, then 0–9 per turn), as in the design.
-    static let dailyAfterKopi: [Double] = [3, 5, 5, 27, 16, 21, 21]
-    static let chipTargets: [Double] = [3, 9, 11, 11, 21]
+    /// Odometer resting indices (blank first, then 0–9 per turn), as in the design. The home-currency ones are in IntroMoney.
     static let yenTargets: [Double] = [2, 3, 11, 21]
-    static let rupiahTargets: [Double] = [2, 3, 19, 11, 21, 21]
-    static let budgetTargets: [Double] = [2, 13]
     private static let wordmarkLetters = ["a", "n", "k", "k", "a"]
     private static let cream = Color(red: 1, green: 0.97, blue: 0.94)
 
@@ -217,9 +254,9 @@ struct IntroCard: View {
                 .font(.system(size: 26, weight: .heavy)).monospacedDigit().tracking(-0.26)
                 .opacity(motion.yenOpacity)
                 .padding(.leading, 17).padding(.top, 41)
-            OdoNumber(text: "≈ Rp 128,000", indices: motion.rupiah, cell: 32)
+            OdoNumber(text: IntroMoney.current.converted, indices: motion.converted, cell: 32)
                 .font(.system(size: 26, weight: .heavy)).monospacedDigit().tracking(-0.26)
-                .opacity(motion.rupiahOpacity)
+                .opacity(motion.convertedOpacity)
                 .padding(.leading, 17).padding(.top, 41)
             caption(Text("¥1,200 · PAID TODAY")).opacity(motion.paidOpacity)
         }
@@ -248,7 +285,7 @@ struct IntroCard: View {
     /// Daily's face on step 5: what's left this month and a ring at 70% of the budget.
     private var budgetFace: some View {
         ZStack(alignment: .topLeading) {
-            OdoNumber(text: "Rp 1.2 jt", indices: motion.budget, cell: 36)
+            OdoNumber(text: IntroMoney.current.left, indices: motion.budget, cell: 36)
                 .font(.system(size: 30, weight: .heavy)).monospacedDigit().tracking(-0.3)
                 .padding(.leading, 17).padding(.top, 40)
             Text("left this month").font(.system(size: 13, weight: .semibold))
@@ -263,7 +300,7 @@ struct IntroCard: View {
             .frame(width: 78, height: 78)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.trailing, 23).padding(.top, 55)
-            caption(Text("RP 4 JT BUDGET · BILLS IN"))
+            caption(Text(IntroMoney.current.budgetCaption))
         }
     }
 
@@ -276,16 +313,16 @@ struct IntroCard: View {
 extension IntroCard.Kind {
     var name: String { switch self { case .daily: "Daily"; case .tokyo: "Tokyo trip"; case .bali: "Bali" } }
     var index: String { switch self { case .daily: "01"; case .tokyo: "02"; case .bali: "03" } }
-    var total: String { switch self { case .daily: "Rp 2,418,500"; case .tokyo: "¥48,200"; case .bali: "Rp 6,420,000" } }
+    var total: String { switch self { case .daily: IntroMoney.current.dailyTotal; case .tokyo: "¥48,200"; case .bali: IntroMoney.current.baliTotal } }
     var caption: String { switch self { case .daily: "38 EXPENSES · OCT"; case .tokyo: "12 EXPENSES · JPY"; case .bali: "21 EXPENSES · IDR" } }
     /// Idle float phase.
     var phase: Double { switch self { case .tokyo: 0.8; case .bali: 1.9; case .daily: 0 } }
 
     var totalTargets: [Double] {
         switch self {
-        case .daily: [3, 5, 2, 19, 16, 21, 21]
+        case .daily: IntroMoney.current.dailyTargets
         case .tokyo: [5, 9, 13, 11, 21]
-        case .bali: [7, 5, 3, 11, 11, 21, 21]
+        case .bali: IntroMoney.current.baliTargets
         }
     }
 
@@ -415,8 +452,8 @@ struct IntroText: View {
         switch step {
         case 1: ("Meet", "Ankka.", "Log every expense in seconds and see where it goes.")
         case 2: ("A card per", "purpose.", "Daily spending, a Tokyo trip, Bali. Each card keeps its own total.")
-        case 3: ("Kopi 28rb.", "Done.", "Type it like you’d text a friend, in English or Bahasa.")
-        case 4: ("Spend", "in yen.", "Log any currency. Ankka shows it in rupiah too.")
+        case 3: (IntroMoney.current.headline, "Done.", IntroMoney.current.typeLine)
+        case 4: ("Spend", "in yen.", IntroMoney.current.convertLine)
         case 5: ("Know", "what’s left.", "Budgets and upcoming bills, right on your card.")
         default: ("Yours,", "privately.", "No bank login. No account. Your records live on your iPhone.")
         }
@@ -506,7 +543,7 @@ struct StepObjects: View {
     }
 }
 
-/// Step 3's message: a dark bubble types "kopi 28rb", morphs into an expense chip, and arcs onto the Daily card.
+/// Step 3's message: a dark bubble types "kopi 28rb" (or "coffee 4.50"), morphs into an expense chip, and arcs onto the Daily card.
 private struct KopiMessage: View, Animatable {
     var morph: Double
     var arc: Double
@@ -532,8 +569,9 @@ private struct KopiMessage: View, Animatable {
         let x = u * u * 262 + 2 * u * p * 176 + p * p * 160
         let y = u * u * 146 + 2 * u * p * 60 + p * p * 330
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        let text = String("kopi 28rb".prefix(typed))
-        let caretOn = m < 0.05 && (typed < 9 || Int(t / 0.53) % 2 == 0)
+        let message = IntroMoney.current.message
+        let text = String(message.prefix(typed))
+        let caretOn = m < 0.05 && (typed < message.count || Int(t / 0.53) % 2 == 0)
         ZStack(alignment: .leading) {
             shape.fill(Self.ink)
                 .shadow(color: pal.shd.opacity(0.55), radius: 13, y: 14)
@@ -570,11 +608,11 @@ private struct KopiMessage: View, Animatable {
             Image("prop-kopi-chip").resizable().scaledToFit()
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Kopi").font(.system(size: 15, weight: .bold))
+                Text(IntroMoney.current.chipName).font(.system(size: 15, weight: .bold))
                 Text("FOOD & DRINK").font(.system(size: 9, weight: .semibold, design: .monospaced)).tracking(0.7)
             }
             Spacer(minLength: 0)
-            OdoNumber(text: "Rp 28,000", indices: wheels, cell: 22)
+            OdoNumber(text: IntroMoney.current.chipAmount, indices: wheels, cell: 22)
                 .font(.system(size: 16, weight: .heavy)).monospacedDigit()
         }
         .foregroundStyle(Self.paper)

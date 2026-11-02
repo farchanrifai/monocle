@@ -111,3 +111,24 @@ final class FreePlanGateTests: XCTestCase {
         XCTAssertTrue(model.showEntry)
     }
 }
+
+/// The intro's rolling numbers land on the amounts they show, in rupiah and in dollars.
+final class IntroMoneyTests: XCTestCase {
+    func testOdometersLandOnTheAmountsTheyShow() {
+        func digits(_ text: String) -> [Int] { text.compactMap(\.wholeNumberValue) }
+        func shown(_ targets: [Double]) -> [Int] { targets.map { (Int($0) - 1) % 10 } }
+        func value(_ digits: [Int]) -> Int { digits.reduce(0) { $0 * 10 + $1 } }
+        for money in [IntroMoney.rupiah, .dollar] {
+            XCTAssertEqual(shown(money.dailyTargets), digits(money.dailyTotal), money.dailyTotal)
+            XCTAssertEqual(shown(money.baliTargets), digits(money.baliTotal), money.baliTotal)
+            XCTAssertEqual(shown(money.chipTargets), digits(money.chipAmount), money.chipAmount)
+            XCTAssertEqual(shown(money.convertedTargets), digits(money.converted), money.converted)
+            XCTAssertEqual(shown(money.leftTargets), digits(money.left), money.left)
+            XCTAssertEqual(value(shown(money.dailyAfterChip)) - value(shown(money.dailyTargets)), value(digits(money.chipAmount)),
+                           "Daily rolls up by the chip's amount")
+            XCTAssertTrue(zip(money.dailyTargets, money.dailyAfterChip).allSatisfy { $0 <= $1 }, "wheels only roll forward")
+            let all = money.dailyTargets + money.dailyAfterChip + money.baliTargets + money.chipTargets + money.convertedTargets + money.leftTargets
+            XCTAssertTrue(all.allSatisfy { (1...30).contains($0) }, "every target is a glyph on the wheel")
+        }
+    }
+}
