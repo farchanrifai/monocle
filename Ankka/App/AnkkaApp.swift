@@ -177,7 +177,7 @@ private struct AppLockView: View {
         VStack(spacing: 20) {
             Spacer()
             Image(systemName: "lock.fill").font(.system(size: 38)).foregroundStyle(MC.red)
-            Text("ankka is locked").font(.title2.weight(.semibold))
+            Text("Ankka is locked").font(.title2.weight(.semibold))
             Text("Unlock with Face ID or your device passcode.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
             Button(action: unlock) {

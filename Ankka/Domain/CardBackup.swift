@@ -913,7 +913,7 @@ enum BackupError: LocalizedError {
         case .unsupported: "This backup version is not supported by this version of Ankka."
         case .invalid: "The backup contains invalid or inconsistent records. Your current workspace has not been replaced."
         case .tooLarge: "This legacy backup exceeds its supported size. Export a current workspace backup to preserve all records and artwork."
-        case .recoveryRequired: "Restoration could not finish or roll back. Restart ankka to recover from the retained safety backup. Your original data has been kept."
+        case .recoveryRequired: "Restoration could not finish or roll back. Restart Ankka to recover from the retained safety backup. Your original data has been kept."
         case .missingArtwork: "A card photo is missing or unreadable. Restore the photo before exporting or replacing this workspace."
         }
     }
