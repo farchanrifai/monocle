@@ -537,6 +537,29 @@ final class MultiCardTests: XCTestCase {
         XCTAssertEqual(model.settings.budget, settingsBefore)
     }
 
+    func testRemovingABudgetClearsEveryMonthOfThatCardOnly() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleCard()
+        let other = try repo.createCard(named: "Tokyo")
+        let category = try XCTUnwrap(try repo.categories(in: Card.demo.id).first)
+        try repo.save(Expense(amount: 28_000_00, day: Day.string(.now), note: "Kopi", splits: [.init(categoryID: category.id, amount: 28_000_00)],
+                              cardID: Card.demo.id), in: Card.demo.id)
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: tempDir))
+        let card = model.activeCardID
+        try model.saveBudget(overallLimit: 3_000_000_00, categoryLimits: [], month: AppModel.month(offset: 2).start) // two months back
+        try model.saveBudget(overallLimit: 4_000_000_00, categoryLimits: [])
+        try model.saveBudget(overallLimit: 7_000_000_00, categoryLimits: [], cardID: other.id)
+        XCTAssertGreaterThan(try XCTUnwrap(model.budgetCardInput(card)).budgets.count, 1)
+
+        try model.removeBudgets(cardID: card)
+        XCTAssertTrue(try XCTUnwrap(model.budgetCardInput(card)).budgets.isEmpty, "no older budget comes back")
+        XCTAssertEqual(model.budgetCardInput(other.id)?.budgets.map(\.overallLimit), [7_000_000_00])
+        XCTAssertEqual(model.expenses(for: card).map(\.note), ["Kopi"], "expenses stay")
+    }
+
     func testTotalUntilBudgetIsOnePeriodAndSwitchingBackReplacesIt() throws {
         // Domain: one period from the start through the last day, including after it ends.
         let goal = BudgetVersion(effectiveDay: "2026-10-01", overallLimit: 10_000_000_00, startDay: 1, totalUntilDay: "2027-03-31")

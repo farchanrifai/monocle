@@ -87,6 +87,10 @@ final class WidgetSnapshotTests: XCTestCase {
 
     func testWidgetDeepLinkNavigation() throws {
         let model = AppModel.shared
+        // The shared model's plan follows the simulator's cached Pro state; links work the same on either plan.
+        let pro = model.pro
+        model.pro = nil
+        defer { model.pro = pro }
         let cardID = try XCTUnwrap(model.cards.first?.id)
 
         // Test openCardInHome

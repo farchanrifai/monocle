@@ -958,8 +958,9 @@ final class AppModel {
     }
 
     /// Widgets add up in the reporting currency; a card budget in another currency is shown at today's cached rate.
-    private var widgetBudget: BudgetVersion {
-        var budget = activeBudget
+    /// A card without a budget sends none: the settings fallback would show a budget the user never set.
+    private var widgetBudget: BudgetVersion? {
+        guard var budget = BudgetHistory.active(on: .now, budgets: budgetHistory) else { return nil }
         let code = activeCardCurrency
         guard code != reportingCurrency else { return budget }
         budget.overallLimit = approximate(budget.overallLimit, from: code, to: reportingCurrency) ?? budget.overallLimit
@@ -2021,6 +2022,17 @@ final class AppModel {
             if isActive { try requireState().saveSettings(proposed) }
         }
         if isActive { settings = proposed }
+        invalidateExpenseCaches()
+    }
+
+    /// Every budget on the card, past months too; its expenses stay. Budgets can't say "none from this month on",
+    /// and deleting only the one in effect would bring back an older repeating budget.
+    func removeBudgets(cardID: UUID) throws {
+        guard let expenseService else { throw EntryError.corruptStore }
+        let history = try expenseService.budgets(for: cardID)
+        try performWorkspaceCommand {
+            for budget in history { try expenseService.deleteBudget(budget.id, in: cardID) }
+        }
         invalidateExpenseCaches()
     }
 

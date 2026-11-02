@@ -32,6 +32,8 @@ struct BudgetWidgetEntryView: View {
     var body: some View {
         if let reason = entry.snapshot.unavailableReason {
             Text(reason).font(.caption).foregroundStyle(.secondary).widgetURL(URL(string: "ankka://home"))
+        } else if entry.snapshot.cycleBudget == nil {
+            noBudgetView
         } else {
         switch family {
         case .systemSmall:
@@ -52,6 +54,29 @@ struct BudgetWidgetEntryView: View {
 
     private var budget: WidgetBudgetSummary {
         entry.snapshot.cycleBudget ?? WidgetBudgetSummary(limit: 0, spent: 0, remaining: 0, percentage: 0, daysRemaining: 0, dailyPaceRemaining: 0, cycleStartDate: entry.date, cycleEndDate: entry.date, cycleLabel: "No budget")
+    }
+
+    /// The card has no budget: say so, rather than "Rp0 remaining", which reads as a budget used up.
+    @ViewBuilder private var noBudgetView: some View {
+        switch family {
+        case .accessoryCircular:
+            Image(systemName: "banknote").font(.title3)
+        case .accessoryInline:
+            Text("No budget · \(WMC.compactMoney(entry.snapshot.todaySpending.totalSpent)) today").privacySensitive()
+        default:
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text("ankka.").font(.caption2.weight(.bold))
+                    Text("· \(entry.snapshot.activeCard.name)").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Text("No budget").font(.headline)
+                Text("Spent today \(WMC.money(entry.snapshot.todaySpending.totalSpent))").privacySensitive()
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .widgetURL(URL(string: "ankka://budgets"))
+        }
     }
 
     private var smallView: some View {

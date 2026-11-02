@@ -554,6 +554,7 @@ struct BudgetEditor: View {
     @State private var repeats = true
     @State private var totalUntil = Date.now
     @State private var askingScope = false
+    @State private var confirmingRemove = false
 
     init(model: AppModel, cardID: UUID, month: Date = .now, cardChoices: [Card]) {
         self.model = model
@@ -666,6 +667,10 @@ struct BudgetEditor: View {
                     } footer: {
                         Text("Each change starts on a month, so past months keep the budget they had.")
                     }
+                    Section {
+                        Button("Remove budget", role: .destructive) { confirmingRemove = true }
+                            .accessibilityIdentifier("budgetRemove")
+                    }
                 }
             }.navigationTitle("Edit budget").navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -682,6 +687,14 @@ struct BudgetEditor: View {
                     Button("\(monthName) and later months") { save(repeating: true) }
                 } message: {
                     Text("\(monthName) and later months also replaces any budget you set for a later month.")
+                }
+                .confirmationDialog("Remove \(model.cards.first { $0.id == cardID }?.name ?? "this card")'s budget?",
+                                    isPresented: $confirmingRemove, titleVisibility: .visible) {
+                    Button("Remove budget", role: .destructive) {
+                        do { try model.removeBudgets(cardID: cardID); dismiss() } catch { self.error = error.localizedDescription }
+                    }
+                } message: {
+                    Text("Every month's budget for this card goes, past months too. Expenses stay.")
                 }
                 .onAppear(perform: load)
                 .onChange(of: cardID) { load() }
