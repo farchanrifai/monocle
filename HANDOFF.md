@@ -1,5 +1,12 @@
 ## 1. Immediate Next Step
 
+**Next session: build optional iCloud sync (Pro), decided 2026-11-02 afternoon.** Owner wants it in 1.0; spec in `docs/planning/app-store-release.md` ▸ Decided and Free and Pro. Plan:
+1. `ExpenseRepository` → `NSPersistentCloudKitContainer` (private DB, `iCloud.com.farchan.ankka`), persistent history tracking, remote-change refresh of `AppModel`; the merge policy is `.errorMergePolicyType` today and must change. Model V5 already meets CloudKit's rules (all optional, inverses, no unique constraints, no Deny), so no model or backup-format bump for the records.
+2. `workspace.json` + syncable parts of `settings.json` (`LocalStateStore`) move into one synced record, newest copy wins. Local only: App Lock timeout, draft, `keptCardID`, onboarding/What's New/review flags.
+3. Dedup after import: same `id` rows (the Sample card uses the fixed `Card.demo.id` on every device), same bill rule + `dueDay` occurrences (delete the duplicate expense too).
+4. Settings toggle, Pro-gated, off by default; off keeps local data. Unit tests for dedup and the settings record (in-memory).
+5. Privacy policy + review notes mention iCloud. Can't run on device or simulator until the paid account exists (free team can't sign iCloud).
+
 Checks after the U2/U7/D7 decisions done (2026-11-02 noon, `release/app-store`, not pushed). Details: `docs/audit/2026-11-02-v1-launch.md` ▸ "Checks after the decisions".
 
 - iOS UI tests (iPhone 17): 48 passed, 9 skipped (screenshots), 1 failed (known `testTransactionPageLiquidGlassAddButtonAndPlatter`).
