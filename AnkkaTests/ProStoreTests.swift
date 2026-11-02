@@ -41,6 +41,8 @@ final class ProStoreTests: XCTestCase {
         let store = ProStore(defaults: defaults, listen: false)
         await store.refresh()
         XCTAssertFalse(store.isPro)
+        let trial = await store.trialAvailable()
+        XCTAssertTrue(trial, "a new account gets the free week")
 
         // The test session buys without a payment sheet; Product.purchase() would wait for one.
         let yearly = "com.farchan.ankka.pro.yearly"

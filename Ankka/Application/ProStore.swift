@@ -54,6 +54,13 @@ final class ProStore {
         set(active)
     }
 
+    /// Whether this Apple Account can still start the free week. False when StoreKit can't say (offline), so the
+    /// app never promises a trial the account already used.
+    func trialAvailable() async -> Bool {
+        guard let product = try? await Product.products(for: Self.productIDs).first(where: { $0.subscription != nil }) else { return false }
+        return await product.subscription?.isEligibleForIntroOffer ?? false
+    }
+
     /// The newest Pro transaction as Apple signed it, for Ankka's chat server to check; nil without Pro.
     func receipt() async -> String? {
         var newest: (expiry: Date, jws: String)?

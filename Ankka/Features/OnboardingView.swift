@@ -14,6 +14,7 @@ struct OnboardingView: View {
     @State private var cardName = "My card"
     @State private var keepSample = true
     @State private var error: String?
+    @State private var trialAvailable = false
 
     /// The device's currency first, then the common ones, then every ISO code by name.
     private var currencies: [String] {
@@ -115,17 +116,18 @@ struct OnboardingView: View {
         VStack(spacing: 20) {
             Spacer()
             Image(systemName: "star.circle.fill").font(.system(size: 64)).foregroundStyle(MC.red)
-            Text("Try Pro free for a week").font(.title.bold()).multilineTextAlignment(.center)
+            Text(trialAvailable ? "Try Pro free for a week" : "Get more with Pro").font(.title.bold()).multilineTextAlignment(.center)
             Text("Chat with Claude on any iPhone, more cards and stacks, unlimited bills, widgets, trends and every Shortcut. Cancel any time in Settings.")
                 .font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Spacer()
-            Button { model.paywall = "Try every Pro feature free for a week." } label: { Text("See Pro").frame(maxWidth: .infinity) }
+            Button { model.paywall = trialAvailable ? "Try every Pro feature free for a week." : "" } label: { Text("See Pro").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent).controlSize(.large)
                 .accessibilityIdentifier("onboardingSeePro")
             Button("Not now") { model.showOnboarding = false }
                 .accessibilityIdentifier("onboardingNotNow")
         }
         .padding(24)
+        .task { trialAvailable = await model.pro?.trialAvailable() ?? false }
         // Buying or closing the paywall ends onboarding too.
         .onChange(of: model.showPaywall) { _, open in if !open { model.showOnboarding = false } }
     }
