@@ -182,6 +182,17 @@ enum CSVTokenizer {
         return rows
     }
 
+    /// A spreadsheet runs a cell that starts with = + - @ (or a tab or return before one) as a formula. A leading '
+    /// keeps it text; the importer drops that ' again.
+    static func neutralized(_ text: String) -> String {
+        guard let first = text.first, "=+-@\t\r".contains(first) else { return text }
+        return "'" + text
+    }
+    static func unneutralized(_ text: String) -> String {
+        guard text.hasPrefix("'"), let next = text.dropFirst().first, "=+-@\t\r".contains(next) else { return text }
+        return String(text.dropFirst())
+    }
+
     /// Escapes a field according to RFC 4180.
     static func escape(_ field: String, delimiter: Character = ",") -> String {
         let needsQuotes = field.contains(delimiter) || field.contains("\"") || field.contains("\n") || field.contains("\r")
@@ -242,7 +253,8 @@ enum CSVExportGenerator {
             let splits = String(data: splitData, encoding: .utf8) ?? ""
             let paidWith = expense.paidWithID.flatMap { paidWithMap[$0] } ?? ""
             let original = expense.originalAmount.map(Money.exactDigits) ?? ""
-            let row = [dateStr, timeStr, cardName, categoryStr, amountStr, noteStr, sourceStr, splits, paidWith,
+            let text = CSVTokenizer.neutralized
+            let row = [dateStr, timeStr, text(cardName), text(categoryStr), amountStr, text(noteStr), text(sourceStr), splits, text(paidWith),
                        expense.originalCurrency ?? "", original, expense.rate ?? ""]
             lines.append(row.map { CSVTokenizer.escape($0) }.joined(separator: ","))
         }
@@ -516,7 +528,7 @@ enum CSVImportParser {
 
             var note = ""
             if let noteIdx = mapping.noteIndex, rowValues.indices.contains(noteIdx) {
-                note = rowValues[noteIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                note = CSVTokenizer.unneutralized(rowValues[noteIdx].trimmingCharacters(in: .whitespacesAndNewlines))
             }
             if note.isEmpty {
                 note = "Imported expense"
@@ -524,7 +536,7 @@ enum CSVImportParser {
 
             var categoryID = defaultCategoryID
             if let catIdx = mapping.categoryIndex, rowValues.indices.contains(catIdx) {
-                let catRaw = rowValues[catIdx].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let catRaw = CSVTokenizer.unneutralized(rowValues[catIdx].trimmingCharacters(in: .whitespacesAndNewlines)).lowercased()
                 if let matched = categoryByName[catRaw] {
                     categoryID = matched
                 } else {
@@ -552,8 +564,8 @@ enum CSVImportParser {
             }
 
             // Paid with matches an existing label by name; an unknown name is left unset.
-            let paidWithName = mapping.paidWithIndex.flatMap { rowValues.indices.contains($0) ? rowValues[$0] : nil }?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let paidWithName = mapping.paidWithIndex.flatMap { rowValues.indices.contains($0) ? rowValues[$0] : nil }
+                .map { CSVTokenizer.unneutralized($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
             let paidWithID = paidWithName.flatMap { name in
                 paymentMethods.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.id
             }

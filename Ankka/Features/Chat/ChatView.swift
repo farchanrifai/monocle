@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full-screen chat (CHAT_SPEC §1). Apple Intelligence proposes and answers through the shared tools; only the Save button writes.
+/// Full-screen chat (CHAT_SPEC §1). The chat model proposes and answers through the shared tools; only the Save button writes.
 struct ChatView: View {
     @Bindable var model: AppModel
     @Bindable var session: ChatSession

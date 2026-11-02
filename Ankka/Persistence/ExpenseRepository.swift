@@ -759,34 +759,6 @@ final class ExpenseRepository: ExpenseStore {
         }
     }
 
-    /// User-initiated promotion keeps categories but removes only recorded sample entries.
-    func startEmptyRealCard(_ profile: Card) throws {
-        guard profile.kind == .real else { throw BackupError.invalid }
-        do {
-            let card = try cardRow(for: Card.demo.id)
-            for expense in try objects("ExpenseRecord") {
-                if (expense.value(forKey: "book") as? NSManagedObject) == card {
-                    try detachBillOccurrences(linkedTo: expense)
-                    context.delete(expense)
-                }
-            }
-            card.setValue(profile.id, forKey: "id")
-            card.setValue(profile.name, forKey: "name")
-            card.setValue(profile.colorIndex, forKey: "colorIndex")
-            writeModelBFields(of: profile, to: card)
-            try commitIfNeeded()
-        } catch { context.rollback(); throw error }
-    }
-
-    func renameRealCard(_ profile: Card) throws {
-        guard profile.kind == .real else { throw BackupError.invalid }
-        do {
-            let card = try cardRow(for: profile.id)
-            card.setValue(profile.name, forKey: "name")
-            try commitIfNeeded()
-        } catch { context.rollback(); throw error }
-    }
-
     /// Deletes all expenses and their splits in the specified card, or across all cards if nil.
     func clearExpenses(in cardID: UUID? = nil) throws {
         do {
@@ -1028,6 +1000,8 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     private func validateAggregate() throws {
+        // The total only changes when an expense row does; budget, bill and category commits skip the full fetch.
+        guard context.insertedObjects.union(context.updatedObjects).contains(where: { $0.entity.name == "ExpenseRecord" }) else { return }
         let amounts = try objects("ExpenseRecord").map { row -> Int64 in
             guard let amount = row.value(forKey: "amount") as? Int64 else { throw EntryError.corruptStore }
             return amount

@@ -116,7 +116,7 @@ final class IntentTests: XCTestCase {
         let activeCats = model.activeCategories(for: card.id)
         let categoryEntity = ExpenseCategoryEntity(activeCats[0])
 
-        var intent = AddExpenseIntent()
+        let intent = AddExpenseIntent()
         intent.amount = 55_000
         intent.category = categoryEntity
         intent.card = cardEntity
@@ -151,7 +151,7 @@ final class IntentTests: XCTestCase {
         AppEnvironment.shared.model = model
         AppEnvironment.shared.expenses = service
 
-        var intent = AddExpenseIntent()
+        let intent = AddExpenseIntent()
         intent.amount = 10_000
         intent.category = ExpenseCategoryEntity(invalid)
         intent.card = CardEntity(second)
@@ -179,7 +179,7 @@ final class IntentTests: XCTestCase {
         let all = try AskAnswers.summary(period: .thisMonth, scope: nil, model: model)
         XCTAssertEqual(all.total.display, summary.total.display, "No scope means everything")
 
-        var intent = SpendingSummaryIntent()
+        let intent = SpendingSummaryIntent()
         intent.card = CardEntity(card)
         _ = try await intent.perform()
 
@@ -192,7 +192,7 @@ final class IntentTests: XCTestCase {
         AppEnvironment.shared.model = model
         AppEnvironment.shared.expenses = service
         if ChatSession.unavailableReason(isPro: false) != nil {
-            var intent = AskAnkkaIntent()
+            let intent = AskAnkkaIntent()
             intent.question = "how much this month?"
             do { _ = try await intent.perform(); XCTFail("chat can't run here") } catch AskError.chatOff {}
         }

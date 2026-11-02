@@ -44,7 +44,7 @@ struct ChatTranscript: View {
                             }
                         }
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel(text.map { Text("Ankka: ") + Text(Self.markdown($0)) } ?? Text("Ankka is typing"))
+                        .accessibilityLabel(text.map { Text("Ankka: \(Self.markdown($0))") } ?? Text("Ankka is typing"))
                         .contextMenu {
                             if let text { Button("Copy", systemImage: "doc.on.doc") { Self.copy(text) } }
                         }
@@ -117,7 +117,7 @@ struct ChatTranscript: View {
                 if row.isUser { mentionStyled(text).textRenderer(MentionChipRenderer(chip: .black.opacity(0.28))) } else { Text(Self.markdown(text)) }
             }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(Text(row.isUser ? "You: " : "Ankka: ") + Text(Self.markdown(text)))
+                .accessibilityLabel(Text("\(row.isUser ? "You" : "Ankka"): \(Self.markdown(text))"))
                 .contextMenu {
                     Button("Copy", systemImage: "doc.on.doc") { Self.copy(text) }
                 }

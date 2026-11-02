@@ -88,7 +88,6 @@ final class WidgetSnapshotTests: XCTestCase {
     func testWidgetDeepLinkNavigation() throws {
         let model = AppModel.shared
         let cardID = try XCTUnwrap(model.cards.first?.id)
-        let stackID = UUID()
 
         // Test openCardInHome
         model.openCardInHome(id: cardID)

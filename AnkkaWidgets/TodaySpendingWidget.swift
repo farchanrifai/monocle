@@ -70,7 +70,7 @@ struct TodaySpendingWidgetEntryView: View {
                 Text("TOTAL SPENT")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
-                Text(WMC.formatIDR(today.totalSpent)).privacySensitive()
+                Text(WMC.money(today.totalSpent)).privacySensitive()
                     .font(.system(size: 20, weight: .bold))
                     .minimumScaleFactor(0.65)
                     .lineLimit(1)
@@ -111,7 +111,7 @@ struct TodaySpendingWidgetEntryView: View {
                         Text("SPENT TODAY")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.secondary)
-                        Text(WMC.formatIDR(today.totalSpent)).privacySensitive()
+                        Text(WMC.money(today.totalSpent)).privacySensitive()
                             .font(.system(size: 20, weight: .bold))
                             .minimumScaleFactor(0.7)
                             .lineLimit(1)
@@ -162,7 +162,7 @@ struct TodaySpendingWidgetEntryView: View {
 
                                 Spacer()
 
-                                Text(WMC.formatIDR(item.amount, currency: false)).privacySensitive()
+                                Text(WMC.money(item.amount, currency: false)).privacySensitive()
                                     .font(.caption.weight(.semibold).monospaced())
                                     .foregroundStyle(.primary)
                             }
@@ -189,7 +189,7 @@ struct TodaySpendingWidgetEntryView: View {
     }
 
     private var inlineView: some View {
-        Text("Spent \(WMC.compactIDR(today.totalSpent)) today").privacySensitive()
+        Text("Spent \(WMC.compactMoney(today.totalSpent)) today").privacySensitive()
     }
 }
 

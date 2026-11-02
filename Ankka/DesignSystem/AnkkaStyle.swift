@@ -9,6 +9,23 @@ enum MC {
     static func label(_ size: CGFloat = 10) -> Font { .system(size: size, weight: .medium) }
 }
 
+/// Screen colors for each theme: Home and Analytics share them.
+extension CardVisualDirection {
+    var paper: Color {
+        switch self {
+        case .light: MC.paper
+        case .ledger: Color(red: 0.96, green: 0.94, blue: 0.88)
+        case .instrument, .signal: .black
+        }
+    }
+    var ink: Color {
+        switch self {
+        case .light, .ledger: MC.ink
+        case .instrument, .signal: .white
+        }
+    }
+}
+
 /// Home card stack geometry, shared by the stack, the detail hero and the open/close animation.
 enum CardStackMetrics {
     /// Card height as a fraction of its width.

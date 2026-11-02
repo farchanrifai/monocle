@@ -111,60 +111,6 @@ final class BackupTests: XCTestCase {
             XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("restore-journal.json").path))
         }
     }
-    func testStartingEmptyRealCardKeepsCategoriesAndCreatesRecoverableSafetyBackup() throws {
-        try withStore { repository, state, service, directory in
-            let original = fixture()
-            try repository.replace(with: original)
-            try state.saveDraft(original.draft); try state.saveSettings(original.settings)
-            var preferences = WorkspacePreferences()
-            preferences.allActivitiesScope = true
-            try state.saveWorkspacePreferences(preferences)
-            let bill = Bill(cardID: Card.demo.id, name: "Internet", amount: 10000,
-                                categoryID: original.categories[0].id, recurrence: .monthly(day: 1))
-            try repository.saveBill(bill)
-            try service.reload()
-
-            let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
-            let settings = try backup.startEmptyRealCard(named: "Farchan's expenses", currentDraft: original.draft, settings: original.settings)
-
-            XCTAssertEqual(settings.card.name, "Farchan's expenses")
-            XCTAssertEqual(settings.card.kind, .real)
-            XCTAssertTrue(try repository.expenses().isEmpty)
-            XCTAssertEqual(try repository.categories(), original.categories.sorted { $0.id.uuidString < $1.id.uuidString })
-            XCTAssertFalse(try state.loadDraft().hasContent)
-            let safety = try WorkspaceBackup.decode(Data(contentsOf: backup.safetyURL))
-            XCTAssertEqual(safety.cards.first?.expenses, original.expenses)
-            XCTAssertEqual(safety.cards.first?.bills, [bill])
-            XCTAssertTrue(safety.preferences.allActivitiesScope)
-            let realBackup = try backup.snapshot(draft: ExpenseDraft(), settings: settings)
-            XCTAssertEqual(realBackup.formatVersion, 3)
-            XCTAssertEqual(realBackup.cardKind, CardKind.real.rawValue)
-            try realBackup.validate()
-            let preview = try backup.preview(data: realBackup.encoded())
-            XCTAssertEqual(preview.cardID, realBackup.cardID)
-            XCTAssertEqual(preview.settings, realBackup.settings)
-            XCTAssertEqual(preview.categories, realBackup.categories)
-        }
-    }
-
-    func testRealCardRenamePreservesExportAndRecords() throws {
-        try withStore { repository, state, service, directory in
-            let original = fixture()
-            try repository.replace(with: original)
-            var settings = original.settings
-            settings.card = try Card.real(named: "Before")
-            try repository.startEmptyRealCard(settings.card)
-            let expense = Expense(amount: 10000, day: "2026-09-08", note: "Coffee", splits: [.init(categoryID: original.categories[0].id, amount: 10000)])
-            try repository.save(expense); try state.saveSettings(settings); try service.reload()
-
-            let backup = BackupService(directory: directory, repository: repository, state: state, expenses: service)
-            let renamed = try backup.renameRealCard(to: "After", currentDraft: ExpenseDraft(), settings: settings)
-            XCTAssertEqual(renamed.card.id, settings.card.id)
-            XCTAssertEqual(renamed.card.name, "After")
-            XCTAssertEqual(try repository.expenses(), [expense])
-            XCTAssertEqual(try backup.snapshot(draft: ExpenseDraft(), settings: renamed).cardName, "After")
-        }
-    }
     func testRecoveryAfterClosingAndReopeningDiskStore() throws {
         try withStore { repository, state, _, directory in
             let original = fixture()

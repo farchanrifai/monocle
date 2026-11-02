@@ -119,41 +119,6 @@ final class BackupService {
         return workspace
     }
 
-    func startEmptyRealCard(named name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
-        try admitMutation()
-        let profile = try Card.real(named: name)
-        var updated = settings
-        updated.card = profile
-        return try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
-            try repository.startEmptyRealCard(profile)
-            try state.saveDraft(ExpenseDraft(), for: Card.demo.id)
-            try state.saveDraft(ExpenseDraft(), for: profile.id)
-            try state.saveSettings(updated)
-            var preferences = try state.loadWorkspacePreferences()
-            func remap(_ ids: [UUID]) -> [UUID] { ids.map { $0 == Card.demo.id ? profile.id : $0 } }
-            preferences.visibleCardIDs = remap(preferences.visibleCardIDs)
-            preferences.cardOrder = remap(preferences.cardOrder)
-            preferences.alwaysHiddenCardIDs = remap(preferences.alwaysHiddenCardIDs)
-            preferences.stacks = preferences.stacks.map { var value = $0; value.cardIDs = remap(value.cardIDs); return value }
-            if let value = preferences.cardCustomizations.removeValue(forKey: Card.demo.id) { preferences.cardCustomizations[profile.id] = value }
-            if let value = preferences.cardInactiveCategoryIDs.removeValue(forKey: Card.demo.id) { preferences.cardInactiveCategoryIDs[profile.id] = value }
-            try state.saveWorkspacePreferences(preferences)
-            return updated
-        }
-    }
-
-    func renameRealCard(to name: String, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws -> PrototypeSettings {
-        try admitMutation()
-        let profile = try settings.card.renamed(to: name)
-        var updated = settings
-        updated.card = profile
-        return try withRecovery(currentDraft: currentDraft, settings: settings) {
-            try repository.renameRealCard(profile)
-            try state.saveSettings(updated)
-            return updated
-        }
-    }
-
     func clearExpenses(in cardID: UUID? = nil, currentDraft: ExpenseDraft, settings: PrototypeSettings) throws {
         try withRecovery(currentDraft: currentDraft, settings: settings, safetyCopy: true) {
             try repository.clearExpenses(in: cardID)

@@ -87,8 +87,6 @@ final class BackendBackupTests: XCTestCase {
             let attempts: [() throws -> Void] = [
                 { try backups.clearExpenses(currentDraft: draft, settings: original.settings) },
                 { _ = try backups.resetAllData(cardName: "New", currentDraft: draft, settings: original.settings) },
-                { _ = try backups.startEmptyRealCard(named: "New", currentDraft: draft, settings: original.settings) },
-                { _ = try backups.renameRealCard(to: "Renamed", currentDraft: draft, settings: original.settings) },
                 { try backups.restoreWorkspace(original, currentDraft: draft, settings: original.settings) },
                 { try backups.withRecovery(currentDraft: draft, settings: original.settings) { try state.saveSettings(PrototypeSettings()) } }
             ]

@@ -141,6 +141,10 @@ final class MentionUITextView: UITextView {
 
     private func commonInit() {
         chips.fillColor = UIColor(MC.red.opacity(0.75)).cgColor
+        // A CGColor doesn't follow light and dark by itself.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: Self, _) in
+            view.chips.fillColor = UIColor(MC.red.opacity(0.75)).cgColor
+        }
         layer.insertSublayer(chips, at: 0)
         placeholder.textColor = .placeholderText
         placeholder.font = .preferredFont(forTextStyle: .body)
@@ -181,11 +185,6 @@ final class MentionUITextView: UITextView {
         CATransaction.begin(); CATransaction.setDisableActions(true)
         chips.path = path.cgPath
         CATransaction.commit()
-    }
-
-    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
-        super.traitCollectionDidChange(previous)
-        chips.fillColor = UIColor(MC.red.opacity(0.75)).cgColor
     }
 }
 

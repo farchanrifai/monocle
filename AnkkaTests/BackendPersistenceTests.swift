@@ -74,31 +74,6 @@ final class BackendPersistenceTests: XCTestCase {
         XCTAssertNoThrow(try backups.workspaceSnapshot(currentDraft: draft, settings: settings).validate())
     }
 
-    func testSamplePromotionDetachesRecordedBillsAndPreservesHistory() throws {
-        let (directory, repository) = try fixture()
-        try repository.prepareSampleCard()
-        let owner = Card.demo.id
-        let category = try XCTUnwrap(repository.categories(in: owner).first)
-        let rule = Bill(cardID: owner, name: "Sample rent", amount: 10_000, categoryID: category.id,
-                            recurrence: .monthly(day: 15), recordingMode: .automatic, hasReminder: false)
-        let value = expense(card: owner, category: category.id)
-        let occurrence = BillOccurrence(billRuleID: rule.id, cardID: owner, dueDay: value.day,
-                                        status: .recorded, expenseID: value.id)
-        try repository.transaction {
-            try repository.saveBill(rule, in: owner)
-            try repository.save(value, in: owner)
-            try repository.saveOccurrence(occurrence, in: owner)
-        }
-        let real = try Card.real(named: "Real")
-        try repository.startEmptyRealCard(real)
-        let reopened = try reopen(repository, directory: directory)
-        XCTAssertTrue(try reopened.expenses(in: real.id).isEmpty)
-        let preserved = try XCTUnwrap(reopened.billOccurrences(in: real.id).first)
-        XCTAssertEqual(preserved.status, .skipped)
-        XCTAssertNil(preserved.expenseID)
-        XCTAssertEqual(try reopened.bills(in: real.id).first?.cardID, real.id)
-    }
-
     func testCategoryMigrationScopesReusedLegacyIDsToTheirOwnCard() throws {
         let (directory, repository) = try fixture()
         let legacyID = UUID()

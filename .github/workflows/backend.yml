@@ -3,7 +3,7 @@ name: Backend regression checks
 on:
   pull_request:
   push:
-    branches: [main, 'codex/**', 'fix/**']
+    branches: [main, 'codex/**', 'fix/**', 'release/**']
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * 0'

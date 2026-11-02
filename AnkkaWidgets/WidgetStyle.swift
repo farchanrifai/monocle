@@ -6,13 +6,17 @@ enum WMC {
     static let surface = Color(uiColor: .secondarySystemGroupedBackground)
     static let line = Color.primary.opacity(0.12)
 
-    static func formatIDR(_ amount: Int64, currency: Bool = true) -> String {
+    /// In the reporting currency, like the app's Money.format: "Rp28,000", "SGD 12.50".
+    static func money(_ amount: Int64, currency: Bool = true) -> String {
         let value = Decimal(amount) / 100
         let number = value.formatted(.number.precision(.fractionLength(amount % 100 == 0 ? 0 : 2)))
-        return (currency ? WidgetSnapshotStore.currencySymbol : "") + number
+        guard currency else { return number }
+        let symbol = WidgetSnapshotStore.currencySymbol
+        let isCode = symbol.count == 3 && symbol.unicodeScalars.allSatisfy { ("A"..."Z").contains($0) }
+        return symbol + (isCode ? " " : "") + number
     }
 
-    static func compactIDR(_ amount: Int64) -> String {
+    static func compactMoney(_ amount: Int64) -> String {
         let value = Double(amount) / 100.0
         if value >= 1_000_000 {
             let m = value / 1_000_000.0

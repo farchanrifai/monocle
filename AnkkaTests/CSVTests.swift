@@ -280,6 +280,19 @@ final class CSVTests: XCTestCase {
         XCTAssertEqual(summary.totalSpending, 25_000_00)
     }
 
+    func testFormulaLikeNotesExportAsTextAndImportUnchanged() throws {
+        let food = ExpenseCategory(id: UUID(), name: "Food", symbol: "cup.and.saucer")
+        let cardID = UUID()
+        let risky = Expense(amount: 10_000_00, day: "2026-10-01", note: "=HYPERLINK(\"http://x\")",
+                            splits: [.init(categoryID: food.id, amount: 10_000_00)], cardID: cardID)
+        let rows = try CSVTokenizer.parse(content: CSVExportGenerator.generate(expenses: [risky], categories: [food]), delimiter: ",")
+        XCTAssertEqual(rows[1][5], "'=HYPERLINK(\"http://x\")", "a spreadsheet must not run it")
+        let imported = CSVImportParser.processRows(rawRows: rows, hasHeader: true, mapping: CSVImportParser.detectColumnMapping(headers: rows[0]),
+                                                   targetCardID: cardID, categories: [food], defaultCategoryID: food.id, existingExpenses: [])
+        XCTAssertEqual(imported.first?.parsedExpense?.note, risky.note)
+        XCTAssertEqual(CSVTokenizer.neutralized("Kopi"), "Kopi")
+    }
+
     func testCreditsInABankExportAreShownButNotTicked() {
         let food = ExpenseCategory(id: UUID(), name: "Food", symbol: "cup.and.saucer")
         let mapping = CSVColumnMapping(dateIndex: 0, amountIndex: 1, noteIndex: 2)

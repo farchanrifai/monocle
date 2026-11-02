@@ -31,16 +31,7 @@ private struct AnalyticsReportView: View {
 
     private var direction: CardVisualDirection { model.effectiveDirection(for: colorScheme) }
 
-    private var paper: Color {
-        switch direction {
-        case .light:
-            return MC.paper
-        case .ledger:
-            return Color(red: 0.96, green: 0.94, blue: 0.88)
-        case .instrument, .signal:
-            return .black
-        }
-    }
+    private var paper: Color { direction.paper }
 
     private let categoryPalette: [Color] = [
         MC.red,

@@ -355,7 +355,7 @@ struct PopUpPicker<ID: Hashable>: NSViewRepresentable {
         return item
     }
 
-    final class Coordinator: NSObject {
+    @MainActor final class Coordinator: NSObject {
         var parent: PopUpPicker
         init(_ parent: PopUpPicker) { self.parent = parent }
         @objc func changed(_ sender: NSPopUpButton) {

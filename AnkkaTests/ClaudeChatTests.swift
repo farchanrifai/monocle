@@ -215,7 +215,7 @@ final class ClaudeChatTests: XCTestCase {
         ]
         let agent = ClaudeChatAgent(model: model, transport: { _ in XCTFail("should stream"); return Data() }, stream: { body, onText in
             var assembler = StreamAssembler()
-            for event in turns.removeFirst() { if let delta = assembler.add(event) { await onText(delta) } }
+            for event in turns.removeFirst() { if let delta = assembler.add(event) { onText(delta) } }
             return try XCTUnwrap(assembler.message)
         })
         var live: [String?] = []

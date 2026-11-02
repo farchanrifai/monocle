@@ -141,15 +141,16 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(service.expenses.count, 1)
     }
 
-    func testArchivingPreservesHistoryButHidesCategoryFromNewCapture() throws {
+    func testArchivedCategoriesFromOldDataStayHiddenFromNewCapture() throws {
         let state = TestState()
         let service = try ExpenseService(store: TestExpenseStore())
         let model = AppModel(expenses: service, state: state)
         let category = ExpenseCategory.defaults[0]
-        try model.archiveCategory(category)
+        var settings = model.settings; settings.archivedCategoryIDs = [category.id]
+        try model.saveSettings(settings)
         XCTAssertFalse(model.activeCategories.contains(category))
-        XCTAssertEqual(state.savedSettings?.archivedCategoryIDs, [category.id])
-        try model.restoreCategory(category)
+        settings.archivedCategoryIDs = []
+        try model.saveSettings(settings)
         XCTAssertTrue(model.activeCategories.contains(category))
     }
 

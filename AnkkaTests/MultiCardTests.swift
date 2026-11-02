@@ -444,7 +444,7 @@ final class MultiCardTests: XCTestCase {
         XCTAssertFalse(stackActivities.contains(where: { $0.note == "Old Resort" }))
 
         // 2. Switch to All Cards
-        model.toggleFilterScope()
+        model.cycleFilterOrStack()
         XCTAssertEqual(model.filterScope, StackFilterScope.allCards)
         XCTAssertTrue(model.homeDeckCards.contains(where: { $0.id == oldTrip.id }))
         let allBeforeArchive = model.activities(selectedCardID: nil, allCards: true)
@@ -688,10 +688,6 @@ final class MultiCardTests: XCTestCase {
         model.moveCardToBack(b3.id)
         XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b3.id, b1.id, b2.id])
         XCTAssertEqual(model.visibleCards.first?.id, b3.id)
-
-        // In active stack: reorder cards
-        model.reorderCardsInCurrentStack(fromOffsets: IndexSet(integer: 2), toOffset: 0)
-        XCTAssertEqual(model.cardsInCurrentStack.map(\.id), [b2.id, b3.id, b1.id])
 
         // In allCards mode: move b1 to the back (first in order)
         model.filterScope = .allCards

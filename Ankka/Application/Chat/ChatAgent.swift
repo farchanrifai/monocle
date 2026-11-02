@@ -1,6 +1,6 @@
 import Foundation
 
-/// A chat model behind the shared tools (CHAT_SPEC §4). Apple Intelligence (AppleChatAgent) is the only one shipped.
+/// A chat model behind the shared tools (CHAT_SPEC §4): Apple Intelligence on the iPhone (AppleChatAgent) or Claude on Pro (ClaudeChatAgent).
 @MainActor
 protocol ChatBackend: AnyObject {
     func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output]

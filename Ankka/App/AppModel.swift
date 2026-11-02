@@ -82,9 +82,6 @@ final class AppModel {
         didSet { if showCSVInterchange, csvInterchangeInitialTab == 1, !requirePro("CSV import is part of Pro.") { showCSVInterchange = false } }
     }
     var csvInterchangeInitialTab = 0
-    var showAnalytics = false {
-        didSet { if showAnalytics, !requirePro("Analytics is part of Pro.") { showAnalytics = false } }
-    }
     var showChat = false
     /// Text for the chat composer, set by `ankka://chat?q=`; ChatView takes it.
     var chatPrefill: String?
@@ -830,10 +827,6 @@ final class AppModel {
         if let selectedCardID, alwaysHiddenIDs.contains(selectedCardID) { self.selectedCardID = nil }
     }
 
-    func toggleFilterScope() {
-        cycleFilterOrStack()
-    }
-
     func cycleFilterOrStack() {
         var proposed = workspacePreferences
         if filterScope == .allCards {
@@ -905,17 +898,6 @@ final class AppModel {
         }
         do { try commitPresentationPreferences(proposed) }
         catch { report(error) }
-    }
-
-    func reorderCardsInCurrentStack(fromOffsets: IndexSet, toOffset: Int) {
-        if filterScope == .activeStack, let stackID = activeStackID, let idx = stacks.firstIndex(where: { $0.id == stackID }) {
-            var cardIDs = stacks[idx].cardIDs
-            cardIDs.move(fromOffsets: fromOffsets, toOffset: toOffset)
-            var proposed = workspacePreferences; proposed.stacks[idx].cardIDs = cardIDs
-            do { try commitPresentationPreferences(proposed) } catch { report(error) }
-        } else {
-            reorderCards(fromOffsets: fromOffsets, toOffset: toOffset)
-        }
     }
 
     func reorderCards(fromOffsets: IndexSet, toOffset: Int) {
@@ -1518,14 +1500,6 @@ final class AppModel {
         return expenseByIDCache?[id]
     }
 
-    func allExpensesByCard() -> [UUID: [Expense]] {
-        var map: [UUID: [Expense]] = [:]
-        for card in cards {
-            map[card.id] = expenses(for: card.id)
-        }
-        return map
-    }
-
     func activities(selectedCardID: UUID?, allCards: Bool) -> [Expense] {
         if let selectedCardID {
             return expensesInHomeMonth(for: selectedCardID)
@@ -1544,22 +1518,6 @@ final class AppModel {
         memoizedActivities = sorted
         memoizedActivitiesKey = key
         return sorted
-    }
-
-    func startEmptyRealCard(named name: String) throws {
-        guard let backups else { throw BackupError.unsupported }
-        let settings = try recoveryCommand { try backups.startEmptyRealCard(named: name, currentDraft: draft, settings: settings) }
-        self.settings = settings
-        draft = ExpenseDraft(); draft.cardID = settings.card.id
-        undoExpense = nil; pendingEntry = nil
-        invalidateExpenseCaches()
-        showToast("Your card is ready")
-    }
-    func renameRealCard(to name: String) throws {
-        guard let backups else { throw BackupError.unsupported }
-        try recoveryCommand { settings = try backups.renameRealCard(to: name, currentDraft: draft, settings: settings) }
-        invalidateExpenseCaches()
-        showToast("Card renamed")
     }
 
     func clearActiveCardExpenses() throws {
@@ -1949,17 +1907,6 @@ final class AppModel {
         publishPreferences(proposed); invalidateExpenseCaches()
     }
 
-    func isArchived(_ category: ExpenseCategory) -> Bool { settings.archivedCategoryIDs.contains(category.id) }
-    func archiveCategory(_ category: ExpenseCategory) throws {
-        guard draft.categoryID != category.id, !draft.splitParts.contains(where: { $0.categoryID == category.id }),
-              !settings.categoryRules.contains(where: { $0.categoryID == category.id }) else { throw CategoryError.inUse }
-        var proposed = settings; proposed.archivedCategoryIDs.insert(category.id)
-        try saveSettings(proposed)
-    }
-    func restoreCategory(_ category: ExpenseCategory) throws {
-        var proposed = settings; proposed.archivedCategoryIDs.remove(category.id)
-        try saveSettings(proposed)
-    }
     func saveCategoryRule(_ rule: CategoryRule) throws {
         let rule = try rule.validated(against: categories, archivedIDs: settings.archivedCategoryIDs)
         guard !settings.categoryRules.contains(where: { $0.id != rule.id && $0.keyword == rule.keyword }) else { throw CategoryError.duplicateRule }

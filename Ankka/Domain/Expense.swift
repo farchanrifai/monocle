@@ -51,7 +51,7 @@ struct Split: Codable, Hashable, Sendable {
 
 struct Expense: Identifiable, Codable, Hashable, Sendable {
     var id: UUID = UUID()
-    var amount: Int64 // IDR minor units: Rp1 = 100 units.
+    var amount: Int64 // Reporting currency in hundredths of a unit: Rp1 or $1 = 100.
     var day: String
     var note: String
     var splits: [Split]

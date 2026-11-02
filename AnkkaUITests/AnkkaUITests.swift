@@ -420,7 +420,7 @@ final class AnkkaUITests: XCTestCase {
         }
         // Scroll back to the start of the conversation.
         for _ in 0..<6 { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))) }
-        let first = app.staticTexts["You: message number 1"], last8 = app.staticTexts["You: message number 8"]
+        let first = app.staticTexts["You: message number 1"]
         XCTAssertTrue(first.isHittable, "scrolled to the start of the conversation")
 
         input.tap()

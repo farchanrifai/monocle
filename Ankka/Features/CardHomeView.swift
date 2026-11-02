@@ -349,24 +349,8 @@ struct CardHomeView: View {
     private var current: Card? { model.cards.first { $0.id == selectedID } }
 
     private var direction: CardVisualDirection { model.effectiveDirection(for: colorScheme) }
-    private var paper: Color {
-        switch direction {
-        case .light:
-            return MC.paper
-        case .ledger:
-            return Color(red: 0.96, green: 0.94, blue: 0.88)
-        case .instrument, .signal:
-            return .black
-        }
-    }
-    private var ink: Color {
-        switch direction {
-        case .light, .ledger:
-            return MC.ink
-        case .instrument, .signal:
-            return .white
-        }
-    }
+    private var paper: Color { direction.paper }
+    private var ink: Color { direction.ink }
     private var amountFont: Font {
         switch direction {
         case .light, .signal:
@@ -479,9 +463,6 @@ struct CardHomeView: View {
             }
             .scrollEdgeEffectStyle(.soft, for: .all)
             .proPaywall(model)
-        }
-        .navigationDestination(isPresented: $model.showAnalytics) {
-            AnalyticsView(model: model).hidesBottomNavigation(model)
         }
         .sheet(isPresented: $model.showStartSessionSheet) {
             startSessionSheet.scrollEdgeEffectStyle(.soft, for: .all)
@@ -767,7 +748,7 @@ struct CardHomeView: View {
             amountFont: amountFont,
             model: model,
             onFlip: { toggleFlip(for: card.id) },
-            onOpenAnalytics: { model.showAnalytics = true },
+            onOpenAnalytics: { model.selectedTab = 1 }, // the Analytics tab follows the open card
             onCustomize: { openCustomizer(for: card) }
         )
         .frame(width: target.width, height: target.height)
