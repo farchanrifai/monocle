@@ -15,6 +15,8 @@ public final class CardArtworkStore: @unchecked Sendable {
     private let fileManager = FileManager.default
     private let customDirectory: URL?
     var writeFault: ((String) throws -> Void)? // deterministic write failures for recovery tests
+    /// Called after a photo is written (iCloud sync sends it up).
+    var onWrite: (@Sendable (String, Data) -> Void)?
     static let maximumDimension = 1_200
     static let maximumAssetBytes = 8 * 1024 * 1024
 
@@ -117,6 +119,7 @@ public final class CardArtworkStore: @unchecked Sendable {
         if let image = Self.decodeImage(data) {
             cache.setObject(image, forKey: filename as NSString, cost: data.count)
         }
+        onWrite?(filename, data)
     }
 
     public func deleteArtwork(filename: String) {

@@ -46,6 +46,7 @@
 		2B85D8F21FC21C619266FDEF /* Plan.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEEB1E98D3D94B7BC4488B3E /* Plan.swift */; };
 		2E58ED53C9A0A17655594686 /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 745B04759B1C32DA7FE26B17 /* ChatBubble.swift */; };
 		2EE606DDC728F2FDAB6A9538 /* MultiCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92CA380F67C070929079759A /* MultiCardTests.swift */; };
+		311F8B253DC21BE86E73A390 /* CloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226027AFE30B93146DE69883 /* CloudSync.swift */; };
 		31C70C83FC7FDFFB98E613AA /* ClaudeChatAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB2D2A0063211A12B4F672F /* ClaudeChatAgent.swift */; };
 		34EF2DAE5AE675CF2E69E65B /* ChatToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6CEE0BF3CADC4C439CCEB48 /* ChatToolTests.swift */; };
 		35B7A8C86A68CB0FC5F68DCC /* BillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1750587FE9F0142E3F0C31D8 /* BillsView.swift */; };
@@ -85,6 +86,7 @@
 		6DAC69ED2972469033BA1DF6 /* BudgetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A613A12C4929D444B7ED2FE /* BudgetWidget.swift */; };
 		6E1D8F6DEB06157BEF97B2F3 /* CardBackTelemetryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979E2E30C645F22DB56517AB /* CardBackTelemetryView.swift */; };
 		6E2A21DD24C8E2482018955B /* BillReconciliationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508E76AB783FF6D436FD20ED /* BillReconciliationEngine.swift */; };
+		6E6F631D7224FAB171EF345F /* CloudSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B9F4CA402AA074BA281010 /* CloudSyncTests.swift */; };
 		6F67730D8A457A68C27BEA54 /* BackendFinancialTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA5EC7F932D5A3F67ABE7D7 /* BackendFinancialTests.swift */; };
 		70CCCB6D441E86C5FE2CAB3C /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28709837E040AD3B481DCA76 /* BackupService.swift */; };
 		7187988B21025E7E4046BA3F /* AnkkaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADA69DF36D1CEAF2F29DD79 /* AnkkaUITests.swift */; };
@@ -106,6 +108,7 @@
 		8513F47FDD30E042E6EA8F9B /* QuickCaptureWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EB4C992B06D4D4FA6E581C /* QuickCaptureWidget.swift */; };
 		87CB3F8DED0799E19D13E659 /* BudgetReportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3CEC3587EFD2F142DC11A /* BudgetReportTests.swift */; };
 		88C3EF6417FB2DDD9596773A /* ProStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6A162BE12F2BC3E444115A /* ProStoreTests.swift */; };
+		892AE2F2EDA291C0D035CE7A /* CloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226027AFE30B93146DE69883 /* CloudSync.swift */; };
 		89DF1832298CA1AEA45ACB44 /* CategoryAndLocaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54ED0079D9741283CA6F5B5 /* CategoryAndLocaleTests.swift */; };
 		8BA7C080FDB3CEF8650DCD1F /* SpendingSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2850513A93787AC0CAFB7FD /* SpendingSessionManager.swift */; };
 		8DEF3D9A543DC290CC8D4BC9 /* MacExpenseForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BC3A0E8298F1EC92FEA7F45 /* MacExpenseForm.swift */; };
@@ -254,16 +257,19 @@
 		0CEE1AA74CA70E3F02305D05 /* FoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationTests.swift; sourceTree = "<group>"; };
 		0DFF58FAC069C56B2DB6C7A3 /* WidgetStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetStyle.swift; sourceTree = "<group>"; };
 		0F7CF9CAEF164E9721C2299E /* DemoWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoWorkspace.swift; sourceTree = "<group>"; };
+		10B9F4CA402AA074BA281010 /* CloudSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncTests.swift; sourceTree = "<group>"; };
 		13ADB6704A3E6B19106B47DD /* WhatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNew.swift; sourceTree = "<group>"; };
 		1443A6D1EAD82EE5A0CD0E51 /* BackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
 		1539168ED0AC144BC3C2D446 /* BudgetStatusViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetStatusViews.swift; sourceTree = "<group>"; };
 		164C44BA9BA94588B957E495 /* OnboardingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingTests.swift; sourceTree = "<group>"; };
 		16DA02FB358DEB5E68DBA346 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		171DCC0228F0C6C9BC5800CB /* AnkkaV6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AnkkaV6.xcdatamodel; sourceTree = "<group>"; };
 		1750587FE9F0142E3F0C31D8 /* BillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsView.swift; sourceTree = "<group>"; };
 		17CF9C3D9A1992829E91CABA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A6A162BE12F2BC3E444115A /* ProStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreTests.swift; sourceTree = "<group>"; };
 		1BC3A0E8298F1EC92FEA7F45 /* MacExpenseForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacExpenseForm.swift; sourceTree = "<group>"; };
 		1BCF4CB5272DBFB13BADD1CD /* ProgressiveBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressiveBlur.swift; sourceTree = "<group>"; };
+		226027AFE30B93146DE69883 /* CloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSync.swift; sourceTree = "<group>"; };
 		22AC06A61FC4144C69CFA19A /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		232113F679BF61202C9F5B7C /* AnkkaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnkkaApp.swift; sourceTree = "<group>"; };
 		24972C4D6095DED54C7A2FC9 /* BudgetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BudgetsView.swift; sourceTree = "<group>"; };
@@ -491,6 +497,7 @@
 				F6CEE0BF3CADC4C439CCEB48 /* ChatToolTests.swift */,
 				C4D02C4D840775C1CC8226C0 /* ClaudeChatTests.swift */,
 				95B10BE1F00FE0ED58EB1CDD /* ClaudeClientStreamTests.swift */,
+				10B9F4CA402AA074BA281010 /* CloudSyncTests.swift */,
 				DE5B95C580C5F861C0934039 /* CSVTests.swift */,
 				415019BD23D468D8EEB36596 /* CurrencyTests.swift */,
 				0CEE1AA74CA70E3F02305D05 /* FoundationTests.swift */,
@@ -523,6 +530,7 @@
 			isa = PBXGroup;
 			children = (
 				366D4F2292C46B3CDA51A354 /* CardArtworkStore.swift */,
+				226027AFE30B93146DE69883 /* CloudSync.swift */,
 				CCAFD0746DDEDA97B5DABCE0 /* DemoData.swift */,
 				0F7CF9CAEF164E9721C2299E /* DemoWorkspace.swift */,
 				D3A1D3AC714554C0AD241D09 /* ExpenseRepository.swift */,
@@ -894,7 +902,7 @@
 					};
 					4025E27A855D2510F1BC27FB = {
 						DevelopmentTeam = "";
-						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1]]";
+						SystemCapabilities = "[\"com.apple.ApplicationGroups.iOS\": [\"enabled\": 1], \"com.apple.Push\": [\"enabled\": 1], \"com.apple.iCloud\": [\"enabled\": 1]]";
 					};
 					536E6B78415691C8E3CCB528 = {
 						DevelopmentTeam = "";
@@ -1017,6 +1025,7 @@
 				34EF2DAE5AE675CF2E69E65B /* ChatToolTests.swift in Sources */,
 				58174B2FC0275E3E19E2D145 /* ClaudeChatTests.swift in Sources */,
 				F6CEE62863B5D157DBE41CBC /* ClaudeClientStreamTests.swift in Sources */,
+				6E6F631D7224FAB171EF345F /* CloudSyncTests.swift in Sources */,
 				D477517489D5DEDFFE627271 /* CurrencyTests.swift in Sources */,
 				84A7FCCC534A0B340E8DFEC6 /* FoundationTests.swift in Sources */,
 				0DB5F1DFD18AAEB502E1ACFE /* GoldenFormatTests.swift in Sources */,
@@ -1086,6 +1095,7 @@
 				2B8339BB15AA4B43C469FE37 /* ChatTranscript.swift in Sources */,
 				31C70C83FC7FDFFB98E613AA /* ClaudeChatAgent.swift in Sources */,
 				7332A7DB449F13E10EABD0EA /* ClaudeClient.swift in Sources */,
+				311F8B253DC21BE86E73A390 /* CloudSync.swift in Sources */,
 				B27A67E002EDC4F3CA2C8CAA /* DemoData.swift in Sources */,
 				A0BA97B643174CB38425AA28 /* DemoWorkspace.swift in Sources */,
 				815FB1989EA4E2736F907B45 /* ExchangeRates.swift in Sources */,
@@ -1159,6 +1169,7 @@
 				2ADE5ACACAB923950D076207 /* ChatView.swift in Sources */,
 				F84D0BE500E5A40EF0F77D56 /* ClaudeChatAgent.swift in Sources */,
 				E017D39766233FBB0E006912 /* ClaudeClient.swift in Sources */,
+				892AE2F2EDA291C0D035CE7A /* CloudSync.swift in Sources */,
 				E00D4FA85BB09017F0A1B3D4 /* DemoData.swift in Sources */,
 				06CE5D8258A6A68EC4B860C5 /* DemoWorkspace.swift in Sources */,
 				6CFC451F6AB353939004366D /* EntryDismissalGuard.swift in Sources */,
@@ -1932,8 +1943,9 @@
 				C79485A7DF29A30390E7E9B6 /* AnkkaV3.xcdatamodel */,
 				73593639F6E793DF6C27D671 /* AnkkaV4.xcdatamodel */,
 				4E418EEFC9AEA4B3A2574D5C /* AnkkaV5.xcdatamodel */,
+				171DCC0228F0C6C9BC5800CB /* AnkkaV6.xcdatamodel */,
 			);
-			currentVersion = 4E418EEFC9AEA4B3A2574D5C /* AnkkaV5.xcdatamodel */;
+			currentVersion = 171DCC0228F0C6C9BC5800CB /* AnkkaV6.xcdatamodel */;
 			path = Ankka.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

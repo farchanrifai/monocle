@@ -43,6 +43,7 @@ struct PaywallHeader: View {
         ("Currencies", "Yours", "Any, with rates"),
         ("Analytics", "Totals", "Trends"),
         ("Widgets", "—", "All + Live Activities"),
+        ("iCloud sync", "—", "iPhone and iPad"),
         ("Shortcuts", "Add Expense", "All"),
         ("Chat", "Apple Intelligence, \(Plan.freeQuestionsPerDay)/day", "Claude, unlimited"),
         ("Card looks", "Default", "Customizer"),

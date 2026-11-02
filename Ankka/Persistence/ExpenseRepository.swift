@@ -3,8 +3,11 @@ import Foundation
 
 @MainActor
 final class ExpenseRepository: ExpenseStore {
-    let container: NSPersistentContainer
-    private var context: NSManagedObjectContext { container.viewContext }
+    let container: NSPersistentCloudKitContainer
+    var context: NSManagedObjectContext { container.viewContext }
+    /// True while iCloud sync is on: rows can arrive before the rows they point to, and two devices can create the
+    /// same seeded row, so reads skip what isn't complete yet and keep one of each duplicate instead of failing.
+    var partialGraph = false
 
     private var transactionDepth = 0
     private var transactionFailure: (any Error)?
@@ -39,7 +42,7 @@ final class ExpenseRepository: ExpenseStore {
         }
     }
 
-    private func resetTransactionState() {
+    func resetTransactionState() {
         transactionFailure = nil
         cardCache.removeAll()
         categoryCache.removeAll()
@@ -75,14 +78,48 @@ final class ExpenseRepository: ExpenseStore {
         row.setValue(expense.rateSource?.rawValue, forKey: "rateSource")
     }
 
-    init(url: URL? = nil, inMemory: Bool = false) throws {
+    init(url: URL? = nil, inMemory: Bool = false, cloudSync: Bool = false) throws {
         guard let modelURL = Bundle.main.url(forResource: "Ankka", withExtension: "momd"),
               let model = NSManagedObjectModel(contentsOf: modelURL) else { throw EntryError.corruptStore }
-        container = NSPersistentContainer(name: "Ankka", managedObjectModel: model)
-        let storeURL = inMemory ? nil : url
-        try container.persistentStoreCoordinator.addPersistentStore(ofType: inMemory ? NSInMemoryStoreType : NSSQLiteStoreType, configurationName: nil, at: storeURL, options: [NSMigratePersistentStoresAutomaticallyOption: true, NSInferMappingModelAutomaticallyOption: true])
+        container = NSPersistentCloudKitContainer(name: "Ankka", managedObjectModel: model)
+        if inMemory || url == nil {
+            try container.persistentStoreCoordinator.addPersistentStore(ofType: inMemory ? NSInMemoryStoreType : NSSQLiteStoreType, configurationName: nil, at: inMemory ? nil : url, options: [NSMigratePersistentStoresAutomaticallyOption: true, NSInferMappingModelAutomaticallyOption: true])
+        } else if let url {
+            // Sync that can't start (no iCloud entitlement) leaves the ledger usable on this device.
+            do { try loadStore(at: url, cloudSync: cloudSync) } catch where cloudSync { try loadStore(at: url, cloudSync: false) }
+        }
         context.undoManager = nil
-        context.mergePolicy = NSMergePolicy(merge: .errorMergePolicyType)
+        context.transactionAuthor = CloudSync.localAuthor
+        context.automaticallyMergesChangesFromParent = true
+        // One context writes; iCloud imports merge in from the container's background context, and an import never
+        // races an unsaved edit (every command saves before returning), so in-memory values win the rare tie.
+        context.mergePolicy = NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
+    }
+
+    /// History tracking stays on with sync off, so turning sync on later needs no store migration.
+    private func loadStore(at url: URL, cloudSync: Bool) throws {
+        let description = NSPersistentStoreDescription(url: url)
+        description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+        description.cloudKitContainerOptions = cloudSync ? NSPersistentCloudKitContainerOptions(containerIdentifier: CloudSync.containerID) : nil
+        container.persistentStoreDescriptions = [description]
+        var failure: (any Error)?
+        container.loadPersistentStores { _, error in failure = error }
+        if let failure { throw failure }
+        partialGraph = cloudSync
+    }
+
+    /// Turns iCloud mirroring on or off by reopening the same SQLite file; the data on this device stays.
+    func setCloudSync(_ on: Bool) throws {
+        guard on != partialGraph, let store = container.persistentStoreCoordinator.persistentStores.first,
+              let url = store.url, store.type == NSSQLiteStoreType else { return }
+        context.reset()
+        resetTransactionState()
+        try container.persistentStoreCoordinator.remove(store)
+        do { try loadStore(at: url, cloudSync: on) } catch {
+            try loadStore(at: url, cloudSync: !on)
+            throw error
+        }
     }
 
     func prepareSampleCard(categories: [ExpenseCategory] = ExpenseCategory.defaults) throws {
@@ -102,7 +139,7 @@ final class ExpenseRepository: ExpenseStore {
     }
 
     func cards() throws -> [Card] {
-        try objects("Book").map { row in
+        try rows(objects("Book")) { row in
             guard let id = row.value(forKey: "id") as? UUID,
                   let name = row.value(forKey: "name") as? String else { throw EntryError.corruptStore }
             let kind: CardKind = (id == Card.demo.id) ? .demo : .real
@@ -111,7 +148,7 @@ final class ExpenseRepository: ExpenseStore {
                                currency: row.value(forKey: "currency") as? String,
                                spendingCurrency: row.value(forKey: "spendingCurrency") as? String,
                                defaultPaidWithID: row.value(forKey: "defaultPaidWithID") as? UUID)
-        }
+        }.uniqued(if: partialGraph, by: \.id)
     }
 
     func createCard(named name: String) throws -> Card {
@@ -168,11 +205,11 @@ final class ExpenseRepository: ExpenseStore {
     func categories(in cardID: UUID) throws -> [ExpenseCategory] {
         let card = try cardRow(for: cardID)
         let set = (card.value(forKey: "categories") as? Set<NSManagedObject>) ?? []
-        return try set.map { row in
+        return try rows(set) { row in
             guard let id = row.value(forKey: "id") as? UUID, let name = row.value(forKey: "name") as? String,
                   let symbol = row.value(forKey: "symbol") as? String else { throw EntryError.corruptStore }
             return ExpenseCategory(id: id, name: name, symbol: symbol)
-        }.sorted { $0.id.uuidString < $1.id.uuidString }
+        }.sorted { $0.id.uuidString < $1.id.uuidString }.uniqued(if: partialGraph, by: \.id)
     }
 
     func categories() throws -> [ExpenseCategory] {
@@ -206,7 +243,8 @@ final class ExpenseRepository: ExpenseStore {
             request.fetchBatchSize = min(limit ?? 200, 200)
             request.fetchOffset = offset
             if let limit { request.fetchLimit = limit }
-            let values = try context.fetch(request).map { try expenseValue($0, in: cardID, categories: categories) }
+            let values = try rows(context.fetch(request)) { try expenseValue($0, in: cardID, categories: categories) }
+                .uniqued(if: partialGraph, by: \.id)
             guard Set(values.map(\.id)).count == values.count else { throw EntryError.corruptStore }
             return values
         }
@@ -217,7 +255,7 @@ final class ExpenseRepository: ExpenseStore {
               let createdAt = row.value(forKey: "createdAt") as? Date,
               let amount = row.value(forKey: "amount") as? Int64,
               let splits = row.value(forKey: "allocations") as? Set<NSManagedObject> else { throw EntryError.corruptStore }
-        let values = try splits.map { split -> Split in
+        var values = try rows(splits) { split -> Split in
             guard let category = split.value(forKey: "category") as? NSManagedObject,
                   let categoryID = category.value(forKey: "id") as? UUID,
                   let categoryCard = category.value(forKey: "book") as? NSManagedObject,
@@ -225,6 +263,7 @@ final class ExpenseRepository: ExpenseStore {
                   let value = split.value(forKey: "amount") as? Int64 else { throw EntryError.corruptStore }
             return Split(categoryID: categoryID, amount: value)
         }.sorted { $0.categoryID.uuidString < $1.categoryID.uuidString }
+        if partialGraph { values = Self.syncedSplits(values, amount: amount) }
         let expense = Expense(id: id, amount: amount, day: day, note: row.value(forKey: "note") as? String ?? "",
             splits: values, source: row.value(forKey: "source") as? String ?? "manual", createdAt: createdAt, cardID: cardID,
             paidWithID: row.value(forKey: "paidWithID") as? UUID,
@@ -244,7 +283,7 @@ final class ExpenseRepository: ExpenseStore {
         let card = try cardRow(for: cardID)
         let cats = try categories(in: cardID)
         let set = (card.value(forKey: "budgets") as? Set<NSManagedObject>) ?? []
-        let values = try set.map { row -> BudgetVersion in
+        let values = try rows(set) { row -> BudgetVersion in
             guard let id = row.value(forKey: "id") as? UUID,
                   let effectiveDay = row.value(forKey: "effectiveDay") as? String,
                   let overallLimit = row.value(forKey: "overallLimit") as? Int64,
@@ -261,7 +300,8 @@ final class ExpenseRepository: ExpenseStore {
                                        totalUntilDay: row.value(forKey: "totalUntilDay") as? String)
             try budget.validate(categories: cats)
             return budget
-        }.sorted { $0.effectiveDay < $1.effectiveDay }
+        }.sorted { ($0.effectiveDay, $1.id.uuidString) < ($1.effectiveDay, $0.id.uuidString) } // a synced tie keeps the highest id
+            .uniqued(if: partialGraph, by: \.effectiveDay)
         guard Set(values.map(\.effectiveDay)).count == values.count else { throw EntryError.corruptStore }
         return values
     }
@@ -274,7 +314,7 @@ final class ExpenseRepository: ExpenseStore {
         let card = try cardRow(for: cardID)
         let categories = try categories(in: cardID)
         let set = (card.value(forKey: "bills") as? Set<NSManagedObject>) ?? []
-        let values = try set.map { row -> Bill in
+        let values = try rows(set) { row -> Bill in
             guard let id = row.value(forKey: "id") as? UUID,
                   let name = row.value(forKey: "name") as? String,
                   let amount = row.value(forKey: "amount") as? Int64,
@@ -307,7 +347,7 @@ final class ExpenseRepository: ExpenseStore {
             do { try value.validate(categories: categories) }
             catch { throw EntryError.corruptStore }
             return value
-        }.sorted { $0.createdAt < $1.createdAt }
+        }.sorted { $0.createdAt < $1.createdAt }.uniqued(if: partialGraph, by: \.id)
         guard Set(values.map(\.id)).count == values.count else { throw EntryError.corruptStore }
         return values
     }
@@ -322,7 +362,7 @@ final class ExpenseRepository: ExpenseStore {
         let expenses = try expenses(in: cardID)
         let request = NSFetchRequest<NSManagedObject>(entityName: "BillOccurrenceRecord")
         request.predicate = NSPredicate(format: "rule.book == %@ OR rule == nil", card)
-        let occurrences = try context.fetch(request).map { row -> BillOccurrence in
+        var occurrences = try rows(context.fetch(request)) { row -> BillOccurrence in
             guard let rule = row.value(forKey: "rule") as? NSManagedObject,
                   let ruleID = rule.value(forKey: "id") as? UUID,
                   let id = row.value(forKey: "id") as? UUID,
@@ -335,6 +375,7 @@ final class ExpenseRepository: ExpenseStore {
                 dueDay: dueDay, status: status, expenseID: row.value(forKey: "expenseID") as? UUID,
                 createdAt: createdAt, updatedAt: updatedAt)
         }
+        if partialGraph { occurrences = BillOccurrence.syncedSubset(occurrences, rules: rules, expenses: expenses, cardID: cardID) }
         try BillOccurrence.validate(occurrences, rules: rules, expenses: expenses, cardID: cardID)
         return occurrences.sorted { $0.dueDay < $1.dueDay }
     }
@@ -1009,7 +1050,20 @@ final class ExpenseRepository: ExpenseStore {
         _ = try Money.checkedSum(amounts)
     }
 
-    private func objects(_ entity: String) throws -> [NSManagedObject] { try context.fetch(NSFetchRequest<NSManagedObject>(entityName: entity)) }
+    /// Strict reads throw on the first bad row (a corrupt store); synced reads skip rows that aren't complete yet.
+    private func rows<Rows: Sequence, Value>(_ rows: Rows, _ transform: (NSManagedObject) throws -> Value) throws -> [Value] where Rows.Element == NSManagedObject {
+        partialGraph ? rows.compactMap { try? transform($0) } : try rows.map(transform)
+    }
+
+    /// Two devices editing one expense's categories while apart can leave both edits' splits on it. Show it with the
+    /// split that matches the amount, or the whole amount on its first category, until the next edit saves it whole.
+    static func syncedSplits(_ splits: [Split], amount: Int64) -> [Split] {
+        guard (try? Money.checkedSum(splits.map(\.amount))) != amount else { return splits }
+        if let whole = splits.first(where: { $0.amount == amount }) { return [whole] }
+        return splits.first.map { [Split(categoryID: $0.categoryID, amount: amount)] } ?? []
+    }
+
+    func objects(_ entity: String) throws -> [NSManagedObject] { try context.fetch(NSFetchRequest<NSManagedObject>(entityName: entity)) }
 
     private func find(_ entity: String, id: UUID) throws -> NSManagedObject? {
         let request = NSFetchRequest<NSManagedObject>(entityName: entity)
@@ -1044,5 +1098,31 @@ final class ExpenseRepository: ExpenseStore {
         request.predicate = NSPredicate(format: "id == %@ AND rule == %@", id as NSUUID, rule)
         request.fetchLimit = 1
         return try context.fetch(request).first
+    }
+}
+
+extension Array {
+    /// Keeps the first of each key; only while synced, where duplicates are expected until the repair runs.
+    func uniqued<Key: Hashable>(if active: Bool, by key: (Element) -> Key) -> [Element] {
+        guard active else { return self }
+        var seen = Set<Key>()
+        return filter { seen.insert(key($0)).inserted }
+    }
+}
+
+extension BillOccurrence {
+    /// The occurrences that pass `validate` together: complete ones, one per bill and due day (recorded first),
+    /// each expense linked once.
+    static func syncedSubset(_ occurrences: [BillOccurrence], rules: [Bill], expenses: [Expense], cardID: UUID) -> [BillOccurrence] {
+        var keys = Set<String>(), linked = Set<UUID>()
+        return occurrences.sorted { ($0.expenseID == nil ? 1 : 0, $1.updatedAt, $0.id.uuidString) < ($1.expenseID == nil ? 1 : 0, $0.updatedAt, $1.id.uuidString) }
+            .filter { occurrence in
+                guard (try? occurrence.validate(rules: rules, expenses: expenses, cardID: cardID)) != nil,
+                      !keys.contains("\(occurrence.billRuleID.uuidString)/\(occurrence.dueDay)"),
+                      occurrence.expenseID.map({ !linked.contains($0) }) ?? true else { return false }
+                keys.insert("\(occurrence.billRuleID.uuidString)/\(occurrence.dueDay)")
+                if let id = occurrence.expenseID { linked.insert(id) }
+                return true
+            }
     }
 }

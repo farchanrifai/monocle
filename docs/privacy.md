@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-30. Published at https://pakaryan.com/ankka/privacy (site repo ~/Xcode/pakaryan).
 
-Ankka keeps your spending on your device. There is no account, no sign-in, and no analytics or advertising SDK. The only Ankka server passes Ask Ankka to Claude, and only when you turn on Chat with Claude. It also counts 👍/👎 votes on What's new and the Roadmap, and sends the Roadmap list.
+Ankka keeps your spending on your device, and in your own iCloud if you turn on iCloud sync. There is no Ankka account, no sign-in, and no analytics or advertising SDK. The only Ankka server passes Ask Ankka to Claude, and only when you turn on Chat with Claude. It also counts 👍/👎 votes on What's new and the Roadmap, and sends the Roadmap list.
 
 ## What stays on your device
 Cards, expenses, categories, budgets, bills, settings, backups and the chat history. Ask Ankka answers on your device with Apple Intelligence unless Chat with Claude is on (below). Face ID / passcode app lock is handled by the system; Ankka never sees your biometrics.
@@ -18,6 +18,9 @@ Cards, expenses, categories, budgets, bills, settings, backups and the chat hist
 
 ## Purchases
 Ankka Pro is an Apple subscription. Apple handles payment; Ankka learns from the App Store whether your Apple Account has an active subscription. Manage or cancel it in Settings ▸ Apple Account ▸ Subscriptions.
+
+## iCloud sync (optional, Pro)
+Off until you turn it on in Settings ▸ iCloud sync. Then your cards, expenses, categories, budgets, bills, settings and card photos are kept in your iCloud account's private database, so they match on each iPhone and iPad signed in to your Apple Account. Apple stores and encrypts this data under your Apple Account; Ankka's developer can't see it. App lock, unfinished drafts and the chat history stay on each device. Turning sync off keeps the data on the device; to delete the iCloud copy, use Settings ▸ Apple Account ▸ iCloud ▸ Manage Storage ▸ Ankka.
 
 ## Backups
 Backups you export are files you control. Ankka doesn't upload them anywhere.
@@ -43,4 +46,4 @@ anka@pakaryan.com
 
 # Before publishing
 1. The live pages are in the site repo `~/Xcode/pakaryan`: `src/pages/ankka/privacy.astro` (mirror of this file) and `src/pages/ankka/support.astro`; deploy with `npm run deploy`. In App Store Connect: Privacy Policy URL = /ankka/privacy, Support URL = /ankka/support.
-2. If iCloud sync is added, this page and the label change.
+2. iCloud sync (added 2026-11-02) stores data in the user's private CloudKit database, which the developer can't read, so it isn't "collected" and the label is unchanged; the page text above changed and needs the site mirror and deploy.

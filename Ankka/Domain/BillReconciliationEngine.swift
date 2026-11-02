@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct ReconciliationResult: Equatable {
@@ -118,7 +119,7 @@ enum BillReconciliationEngine {
 
         // Lookahead creates pending occurrences; promote them when their due day arrives.
         for var occurrence in existing where occurrence.status == .pending && scheduledDays.contains(occurrence.dueDay) && occurrence.dueDay <= todayString && rule.recordingMode == .automatic {
-            let expenseID = UUID()
+            let expenseID = UUID.billExpense(rule: rule.id, dueDay: occurrence.dueDay)
             let occurrenceDate = Day.date(occurrence.dueDay, calendar: calendar) ?? date
             autoExpenses.append(Expense(id: expenseID, amount: rule.amount, day: occurrence.dueDay,
                 note: rule.name, splits: [.init(categoryID: rule.categoryID, amount: rule.amount)],
@@ -135,8 +136,8 @@ enum BillReconciliationEngine {
             let isDueOrPast = (dueDay <= todayString)
 
             if isDueOrPast && rule.recordingMode == .automatic {
-                let expenseID = UUID()
-                let occurrenceID = UUID()
+                let expenseID = UUID.billExpense(rule: rule.id, dueDay: dueDay)
+                let occurrenceID = UUID.billOccurrence(rule: rule.id, dueDay: dueDay)
                 let occurrenceDate = Day.date(dueDay, calendar: calendar) ?? date
 
                 let expense = Expense(
@@ -164,7 +165,7 @@ enum BillReconciliationEngine {
                 autoExpenses.append(expense)
                 newOccurrences.append(occurrence)
             } else {
-                let occurrenceID = UUID()
+                let occurrenceID = UUID.billOccurrence(rule: rule.id, dueDay: dueDay)
                 let occurrenceDate = Day.date(dueDay, calendar: calendar) ?? date
 
                 let occurrence = BillOccurrence(
@@ -187,5 +188,20 @@ enum BillReconciliationEngine {
             $0.status == .pending && $0.dueDay >= effectiveDay && $0.dueDay <= Day.string(endDate, calendar: calendar) && !scheduledDays.contains($0.dueDay)
         }.map(\.id)
         return ReconciliationResult(newOccurrences: newOccurrences, autoExpenses: autoExpenses, retiredOccurrenceIDs: retired)
+    }
+}
+
+extension UUID {
+    /// The same bill and due day give the same IDs on every device, so two iPhones that record one bill while
+    /// apart end up with one row each once iCloud sync merges them.
+    static func billOccurrence(rule: UUID, dueDay: String) -> UUID { stable("bill-occurrence", rule.uuidString, dueDay) }
+    static func billExpense(rule: UUID, dueDay: String) -> UUID { stable("bill-expense", rule.uuidString, dueDay) }
+
+    /// A name-based UUID (version 5 layout, SHA-256 bytes).
+    static func stable(_ parts: String...) -> UUID {
+        var b = Array(SHA256.hash(data: Data(parts.joined(separator: "/").utf8)).prefix(16))
+        b[6] = (b[6] & 0x0F) | 0x50
+        b[8] = (b[8] & 0x3F) | 0x80
+        return UUID(uuid: (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]))
     }
 }

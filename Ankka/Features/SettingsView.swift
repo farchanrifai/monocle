@@ -32,6 +32,14 @@ struct SettingsView: View {
                 })
     }
 
+    private var dataFooter: String {
+        guard let cloud = model.cloud else { return "Reset saves a safety backup first." }
+        var text = "iCloud sync (Pro) keeps your cards, expenses and settings the same on each iPhone and iPad with your Apple Account; App lock stays on each device. While it's on, Restore and Reset change every synced device. Reset saves a safety backup first."
+        if cloud.isEnabled, let problem = cloud.problem { text += "\n\niCloud: \(problem)" }
+        else if cloud.isEnabled, let last = cloud.lastSync { text += "\n\nLast synced \(last.formatted(.relative(presentation: .named)))." }
+        return text
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -104,10 +112,16 @@ struct SettingsView: View {
                 } header: {
                     Text("Privacy & Security")
                 } footer: {
-                    Text("Ankka keeps your spending on this device. Chat with Claude (Pro) sends each chat message, with the spending details it needs, to Anthropic to answer it; off, chat uses Apple Intelligence on this iPhone. App lock asks for Face ID or your passcode when you come back.")
+                    Text("Ankka keeps your spending on this device, and in your iCloud when iCloud sync is on. Chat with Claude (Pro) sends each chat message, with the spending details it needs, to Anthropic to answer it; off, chat uses Apple Intelligence on this iPhone. App lock asks for Face ID or your passcode when you come back.")
                 }
 
                 Section {
+                    if let cloud = model.cloud {
+                        Toggle(isOn: Binding(get: { cloud.isEnabled }, set: { model.setCloudSync($0) })) {
+                            Label { Text("iCloud sync") } icon: { SettingsIcon(symbol: "icloud.fill", color: .blue) }
+                        }
+                        .accessibilityIdentifier("iCloudSyncToggle")
+                    }
                     NavigationLink {
                         BackupView(model: model)
                     } label: {
@@ -130,7 +144,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Data")
                 } footer: {
-                    Text("Reset saves a safety backup first.")
+                    Text(dataFooter)
                 }
 
                 Section {

@@ -74,6 +74,8 @@ protocol LocalStateStore {
 @MainActor
 final class FileLocalStateStore: LocalStateStore {
     private let directory: URL
+    /// Called after settings.json or workspace.json is written (iCloud sync sends it up).
+    var onWrite: ((String, Data) -> Void)?
     init(directory: URL) { self.directory = directory }
     func loadDraft() throws -> ExpenseDraft { try loadDraft(for: Card.demo.id) }
     func saveDraft(_ draft: ExpenseDraft) throws { try saveDraft(draft, for: draft.cardID ?? Card.demo.id) }
@@ -100,17 +102,26 @@ final class FileLocalStateStore: LocalStateStore {
     }
 
     func loadSettings() throws -> PrototypeSettings { try read("settings.json") ?? PrototypeSettings() }
-    func saveSettings(_ settings: PrototypeSettings) throws { try write(settings, name: "settings.json") }
+    func saveSettings(_ settings: PrototypeSettings) throws {
+        let data = try write(settings, name: "settings.json")
+        onWrite?("settings.json", data)
+    }
 
     func loadWorkspacePreferences() throws -> WorkspacePreferences { try read("workspace.json") ?? WorkspacePreferences() }
-    func saveWorkspacePreferences(_ preferences: WorkspacePreferences) throws { try write(preferences, name: "workspace.json") }
+    func saveWorkspacePreferences(_ preferences: WorkspacePreferences) throws {
+        let data = try write(preferences, name: "workspace.json")
+        onWrite?("workspace.json", data)
+    }
 
     private func read<T: Decodable>(_ name: String) throws -> T? {
         let url = directory.appendingPathComponent(name)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         return try JSONDecoder().decode(T.self, from: Data(contentsOf: url))
     }
-    private func write<T: Encodable>(_ value: T, name: String) throws {
-        try JSONEncoder().encode(value).write(to: directory.appendingPathComponent(name), options: .atomic)
+    @discardableResult
+    private func write<T: Encodable>(_ value: T, name: String) throws -> Data {
+        let data = try JSONEncoder().encode(value)
+        try data.write(to: directory.appendingPathComponent(name), options: .atomic)
+        return data
     }
 }

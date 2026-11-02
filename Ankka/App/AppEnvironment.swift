@@ -12,7 +12,7 @@ final class AppEnvironment {
             let directory = try Self.storageDirectory()
             let state = FileLocalStateStore(directory: directory)
             // Fail without replacing malformed user files or seeding over existing data.
-            let repository = try ExpenseRepository(url: directory.appendingPathComponent("Ankka.sqlite"))
+            let repository = try ExpenseRepository(url: directory.appendingPathComponent("Ankka.sqlite"), cloudSync: Self.syncs(directory) && CloudSync.isEnabled)
             try BackupService.recoverIfNeeded(directory: directory, repository: repository, state: state)
             let draft = try state.loadDraft()
             var settings = try state.loadSettings()
@@ -20,11 +20,11 @@ final class AppEnvironment {
             let cards = try repository.cards()
             var categoriesByCard: [UUID: [ExpenseCategory]] = [:]
             for card in cards { categoriesByCard[card.id] = try repository.categories(in: card.id) }
-            try preferences.validate(cards: cards, categoriesByCard: categoriesByCard)
+            try preferences.validate(cards: cards, categoriesByCard: categoriesByCard, references: !repository.partialGraph)
             let settingsCards: [CardBackupItem] = cards.isEmpty
                 ? [CardBackupItem(card: .demo, categories: Self.initialCategories(directory: directory), expenses: [], budgets: [])]
                 : cards.map { CardBackupItem(card: $0, categories: categoriesByCard[$0.id] ?? [], expenses: [], budgets: []) }
-            try settings.validate(cards: settingsCards, globalCategories: preferences.globalCategories, allowLegacySampleProfile: true)
+            try settings.validate(cards: settingsCards, globalCategories: preferences.globalCategories, allowLegacySampleProfile: true, references: !repository.partialGraph)
             let originalSettings = settings
             if let stored = cards.first(where: { $0.id == settings.card.id }) { settings.card = stored }
             else if settings.card == .demo, let stored = cards.first { settings.card = stored }
@@ -71,6 +71,17 @@ final class AppEnvironment {
             }
             #endif
             if usesPlan { model.pro = ProStore() }
+            if Self.syncs(directory) {
+                let cloud = CloudSyncMonitor(repository: repository, directory: directory)
+                cloud.model = model
+                model.cloud = cloud
+                state.onWrite = { [weak cloud] name, data in cloud?.upload(name, data: data) }
+                CardArtworkStore.shared.onWrite = { [weak cloud] filename, data in
+                    Task { @MainActor in cloud?.upload(CloudFileSync.artworkPrefix + filename, data: data) }
+                }
+                if cloud.isEnabled { cloud.refresh() }
+                model.applyPlan() // a lapsed subscription turns sync off
+            }
             #endif
             var onboards = model.needsOnboarding
             #if DEBUG
@@ -103,6 +114,15 @@ final class AppEnvironment {
             expenses = nil
             model = AppModel(startupFailure: error.localizedDescription)
         }
+    }
+
+    /// Only the real app's own folder syncs: never the Demo build, demo data or UI-test folders.
+    private static func syncs(_ directory: URL) -> Bool {
+        #if os(iOS) && !ANKKA_DEMO_BUILD
+        return directory.lastPathComponent == "ankka-prototype"
+        #else
+        return false
+        #endif
     }
 
     private static func storageDirectory() throws -> URL {

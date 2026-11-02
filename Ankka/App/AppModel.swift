@@ -94,6 +94,8 @@ final class AppModel {
         didSet { pro?.onChange = { [weak self] in self?.applyPlan() }; applyPlan() }
     }
     var isPro: Bool { pro?.isPro ?? true }
+    /// iCloud sync (Pro). nil in tests, the Demo build and on the Mac until it ships.
+    @ObservationIgnored var cloud: CloudSyncMonitor?
     /// Set at launch from `needsOnboarding`; onboarding clears it once its last step is done.
     var showOnboarding = false
     /// Why the paywall is open ("" for no particular reason), or nil when closed.
@@ -314,9 +316,9 @@ final class AppModel {
             let prefs = try state.loadWorkspacePreferences()
             var categoryMap: [UUID: [ExpenseCategory]] = [:]
             for card in expenses.cards { categoryMap[card.id] = try expenses.categories(for: card.id) }
-            try prefs.validate(cards: expenses.cards, categoriesByCard: categoryMap)
+            try prefs.validate(cards: expenses.cards, categoriesByCard: categoryMap, references: !expenses.partialGraph)
             let settingsCards = expenses.cards.map { CardBackupItem(card: $0, categories: categoryMap[$0.id] ?? [], expenses: [], budgets: []) }
-            try self.settings.validate(cards: settingsCards, globalCategories: prefs.globalCategories, allowLegacySampleProfile: true)
+            try self.settings.validate(cards: settingsCards, globalCategories: prefs.globalCategories, allowLegacySampleProfile: true, references: !expenses.partialGraph)
             if let stored = expenses.cards.first(where: { $0.id == settings.card.id }) { self.settings.card = stored }
             else if settings.card == .demo, let active = expenses.cards.first(where: { $0.id == expenses.activeCardID }) { self.settings.card = active }
             if self.settings.card != settings.card { try state.saveSettings(self.settings) }
@@ -365,7 +367,7 @@ final class AppModel {
         proposed.keepEachCardInOneStack()
         var categoriesByCard: [UUID: [ExpenseCategory]] = [:]
         for card in cards { categoriesByCard[card.id] = try expenseService?.categories(for: card.id) }
-        try proposed.validate(cards: cards, categoriesByCard: categoriesByCard)
+        try proposed.validate(cards: cards, categoriesByCard: categoriesByCard, references: expenseService?.partialGraph != true)
         try requireState().saveWorkspacePreferences(proposed)
         publishPreferences(proposed); syncWidgetSnapshot()
     }
@@ -2089,6 +2091,29 @@ extension AppModel {
 
     func applyPlan() {
         expenseService?.plan = pro.map { Plan(isPro: $0.isPro, keptCardID: keptCardID) }
+        // Sync stops with Pro; this device keeps everything it has.
+        if pro?.isPro == false, cloud?.isEnabled == true { setCloudSync(false) }
+    }
+
+    func setCloudSync(_ on: Bool) {
+        guard let cloud, !on || requirePro("iCloud sync is part of Pro.") else { return }
+        do { try cloud.setEnabled(on) } catch { report(error) }
+    }
+
+    /// After iCloud brought changes, or sync was switched: re-read the settings files, then the ledger. The new
+    /// preferences go in first, so nothing that reload() saves writes the old ones back.
+    func applySyncedChanges() {
+        guard startupError == nil, let expenseService, let state else { return }
+        do {
+            var settings = try state.loadSettings()
+            publishPreferences(try state.loadWorkspacePreferences())
+            expenseService.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
+            try reload()
+            publishPreferences(workspacePreferences) // hidden cards against the new card list
+            if let stored = cards.first(where: { $0.id == settings.card.id }) ?? cards.first { settings.card = stored }
+            self.settings = settings
+            syncWidgetSnapshot()
+        } catch { report(error) }
     }
 
     /// A real card that Free keeps read-only (after a lapse, every card but the kept one).

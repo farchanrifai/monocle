@@ -736,13 +736,15 @@ extension CardBackupItem {
 }
 
 extension PrototypeSettings {
-    func validate(cards: [CardBackupItem], globalCategories: [GlobalCategory] = [], allowLegacySampleProfile: Bool = false) throws {
+    /// `references: false` (iCloud sync) skips the checks against cards and categories, which may not have arrived yet.
+    func validate(cards: [CardBackupItem], globalCategories: [GlobalCategory] = [], allowLegacySampleProfile: Bool = false, references: Bool = true) throws {
         try card.validate()
         let legacyProfile = allowLegacySampleProfile && (card == .demo || cards.contains { $0.card.id == card.id && $0.card.kind == card.kind })
         guard budget > 0, budget <= Money.maximum, (1...31).contains(startDay),
-              cards.contains(where: { $0.card == card }) || legacyProfile,
+              !references || cards.contains(where: { $0.card == card }) || legacyProfile,
               Set(categoryRules.map(\.id)).count == categoryRules.count,
               Set(categoryRules.map(\.keyword)).count == categoryRules.count else { throw BackupError.invalid }
+        guard references else { return }
         // The archive/rule catalog is workspace-wide; a category may be inactive on
         // the settings profile's card and retained for another card's history.
         let categories = cards.flatMap(\.categories) + globalCategories.map { $0.toExpenseCategory() }
@@ -754,10 +756,11 @@ extension PrototypeSettings {
 }
 
 extension WorkspacePreferences {
-    func validate(cards: [Card], categoriesByCard: [UUID: [ExpenseCategory]]) throws {
+    /// `references: false` (iCloud sync) skips the checks against cards and categories, which may not have arrived yet.
+    func validate(cards: [Card], categoriesByCard: [UUID: [ExpenseCategory]], references: Bool = true) throws {
         for card in cards { try card.validate() }
         let cardIDs = Set(cards.map(\.id))
-        func validCardList(_ ids: [UUID]) -> Bool { Set(ids).count == ids.count && Set(ids).isSubset(of: cardIDs) }
+        func validCardList(_ ids: [UUID]) -> Bool { Set(ids).count == ids.count && (!references || Set(ids).isSubset(of: cardIDs)) }
         guard validCardList(visibleCardIDs), validCardList(cardOrder), validCardList(alwaysHiddenCardIDs),
               CardVisualDirection(rawValue: visualDirection) != nil,
               StackFilterScope(rawValue: filterScopeRaw) != nil,
@@ -765,12 +768,12 @@ extension WorkspacePreferences {
               Set(globalCategories.map(\.id)).count == globalCategories.count,
               Set(stacks.map(\.id)).count == stacks.count,
               activeStackID.map({ id in stacks.contains(where: { $0.id == id }) }) ?? true,
-              Set(cardCustomizations.keys).isSubset(of: cardIDs),
-              Set(cardInactiveCategoryIDs.keys).isSubset(of: cardIDs),
+              !references || Set(cardCustomizations.keys).isSubset(of: cardIDs),
+              !references || Set(cardInactiveCategoryIDs.keys).isSubset(of: cardIDs),
               Money.isCurrencyCode(reportingCurrency),
               Set(hiddenEntryFields).count == hiddenEntryFields.count,
               Set(paymentMethods.map(\.id)).count == paymentMethods.count,
-              cards.allSatisfy({ card in card.defaultPaidWithID.map { id in paymentMethods.contains { $0.id == id } } ?? true })
+              !references || cards.allSatisfy({ card in card.defaultPaidWithID.map { id in paymentMethods.contains { $0.id == id } } ?? true })
         else { throw BackupError.invalid }
         for method in paymentMethods {
             let name = method.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -780,7 +783,7 @@ extension WorkspacePreferences {
         let globalIDs = Set(globalCategories.map(\.id))
         for (cardID, ids) in cardInactiveCategoryIDs {
             let validIDs = globalIDs.union((categoriesByCard[cardID] ?? []).map(\.id))
-            guard Set(ids).count == ids.count, Set(ids).isSubset(of: validIDs) else { throw BackupError.invalid }
+            guard Set(ids).count == ids.count, !references || Set(ids).isSubset(of: validIDs) else { throw BackupError.invalid }
         }
         for stack in stacks {
             guard validCardList(stack.cardIDs), !stack.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,

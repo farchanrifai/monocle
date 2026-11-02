@@ -87,6 +87,8 @@ extension ExpenseStore {
 final class ExpenseService {
     var isBlocked = false
     private let store: any ExpenseStore
+    /// iCloud sync is on, so the store can hold rows whose references haven't arrived yet.
+    var partialGraph: Bool { (store as? ExpenseRepository)?.partialGraph ?? false }
     let notifications: BillNotificationService
     private(set) var cards: [Card] = []
     private(set) var activeCardID: UUID = Card.demo.id
@@ -430,7 +432,7 @@ final class ExpenseService {
         guard occurrence.status == .pending else { throw BillError.alreadyResolved }
         let expenseDate = customDate ?? Day.date(occurrence.dueDay) ?? .now
         let amount = customAmount ?? rule.amount
-        let expense = Expense(id: UUID(), amount: amount, day: Day.string(expenseDate), note: customNote ?? rule.name,
+        let expense = Expense(id: .billExpense(rule: rule.id, dueDay: occurrence.dueDay), amount: amount, day: Day.string(expenseDate), note: customNote ?? rule.name,
             splits: [.init(categoryID: rule.categoryID, amount: amount)], source: "bill-confirmed",
             createdAt: expenseDate, cardID: targetID)
         occurrence.status = .recorded

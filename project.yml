@@ -28,6 +28,10 @@ targets:
       SystemCapabilities:
         com.apple.ApplicationGroups.iOS:
           enabled: 1
+        com.apple.iCloud:
+          enabled: 1
+        com.apple.Push:
+          enabled: 1
     sources: [Ankka]
     info:
       path: Ankka/Resources/Info.plist
@@ -46,6 +50,8 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.farchan.ankka
             CFBundleURLSchemes: [ankka]
+        # iCloud sync: CloudKit's silent pushes wake the app to import changes.
+        UIBackgroundModes: [remote-notification]
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
