@@ -13,6 +13,7 @@ final class AppStoreScreenshots: XCTestCase {
         let app = XCUIApplication()
         if let screen { app.launchEnvironment["ANKKA_SCREEN"] = screen }
         if fakeChat { app.launchEnvironment["ANKKA_FAKE_CHAT"] = "1" }
+        app.launchEnvironment["ANKKA_TEST_RUN"] = UUID().uuidString // no What's New sheet over the shot
         app.launchArguments = ["-AppleLocale", "en_US", "-AppleLanguages", "(en)", "-DemoData", "-ankkaPro", "YES"] + extra
         app.launch()
         return app
