@@ -49,6 +49,13 @@ final class ExchangeRates {
         return days.filter { $0.key <= day && $0.key >= start }.max { $0.key < $1.key }?.value
     }
 
+    /// For display only: the day's rate, else the closest cached day at any distance (offline, or not fetched yet).
+    func nearestRate(from: String, to: String, on day: String) -> Decimal? {
+        if let rate = cachedRate(from: from, to: to, on: day) { return rate }
+        guard let days = cache["\(from)>\(to)"] else { return nil }
+        return (days.filter { $0.key <= day }.max { $0.key < $1.key } ?? days.min { $0.key < $1.key })?.value
+    }
+
     func rate(from: String, to: String, on day: String) async throws -> Decimal {
         if let cached = cachedRate(from: from, to: to, on: day) { return cached }
         try await prefetch(from: from, to: to, start: day, end: day)

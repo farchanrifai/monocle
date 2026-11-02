@@ -89,4 +89,25 @@ final class FreePlanGateTests: XCTestCase {
         XCTAssertEqual(model.stacks.map(\.name), ["Everyday"])
         XCTAssertTrue(model.expenses(for: card.id).isEmpty)
     }
+
+    func testAddOnALockedCardOpensThePaywallFirst() throws {
+        let repo = try ExpenseRepository(inMemory: true)
+        try repo.prepareSampleCard()
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let model = AppModel(expenses: try ExpenseService(store: repo), state: FileLocalStateStore(directory: dir))
+        let cards = [try model.createCard(named: "Daily"), try model.createCard(named: "Travel")] // made on Pro
+        model.pro = ProStore(defaults: try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString)), listen: false) // lapsed
+        let locked = try XCTUnwrap(cards.first { model.isLocked($0.id) })
+        let kept = try XCTUnwrap(cards.first { !model.isLocked($0.id) })
+        XCTAssertFalse(model.isLocked(Card.demo.id))
+
+        model.openEntry(for: locked.id)
+        XCTAssertFalse(model.showEntry)
+        XCTAssertEqual(model.paywall, PlanError.lockedCard.localizedDescription)
+        model.paywall = nil
+        model.openEntry(for: kept.id)
+        XCTAssertTrue(model.showEntry)
+    }
 }

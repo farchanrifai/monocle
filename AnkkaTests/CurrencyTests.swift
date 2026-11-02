@@ -47,6 +47,33 @@ final class CurrencyTests: XCTestCase {
         do { _ = try await rates.rate(from: "USD", to: "IDR", on: "2026-10-10"); XCTFail("no USD rate") } catch {}
     }
 
+    func testCardTotalsUseTheClosestCachedRateAndSayWhenThereIsNone() async throws {
+        let usd = try XCTUnwrap(Decimal(string: "0.0001"))
+        let rates = ExchangeRates(source: FixedRates(table: ["IDR>USD": usd]), fileURL: nil)
+        try await rates.prefetch(from: "IDR", to: "USD", start: "2026-10-10", end: "2026-10-10")
+        XCTAssertNil(rates.cachedRate(from: "IDR", to: "USD", on: "2026-11-30"))
+        XCTAssertEqual(rates.nearestRate(from: "IDR", to: "USD", on: "2026-11-30"), usd, "offline weeks later")
+        XCTAssertEqual(rates.nearestRate(from: "IDR", to: "USD", on: "2026-01-01"), usd, "before the first cached day")
+
+        let (model, _, dir) = try makeModel()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cardID = model.activeCardID
+        model.draft = ExpenseDraft(); model.draft.cardID = cardID
+        model.draft.amount = "28000"; model.draft.categoryID = model.activeCategories.first?.id
+        XCTAssertTrue(model.saveDraft())
+        try await model.setCardCurrencies(budget: "USD", spending: nil, for: cardID)
+        let card = try XCTUnwrap(model.cards.first { $0.id == cardID })
+        XCTAssertFalse(model.lacksRates(for: card))
+
+        model.rates = ExchangeRates(source: FixedRates(table: [:]), fileURL: nil) // a restore on a phone that never fetched USD
+        XCTAssertTrue(model.lacksRates(for: card), "Rp28,000 must not read as $28,000")
+        model.rates = ExchangeRates(source: FixedRates(table: ["IDR>USD": usd]), fileURL: nil)
+        let revision = model.ratesRevision
+        await model.prefetchCardRates()
+        XCTAssertFalse(model.lacksRates(for: card))
+        XCTAssertGreaterThan(model.ratesRevision, revision, "card faces redraw once rates arrive")
+    }
+
     private func makeModel() throws -> (AppModel, ExpenseRepository, URL) {
         let repo = try ExpenseRepository(inMemory: true)
         try repo.prepareSampleCard()

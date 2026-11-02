@@ -506,8 +506,9 @@ final class AppModel {
     }
 
     func openEntry(for cardID: UUID? = nil, categoryID: UUID? = nil) {
-        originalDraft = nil
         let targetCardID = cardID ?? selectedCardID ?? activeCardID
+        guard !refusesNewExpense(on: targetCardID) else { return }
+        originalDraft = nil
         if targetCardID != activeCardID || draft.cardID != targetCardID {
             let openCardID = selectedCardID
             guard selectCard(targetCardID) else { return }
@@ -1129,6 +1130,8 @@ final class AppModel {
 
     var reportingCurrency: String { workspacePreferences.reportingCurrency }
     @ObservationIgnored var rates = ExchangeRates.shared
+    /// Bumped when fetched rates arrive, so card faces redraw their converted totals.
+    private(set) var ratesRevision: UInt64 = 0
     /// Why the entry form has no rate yet, shown under the rate field.
     var rateError: String?
     /// Offered once after a card's first expense in another currency: (card, currency).
@@ -1150,9 +1153,17 @@ final class AppModel {
         let code = currency(of: card)
         if code == reportingCurrency { return expense.amount }
         if expense.originalCurrency == code, let original = expense.originalAmount { return original }
-        // ponytail: falls back to the reporting amount until the day's rate is cached (prefetchCardRates fills it).
-        guard let rate = rates.cachedRate(from: reportingCurrency, to: code, on: expense.day) else { return expense.amount }
+        // Until prefetchCardRates caches the day, the closest cached day stands in. With none at all, the card face
+        // says the rate is unavailable (lacksRates) instead of showing this reporting amount.
+        guard let rate = rates.nearestRate(from: reportingCurrency, to: code, on: expense.day) else { return expense.amount }
         return (try? Money.convert(expense.amount, rate: rate, to: code)) ?? expense.amount
+    }
+
+    /// The card's totals can't be converted: nothing cached for its currency yet (a restore while offline).
+    func lacksRates(for card: Card) -> Bool {
+        let code = currency(of: card)
+        guard code != reportingCurrency, rates.nearestRate(from: reportingCurrency, to: code, on: Day.string(.now)) == nil else { return false }
+        return expenses(for: card.id).contains { $0.originalCurrency != code }
     }
 
     /// Converts `amount` (in `from`) for display in `to` with the newest cached rate, if any.
@@ -1179,6 +1190,7 @@ final class AppModel {
             try? await rates.prefetch(from: code, to: reportingCurrency, start: today, end: today)
         }
         invalidateExpenseCaches()
+        ratesRevision &+= 1
     }
 
     /// Fetches the draft's rate unless the user typed one.
@@ -1781,6 +1793,7 @@ final class AppModel {
             // Let the chat cover finish dismissing before presenting the sheet.
             try? await Task.sleep(for: .milliseconds(450))
             // ponytail: an unfinished draft takes the repeat path (dated today) after its discard prompt.
+            guard !refusesNewExpense(on: expense.cardID ?? activeCardID) else { return }
             if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
             draft = ExpenseDraft(expense: expense); draft.editing = false
             draft.cardID = expense.cardID ?? activeCardID
@@ -1789,6 +1802,7 @@ final class AppModel {
     }
 
     func repeatExpense(_ expense: Expense) {
+        guard !refusesNewExpense(on: expense.cardID ?? activeCardID) else { return }
         if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense); draft.id = UUID(); draft.editing = false
         draft.createdAt = .now; draft.date = .now; draft.source = "repeat"
@@ -1998,6 +2012,7 @@ final class AppModel {
             expenseService?.configure(categoryRules: settings.categoryRules, archivedCategoryIDs: settings.archivedCategoryIDs)
             undoExpense = nil; pendingEntry = nil; toast = nil
             invalidateExpenseCaches()
+            Task { await prefetchCardRates() } // a backup from another phone brings cards whose rates aren't cached here
         } catch {
             if backups.requiresRecovery { startupError = error.localizedDescription }
             throw error
@@ -2099,6 +2114,16 @@ extension AppModel {
 
     func applyPlan() {
         expenseService?.plan = pro.map { Plan(isPro: $0.isPro, keptCardID: keptCardID) }
+    }
+
+    /// A real card that Free keeps read-only (after a lapse, every card but the kept one).
+    func isLocked(_ cardID: UUID) -> Bool { expenseService?.plan?.isLocked(cardID, in: cards) ?? false }
+
+    /// A read-only card takes no new expense: the paywall says so before anything is typed.
+    func refusesNewExpense(on cardID: UUID) -> Bool {
+        guard isLocked(cardID) else { return false }
+        paywall = PlanError.lockedCard.localizedDescription
+        return true
     }
 
     /// Whether a Pro-only screen or action is open; when not, shows the paywall saying why.

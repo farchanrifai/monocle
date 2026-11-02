@@ -1002,10 +1002,11 @@ private struct CardFaceText: View, @MainActor Equatable {
     let model: AppModel
     /// The per-card totals come from unobserved caches; a new revision is what tells this view they changed.
     let revision: UInt64
+    let locked: Bool
     let onFlip: () -> Void
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.card == rhs.card && lhs.showsFlip == rhs.showsFlip
+        lhs.card == rhs.card && lhs.showsFlip == rhs.showsFlip && lhs.locked == rhs.locked
             && lhs.textStyle == rhs.textStyle && lhs.amountFont == rhs.amountFont && lhs.revision == rhs.revision
     }
 
@@ -1021,6 +1022,14 @@ private struct CardFaceText: View, @MainActor Equatable {
                 Spacer(minLength: 8)
 
                 HStack(spacing: 6) {
+                    if locked {
+                        Image(systemName: "lock.fill")
+                            .font(.caption.weight(.bold))
+                            .padding(5)
+                            .background(textStyle.opacity(0.12), in: Circle())
+                            .accessibilityLabel("Read-only on Free")
+                            .accessibilityIdentifier("cardLockedBadge")
+                    }
                     if showsFlip {
                         Button {
                             onFlip()
@@ -1041,10 +1050,16 @@ private struct CardFaceText: View, @MainActor Equatable {
 
             Spacer(minLength: 0)
 
-            Text(Money.format(total, code: model.currency(of: card)))
-                .font(amountFont)
-                .monospacedDigit()
-                .minimumScaleFactor(0.65)
+            if model.lacksRates(for: card) {
+                Text("≈ rate unavailable")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityLabel("Total unavailable until exchange rates load")
+            } else {
+                Text(Money.format(total, code: model.currency(of: card)))
+                    .font(amountFont)
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.65)
+            }
             if let other = model.secondaryCurrency(of: card),
                let approx = model.approximate(total, from: model.currency(of: card), to: other) {
                 Text("≈ \(Money.format(approx, code: other))")
@@ -1209,7 +1224,8 @@ struct CardPresentationView: View {
 
         return CardFaceText(card: card, showsFlip: isCurrent && expanded,
                             textStyle: CardPalette.resolvedTextColor(for: customization),
-                            amountFont: amountFont, model: model, revision: model.dataRevision, onFlip: onFlip)
+                            amountFont: amountFont, model: model, revision: model.dataRevision &+ model.ratesRevision,
+                            locked: model.isLocked(card.id), onFlip: onFlip)
             .equatable()
             .background(
                 ZStack {
@@ -1250,6 +1266,18 @@ struct CardPresentationView: View {
         let activeStack = model.stacks.first { $0.id == (displayedStackID ?? model.activeStackID) } ?? model.currentStack
         let activities = model.activities(selectedCardID: cardID, allCards: isAllCards)
         return VStack(alignment: .leading, spacing: 12) {
+            if let cardID, model.isLocked(cardID) {
+                Button { model.paywall = PlanError.lockedCard.localizedDescription } label: {
+                    Label("Read-only on Free. Upgrade to Pro to add to this card or change it.", systemImage: "lock.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(MC.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("cardLockedBanner")
+            }
             HStack(alignment: .center) {
                 Text((model.homeMonthOffset ?? 0) > 0 ? model.homeMonth.map { "\($0.label) Expenses" } ?? ""
                      : cardID != nil ? "Latest Expenses" : (isAllCards ? "All Expenses" : "Recent Expenses"))
