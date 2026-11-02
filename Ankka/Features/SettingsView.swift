@@ -34,7 +34,7 @@ struct SettingsView: View {
 
     private var dataFooter: String {
         guard let cloud = model.cloud else { return "Reset saves a safety backup first." }
-        var text = "iCloud sync (Pro) keeps your cards, expenses and settings the same on each iPhone and iPad with your Apple Account; App lock stays on each device. While it's on, Restore and Reset change every synced device. Reset saves a safety backup first."
+        var text = "iCloud sync (Pro) keeps your cards, expenses, settings and chat the same on each iPhone and iPad with your Apple Account; App lock stays on each device. While it's on, Restore and Reset change every synced device. Reset saves a safety backup first."
         if cloud.isEnabled, let problem = cloud.problem { text += "\n\niCloud: \(problem)" }
         else if cloud.isEnabled, let last = cloud.lastSync { text += "\n\nLast synced \(last.formatted(.relative(presentation: .named)))." }
         return text

@@ -76,6 +76,7 @@ final class AppEnvironment {
                 cloud.model = model
                 model.cloud = cloud
                 state.onWrite = { [weak cloud] name, data in cloud?.upload(name, data: data) }
+                model.chat.onWrite = { [weak cloud] data in cloud?.upload(CloudFileSync.chat, data: data) }
                 CardArtworkStore.shared.onWrite = { [weak cloud] filename, data in
                     Task { @MainActor in cloud?.upload(CloudFileSync.artworkPrefix + filename, data: data) }
                 }

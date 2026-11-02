@@ -95,16 +95,33 @@ final class ChatSession {
     @ObservationIgnored private(set) var restoredMessages: [[String: Any]] = []
     @ObservationIgnored private let fileURL: URL?
     @ObservationIgnored private var loading = false
+    /// The file as this session last read or wrote it.
+    @ObservationIgnored private var written: Data?
+    /// After each save, with the bytes written (iCloud sync uploads them).
+    @ObservationIgnored var onWrite: ((Data) -> Void)?
 
     private struct Snapshot: Codable { var rows: [ChatRow]; var scope: AnalyticsFilterScope? }
 
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL
-        guard let fileURL, let data = try? Data(contentsOf: fileURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        // ponytail: an unreadable file starts an empty chat and is overwritten on the next change; chat is not ledger data.
+        if let fileURL, let data = try? Data(contentsOf: fileURL) { load(data) }
+    }
+
+    /// Shows the conversation another device saved (iCloud sync). Not mid-reply: this device's save comes next and wins.
+    func reloadFromFile() {
+        guard !isTyping, let fileURL, let data = try? Data(contentsOf: fileURL), data != written else { return }
+        agent = nil
+        fallback = nil
+        restoredMessages = []
+        load(data)
+    }
+
+    private func load(_ data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let ui = json["ui"], let uiData = try? JSONSerialization.data(withJSONObject: ui),
               let snapshot = try? JSONDecoder().decode(Snapshot.self, from: uiData) else { return }
-        // ponytail: an unreadable file starts an empty chat and is overwritten on the next change; chat is not ledger data.
+        written = data
         loading = true
         rows = snapshot.rows
         scope = snapshot.scope
@@ -128,7 +145,10 @@ final class ChatSession {
             let ui = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Snapshot(rows: rows, scope: scope)))
             let json: [String: Any] = ["version": 1, "fingerprint": ClaudeChatAgent.fingerprint, "ui": ui,
                                        "messages": (agent as? ClaudeChatAgent)?.messages ?? restoredMessages]
-            try JSONSerialization.data(withJSONObject: json).write(to: fileURL, options: .atomic)
+            let data = try JSONSerialization.data(withJSONObject: json)
+            try data.write(to: fileURL, options: .atomic)
+            written = data
+            onWrite?(data)
         } catch {
             // ponytail: history is a convenience copy; a failed write never interrupts the chat.
         }

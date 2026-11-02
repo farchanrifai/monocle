@@ -150,4 +150,29 @@ final class CloudSyncTests: XCTestCase {
         XCTAssertFalse(try files.pull())
         XCTAssertEqual(try state.loadWorkspacePreferences().reportingCurrency, "EUR")
     }
+
+    func testChatSyncsAndTheOpenSessionShowsTheOtherDevicesConversation() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("sync-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "sync-\(UUID().uuidString)"))
+        let repository = try ExpenseRepository(inMemory: true)
+        let files = CloudFileSync(repository: repository, directory: directory, defaults: defaults)
+        files.enabled = true
+        let session = ChatSession(fileURL: directory.appendingPathComponent(CloudFileSync.chat))
+        session.onWrite = { try? files.upload(CloudFileSync.chat, data: $0) }
+        session.rows = [ChatRow(kind: .user("Kopi 28rb"))]
+        try files.adopt()
+        XCTAssertNotNil(try repository.syncedFiles()[CloudFileSync.chat], "this device's chat goes up when iCloud has none")
+
+        // The other device asked something later.
+        let other = ChatSession(fileURL: directory.appendingPathComponent("other.json"))
+        other.rows = [ChatRow(kind: .user("Kopi 28rb")), ChatRow(kind: .assistant("Saved."))]
+        let data = try Data(contentsOf: directory.appendingPathComponent("other.json"))
+        try repository.saveSyncedFile(CloudFileSync.chat, data: data, modifiedAt: .now.addingTimeInterval(60))
+        XCTAssertTrue(try files.pull())
+        session.reloadFromFile()
+        XCTAssertEqual(session.rows.count, 2)
+        XCTAssertFalse(try files.pull())
+    }
 }

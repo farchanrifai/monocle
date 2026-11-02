@@ -126,7 +126,9 @@ extension ExpenseRepository {
 /// The settings files and card photos as `SyncedFileRecord` rows; the newest whole file wins.
 @MainActor
 final class CloudFileSync {
-    static let workspace = "workspace.json", settings = "settings.json", artworkPrefix = "CardArtwork/"
+    static let workspace = "workspace.json", settings = "settings.json", chat = "chat.json", artworkPrefix = "CardArtwork/"
+    /// Whole files, newest wins: two devices changing one between syncs keep the later.
+    static let documents = [workspace, settings, chat]
     /// Settings keys that stay on this device: the open card and App Lock.
     static let localSettingsKeys = ["book", "appLockTimeout"]
     static let adoptedKey = "iCloudSyncAdopted", stampsKey = "iCloudSyncStamps"
@@ -158,7 +160,7 @@ final class CloudFileSync {
         set { defaults.set(newValue, forKey: Self.stampsKey) }
     }
 
-    /// After a local write of a settings file or a card photo.
+    /// After a local write of a settings file, the chat or a card photo.
     func upload(_ name: String, data: Data) throws {
         guard enabled, adopted, !applying else { return }
         // A photo's file name is unique and its bytes never change, so one copy in iCloud is enough.
@@ -173,7 +175,7 @@ final class CloudFileSync {
         guard enabled, !adopted else { return }
         adopted = true
         let remote = try repository.syncedFiles()
-        for name in [Self.workspace, Self.settings] where remote[name] == nil {
+        for name in Self.documents where remote[name] == nil {
             if let data = try? Data(contentsOf: directory.appendingPathComponent(name)) { try upload(name, data: data) }
         }
         let photos = (try? FileManager.default.contentsOfDirectory(atPath: artworks.artworkDirectory.path)) ?? []
@@ -183,7 +185,7 @@ final class CloudFileSync {
         _ = try pull()
     }
 
-    /// Writes iCloud's newer settings and missing photos to this device; true when anything changed.
+    /// Writes iCloud's newer settings, chat and missing photos to this device; true when anything changed.
     func pull() throws -> Bool {
         guard enabled, adopted else { return false }
         applying = true
@@ -196,12 +198,16 @@ final class CloudFileSync {
                 guard CardArtworkStore.isValidFilename(filename), artworks.loadArtworkData(filename: filename) == nil else { continue }
                 try artworks.importArtworkData(file.data, filename: filename)
                 changed = true
-            } else if name == Self.workspace || name == Self.settings, file.modifiedAt > stamps[name] ?? .distantPast {
+            } else if Self.documents.contains(name), file.modifiedAt > stamps[name] ?? .distantPast {
                 let url = directory.appendingPathComponent(name)
                 let data = name == Self.settings ? try Self.merged(remote: file.data, local: try? Data(contentsOf: url)) : file.data
                 // A copy this version can't read (a newer app on the other device) stays in iCloud, untouched here.
-                if name == Self.settings { guard (try? JSONDecoder().decode(PrototypeSettings.self, from: data)) != nil else { continue } }
-                else { guard (try? JSONDecoder().decode(WorkspacePreferences.self, from: data)) != nil else { continue } }
+                let readable = switch name {
+                case Self.settings: (try? JSONDecoder().decode(PrototypeSettings.self, from: data)) != nil
+                case Self.workspace: (try? JSONDecoder().decode(WorkspacePreferences.self, from: data)) != nil
+                default: (try? JSONSerialization.jsonObject(with: data)) is [String: Any]
+                }
+                guard readable else { continue }
                 try data.write(to: url, options: .atomic)
                 stamps[name] = file.modifiedAt
                 changed = true

@@ -2100,7 +2100,7 @@ extension AppModel {
         do { try cloud.setEnabled(on) } catch { report(error) }
     }
 
-    /// After iCloud brought changes, or sync was switched: re-read the settings files, then the ledger. The new
+    /// After iCloud brought changes, or sync was switched: re-read the settings files, then the ledger, then the chat. The new
     /// preferences go in first, so nothing that reload() saves writes the old ones back.
     func applySyncedChanges() {
         guard startupError == nil, let expenseService, let state else { return }
@@ -2112,6 +2112,7 @@ extension AppModel {
             publishPreferences(workspacePreferences) // hidden cards against the new card list
             if let stored = cards.first(where: { $0.id == settings.card.id }) ?? cards.first { settings.card = stored }
             self.settings = settings
+            chat.reloadFromFile()
             syncWidgetSnapshot()
         } catch { report(error) }
     }
