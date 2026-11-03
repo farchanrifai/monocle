@@ -78,7 +78,10 @@ private struct AnalyticsReportView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 96)
+                // ponytail: pins the page to the screen's width; iOS 27 on the phone let it pan sideways (not seen on the iOS 26 simulator).
+                .containerRelativeFrame(.horizontal)
             }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
         .onAppear {
             syncScopeWithHomeContext()

@@ -64,7 +64,13 @@ struct BudgetCyclesChart: View {
                     .opacity(result.isCurrent ? 0.55 : 1)
             }
         }
-        .chartYAxis { AxisMarks(position: .leading) { AxisGridLine(); AxisValueLabel() } }
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                AxisGridLine()
+                // Compact like the other charts (6M), not Charts' default 6.0E6.
+                AxisValueLabel { if let amount = value.as(Double.self) { Text(amount, format: .number.notation(.compactName)) } }
+            }
+        }
         .frame(height: 180)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Budget against spending by month")
