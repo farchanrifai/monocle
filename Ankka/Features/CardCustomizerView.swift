@@ -893,8 +893,6 @@ struct CardCategoryPickerSheet: View {
                     }
                 } header: {
                     Text("Active Categories for \(cardName)")
-                } footer: {
-                    Text("Only active categories will appear when adding or editing expenses on this card.")
                 }
             }
             .navigationTitle("Card Categories")

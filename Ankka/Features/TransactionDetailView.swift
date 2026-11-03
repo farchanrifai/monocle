@@ -46,16 +46,6 @@ struct TransactionDetailView: View {
             .background(MC.paper.ignoresSafeArea())
             .navigationTitle("Expense Details")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Edit") {
-                        startEdit()
-                    }
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(MC.red)
-                    .accessibilityIdentifier("transactionDetailEdit")
-                }
-            }
             .sheet(isPresented: Binding(
                 get: { showingEditSheet || (model.showEntry && model.draft.editing && model.pendingEntry == nil) },
                 set: { if !$0 { showingEditSheet = false; model.showEntry = false } }
@@ -75,7 +65,7 @@ struct TransactionDetailView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Are you sure you want to delete this expense? You can undo this action from the confirmation toast.")
+                Text("You can undo it right after.")
             }
     }
 
@@ -188,14 +178,6 @@ struct TransactionDetailView: View {
                     .monospacedDigit()
             }
 
-            Divider().padding(.leading, 16)
-
-            // Source Row
-            detailRow(label: "Entry Method") {
-                Text(sourceTitle(expense.source))
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
 
             // Note Row (if not empty)
             if !expense.note.isEmpty {
@@ -211,7 +193,7 @@ struct TransactionDetailView: View {
             if expense.splits.count > 1 {
                 Divider().padding(.leading, 16)
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("SPLIT ALLOCATIONS")
+                    Text("Split")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .padding(.top, 14)
@@ -253,15 +235,6 @@ struct TransactionDetailView: View {
         .padding(.vertical, 14)
     }
 
-    private func sourceTitle(_ source: String) -> String {
-        switch source.lowercased() {
-        case "text": return "Text Parsing"
-        case "shortcut": return "Siri / Shortcut"
-        case "sample": return "Sample Data"
-        default: return "Manual Entry"
-        }
-    }
-
     // MARK: - Action Buttons
 
     private var actionButtons: some View {
@@ -283,6 +256,7 @@ struct TransactionDetailView: View {
             .buttonStyle(PressFeedbackStyle())
             .glassEffect(.regular.tint(MC.red.opacity(0.88)).interactive(), in: .capsule)
             .environment(\.colorScheme, .dark)
+            .accessibilityIdentifier("transactionDetailEdit")
 
             // Delete Button
             Button(role: .destructive) {

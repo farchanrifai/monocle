@@ -101,7 +101,7 @@ struct CurrencySettingsView: View {
                     ForEach(choices, id: \.self) { Text($0).tag($0) }
                 }.disabled(working).accessibilityIdentifier("reportingCurrency")
             } footer: {
-                Text("Stacks, analytics and widgets add up in this currency. Changing it converts every expense at the rate of its own day and makes a safety backup first.")
+                Text("Totals across cards add up in this currency.")
             } }
             if let card, !Money.rateCurrencies.contains(model.reportingCurrency) {
                 Section { } header: { Text(card.name) } footer: {

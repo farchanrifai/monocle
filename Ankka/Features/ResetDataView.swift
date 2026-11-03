@@ -42,7 +42,7 @@ struct ResetDataView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Clear this card's expenses")
                                 .foregroundStyle(.red)
-                            Text("\(activeCardName) · \(model.expenses.count) entries")
+                            Text("\(activeCardName) · \(model.expenses.count) \(model.expenses.count == 1 ? "expense" : "expenses")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -104,7 +104,7 @@ struct ResetDataView: View {
             } header: {
                 Text("Start fresh")
             } footer: {
-                Text("Wipes all expenses, recurring bills, and extra cards. Starts fresh with a single clean card in real mode and restores default categories.")
+                Text("Deletes every card, expense and bill, then starts over with one empty card.")
             }
         }
         .navigationTitle("Reset data")

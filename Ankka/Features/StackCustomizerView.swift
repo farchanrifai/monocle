@@ -356,7 +356,7 @@ struct StackCustomizerView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text("The top card (#1) is the front face of this stack. Tap arrows to reorder.")
+            Text("The top card shows first.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -562,7 +562,7 @@ struct StackCustomizerView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
-                Text("Hidden cards never appear on the home deck or in 'All Activities'. They remain safely stored and accessible via the top Options Menu.")
+                Text("Hidden cards stay saved but don't show on Home. Switch one off to show it again.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

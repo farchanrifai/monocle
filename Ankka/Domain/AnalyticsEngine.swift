@@ -78,7 +78,7 @@ enum SpendingPaceStatus: Equatable, Sendable {
         case .underPace(let pct): return "\(pct)% under budget pace"
         case .onTrack: return "On track with budget"
         case .accelerated(let pct): return "\(pct)% above budget pace"
-        case .beyondRange: return "Above supported budget pace"
+        case .beyondRange: return "Far above budget pace"
         }
     }
 }

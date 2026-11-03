@@ -121,8 +121,6 @@ struct CategoryManager: View {
                 }
             } header: {
                 Text("All categories (\(model.globalCategories.count))")
-            } footer: {
-                Text("Tap any category to change its name, icon, card activations, or default availability for future cards.")
             }
 
             Section {
@@ -221,7 +219,7 @@ struct CategoryManager: View {
             } header: {
                 Text("Categories on this card")
             } footer: {
-                Text("Deactivating a category hides it when logging new expenses on this card. Past expenses in this category are kept.")
+                Text("Turned-off categories are hidden when adding. Past expenses keep them.")
             }
         }
     }
@@ -414,8 +412,6 @@ struct GlobalCategoryEditor: View {
                     }
                 } header: {
                     Text("Active on Cards")
-                } footer: {
-                    Text("Turning off a category on a card removes it from that card's entry options without affecting past expenses.")
                 }
 
                 Section("Future Cards") {

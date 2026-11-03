@@ -273,7 +273,7 @@ private struct AnalyticsReportView: View {
         Button { _ = model.requirePro("Trends are part of Pro.") } label: {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Trends", systemImage: "lock.fill").font(.headline).foregroundStyle(MC.red)
-                Text("Spending pace against your budget, daily rhythm, this month against last, spending by card and by Paid with, and any dates you pick.")
+                Text("Budget pace, month vs month and custom dates.")
                     .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                 Text("See Pro").font(.subheadline.weight(.semibold)).foregroundStyle(MC.red)
             }
@@ -679,11 +679,8 @@ private struct AnalyticsReportView: View {
     private var monthOverMonthCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Month-over-Month Velocity")
+                Text("This month vs last")
                     .font(.headline)
-                Text("Calendar day 1 to 31 comparative curve")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             if momPoints.isEmpty || !momPoints.contains(where: { ($0.currentPeriodCumulative ?? 0) > 0 || ($0.previousPeriodCumulative ?? 0) > 0 }) {

@@ -37,7 +37,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if let failure = model.startupError {
-                ContentUnavailableView("Unable to open your workspace", systemImage: "externaldrive.badge.exclamationmark", description: Text(failure + "\nThe existing store has not been reset."))
+                ContentUnavailableView("Ankka couldn't open your data", systemImage: "externaldrive.badge.exclamationmark", description: Text(failure + "\nNothing was deleted."))
             } else if model.appLock.needsAuthentication {
                 AppLockView(lock: model.appLock)
             } else {

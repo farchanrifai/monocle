@@ -207,7 +207,7 @@ struct CSVInterchangeView: View {
                     .accessibilityIdentifier("shareCSVLink")
                 }
             } footer: {
-                Text("Exports RFC 4180 standard CSV including Date, Time, Card, Category, exact IDR Amount, reversible Splits, Note, and Source.")
+                Text("One row per expense: date, card, category, amount, split, note.")
             }
         }
     }
@@ -277,7 +277,7 @@ struct CSVInterchangeView: View {
                 }
                 .accessibilityIdentifier("selectCSVButton")
             } header: {
-                Text("Source File")
+                Text("File")
             }
 
             if isProcessing {
@@ -323,7 +323,7 @@ struct CSVInterchangeView: View {
                         .accessibilityIdentifier("importDefaultCategoryPicker")
                     }
 
-                    Toggle("Skip Suspected Duplicates", isOn: $skipDuplicates)
+                    Toggle("Skip duplicates", isOn: $skipDuplicates)
                         .onChange(of: skipDuplicates) { _, _ in reprocessImportRows() }
                         .accessibilityIdentifier("skipDuplicatesToggle")
                 }
@@ -366,7 +366,7 @@ struct CSVInterchangeView: View {
                         get: { columnMapping.categoryIndex ?? -1 },
                         set: { columnMapping.categoryIndex = $0 >= 0 ? $0 : nil; reprocessImportRows() }
                     )) {
-                        Text("None (Use Default Category)").tag(-1)
+                        Text("Default category").tag(-1)
                         ForEach(Array(headers.enumerated()), id: \.offset) { idx, header in
                             Text(header.isEmpty ? "Column \(idx + 1)" : header).tag(idx)
                         }

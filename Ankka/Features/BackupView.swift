@@ -31,7 +31,7 @@ struct BackupView: View {
                 }.accessibilityIdentifier("exportBackup")
                 Button("Choose backup to restore", systemImage: "arrow.counterclockwise") { importing = true }
                     .accessibilityIdentifier("importBackup")
-            } header: { Text("Backup") } footer: { Text("Includes your cards, categories, expenses, splits, budget history, unfinished draft and settings. Backups include all records and card photos; store them somewhere you trust. When iCloud Backup is on for this iPhone, it includes Ankka too. Older JSON backups remain supported.") }
+            } header: { Text("Backup") } footer: { Text("Everything in Ankka, including card photos. Keep it somewhere safe.") }
             if let candidate {
                 Section("Review replacement") {
                     LabeledContent("Cards", value: String(candidate.cards.count))
@@ -57,7 +57,7 @@ struct BackupView: View {
                         document = BackupDocument(data: data); exporting = true
                     } catch { message = "No readable safety backup is available yet. One is made before a restore, a reset, clearing expenses or deleting a card." }
                 }
-            } header: { Text("Safety backup") } footer: { Text("Restoring replaces all cards, expenses, drafts and settings. Before that, and before a reset, clearing expenses or deleting a card, Ankka keeps the previous state here. Export it before the next one if you want to keep it.") }
+            } header: { Text("Safety backup") } footer: { Text("Ankka saves one here before any restore, reset or delete.") }
         }.navigationTitle("Backup & restore").navigationBarTitleDisplayMode(.inline)
             .fileExporter(isPresented: $exporting, document: document, contentType: BackupDocument.backupType, defaultFilename: "ankka-\(Day.string(.now)).ankkabackup") { result in
                 switch result {

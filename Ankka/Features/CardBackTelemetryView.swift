@@ -84,7 +84,7 @@ private struct CardBackReportView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.caption2.weight(.bold))
-                        Text("FLIP")
+                        Text("Flip")
                             .font(.system(size: 10, weight: .bold))
                     }
                     .foregroundStyle(.white)
@@ -105,7 +105,7 @@ private struct CardBackReportView: View {
             HStack(spacing: 8) {
                 // Compartment 1: Cycle & Pace
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("CYCLE & PACE")
+                    Text("Pace")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
@@ -118,7 +118,7 @@ private struct CardBackReportView: View {
                             .lineLimit(1)
                     }
 
-                    Text("\(daysRemaining)D REMAINING")
+                    Text("\(daysRemaining) \(daysRemaining == 1 ? "day" : "days") left")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.75))
                 }
@@ -130,7 +130,7 @@ private struct CardBackReportView: View {
 
                 // Compartment 2: Daily Burn & Target
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DAILY BURN")
+                    Text("Daily average")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
@@ -142,12 +142,12 @@ private struct CardBackReportView: View {
 
                     if let activeBudget {
                         let targetDaily = (try? Money.checkedScale(activeBudget.overallLimit, numerator: 1, denominator: max(1, metrics.totalDaysInPeriod))) ?? 0
-                        Text("TARGET \(compactMoney(targetDaily))")
+                        Text("\(compactMoney(targetDaily)) a day")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.75))
                             .lineLimit(1)
                     } else {
-                        Text("NO BUDGET")
+                        Text("No budget")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.5))
                     }
@@ -160,7 +160,7 @@ private struct CardBackReportView: View {
 
                 // Compartment 3: Remaining / Limit
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("REMAINING")
+                    Text("Left")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.55))
                         .tracking(0.5)
@@ -172,16 +172,16 @@ private struct CardBackReportView: View {
                             .foregroundStyle(remaining >= 0 ? Color.green : Color.red)
                             .lineLimit(1)
 
-                        Text("OF \(compactMoney(activeBudget.overallLimit))")
+                        Text("of \(compactMoney(activeBudget.overallLimit))")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.75))
                             .lineLimit(1)
                     } else {
-                        Text("UNCAPPED")
+                        Text("—")
                             .font(.system(size: 11, weight: .heavy))
                             .foregroundStyle(.white)
 
-                        Text("NO LIMIT")
+                        Text("No budget")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.5))
                     }
@@ -201,12 +201,12 @@ private struct CardBackReportView: View {
                     .foregroundStyle(.white.opacity(0.7))
 
                 if let next = nextUpcomingBill {
-                    Text("NEXT BILL: \(next.name.uppercased()) · \(formatDueDay(next.dueDay)) (\(compactMoney(next.amount)))")
+                    Text("Next bill: \(next.name) · \(formatDueDay(next.dueDay)) · \(compactMoney(next.amount))")
                         .font(.system(size: 9.5, weight: .bold))
                         .foregroundStyle(.white.opacity(0.9))
                         .lineLimit(1)
                 } else {
-                    Text("NO PENDING BILLS THIS CYCLE")
+                    Text("No bills due")
                         .font(.system(size: 9.5, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.65))
                         .lineLimit(1)
@@ -233,7 +233,7 @@ private struct CardBackReportView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "chart.xyaxis.line")
                             .font(.caption.weight(.bold))
-                        Text("TRENDS & ANALYTICS")
+                        Text("Trends")
                             .font(.system(size: 10, weight: .bold))
                     }
                     .frame(maxWidth: .infinity)
@@ -254,7 +254,7 @@ private struct CardBackReportView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "paintbrush")
                             .font(.caption.weight(.bold))
-                        Text("ARTWORK")
+                        Text("Customize")
                             .font(.system(size: 10, weight: .bold))
                     }
                     .frame(maxWidth: .infinity)
@@ -312,19 +312,17 @@ private struct CardBackReportView: View {
     }
 
     private var paceText: String {
-        guard let pace = metrics.paceStatus else { return "TRACKING" }
+        guard let pace = metrics.paceStatus else { return "No pace yet" }
         switch pace {
-        case .underPace(let pct): return "\(pct)% UNDER"
-        case .onTrack: return "ON PACE"
-        case .accelerated(let pct): return "\(pct)% AHEAD"
-        case .beyondRange: return "PACE EXCEEDS RANGE"
+        case .underPace(let pct): return "\(pct)% under"
+        case .onTrack: return "On pace"
+        case .accelerated(let pct): return "\(pct)% over"
+        case .beyondRange: return "Well over"
         }
     }
 
     private func formatDueDay(_ dueDay: String) -> String {
-        let parts = dueDay.split(separator: "-")
-        guard parts.count == 3 else { return dueDay }
-        return "\(parts[1])/\(parts[2])"
+        Day.date(dueDay)?.formatted(.dateTime.day().month(.abbreviated)) ?? dueDay
     }
 
     private func compactMoney(_ amount: Int64) -> String {

@@ -162,7 +162,7 @@ struct ShortcutOrderSettingsView: View {
                     Label("Categories follow the card", systemImage: "sparkles")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text("When Card is asked before Category, Ankka dynamically filters the category picker to only show active categories configured on that card.")
+                    Text("When Card comes first, you only see that card's categories.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -172,7 +172,7 @@ struct ShortcutOrderSettingsView: View {
                     Label("Pre-filled steps are skipped", systemImage: "arrow.uturn.forward")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text("If you pre-fill any parameter in your Apple Shortcut action (or pass data from earlier Shortcut steps), that step is automatically skipped during execution.")
+                    Text("Anything you fill in the Shortcut itself isn't asked.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -112,7 +112,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Privacy & Security")
                 } footer: {
-                    Text("Ankka keeps your spending on this device, and in your iCloud when iCloud sync is on. Chat with Claude (Pro) sends each chat message, with the spending details it needs, to Anthropic to answer it; off, chat uses Apple Intelligence on this iPhone. App lock asks for Face ID or your passcode when you come back.")
+                    Text("Your spending stays on this iPhone, and in your iCloud if sync is on. Chat with Claude sends your messages to Anthropic.")
                 }
 
                 Section {
@@ -278,10 +278,7 @@ struct AppLockSettingsView: View {
             } header: {
                 Text("Lock after leaving Ankka")
             } footer: {
-                Text("Turning this on or changing its timeout confirms your device authentication. Ankka covers its interface while it is in the app switcher, then asks for Face ID or your device passcode when the timeout has elapsed.")
-            }
-            Section("Shortcuts") {
-                Text("Ankka's Shortcuts ask for Face ID or your passcode before they run. A Shortcut that adds an expense in the background doesn't unlock the app; opening Ankka may still show this lock.")
+                Text("Ankka hides itself in the app switcher and asks for Face ID when you come back.")
             }
             if saving { HStack { Spacer(); ProgressView("Saving app lock…"); Spacer() } }
             if let error { Text(error).foregroundStyle(MC.red) }
