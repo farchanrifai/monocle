@@ -36,16 +36,19 @@ struct ProGate<Content: View>: View {
     private var isPro: Bool { UserDefaults(suiteName: WidgetSnapshotStore.appGroupID)?.bool(forKey: "isPro") ?? false }
 
     var body: some View {
-        if isPro {
-            content
-        } else {
-            VStack(spacing: 4) {
-                Image(systemName: "lock.fill").font(.title3)
-                Text("Ankka Pro").font(.headline)
-                Text("Widgets are part of Pro.").font(.caption).foregroundStyle(.secondary)
+        Group {
+            if isPro {
+                content
+            } else {
+                VStack(spacing: 4) {
+                    Image(systemName: "lock.fill").font(.title3)
+                    Text("Ankka Pro").font(.headline)
+                    Text("Widgets are part of Pro.").font(.caption).foregroundStyle(.secondary)
+                }
+                .multilineTextAlignment(.center)
+                .widgetURL(URL(string: "ankka://"))
             }
-            .multilineTextAlignment(.center)
-            .widgetURL(URL(string: "ankka://"))
         }
+        .fontDesign(.rounded) // matches the app
     }
 }

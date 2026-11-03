@@ -7,6 +7,7 @@ struct SpendingActivityWidget: Widget {
         ActivityConfiguration(for: SpendingActivityAttributes.self) { context in
             // Lock Screen / StandBy / Banner presentation
             LockScreenLiveActivityView(context: context)
+                .fontDesign(.rounded)
                 .activityBackgroundTint(Color.black.opacity(0.85))
                 .activitySystemActionForegroundColor(WMC.red)
         } dynamicIsland: { context in
@@ -25,7 +26,7 @@ struct SpendingActivityWidget: Widget {
                             Text("·")
                                 .foregroundStyle(.secondary)
                             Text(context.attributes.startTime, style: .timer)
-                                .font(.caption2.monospaced())
+                                .font(.caption2.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -122,7 +123,7 @@ private struct LockScreenLiveActivityView: View {
                 Spacer()
 
                 Text(context.attributes.startTime, style: .timer)
-                    .font(.caption2.monospaced())
+                    .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
 

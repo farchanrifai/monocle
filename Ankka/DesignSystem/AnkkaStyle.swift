@@ -47,7 +47,7 @@ enum HomeMetrics {
 struct Eyebrow: View {
     let text: String
     var body: some View {
-        Text(text.uppercased()).font(.caption2.monospaced()).tracking(1.5).foregroundStyle(.secondary)
+        Text(text.uppercased()).font(.caption2.weight(.semibold)).tracking(0.8).foregroundStyle(.secondary)
     }
 }
 

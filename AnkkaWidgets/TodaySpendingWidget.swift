@@ -163,7 +163,7 @@ struct TodaySpendingWidgetEntryView: View {
                                 Spacer()
 
                                 Text(WMC.money(item.amount, currency: false)).privacySensitive()
-                                    .font(.caption.weight(.semibold).monospaced())
+                                    .font(.caption.weight(.semibold).monospacedDigit())
                                     .foregroundStyle(.primary)
                             }
                         }
@@ -181,7 +181,7 @@ struct TodaySpendingWidgetEntryView: View {
                 .font(.caption)
                 .foregroundStyle(WMC.red)
             Text("\(today.transactionCount)")
-                .font(.headline.weight(.bold).monospaced())
+                .font(.headline.weight(.bold).monospacedDigit())
             Text("today")
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)

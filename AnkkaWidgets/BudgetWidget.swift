@@ -113,7 +113,7 @@ struct BudgetWidgetEntryView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text("\(Int(budget.percentage * 100))%")
-                    .font(.caption2.weight(.semibold).monospaced())
+                    .font(.caption2.weight(.semibold).monospacedDigit())
                     .foregroundStyle(WMC.red)
             }
         }
@@ -210,7 +210,7 @@ struct BudgetWidgetEntryView: View {
                     .foregroundStyle(.secondary)
             }
             Text("\(WMC.compactMoney(budget.remaining)) left").privacySensitive()
-                .font(.headline.weight(.semibold).monospaced())
+                .font(.headline.weight(.semibold).monospacedDigit())
             Text("\(budget.daysRemaining)d left · \(WMC.compactMoney(budget.dailyPaceRemaining))/day").privacySensitive()
                 .font(.caption2)
                 .foregroundStyle(.secondary)

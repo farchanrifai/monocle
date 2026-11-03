@@ -8,7 +8,7 @@ struct AnkkaApp: App {
     @State private var model = AppModel.shared
     var body: some Scene {
         WindowGroup {
-            RootView(model: model)
+            RootView(model: model).fontDesign(.rounded) // SF Rounded across the app (chosen 2026-11-03)
         }
     }
 }

@@ -232,7 +232,7 @@ struct IntroCard: View {
         HStack(alignment: .firstTextBaseline) {
             Text(kind.name).font(.system(size: 15, weight: .semibold)).tracking(-0.15).opacity(motion.names)
             Spacer()
-            Text(kind.index).font(.system(size: 11, weight: .semibold, design: .monospaced)).tracking(0.9)
+            Text(kind.index).font(.system(size: 11, weight: .semibold).monospacedDigit()).tracking(0.9)
         }
         .padding(.leading, 18).padding(.trailing, 17).padding(.top, 15)
         if kind == .daily {
@@ -277,7 +277,7 @@ struct IntroCard: View {
     }
 
     private func caption(_ content: some View) -> some View {
-        content.font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(0.9)
+        content.font(.system(size: 10, weight: .semibold)).tracking(0.9)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             .padding(.leading, 18).padding(.bottom, 15)
     }
@@ -295,7 +295,7 @@ struct IntroCard: View {
                 Circle().trim(from: 0, to: motion.budgetRing)
                     .stroke(Self.cream, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text("70%").font(.system(size: 14, weight: .bold, design: .monospaced))
+                Text("70%").font(.system(size: 14, weight: .bold).monospacedDigit())
             }
             .frame(width: 78, height: 78)
             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -609,7 +609,7 @@ private struct KopiMessage: View, Animatable {
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 1) {
                 Text(IntroMoney.current.chipName).font(.system(size: 15, weight: .bold))
-                Text("FOOD & DRINK").font(.system(size: 9, weight: .semibold, design: .monospaced)).tracking(0.7)
+                Text("FOOD & DRINK").font(.system(size: 9, weight: .semibold).monospacedDigit()).tracking(0.7)
             }
             Spacer(minLength: 0)
             OdoNumber(text: IntroMoney.current.chipAmount, indices: wheels, cell: 22)
@@ -705,7 +705,7 @@ private struct WeekStrip: View {
         HStack(spacing: 0) {
             ForEach(Array(zip(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"], 4...10)), id: \.0) { day, date in
                 VStack(spacing: 0) {
-                    Text(day).font(.system(size: 9.5, weight: .semibold, design: .monospaced)).tracking(0.8)
+                    Text(day).font(.system(size: 9.5, weight: .semibold).monospacedDigit()).tracking(0.8)
                     Text("\(date)").font(.system(size: 16, weight: .bold)).frame(height: 22)
                     Spacer(minLength: 0)
                 }

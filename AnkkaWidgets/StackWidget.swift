@@ -183,7 +183,7 @@ struct StackWidgetEntryView: View {
                     .font(.caption.weight(.semibold))
             }
             Text("\(WMC.compactMoney(stack.totalSpent)) spent").privacySensitive()
-                .font(.headline.weight(.semibold).monospaced())
+                .font(.headline.weight(.semibold).monospacedDigit())
             Text("\(stack.cardCount) cards in stack")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
