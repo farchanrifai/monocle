@@ -125,6 +125,9 @@ final class FoundationTests: XCTestCase {
         XCTAssertThrowsError(try service.record(text: "Something 28k"))
         XCTAssertTrue(store.values.isEmpty)
         XCTAssertTrue(service.expenses.isEmpty)
+        // A shortcut's Category is used when the text names none.
+        let fallback = try XCTUnwrap(service.categories.last?.id)
+        XCTAssertEqual(try service.record(text: "Something 28k", fallbackCategoryID: fallback).splits.first?.categoryID, fallback)
     }
 
     func testStructuredShortcutCommandValidatesLiveCategoryAndRetriesByIdentity() throws {

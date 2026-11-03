@@ -92,16 +92,18 @@ final class ClaudeChatAgent: ChatBackend {
             }
             switch reply["stop_reason"] as? String {
             case "tool_use":
-                let results = blocks.filter { $0["type"] as? String == "tool_use" }.map { block -> [String: Any] in
+                var results: [[String: Any]] = []
+                for block in blocks where block["type"] as? String == "tool_use" {
                     let input = (try? JSONSerialization.data(withJSONObject: block["input"] ?? [String: Any]())) ?? Data()
+                    await executor.fetchRate(for: block["name"] as? String ?? "", input: input)
                     let outcome = executor.run(block["name"] as? String ?? "", input: input)
                     if !outcome.isError, let period = ChatAgent.period(in: input) { lastPeriod = period }
                     if let proposal = outcome.proposal { outputs.append(.proposal(proposal)) }
                     if let change = outcome.change { outputs.append(.change(change)) }
                     if let bill = outcome.bill { outputs.append(.bill(bill)) }
                     if let chart = outcome.chart { outputs.append(.chart(chart)) }
-                    return ["type": "tool_result", "tool_use_id": block["id"] as? String ?? "",
-                            "content": outcome.json, "is_error": outcome.isError]
+                    results.append(["type": "tool_result", "tool_use_id": block["id"] as? String ?? "",
+                                    "content": outcome.json, "is_error": outcome.isError])
                 }
                 messages.append(["role": "user", "content": results])
             case "refusal":

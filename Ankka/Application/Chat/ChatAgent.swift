@@ -43,13 +43,13 @@ enum ChatAgent {
         <app_context>
         Today: \(Day.string(now)) (\(now.formatted(.dateTime.weekday(.wide)))), time zone \(TimeZone.current.identifier).
         Scope: \(scope) (cards: \(cards.joined(separator: ", "))).
-        New expenses go to card: \(card?.name ?? "none — ask the user"), currency \(card.map { model.currency(ofCard: $0.id) } ?? Money.reportingCurrency).
+        New expenses go to card: \(card?.name ?? "none — ask the user"), currency \(card.map { ToolExecutor.typingCurrency(of: $0, model: model) } ?? Money.reportingCurrency).
         \(lastPeriod.map { "Period of your last answer: \($0). A follow-up that names no period (\"what categories?\", \"and transport?\") uses it, not this_month.\n" } ?? "")        \(listCategories ? "Categories on that card: \(categories.joined(separator: ", ")).\n" : "")\(model.paymentMethods.isEmpty ? "" : "Paid with labels: \(model.paymentMethods.map(\.name).joined(separator: ", ")).\n")\(past.isEmpty ? "" : "How the user categorised past expenses on that card (note → category): \(past.map { "\($0.note) → \($0.category)" }.joined(separator: "; ")).\n")</app_context>
         """
     }
 
     static let systemPrompt = """
-    You are the assistant inside Ankka, a personal expense tracker. Amounts are in the currency app_context names.
+    You are the assistant inside Ankka, a personal expense tracker. Amounts are in the currency app_context names, unless the user names another ("3 dollars", "340 yen"): then pass its code as currency.
     Understand English and Bahasa Indonesia (for example "28k", "28rb", "1,5jt", "kemarin", "bulan lalu") and reply in the user's language.
     Each user turn starts with <app_context> facts from the app: today's date, the active scope, the card new expenses go to, and its categories.
     To add an expense, call propose_expense with the amount exactly as the user wrote it (28rb, 1,5jt); the app converts it. The user confirms it in the app; never say it was saved unless an app note says so. For several expenses in one message, call propose_expense once per expense. After proposing, reply in one short sentence such as "Here are 3 expenses for Home."; the app shows each expense as a card, so never list them, their amounts or categories again.
@@ -78,6 +78,7 @@ enum ChatAgent {
                "note": {"type": "string", "description": "Short name of what was bought, from the user's words, e.g. Kopi, Bensin, Lunch."},
                "day": {"type": "string", "description": "yyyy-MM-dd. Omit for today."},
                "card": {"type": "string", "description": "Card name. Omit for the app_context card."},
+               "currency": {"type": "string", "description": "ISO 4217 code when the user names a currency other than the card's, e.g. USD for 3 dollars, JPY for 340 yen, EUR for 5 euro. Omit otherwise."},
                "paid_with": {"type": "string", "description": "How it was paid, only if the user says so, e.g. BCA debit or Cash. Must match a Paid with label; omit otherwise."}}}},
           {"name": "propose_edit",
            "description": "Propose changing ONE saved expense, found with query_expenses. Give only the fields that change. Does not save.",

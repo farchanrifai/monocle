@@ -118,16 +118,22 @@ final class AppleChatAgent: ChatBackend {
         return hasCard && reply.range(of: done, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    private func runTool(_ name: String, _ input: String) -> String {
+    private func runTool(_ name: String, _ input: String) async -> String {
         guard let executor else { return #"{"error": "No active turn."}"# }
-        // Amounts arrive as the user wrote them ("100rb", "4.50"); app code turns them into numbers for ToolExecutor.
+        // Amounts arrive as the user wrote them ("100rb", "4.50"); app code turns them into numbers for ToolExecutor,
+        // in the currency the user named, else the target card's.
         // ponytail: parsed in the target card's currency even when the call names another card.
-        let code = (try? executor.targetCard()).map { executor.model.currency(ofCard: $0.id) } ?? Money.reportingCurrency
-        var json = (try? JSONSerialization.jsonObject(with: Data(input.utf8))).map { Self.clean($0, code: code) } as? [String: Any]
+        let raw = (try? JSONSerialization.jsonObject(with: Data(input.utf8))) as? [String: Any]
+        let named = (raw?["currency"] as? String)?.uppercased()
+        let code = named.flatMap { Money.isCurrencyCode($0) ? $0 : nil }
+            ?? (try? executor.targetCard()).map { ToolExecutor.typingCurrency(of: $0, model: executor.model) } ?? Money.reportingCurrency
+        var json = raw.map { Self.clean($0, code: code) } as? [String: Any]
         // The model echoes the current card as scope/card; the default means the same and avoids a stack/card name clash.
         if (json?["scope"] as? String).map(Self.folded) == Self.folded(executor.scope.title) { json?["scope"] = nil }
         if let card = json?["card"] as? String, (try? executor.targetCard()).map({ Self.folded($0.name) }) == Self.folded(card) { json?["card"] = nil }
         let data = json.flatMap { try? JSONSerialization.data(withJSONObject: $0) } ?? Data(input.utf8)
+        await executor.fetchRate(for: name, input: data)
+        guard self.executor != nil else { return #"{"error": "Chat was closed."}"# }
         let outcome = executor.run(name, input: data)
         if !outcome.isError, let period = ChatAgent.period(in: data) { lastPeriod = period }
         toolLog.append("\(name) \(input) -> \(outcome.json.prefix(300))")

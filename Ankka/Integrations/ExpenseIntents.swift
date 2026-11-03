@@ -313,22 +313,26 @@ struct AddExpenseIntent: AppIntent {
 
 struct AddExpenseFromTextIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Expense from Text"
-    static let description = IntentDescription("Add an expense in Ankka using natural text. For example: 'Coffee 28k' or 'Lunch 45k'.")
+    static let description = IntentDescription("Adds an expense from what you say or type, for example 'Coffee 28k', '3 dollars for coffee' or '340 yen taxi on Travel'. With Apple Intelligence or Chat with Claude, Ankka works out the category, currency and card.")
     static var authenticationPolicy: IntentAuthenticationPolicy { .requiresLocalDeviceAuthentication }
     static var supportedModes: IntentModes { .background }
 
-    @Parameter(title: "Expense", description: "For example, Coffee 28k", requestValueDialog: IntentDialog("What did you spend on? (e.g. Coffee 28k)")) var text: String
+    @Parameter(title: "Expense", description: "For example, Coffee 28k", requestValueDialog: IntentDialog("What did you spend?")) var text: String
     @Parameter(title: "Card") var card: CardEntity?
+    @Parameter(title: "Category", description: "Used when the text doesn't name a category. Left empty, Ankka asks.") var category: ExpenseCategoryEntity?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$text)") {
             \.$card
+            \.$category
         }
     }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         guard let service = AppEnvironment.shared.expenses else { throw EntryError.corruptStore }
+        let model = AppEnvironment.shared.model
+        if let saved = try await AssistantLog.save(text, card: card, model: model) { return Self.receipt(saved, model: model) }
         var resolvedCard = card
         if resolvedCard == nil {
             let availableCards = AppEnvironment.shared.model.unhiddenCards
@@ -342,17 +346,62 @@ struct AddExpenseFromTextIntent: AppIntent {
             }
         }
         let targetCardID = resolvedCard.flatMap { UUID(uuidString: $0.id) } ?? AppEnvironment.shared.model.selectedCardID ?? AppEnvironment.shared.model.activeCardID
-        let expense = try service.record(text: text, in: targetCardID)
-        let cardName = AppEnvironment.shared.model.cards.first(where: { $0.id == targetCardID })?.name ?? "Card"
-        let cat = AppEnvironment.shared.model.activeCategories(for: targetCardID).first(where: { $0.id == expense.splits.first?.categoryID })
-        let catName = cat?.name ?? "Expense"
-        let catSymbol = cat?.symbol ?? "creditcard"
-        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: catSymbol, cardID: targetCardID)
+        let fallback = category.flatMap { UUID(uuidString: $0.id) }
+        let expense: Expense
+        do {
+            expense = try service.record(text: text, fallbackCategoryID: fallback, in: targetCardID)
+        } catch EntryError.missingCategory {
+            // The text names no category (a bank's message, say): ask which, like Add Expense does.
+            let entities = AppEnvironment.shared.model.activeCategories(for: targetCardID).map(ExpenseCategoryEntity.init)
+            let picked = entities.count > 1
+                ? try await $category.requestDisambiguation(among: entities, dialog: IntentDialog("Which category?"))
+                : entities.first
+            expense = try service.record(text: text, fallbackCategoryID: picked.flatMap { UUID(uuidString: $0.id) }, in: targetCardID)
+        }
+        let cat = model.activeCategories(for: targetCardID).first(where: { $0.id == expense.splits.first?.categoryID })
+        SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol ?? "creditcard", cardID: targetCardID)
+        return Self.receipt([expense], model: model)
+    }
 
+    /// "Added ¥340 Taxi on Travel." with a receipt per expense; the amount as paid, before conversion.
+    @MainActor
+    private static func receipt(_ expenses: [Expense], model: AppModel) -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        let cardName = { (expense: Expense) in model.cards.first { $0.id == expense.cardID }?.name ?? "Card" }
+        let said = expenses.map { expense in
+            let paid = expense.originalAmount.map { Money.format($0, code: expense.originalCurrency) } ?? Money.format(expense.amount)
+            return "\(paid)\(expense.note.isEmpty ? "" : " \(expense.note)") on \(cardName(expense))"
+        }
         return .result(
-            dialog: "Added \(Money.format(expense.amount)) on \(cardName).",
-            view: ExpenseReceiptSnippetView(expense: expense, categoryName: catName, categorySymbol: catSymbol, cardName: cardName)
+            dialog: IntentDialog(stringLiteral: expenses.count == 1 ? "Added \(said[0])." : "Added \(expenses.count) expenses: \(said.joined(separator: ", "))."),
+            view: VStack(spacing: 8) {
+                ForEach(expenses, id: \.id) { expense in
+                    let category = expense.cardID.flatMap { id in model.activeCategories(for: id).first { $0.id == expense.splits.first?.categoryID } }
+                    ExpenseReceiptSnippetView(expense: expense, categoryName: category?.name ?? "Expense", categorySymbol: category?.symbol ?? "creditcard",
+                                              cardName: cardName(expense))
+                }
+            }
         )
+    }
+}
+
+/// Log expense through the chat's model: Apple Intelligence or Claude reads the purchase ("3 dollars for coffee on Daily")
+/// into note, category, currency and card, and it is saved straight away (the user said it; "Undo last expense" takes it back).
+@MainActor
+enum AssistantLog {
+    /// nil when no model can run here, or it couldn't answer, so the app's own reader takes over.
+    static func save(_ text: String, card: CardEntity?, model: AppModel, agent: (any ChatBackend)? = nil) async throws -> [Expense]? {
+        guard let agent = agent ?? ChatSession.makeAgent(model: model) else { return nil }
+        let picked = card.flatMap { entity in model.unhiddenCards.first { $0.id.uuidString == entity.id } }
+        let outputs = await agent.send(text, scope: picked.map { .card(id: $0.id, name: $0.name) } ?? .allCards, now: .now)
+        let expenses = outputs.compactMap { output -> Expense? in if case .proposal(let expense) = output { expense } else { nil } }
+        guard !expenses.isEmpty else {
+            // The model asked something back ("How much was it?"): that is Siri's answer. An error falls through to the reader.
+            let asked = outputs.compactMap { output -> String? in if case .text(let text) = output { text } else { nil } }
+            if asked.isEmpty { return nil }
+            throw AskError.said(asked.joined(separator: " "))
+        }
+        for expense in expenses { try model.saveFromChat(expense) }
+        return expenses
     }
 }
 
@@ -511,10 +560,12 @@ enum AskAnswers {
 
 enum AskError: LocalizedError {
     case failed(String)
+    case said(String)
     case chatOff
     var errorDescription: String? {
         switch self {
         case .failed(let json): (try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])?["error"] as? String ?? "That didn't work."
+        case .said(let text): text
         case .chatOff: "Ask Ankka needs Apple Intelligence on this iPhone, or Ankka Pro with Chat with Claude turned on."
         }
     }
@@ -650,7 +701,8 @@ struct AnkkaShortcuts: AppShortcutsProvider {
             intent: AddExpenseFromTextIntent(),
             phrases: [
                 "Add an expense from text in \(.applicationName)",
-                "Log expense in \(.applicationName)"
+                "Log expense in \(.applicationName)",
+                "Log in \(.applicationName)"
             ],
             shortTitle: "Expense from text",
             systemImageName: "text.bubble"

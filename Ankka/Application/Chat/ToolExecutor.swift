@@ -86,7 +86,7 @@ struct ToolExecutor {
     struct SplitPart: Decodable { let category: String; let amount: AmountText }
     struct ProposeInput: Decodable {
         let amount: AmountText; var category: String?; var split: [SplitPart]?; var note: String?; var day: String?; var card: String?
-        var paid_with: String?
+        var paid_with: String?; var currency: String?
     }
     struct EditInput: Decodable { let id: String; var amount: AmountText?; var category: String?; var split: [SplitPart]?; var note: String?; var day: String? }
     struct DeleteInput: Decodable { let id: String }
@@ -119,8 +119,8 @@ struct ToolExecutor {
     }
 
     /// The model's major-unit amount in minor units of `card`'s currency.
-    private func minor(_ amount: AmountText, on card: Card, what: String = "Amount") throws -> Int64 {
-        let code = model.currency(ofCard: card.id)
+    private func minor(_ amount: AmountText, on card: Card, code: String? = nil, what: String = "Amount") throws -> Int64 {
+        let code = code ?? model.currency(ofCard: card.id)
         do {
             guard let major = amount.number ?? Self.amount(amount.text, code: code) else { throw EntryError.invalidAmount }
             return try Money.minor(fromMajor: major, code: code)
@@ -185,9 +185,28 @@ struct ToolExecutor {
 
     // MARK: - Tools
 
+    /// The currency a new expense on `card` is typed in, as on the Add screen: its spending currency, else its own.
+    static func typingCurrency(of card: Card, model: AppModel) -> String { card.spendingCurrency ?? model.currency(of: card) }
+
+    /// The currency a proposal's amount is in: the one the user named ("3 dollars", "340 yen"), else the card's.
+    private func currency(_ named: String?, on card: Card) throws -> String {
+        guard let named = named?.trimmingCharacters(in: .whitespaces).uppercased(), !named.isEmpty else { return Self.typingCurrency(of: card, model: model) }
+        guard Money.isCurrencyCode(named) else { throw ToolError(message: "Currency must be an ISO 4217 code such as USD, JPY or EUR, or omitted.") }
+        return named
+    }
+
+    /// Fetches the exchange rate a proposal will need, so `run`, which can't wait, finds it cached.
+    func fetchRate(for name: String, input: Data) async {
+        guard name == "propose_expense", let input = try? JSONDecoder().decode(ProposeInput.self, from: input),
+              let card = try? input.card.map({ try card(named: $0) }) ?? targetCard(),
+              let code = try? currency(input.currency, on: card), code != model.reportingCurrency else { return }
+        _ = try? await model.rates.rate(from: code, to: model.reportingCurrency, on: input.day ?? Day.string(now))
+    }
+
     private func proposeExpense(_ input: ProposeInput) throws -> Outcome {
         let card = try input.card.map { try card(named: $0) } ?? targetCard()
-        let minor = try minor(input.amount, on: card)
+        let code = try currency(input.currency, on: card)
+        let minor = try minor(input.amount, on: card, code: code)
         let day = input.day ?? Day.string(now)
         guard Day.date(day) != nil else { throw ToolError(message: "Day must be a valid yyyy-MM-dd date.") }
         let categories = try model.activeCategories(in: card.id)
@@ -199,7 +218,7 @@ struct ToolExecutor {
         if let learned {
             splits = [Split(categoryID: learned, amount: minor)]
         } else {
-            guard let given = try self.splits(total: minor, category: input.category, split: input.split, on: card, in: categories) else {
+            guard let given = try self.splits(total: minor, category: input.category, split: input.split, on: card, code: code, in: categories) else {
                 throw ToolError(message: "Give a category, or a split of two or more categories.")
             }
             splits = given
@@ -212,10 +231,22 @@ struct ToolExecutor {
             }
             paidWithID = method.id
         } else { paidWithID = card.defaultPaidWithID }
-        let expense = Expense(amount: minor, day: day, note: note, splits: splits, source: "chat", cardID: card.id, paidWithID: paidWithID)
+        var expense = Expense(amount: minor, day: day, note: note, splits: splits, source: "chat", cardID: card.id, paidWithID: paidWithID)
         try expense.validate(categories: categories)
+        // Typed in another currency than the reporting one: converted at the day's rate, like the Add screen (fetchRate got it).
+        let reporting = model.reportingCurrency
+        if code != reporting {
+            guard model.isPro else { throw ToolError(message: PlanError.foreignCurrency.localizedDescription) }
+            guard let rate = model.rates.cachedRate(from: code, to: reporting, on: day) else {
+                throw ToolError(message: "No \(code) exchange rate for \(day): the iPhone needs to be online. Tell the user.")
+            }
+            expense.amount = try Money.convert(minor, rate: rate, to: reporting)
+            expense.splits = try ExpenseDraft.convert(splits, rate: rate, total: expense.amount, to: reporting)
+            expense.originalAmount = minor; expense.originalCurrency = code; expense.rate = "\(rate)"; expense.rateSource = .fetched
+            try expense.validate(categories: categories)
+        }
         let result = ProposalResult(status: "shown_to_user", card: card.name, category: try summary(of: expense, in: card).category,
-                                    amount: Amount(minor), day: day, note: note)
+                                    amount: Amount(expense.amount), day: day, note: note)
         return Outcome(json: try Self.encode(result), proposal: expense)
     }
 
@@ -253,12 +284,12 @@ struct ToolExecutor {
     }
 
     /// One category, or a split whose parts add up to `total` (minor units). nil when neither was given.
-    private func splits(total: Int64, category name: String?, split: [SplitPart]?, on card: Card, in categories: [ExpenseCategory]) throws -> [Split]? {
+    private func splits(total: Int64, category name: String?, split: [SplitPart]?, on card: Card, code: String? = nil, in categories: [ExpenseCategory]) throws -> [Split]? {
         if let split, !split.isEmpty {
             guard name == nil else { throw ToolError(message: "Give either category or split, not both.") }
             guard split.count >= 2 else { throw ToolError(message: "A split needs two or more categories; use category for one.") }
             let parts = try split.map { part -> Split in
-                Split(categoryID: try category(named: part.category, in: categories).id, amount: try minor(part.amount, on: card, what: "Each split amount"))
+                Split(categoryID: try category(named: part.category, in: categories).id, amount: try minor(part.amount, on: card, code: code, what: "Each split amount"))
             }
             guard Set(parts.map(\.categoryID)).count == parts.count else { throw ToolError(message: "Each category can appear once in a split.") }
             let sum = try Money.checkedSum(parts.map(\.amount))

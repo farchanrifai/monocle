@@ -185,7 +185,14 @@ extension ChatSession {
         return await model.pro?.receipt().map { ["x-ankka-receipt": $0] }
     }
 
-    private func makeAgent(claude: Bool, model: AppModel) -> any ChatBackend {
+    /// Claude once the user allowed it, else Apple Intelligence; nil when neither can run on this iPhone.
+    static func makeAgent(model: AppModel) -> (any ChatBackend)? {
+        let claude = ClaudeConsent.uses(isPro: model.isPro)
+        guard claude || AppleChatAgent.unavailableReason == nil else { return nil }
+        return makeAgent(claude: claude, model: model)
+    }
+
+    private static func makeAgent(claude: Bool, model: AppModel, messages: [[String: Any]] = []) -> any ChatBackend {
         guard claude else { return AppleChatAgent(model: model) }
         let credentials = { [weak model] () async throws -> [String: String] in
             guard let model, let credentials = await Self.claudeCredentials(model) else {
@@ -193,12 +200,16 @@ extension ChatSession {
             }
             return credentials
         }
-        let agent = ClaudeChatAgent(model: model, messages: restoredMessages) { body in
+        return ClaudeChatAgent(model: model, messages: messages) { body in
             try await ClaudeClient(credentials: try await credentials()).send(body)
         } stream: { body, onText in
             try await ClaudeClient(credentials: try await credentials()).stream(body, onText: onText)
         }
-        agent.onText = { [weak self] delta in
+    }
+
+    private func makeAgent(claude: Bool, model: AppModel) -> any ChatBackend {
+        let agent = Self.makeAgent(claude: claude, model: model, messages: restoredMessages)
+        (agent as? ClaudeChatAgent)?.onText = { [weak self] delta in
             guard let self else { return }
             streamingText = delta.map { (streamingText ?? "") + $0 }
             if let streamingText { pacer.set(streamingText) } else { pacer.reset() }

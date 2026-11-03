@@ -563,11 +563,12 @@ final class ExpenseService {
     }
 
     @discardableResult
-    func record(text: String, date: Date = .now, id: UUID = UUID(), in cardID: UUID? = nil) throws -> Expense {
+    /// `fallbackCategoryID` is used when the text names no category.
+    func record(text: String, date: Date = .now, id: UUID = UUID(), fallbackCategoryID: UUID? = nil, in cardID: UUID? = nil) throws -> Expense {
         let targetID = cardID ?? activeCardID
-        let cats = targetID == activeCardID ? categories : try store.categories(in: targetID)
-        let parsed = try ExpenseParser.parse(text, categories: cats.filter { !archivedCategoryIDs.contains($0.id) }, rules: categoryRules)
-        guard let categoryID = parsed.categoryID else { throw EntryError.missingCategory }
+        let cats = (targetID == activeCardID ? categories : try store.categories(in: targetID)).filter { !archivedCategoryIDs.contains($0.id) }
+        let parsed = try ExpenseParser.parse(text, categories: cats, rules: categoryRules)
+        guard let categoryID = parsed.categoryID ?? cats.first(where: { $0.id == fallbackCategoryID })?.id else { throw EntryError.missingCategory }
         let expense = Expense(id: id, amount: parsed.amount, day: Day.string(date), note: parsed.note,
             splits: [.init(categoryID: categoryID, amount: parsed.amount)], source: "shortcut-text", createdAt: date, cardID: targetID)
         try save(expense, in: targetID)

@@ -106,15 +106,22 @@ final class ChatToolTests: XCTestCase {
         XCTAssertEqual(try repo.expenses(in: travel.id).count, before, "Proposals never write")
     }
 
-    func testProposeReadsDecimalsInTheCardsCurrency() throws {
+    /// Typed in the card's currency, then converted to the reporting currency like the Add screen does.
+    func testProposeReadsDecimalsInTheCardsCurrency() async throws {
         var usd = travel!; usd.currency = "USD"
         try repo.updateCard(usd)
         try model.reload()
-        let outcome = run("propose_expense", ["amount": 4.5, "category": "Transport", "note": "Bus"], scope: tripScope)
+        model.rates = ExchangeRates(source: OneRate(), fileURL: nil)
+        let reporting = model.reportingCurrency
+        XCTAssertNotEqual(reporting, "USD")
+        let outcome = await proposeFetchingRate(["amount": 4.5, "category": "Transport", "note": "Bus"], scope: tripScope)
         XCTAssertFalse(outcome.isError, outcome.json)
-        XCTAssertEqual(outcome.proposal?.amount, 450)
-        let split = run("propose_expense", ["amount": 10, "split": [["category": "Transport", "amount": 2.25], ["category": "Food & Drink", "amount": 7.75]]], scope: tripScope)
-        XCTAssertEqual(split.proposal?.splits.map(\.amount), [225, 775], split.json)
+        XCTAssertEqual(outcome.proposal?.originalAmount, 450)
+        XCTAssertEqual(outcome.proposal?.originalCurrency, "USD")
+        XCTAssertEqual(outcome.proposal?.amount, try Money.convert(450, rate: 100, to: reporting))
+        let split = await proposeFetchingRate(["amount": 10, "split": [["category": "Transport", "amount": 2.25], ["category": "Food & Drink", "amount": 7.75]]], scope: tripScope)
+        XCTAssertEqual(split.proposal?.originalAmount, 1000, split.json)
+        XCTAssertEqual(split.proposal?.splits.map(\.amount), [try Money.convert(225, rate: 100, to: reporting), try Money.convert(775, rate: 100, to: reporting)])
         XCTAssertTrue(run("propose_expense", ["amount": 0.001, "category": "Transport"], scope: tripScope).isError, "rounds to zero")
     }
 
@@ -453,11 +460,52 @@ final class ChatToolTests: XCTestCase {
 
     // MARK: - Helpers
 
+    func testProposeConvertsANamedCurrencyAtTheDaysRate() async throws {
+        let reporting = model.reportingCurrency
+        XCTAssertNotEqual(reporting, "JPY")
+        model.rates = ExchangeRates(source: OneRate(), fileURL: nil)
+        let executor = ToolExecutor(model: model, scope: .allCards, now: now)
+        let input = try JSONSerialization.data(withJSONObject: ["amount": 340, "currency": "jpy", "category": "Transport", "note": "Taxi", "card": "Tokyo Travel"])
+        XCTAssertTrue(executor.run("propose_expense", input: input).isError, "no rate yet")
+
+        await executor.fetchRate(for: "propose_expense", input: input)
+        let outcome = executor.run("propose_expense", input: input)
+        let expense = try XCTUnwrap(outcome.proposal, outcome.json)
+        XCTAssertEqual(expense.originalAmount, 34_000, "minor units, hundredths in every currency")
+        XCTAssertEqual(expense.originalCurrency, "JPY")
+        XCTAssertEqual(expense.amount, try Money.convert(34_000, rate: 100, to: reporting))
+        XCTAssertEqual(expense.splits.map(\.amount), [expense.amount])
+        XCTAssertEqual(expense.cardID, travel.id)
+        XCTAssertTrue(run("propose_expense", ["amount": 3, "currency": "dollars", "category": "Transport"]).isError)
+    }
+
+    func testSiriLogSavesWhatTheModelProposesAndSpeaksItsQuestion() async throws {
+        let proposal = try XCTUnwrap(run("propose_expense", ["amount": 28000, "category": "Food & Drink", "note": "Kopi", "card": "Daily"]).proposal)
+        let before = try repo.expenses(in: daily.id).count
+        let saved = try await AssistantLog.save("kopi 28rb on daily", card: nil, model: model, agent: ScriptedAgent([.text("Added."), .proposal(proposal)]))
+        XCTAssertEqual(saved?.map(\.id), [proposal.id])
+        XCTAssertEqual(try repo.expenses(in: daily.id).count, before + 1)
+
+        do {
+            _ = try await AssistantLog.save("kopi", card: nil, model: model, agent: ScriptedAgent([.text("How much was it?")]))
+            XCTFail("a question is Siri's answer")
+        } catch { XCTAssertEqual(error.localizedDescription, "How much was it?") }
+        let fallback = try await AssistantLog.save("kopi", card: nil, model: model, agent: ScriptedAgent([.error("Offline")]))
+        XCTAssertNil(fallback, "an error hands over to the app's own reader")
+    }
+
     private var tripScope: AnalyticsFilterScope { .stack(id: trip.id, name: trip.name) }
 
     private func run(_ name: String, _ input: [String: Any], scope: AnalyticsFilterScope = .allCards) -> ToolExecutor.Outcome {
         let data = try! JSONSerialization.data(withJSONObject: input)
         return ToolExecutor(model: model, scope: scope, now: now).run(name, input: data)
+    }
+
+    private func proposeFetchingRate(_ input: [String: Any], scope: AnalyticsFilterScope) async -> ToolExecutor.Outcome {
+        let data = try! JSONSerialization.data(withJSONObject: input)
+        let executor = ToolExecutor(model: model, scope: scope, now: now)
+        await executor.fetchRate(for: "propose_expense", input: data)
+        return executor.run("propose_expense", input: data)
     }
 
     private func json(_ outcome: ToolExecutor.Outcome) -> [String: Any] {
@@ -474,4 +522,19 @@ final class ChatToolTests: XCTestCase {
         let minor = rupiah * 100
         try repo.save(Expense(amount: minor, day: day, note: note, splits: [.init(categoryID: category.id, amount: minor)], cardID: card.id), in: card.id)
     }
+}
+
+/// The same rate, 100, on the day asked for.
+private struct OneRate: RateSource {
+    func rates(from: String, to: String, start: String, end: String) async throws -> [String: Decimal] { [end: 100] }
+}
+
+/// A chat model that always replies the same.
+@MainActor
+private final class ScriptedAgent: ChatBackend {
+    let outputs: [ChatAgent.Output]
+    init(_ outputs: [ChatAgent.Output]) { self.outputs = outputs }
+    func note(_ text: String) {}
+    func reset() {}
+    func send(_ text: String, scope: AnalyticsFilterScope, now: Date) async -> [ChatAgent.Output] { outputs }
 }
