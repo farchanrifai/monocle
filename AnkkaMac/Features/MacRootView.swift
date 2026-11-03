@@ -727,7 +727,7 @@ struct ExpenseMenuItems: View {
     @Environment(\.undoManager) private var undoManager
     var body: some View {
         Button("Edit…") { state.edit(expense) }
-        Button("Repeat…") { state.repeatExpense(expense) }
+        Button("Duplicate…") { state.duplicateExpense(expense) }
         if expense.splits.count == 1 { CategoryMenu(state: state, expenses: [expense]) }
         Divider()
         Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }
@@ -1266,7 +1266,7 @@ private struct ExpenseInspector: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             InspectorActions {
                 Button("Edit…") { state.edit(expense) }
-                Button("Repeat…") { state.repeatExpense(expense) }
+                Button("Duplicate…") { state.duplicateExpense(expense) }
             } trailing: {
                 Button("Delete", role: .destructive) { state.delete(expense, undoManager: undoManager) }.foregroundStyle(.red)
                     .help("Delete (Edit ▸ Undo restores it)")

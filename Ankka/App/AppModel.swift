@@ -125,7 +125,9 @@ final class AppModel {
     var sessionSheetBudget: String = ""
     /// How many screens are pushed over Home; the floating bottom bar hides while any is.
     var pushedDepth = 0
-    var pendingRepeat = false
+    var pendingDuplicate = false
+    /// The expense a new bill starts from (Repeat on an expense).
+    var billTemplate: Expense?
     var undoExpense: Expense?
     private(set) var undoOccurrences: [BillOccurrence] = []
     @ObservationIgnored private var durablePreferences = WorkspacePreferences()
@@ -542,7 +544,7 @@ final class AppModel {
     }
 
     func edit(_ expense: Expense) {
-        if draftNeedsConfirmation { pendingRepeat = false; pendingEntry = expense; return }
+        if draftNeedsConfirmation { pendingDuplicate = false; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense)
         if draft.cardID == nil {
             draft.cardID = expense.cardID ?? activeCardID
@@ -577,7 +579,7 @@ final class AppModel {
     func discardAndOpenPendingEntry() {
         guard let pendingEntry, discardDraft() else { return }
         self.pendingEntry = nil
-        if pendingRepeat { repeatExpense(pendingEntry) } else { edit(pendingEntry) }
+        if pendingDuplicate { duplicateExpense(pendingEntry) } else { edit(pendingEntry) }
     }
 
     func openCardInHome(id: UUID) {
@@ -1708,6 +1710,9 @@ final class AppModel {
         }
         catch { report(error) }
     }
+    /// Any card's bills and their dates; `bills` and `billOccurrences` are the active card's.
+    func bills(for cardID: UUID) -> [Bill] { (try? expenseService?.bills(for: cardID)) ?? [] }
+    func billOccurrences(for cardID: UUID) -> [BillOccurrence] { (try? expenseService?.billOccurrences(for: cardID)) ?? [] }
     func saveBill(_ bill: Bill, in cardID: UUID? = nil) throws {
         guard let expenseService else { throw EntryError.corruptStore }
         try expenseService.saveBill(bill, in: cardID)
@@ -1769,22 +1774,28 @@ final class AppModel {
         Task {
             // Let the chat cover finish dismissing before presenting the sheet.
             try? await Task.sleep(for: .milliseconds(450))
-            // ponytail: an unfinished draft takes the repeat path (dated today) after its discard prompt.
+            // ponytail: an unfinished draft takes the duplicate path (dated today) after its discard prompt.
             guard !refusesNewExpense(on: expense.cardID ?? activeCardID) else { return }
-            if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
+            if draftNeedsConfirmation { pendingDuplicate = true; pendingEntry = expense; return }
             draft = ExpenseDraft(expense: expense); draft.editing = false
             draft.cardID = expense.cardID ?? activeCardID
             showEntry = true
         }
     }
 
-    func repeatExpense(_ expense: Expense) {
+    func duplicateExpense(_ expense: Expense) {
         guard !refusesNewExpense(on: expense.cardID ?? activeCardID) else { return }
-        if draftNeedsConfirmation { pendingRepeat = true; pendingEntry = expense; return }
+        if draftNeedsConfirmation { pendingDuplicate = true; pendingEntry = expense; return }
         draft = ExpenseDraft(expense: expense); draft.id = UUID(); draft.editing = false
         draft.createdAt = .now; draft.date = .now; draft.source = "repeat"
         draft.cardID = expense.cardID ?? activeCardID
         showEntry = true
+    }
+    func makeBill(from expense: Expense) {
+        guard !refusesNewExpense(on: expense.cardID ?? activeCardID) else { return }
+        var expense = expense
+        expense.cardID = expense.cardID ?? activeCardID
+        billTemplate = expense
     }
     func saveCategory(_ category: ExpenseCategory) throws {
         let validated = try category.validated(against: categories)

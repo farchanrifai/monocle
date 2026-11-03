@@ -213,8 +213,8 @@ final class MacAppState {
         model.edit(expense); model.showEntry = false; showEntryPanel()
     }
 
-    func repeatExpense(_ expense: Expense) {
-        model.repeatExpense(expense); model.showEntry = false; showEntryPanel()
+    func duplicateExpense(_ expense: Expense) {
+        model.duplicateExpense(expense); model.showEntry = false; showEntryPanel()
     }
 
     /// Deletes without confirmation; Edit ▸ Undo (⌘Z) restores all of them, and Redo deletes again.

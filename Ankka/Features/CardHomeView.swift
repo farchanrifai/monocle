@@ -457,6 +457,9 @@ struct CardHomeView: View {
         .navigationDestination(isPresented: $model.showBills) {
             BillsView(model: model).hidesBottomNavigation(model)
         }
+        .sheet(item: $model.billTemplate) { expense in
+            BillEditor(model: model, existingRule: nil, template: expense).scrollEdgeEffectStyle(.soft, for: .all)
+        }
         .sheet(isPresented: $model.showCSVInterchange) {
             NavigationStack {
                 CSVInterchangeView(model: model, initialTab: model.csvInterchangeInitialTab)
@@ -965,8 +968,11 @@ private struct ActivityList: View, @MainActor Equatable {
             Button("Edit", systemImage: "pencil") {
                 model.edit(expense)
             }
+            Button("Duplicate", systemImage: "plus.square.on.square") {
+                model.duplicateExpense(expense)
+            }
             Button("Repeat", systemImage: "repeat") {
-                model.repeatExpense(expense)
+                model.makeBill(from: expense)
             }
             Button("Delete", systemImage: "trash", role: .destructive) {
                 model.delete(expense)
@@ -1050,7 +1056,7 @@ private struct CardFaceText: View, @MainActor Equatable {
                     .opacity(0.8)
             }
             Text("\(period.cycle?.label.uppercased() ?? "ALL TIME") · \(period.count) \(period.count == 1 ? "EXPENSE" : "EXPENSES")")
-                .font(.system(size: 11, weight: .medium).monospaced())
+                .font(.system(size: 11, weight: .medium).monospacedDigit()).tracking(0.6)
                 .lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(16)
@@ -1576,7 +1582,7 @@ struct CardPresentationView: View {
 
             if let startTime = model.sessionManager.sessionStartTime {
                 Text(startTime, style: .timer)
-                    .font(.caption2.monospaced())
+                    .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
 
