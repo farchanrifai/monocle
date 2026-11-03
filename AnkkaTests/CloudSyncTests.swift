@@ -85,6 +85,29 @@ final class CloudSyncTests: XCTestCase {
         XCTAssertEqual(try repository.expenses(in: card.id).map(\.id), [newer])
     }
 
+    func testRepairKeepsTheBillExpenseTheUserEdited() throws {
+        let repository = try ExpenseRepository(inMemory: true)
+        let card = try repository.createCard(named: "Daily")
+        let category = try XCTUnwrap(repository.categories(in: card.id).first)
+        let bill = Bill(cardID: card.id, name: "Power", amount: 300, categoryID: category.id, recurrence: .monthly(day: 1))
+        try repository.saveBill(bill, in: card.id)
+        let book = try repository.cardRow(for: card.id)
+        let categoryRow = try XCTUnwrap(repository.objects("CategoryRecord").first { ($0.value(forKey: "id") as? UUID) == category.id && ($0.value(forKey: "book") as? NSManagedObject) == book })
+        let expenseID = UUID()
+        let edited = expenseRow(expenseID, amount: 412, splits: [(categoryRow, 412)], source: "bill-automatic", in: book, repository)
+        edited.setValue("Power", forKey: "note")
+        let untouched = expenseRow(expenseID, amount: 300, splits: [(categoryRow, 300)], source: "bill-automatic", in: book, repository)
+        untouched.setValue("Power", forKey: "note")
+        let rule = try XCTUnwrap(repository.objects("BillRuleRecord").first)
+        _ = insert("BillOccurrenceRecord", ["id": UUID(), "dueDay": "2026-11-01", "status": "recorded", "expenseID": expenseID,
+                                            "createdAt": Date.now, "updatedAt": Date.now, "rule": rule], in: repository)
+        try repository.context.save()
+
+        // The untouched copy has the higher record name, so only the edit check can keep the edited one.
+        XCTAssertTrue(try repository.repairSyncDuplicates { $0 === untouched ? "z" : "a" + (self.recordName($0) ?? "") })
+        XCTAssertEqual(try repository.expenses(in: card.id).map(\.amount), [412])
+    }
+
     func testSyncedReadsSkipIncompleteRowsInsteadOfFailing() throws {
         let repository = try ExpenseRepository(inMemory: true)
         let card = try repository.createCard(named: "Daily")

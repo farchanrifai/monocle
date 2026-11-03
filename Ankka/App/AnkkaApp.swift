@@ -110,12 +110,14 @@ struct RootView: View {
         }
         #endif
         .onChange(of: phase) { _, phase in
+            // The demo shows instead of the real model, whose App Lock still has to time out: Exit then asks first.
+            let locks = model.isDemo ? [model.appLock, AppModel.shared.appLock] : [model.appLock]
             if phase != .active {
                 model.persistDraft()
                 // Inactive only covers the screen; the lock timer starts once the app is in the background.
-                if phase == .background { model.appLock.suspend() } else { model.appLock.shield() }
+                for lock in locks { if phase == .background { lock.suspend() } else { lock.shield() } }
             } else {
-                model.appLock.resume()
+                for lock in locks { lock.resume() }
                 do { try model.reload() } catch { model.report(error) }
                 // A subscription that lapsed while the app sat in the background sends no transaction update.
                 Task { await model.pro?.refresh() }

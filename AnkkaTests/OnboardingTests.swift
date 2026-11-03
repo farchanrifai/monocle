@@ -47,6 +47,15 @@ final class OnboardingTests: XCTestCase {
         XCTAssertThrowsError(try model.setUpCurrency("EUR"), "the no-rates shortcut is only for a workspace without real data")
     }
 
+    func testASampleCardTheUserWroteToIsHiddenNotDeleted() throws {
+        let category = try XCTUnwrap(model.activeCategories(for: Card.demo.id).first)
+        let mine = Expense(amount: 5_000, day: Day.string(.now), note: "Mine", splits: [.init(categoryID: category.id, amount: 5_000)], cardID: Card.demo.id)
+        try model.save(mine)
+        try model.finishOnboarding(cardName: "Daily")
+        XCTAssertTrue(model.cards.contains { $0.id == Card.demo.id }, "the user's entry stays")
+        XCTAssertFalse(model.unhiddenCards.contains { $0.id == Card.demo.id })
+    }
+
     func testTheDemoIsDatedFromTodayAndLeavesTheRealCardsAlone() throws {
         let before = model.cards.map(\.id)
         model.startDemo()

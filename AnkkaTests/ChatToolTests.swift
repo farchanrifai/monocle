@@ -483,7 +483,7 @@ final class ChatToolTests: XCTestCase {
         let proposal = try XCTUnwrap(run("propose_expense", ["amount": 28000, "category": "Food & Drink", "note": "Kopi", "card": "Daily"]).proposal)
         let before = try repo.expenses(in: daily.id).count
         let saved = try await AssistantLog.save("kopi 28rb on daily", card: nil, model: model, agent: ScriptedAgent([.text("Added."), .proposal(proposal)]))
-        XCTAssertEqual(saved?.map(\.id), [proposal.id])
+        XCTAssertEqual(saved?.expenses.map(\.id), [proposal.id])
         XCTAssertEqual(try repo.expenses(in: daily.id).count, before + 1)
 
         do {
@@ -492,6 +492,33 @@ final class ChatToolTests: XCTestCase {
         } catch { XCTAssertEqual(error.localizedDescription, "How much was it?") }
         let fallback = try await AssistantLog.save("kopi", card: nil, model: model, agent: ScriptedAgent([.error("Offline")]))
         XCTAssertNil(fallback, "an error hands over to the app's own reader")
+    }
+
+    func testSiriLogSavesBillsUsesTheShortcutsCategoryAndSavesAllOrNothing() async throws {
+        let transport = try category("Transport", in: daily)
+        let kopi = try XCTUnwrap(run("propose_expense", ["amount": 28000, "category": "Food & Drink", "note": "Kopi", "card": "Daily"]).proposal)
+        let bill = try XCTUnwrap(run("propose_bill", ["name": "Spotify", "amount": 55000, "category": "Food & Drink", "frequency": "monthly", "day": 5, "card": "Daily"]).bill)
+        let saved = try await AssistantLog.save("kopi 28rb, spotify 55rb every month", card: nil, category: ExpenseCategoryEntity(transport), model: model,
+                                                agent: ScriptedAgent([.proposal(kopi), .bill(bill)]))
+        XCTAssertEqual(saved?.expenses.first?.splits.map(\.categoryID), [transport.id], "the Shortcut's Category wins")
+        XCTAssertEqual(try repo.expenses(in: daily.id).first { $0.id == kopi.id }?.splits.map(\.categoryID), [transport.id])
+        XCTAssertTrue(try repo.bills(in: daily.id).contains { $0.id == bill.id }, "a repeat said to Siri is saved as a bill")
+
+        let before = try repo.expenses(in: daily.id).count
+        let roti = try XCTUnwrap(run("propose_expense", ["amount": 15000, "category": "Food & Drink", "note": "Roti", "card": "Daily"]).proposal)
+        var broken = roti; broken.id = UUID(); broken.splits = [Split(categoryID: UUID(), amount: broken.amount)]
+        do {
+            _ = try await AssistantLog.save("roti and more", card: nil, model: model, agent: ScriptedAgent([.proposal(roti), .proposal(broken)]))
+            XCTFail("the second one can't be saved")
+        } catch {}
+        XCTAssertEqual(try repo.expenses(in: daily.id).count, before, "nothing stays when one fails")
+
+        let existing = try XCTUnwrap(repo.expenses(in: daily.id).first)
+        let change = try XCTUnwrap(run("propose_delete", ["id": existing.id.uuidString]).change)
+        do {
+            _ = try await AssistantLog.save("delete my coffee", card: nil, model: model, agent: ScriptedAgent([.change(change)]))
+            XCTFail("changes go to the chat")
+        } catch { XCTAssertTrue(error.localizedDescription.contains("chat")) }
     }
 
     private var tripScope: AnalyticsFilterScope { .stack(id: trip.id, name: trip.name) }

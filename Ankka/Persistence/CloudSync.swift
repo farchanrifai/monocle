@@ -61,6 +61,7 @@ extension ExpenseRepository {
     /// record the same bill) and keeps what they held. Every device picks the same survivor (highest score, then
     /// CloudKit record name), so their deletes agree; a group waits until all its rows have reached iCloud.
     /// Only deletes and re-points rows, never inserts, so two devices repairing at once converge.
+    /// ponytail: scans every row of each entity per refresh; limit it to persistent-history changes if large ledgers stall.
     @discardableResult
     func repairSyncDuplicates(recordName: (NSManagedObject) -> String?) throws -> Bool {
         func id(_ row: NSManagedObject) -> String? { (row.value(forKey: "id") as? UUID)?.uuidString }
@@ -80,7 +81,18 @@ extension ExpenseRepository {
                                  recordName: recordName) { loser, winner in
                 move("allocations", of: loser, to: winner, as: "category")
             } || changed
-            changed = try dedupe("ExpenseRecord", key: id, recordName: recordName) || changed
+            // A bill's expense recorded on two devices has one id; the copy the user edited (amount or note no longer the
+            // bill's) wins. ponytail: a category-only edit isn't seen; an updatedAt on ExpenseRecord would be.
+            changed = try dedupe("ExpenseRecord", key: id, score: { row in
+                guard (row.value(forKey: "source") as? String)?.hasPrefix("bill") == true, let expenseID = row.value(forKey: "id") as? UUID else { return 0 }
+                let request = NSFetchRequest<NSManagedObject>(entityName: "BillOccurrenceRecord")
+                request.predicate = NSPredicate(format: "expenseID == %@", expenseID as NSUUID)
+                request.fetchLimit = 1
+                guard let rule = (try? context.fetch(request))?.first?.value(forKey: "rule") as? NSManagedObject else { return 0 }
+                let edited = (row.value(forKey: "amount") as? Int64) != (rule.value(forKey: "amount") as? Int64)
+                    || (row.value(forKey: "note") as? String) != (rule.value(forKey: "name") as? String)
+                return edited ? 1 : 0
+            }, recordName: recordName) || changed
             changed = try dedupe("BudgetRecord", key: { row in (row.value(forKey: "effectiveDay") as? String).flatMap { day in parent(row, "book").map { "\(day)/\($0)" } } },
                                  recordName: recordName) || changed
             changed = try dedupe("BillRuleRecord", key: id, recordName: recordName) { loser, winner in

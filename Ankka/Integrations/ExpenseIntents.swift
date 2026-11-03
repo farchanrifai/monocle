@@ -319,7 +319,7 @@ struct AddExpenseFromTextIntent: AppIntent {
 
     @Parameter(title: "Expense", description: "For example, Coffee 28k", requestValueDialog: IntentDialog("What did you spend?")) var text: String
     @Parameter(title: "Card") var card: CardEntity?
-    @Parameter(title: "Category", description: "Used when the text doesn't name a category. Left empty, Ankka asks.") var category: ExpenseCategoryEntity?
+    @Parameter(title: "Category", description: "When set, expenses from this Shortcut go in this category. Left empty, Ankka picks one, or asks.") var category: ExpenseCategoryEntity?
 
     static var parameterSummary: some ParameterSummary {
         Summary("Add \(\.$text)") {
@@ -332,7 +332,9 @@ struct AddExpenseFromTextIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         guard let service = AppEnvironment.shared.expenses else { throw EntryError.corruptStore }
         let model = AppEnvironment.shared.model
-        if let saved = try await AssistantLog.save(text, card: card, model: model) { return Self.receipt(saved, model: model) }
+        if let saved = try await AssistantLog.save(text, card: card, category: category, model: model) {
+            return Self.receipt(saved.expenses, bills: saved.bills, model: model)
+        }
         var resolvedCard = card
         if resolvedCard == nil {
             let availableCards = AppEnvironment.shared.model.unhiddenCards
@@ -360,24 +362,24 @@ struct AddExpenseFromTextIntent: AppIntent {
         }
         let cat = model.activeCategories(for: targetCardID).first(where: { $0.id == expense.splits.first?.categoryID })
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol ?? "creditcard", cardID: targetCardID)
-        return Self.receipt([expense], model: model)
+        return Self.receipt([expense], bills: [], model: model)
     }
 
     /// "Added ¥340 Taxi on Travel." with a receipt per expense; the amount as paid, before conversion.
     @MainActor
-    private static func receipt(_ expenses: [Expense], model: AppModel) -> some IntentResult & ProvidesDialog & ShowsSnippetView {
-        let cardName = { (expense: Expense) in model.cards.first { $0.id == expense.cardID }?.name ?? "Card" }
+    private static func receipt(_ expenses: [Expense], bills: [Bill], model: AppModel) -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        let cardName = { (id: UUID?) in model.cards.first { $0.id == id }?.name ?? "Card" }
         let said = expenses.map { expense in
             let paid = expense.originalAmount.map { Money.format($0, code: expense.originalCurrency) } ?? Money.format(expense.amount)
-            return "\(paid)\(expense.note.isEmpty ? "" : " \(expense.note)") on \(cardName(expense))"
-        }
+            return "\(paid)\(expense.note.isEmpty ? "" : " \(expense.note)") on \(cardName(expense.cardID))"
+        } + bills.map { "the bill \($0.name), \(Money.format($0.amount)) \($0.recurrence.title.lowercased()), on \(cardName($0.cardID))" }
         return .result(
-            dialog: IntentDialog(stringLiteral: expenses.count == 1 ? "Added \(said[0])." : "Added \(expenses.count) expenses: \(said.joined(separator: ", "))."),
+            dialog: IntentDialog(stringLiteral: said.count == 1 ? "Added \(said[0])." : "Added \(said.count): \(said.joined(separator: "; "))."),
             view: VStack(spacing: 8) {
                 ForEach(expenses, id: \.id) { expense in
                     let category = expense.cardID.flatMap { id in model.activeCategories(for: id).first { $0.id == expense.splits.first?.categoryID } }
                     ExpenseReceiptSnippetView(expense: expense, categoryName: category?.name ?? "Expense", categorySymbol: category?.symbol ?? "creditcard",
-                                              cardName: cardName(expense))
+                                              cardName: cardName(expense.cardID))
                 }
             }
         )
@@ -388,20 +390,43 @@ struct AddExpenseFromTextIntent: AppIntent {
 /// into note, category, currency and card, and it is saved straight away (the user said it; "Undo last expense" takes it back).
 @MainActor
 enum AssistantLog {
-    /// nil when no model can run here, or it couldn't answer, so the app's own reader takes over.
-    static func save(_ text: String, card: CardEntity?, model: AppModel, agent: (any ChatBackend)? = nil) async throws -> [Expense]? {
+    /// nil when no model can run here, or it couldn't answer, so the app's own reader takes over. `category`, the
+    /// Shortcut's own, wins for one-category expenses on cards that use it. A said repeat ("every month") saves a bill.
+    static func save(_ text: String, card: CardEntity?, category: ExpenseCategoryEntity? = nil, model: AppModel,
+                     agent: (any ChatBackend)? = nil) async throws -> (expenses: [Expense], bills: [Bill])? {
         guard let agent = agent ?? ChatSession.makeAgent(model: model) else { return nil }
         let picked = card.flatMap { entity in model.unhiddenCards.first { $0.id.uuidString == entity.id } }
         let outputs = await agent.send(text, scope: picked.map { .card(id: $0.id, name: $0.name) } ?? .allCards, now: .now)
-        let expenses = outputs.compactMap { output -> Expense? in if case .proposal(let expense) = output { expense } else { nil } }
-        guard !expenses.isEmpty else {
+        var expenses = outputs.compactMap { output -> Expense? in if case .proposal(let expense) = output { expense } else { nil } }
+        let bills = outputs.compactMap { output -> Bill? in if case .bill(let bill) = output { bill } else { nil } }
+        // Changing a saved expense needs the user to see which one.
+        if outputs.contains(where: { if case .change = $0 { true } else { false } }) {
+            throw AskError.said("To change or delete an expense, ask in Ankka's chat.")
+        }
+        guard !expenses.isEmpty || !bills.isEmpty else {
             // The model asked something back ("How much was it?"): that is Siri's answer. An error falls through to the reader.
             let asked = outputs.compactMap { output -> String? in if case .text(let text) = output { text } else { nil } }
             if asked.isEmpty { return nil }
             throw AskError.said(asked.joined(separator: " "))
         }
-        for expense in expenses { try model.saveFromChat(expense) }
-        return expenses
+        if let id = category.flatMap({ UUID(uuidString: $0.id) }) {
+            for index in expenses.indices where expenses[index].splits.count == 1 {
+                guard let cardID = expenses[index].cardID, model.activeCategories(for: cardID).contains(where: { $0.id == id }) else { continue }
+                expenses[index].splits = [Split(categoryID: id, amount: expenses[index].amount)]
+            }
+        }
+        // All or nothing: after an error nothing stays saved, so saying it again doesn't add the first ones twice.
+        var saved: [Expense] = [], savedBills: [Bill] = []
+        do {
+            for expense in expenses { try model.saveFromChat(expense); saved.append(expense) }
+            for bill in bills { try model.saveBill(bill, in: bill.cardID); savedBills.append(bill) }
+        } catch {
+            for expense in saved { try? model.expenseService?.delete(expense.id, in: expense.cardID ?? model.activeCardID) }
+            for bill in savedBills { try? model.expenseService?.deleteBill(bill.id, in: bill.cardID) }
+            model.invalidateExpenseCaches()
+            throw error
+        }
+        return (expenses, bills)
     }
 }
 

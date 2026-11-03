@@ -100,6 +100,30 @@ final class FoundationTests: XCTestCase {
         XCTAssertEqual(BudgetHistory.active(on: october, budgets: store.budgetValues, calendar: calendar)?.overallLimit, 500)
     }
 
+    func testOneMonthBudgetKeepsTheRepeatingOneWhenTheNextMonthIsTaken() throws {
+        let store = TestExpenseStore()
+        let model = AppModel(expenses: try ExpenseService(store: store), state: TestState())
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        func day(_ value: String) throws -> Date { try XCTUnwrap(Day.date(value, calendar: calendar)) }
+        func limit(on value: String) throws -> Int64? { BudgetHistory.active(on: try day(value), budgets: store.budgetValues, calendar: calendar)?.overallLimit }
+        try model.saveBudget(overallLimit: 500, categoryLimits: [], month: try day("2026-03-05"), calendar: calendar)
+        try model.saveBudget(overallLimit: 300, categoryLimits: [], month: try day("2026-04-05"), repeats: false, calendar: calendar)
+        try model.saveBudget(overallLimit: 800, categoryLimits: [], month: try day("2026-03-05"), repeats: false, calendar: calendar)
+        XCTAssertEqual(try limit(on: "2026-03-15"), 800)
+        XCTAssertEqual(try limit(on: "2026-04-15"), 300)
+        XCTAssertEqual(try limit(on: "2026-05-15"), 500, "the repeating budget carries on after Just April")
+    }
+
+    func testABudgetStartingMidMonthCutsTheOneBeforeItShort() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let monthly = BudgetVersion(effectiveDay: "2026-10-01", overallLimit: 500, startDay: 1)
+        let goal = BudgetVersion(effectiveDay: "2026-11-10", overallLimit: 200, startDay: 1, totalUntilDay: "2026-11-20")
+        let period = try XCTUnwrap(BudgetHistory.period(containing: try XCTUnwrap(Day.date("2026-11-05", calendar: calendar)), budgets: [monthly, goal], calendar: calendar))
+        XCTAssertEqual(Day.string(period.cycle.end, calendar: calendar), "2026-11-10")
+    }
+
     func testExistingStateEncodingReopensAndCorruptionIsPreserved() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

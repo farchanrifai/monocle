@@ -675,7 +675,15 @@ enum BudgetHistory {
             let end = reporting.date(byAdding: .day, value: 1, to: reporting.startOfDay(for: last)) ?? last
             return BudgetPeriod(budget: budget, cycle: Cycle(start: reporting.startOfDay(for: start), end: end, calendar: calendar))
         }
-        return BudgetPeriod(budget: budget, cycle: Cycle.month(containing: date, calendar: calendar))
+        var cycle = Cycle.month(containing: date, calendar: calendar)
+        // A goal that starts mid-month (older data, a restored backup) cuts the month before it short, so the two don't
+        // overlap. Other mid-month versions (old early paydays) still read as whole months.
+        let day = Day.string(date, calendar: calendar)
+        if let next = budgets.filter({ $0.effectiveDay > day && $0.isGoal }).map(\.effectiveDay).min(),
+           let nextStart = Day.date(next, calendar: calendar), nextStart < cycle.end {
+            cycle = Cycle(start: cycle.start, end: nextStart, calendar: calendar)
+        }
+        return BudgetPeriod(budget: budget, cycle: cycle)
     }
 }
 

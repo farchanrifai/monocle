@@ -144,6 +144,7 @@ final class AppModel {
     func endDemo() {
         let folder = demo?.demoDirectory
         demo = nil
+        Money.reportingCurrency = reportingCurrency // the demo's restore set the process-wide default to USD
         if let folder { try? FileManager.default.removeItem(at: folder) }
     }
     var pendingDuplicate = false
@@ -2038,7 +2039,11 @@ final class AppModel {
         var moved: BudgetVersion?
         if let untilDay, var replaced = history.first(where: { $0.effectiveDay == start && $0.totalUntilDay == nil }),
            let last = Day.date(untilDay, calendar: calendar) {
-            let resume = Day.string(Cycle.month(containing: last, calendar: calendar).end, calendar: calendar)
+            var resume = Day.string(Cycle.month(containing: last, calendar: calendar).end, calendar: calendar)
+            // Past budgets with an end that already follow; a repeating one there carries on by itself.
+            while let taken = history.first(where: { $0.effectiveDay == resume }), let end = taken.totalUntilDay.flatMap({ Day.date($0, calendar: calendar) }) {
+                resume = Day.string(Cycle.month(containing: end, calendar: calendar).end, calendar: calendar)
+            }
             if !history.contains(where: { $0.effectiveDay == resume }) { replaced.effectiveDay = resume; moved = replaced }
         }
         let id = history.first { $0.effectiveDay == start && $0.id != moved?.id }?.id ?? UUID()
@@ -2230,7 +2235,17 @@ extension AppModel {
             card = try createCard(named: name)
         }
         _ = selectCard(card.id)
-        if cards.contains(where: { $0.id == Card.demo.id }) { try deleteCard(id: Card.demo.id) }
+        if cards.contains(where: { $0.id == Card.demo.id }) {
+            if expenses(for: Card.demo.id).allSatisfy({ $0.source == "sample" }) {
+                try deleteCard(id: Card.demo.id)
+            } else if !alwaysHiddenCardIDs.contains(Card.demo.id) { // entries the user added there stay: hide it instead
+                var proposed = workspacePreferences
+                proposed.alwaysHiddenCardIDs.append(Card.demo.id)
+                proposed.visibleCardIDs.removeAll { $0 == Card.demo.id }
+                for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == Card.demo.id } }
+                try commitPresentationPreferences(proposed)
+            }
+        }
         UserDefaults.standard.set(true, forKey: "onboarded")
     }
 }
