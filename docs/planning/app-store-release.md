@@ -119,4 +119,4 @@ Needs the account or the owner:
 - Move the owner's data from the SideStore install with a `.monoclebackup` (different bundle ID, separate app).
 
 ### 6. Submit
-- Review Notes: Pro testable in sandbox; Sample card has data; chat needs an Apple Intelligence device.
+- Review Notes: Pro testable in sandbox; Settings › Try the demo (or "Look around first" in onboarding) shows a filled-in app; chat needs an Apple Intelligence device.

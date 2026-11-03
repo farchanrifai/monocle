@@ -125,6 +125,27 @@ final class AppModel {
     var sessionSheetBudget: String = ""
     /// How many screens are pushed over Home; the floating bottom bar hides while any is.
     var pushedDepth = 0
+    /// Try the demo: the throwaway demo model the app shows instead of this one until Exit.
+    var demo: AppModel?
+    /// This model is the demo (AppEnvironment.makeDemo): it leaves widgets and the Live Activity alone.
+    @ObservationIgnored var isDemo = false
+    @ObservationIgnored var exitDemo: (() -> Void)?
+    @ObservationIgnored var demoDirectory: URL?
+
+    func startDemo() {
+        do {
+            let demo = try AppEnvironment.makeDemo()
+            demo.exitDemo = { [weak self] in self?.endDemo() }
+            showSettings = false
+            self.demo = demo
+        } catch { report(error) }
+    }
+
+    func endDemo() {
+        let folder = demo?.demoDirectory
+        demo = nil
+        if let folder { try? FileManager.default.removeItem(at: folder) }
+    }
     var pendingDuplicate = false
     /// The expense a new bill starts from (Repeat on an expense).
     var billTemplate: Expense?
@@ -973,7 +994,7 @@ final class AppModel {
     }
 
     func syncWidgetSnapshot() {
-        guard startupError == nil, expenseService?.projectionRefreshError == nil else { return }
+        guard !isDemo, startupError == nil, expenseService?.projectionRefreshError == nil else { return }
         guard let activeCard = cards.first(where: { $0.id == activeCardID }) ?? cards.first else { return }
         var stack = currentStack
         stack?.cardIDs.removeAll { alwaysHiddenCardIDs.contains($0) }
@@ -1763,7 +1784,7 @@ final class AppModel {
     }
 
     private func recordInSpendingSession(_ expense: Expense) {
-        guard SpendingSessionManager.shared.isSessionActive, let cardID = expense.cardID else { return }
+        guard !isDemo, SpendingSessionManager.shared.isSessionActive, let cardID = expense.cardID else { return }
         let cat = activeCategories(for: cardID).first(where: { $0.id == expense.splits.first?.categoryID })
         SpendingSessionManager.shared.recordExpense(amount: expense.amount, note: expense.note, categorySymbol: cat?.symbol, cardID: cardID)
     }
@@ -2196,7 +2217,8 @@ extension AppModel {
     }
 
     /// Onboarding's last step: the user's real card, opened, and whether the Sample card stays on Home.
-    func finishOnboarding(cardName: String, keepSample: Bool) throws {
+    /// Makes (or renames) the user's card and deletes the Sample card new stores start with; Try the demo replaces it.
+    func finishOnboarding(cardName: String) throws {
         let trimmed = cardName.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = trimmed.isEmpty ? "My card" : String(trimmed.prefix(40))
         // Onboarding shown again (e.g. after an interruption) reuses the card it made instead of hitting the Free limit.
@@ -2208,13 +2230,7 @@ extension AppModel {
             card = try createCard(named: name)
         }
         _ = selectCard(card.id)
-        if !keepSample, !alwaysHiddenCardIDs.contains(Card.demo.id) {
-            var proposed = workspacePreferences
-            proposed.alwaysHiddenCardIDs.append(Card.demo.id)
-            proposed.visibleCardIDs.removeAll { $0 == Card.demo.id }
-            for index in proposed.stacks.indices { proposed.stacks[index].cardIDs.removeAll { $0 == Card.demo.id } }
-            try commitPresentationPreferences(proposed)
-        }
+        if cards.contains(where: { $0.id == Card.demo.id }) { try deleteCard(id: Card.demo.id) }
         UserDefaults.standard.set(true, forKey: "onboarded")
     }
 }

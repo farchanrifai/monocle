@@ -367,7 +367,7 @@ struct ChatMentionList: View {
     static func names(_ model: AppModel) -> [Character: [String]] {
         var seen = Set<String>()
         let categories = model.cards.flatMap { model.activeCategories(for: $0.id) }.map(\.name).filter { seen.insert($0.lowercased()).inserted }
-        return ["@": model.stacks.map(\.name) + model.cards.map(\.name) + ["All Cards"], "#": categories]
+        return ["@": model.stacks.map(\.name) + model.unhiddenCards.map(\.name) + ["All Cards"], "#": categories]
     }
 
     /// The "@Name" / "#Name" stretches of a draft (a known name after a space or at the start, longest match first).

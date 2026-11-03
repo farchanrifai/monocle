@@ -32,8 +32,8 @@ struct PaymentMethodsView: View {
                 }
                 Button { editing = PaymentMethod(name: "") } label: { Label { Text("Add label") } icon: { SettingsIcon(symbol: "plus", color: .gray) } }
                     .accessibilityIdentifier("addPaymentMethod")
-            } header: { Text("Labels") } footer: {
-                Text("Paid with records how you paid, like BCA debit or Cash. Ankka never tracks what is left on them.")
+            } header: {
+                InfoHeader(title: "Labels", info: "Paid with records how you paid, like BCA debit or Cash. Ankka never tracks what is left on them.")
             }
         }
         .navigationTitle("Paid with").navigationBarTitleDisplayMode(.inline)
@@ -119,8 +119,8 @@ struct CurrencySettingsView: View {
                     })) {
                         ForEach(choices, id: \.self) { Text($0).tag($0) }
                     }.accessibilityIdentifier("spendingCurrency")
-                } header: { Text(card.name) } footer: {
-                    Text("The card's budget and totals use the budget currency; changing it converts the budget at today's rate. New expenses start in the spending currency, and the card shows an ≈ amount in it, like a Japan trip budgeted in rupiah that you spend in yen.")
+                } header: {
+                    InfoHeader(title: card.name, info: "The card's budget and totals use the budget currency; changing it converts the budget at today's rate. New expenses start in the spending currency, and the card shows an ≈ amount in it, like a Japan trip budgeted in rupiah that you spend in yen.")
                 }
             }
             if working { Section { HStack { ProgressView(); Text("Converting…") } } }

@@ -8,7 +8,9 @@ struct AnkkaApp: App {
     @State private var model = AppModel.shared
     var body: some Scene {
         WindowGroup {
-            RootView(model: model).fontDesign(.rounded) // SF Rounded across the app (chosen 2026-11-03)
+            // Try the demo swaps in a throwaway model; Exit brings the real one back as it was.
+            RootView(model: model.demo ?? model).id(model.demo == nil)
+                .fontDesign(.rounded) // SF Rounded across the app (chosen 2026-11-03)
         }
     }
 }
@@ -58,7 +60,13 @@ struct RootView: View {
                     }
                 }
                 .toolbar(.hidden, for: .tabBar)
-                .safeAreaBar(edge: .bottom) { if model.pushedDepth == 0 { BottomNavigation(model: model) } }
+                .safeAreaBar(edge: .bottom) {
+                    VStack(spacing: 8) {
+                        // Above the bar, so Home's own top buttons stay reachable.
+                        if model.isDemo { DemoBanner(model: model) }
+                        if model.pushedDepth == 0 { BottomNavigation(model: model) }
+                    }
+                }
                 .tint(MC.red)
                 // iOS 27 defaults bars to the hard edge; every screen keeps the soft (progressive) blur.
                 .scrollEdgeEffectStyle(.soft, for: .all)
@@ -275,3 +283,19 @@ private struct ReviewPrompt: ViewModifier {
     model.chat.rows = rows
 }
 #endif
+
+/// Shown over the demo: it is a sample, and Exit goes back to the user's own cards.
+private struct DemoBanner: View {
+    let model: AppModel
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Demo · nothing is saved").font(.footnote.weight(.semibold))
+            Button("Exit") { model.exitDemo?() }
+                .font(.footnote.weight(.semibold))
+                .buttonStyle(.borderedProminent).controlSize(.small)
+                .accessibilityIdentifier("exitDemo")
+        }
+        .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 6)
+        .glassEffect(.regular, in: .capsule)
+    }
+}

@@ -1,12 +1,11 @@
-#if DEBUG
 import Foundation
 
-/// Debug-only marketing workspace, launched with `-DemoData YES` or always on in the Demo build (`ANKKA_DEMO_BUILD`):
-/// four cards (USD, EUR, JPY), about three months of everyday spending, budgets and bills, in USD. With the launch
-/// argument the store moves to a temporary folder that is emptied on every launch; the Demo build is a separate app
-/// that keeps its folder, seeded once on first launch. Bill reminders never reach the system schedule, so the real
-/// workspace is never read or written.
+/// The demo workspace: four cards (USD, EUR, JPY), about three months of everyday spending, budgets and bills, in USD,
+/// dated back from the day it is made. Settings ▸ Try the demo opens it in a throwaway copy (AppEnvironment.makeDemo).
+/// Debug builds can also launch into it with `-DemoData YES`, or always in the Demo build (`ANKKA_DEMO_BUILD`).
+/// Bill reminders never reach the system schedule, so the real workspace's reminders are left alone.
 enum DemoData {
+    #if DEBUG
     #if ANKKA_DEMO_BUILD
     static let isEnabled = true
     #else
@@ -26,6 +25,7 @@ enum DemoData {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
+    #endif
 
     /// Rebuilding the reminder schedule would replace the real workspace's pending reminders on this device.
     @MainActor static let notifications = BillNotificationService(client: SilentNotifications())
@@ -40,7 +40,7 @@ enum DemoData {
 
     /// Deterministic for a given `now`. Budgets start mid-way so today lands in the middle of each cycle.
     static func make(now: Date = .now) -> WorkspaceBackup {
-        var random = DemoWorkspace.Generator(seed: 2026)
+        var random = Generator(seed: 2026)
         let cal = Day.calendar
         let today = cal.startOfDay(for: now)
         func date(_ offset: Int) -> Date { cal.date(byAdding: .day, value: -offset, to: today)! }
@@ -247,5 +247,19 @@ enum DemoData {
         settings.startDay = dayOfMonth(cycleStart)
         return WorkspaceBackup(currency: "USD", cards: cards, preferences: preferences, settings: settings)
     }
+
+    /// SplitMix64: the same seed always makes the same ledger.
+    struct Generator {
+        var state: UInt64
+        init(seed: UInt64) { state = seed }
+        mutating func next() -> UInt64 {
+            state &+= 0x9E37_79B9_7F4A_7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+            z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+            return z ^ (z >> 31)
+        }
+        mutating func unit() -> Double { Double(next() >> 11) / Double(1 << 53) }
+        mutating func int(in range: ClosedRange<Int>) -> Int { range.lowerBound + Int(next() % UInt64(range.count)) }
+    }
 }
-#endif

@@ -1434,19 +1434,21 @@ struct CardPresentationView: View {
                 }
                 .accessibilityIdentifier("menuBills")
 
-                Button {
-                    if model.sessionManager.isSessionActive {
-                        model.sessionManager.endSession()
-                    } else {
-                        model.showStartSessionSheet = true
+                if !model.isDemo { // a session's Live Activity belongs to the real cards
+                    Button {
+                        if model.sessionManager.isSessionActive {
+                            model.sessionManager.endSession()
+                        } else {
+                            model.showStartSessionSheet = true
+                        }
+                    } label: {
+                        Label(
+                            model.sessionManager.isSessionActive ? "End Spending Session" : "Start Spending Session",
+                            systemImage: model.sessionManager.isSessionActive ? "stop.circle" : "record.circle"
+                        )
                     }
-                } label: {
-                    Label(
-                        model.sessionManager.isSessionActive ? "End Spending Session" : "Start Spending Session",
-                        systemImage: model.sessionManager.isSessionActive ? "stop.circle" : "record.circle"
-                    )
+                    .accessibilityIdentifier("menuSpendingSession")
                 }
-                .accessibilityIdentifier("menuSpendingSession")
             } label: {
                 Label("Tools & Insights", systemImage: "chart.bar.xaxis")
             }

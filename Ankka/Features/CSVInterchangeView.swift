@@ -302,7 +302,7 @@ struct CSVInterchangeView: View {
             if !importedRawRows.isEmpty {
                 Section("Target Card & Category") {
                     Picker("Destination Card", selection: $targetCardID) {
-                        ForEach(model.cards) { card in
+                        ForEach(model.unhiddenCards) { card in
                             Text(card.name).tag(card.id)
                         }
                     }

@@ -109,3 +109,31 @@ struct PressFeedbackStyle: ButtonStyle {
             .animation(reduceMotion ? .easeOut(duration: 0.1) : .snappy(duration: 0.2), value: configuration.isPressed)
     }
 }
+
+/// An (i) that opens a short explanation in a popover, for help that needn't sit on screen. Warnings stay visible instead.
+struct InfoTip: View {
+    let text: String
+    @State private var shown = false
+
+    var body: some View {
+        Button { shown = true } label: { Image(systemName: "info.circle").imageScale(.medium) }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("About this")
+            .popover(isPresented: $shown) {
+                Text(text)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(idealWidth: 280, alignment: .leading)
+                    .padding()
+                    .presentationCompactAdaptation(.popover)
+            }
+    }
+}
+
+/// A list section header with an InfoTip beside its title.
+struct InfoHeader: View {
+    let title: String
+    let info: String
+    var body: some View { HStack(spacing: 6) { Text(title); InfoTip(text: info).textCase(nil) } }
+}

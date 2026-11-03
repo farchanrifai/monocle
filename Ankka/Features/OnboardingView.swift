@@ -12,7 +12,6 @@ struct OnboardingView: View {
     }()
     @State private var currency = Locale.current.currency?.identifier ?? "USD"
     @State private var cardName = "My card"
-    @State private var keepSample = true
     @State private var error: String?
     @State private var trialAvailable = false
 
@@ -90,9 +89,9 @@ struct OnboardingView: View {
                 Text("Free includes one card. You can rename it any time.")
             }
             Section {
-                Toggle("Keep the Sample card", isOn: $keepSample)
+                Button("Look around first") { model.startDemo() }.accessibilityIdentifier("onboardingTryDemo")
             } footer: {
-                Text("A practice card with example spending. Try things on it (up to \(Plan.sampleEntries) entries), then hide or delete it.")
+                Text("A filled-in example to try. Nothing in it is saved.")
             }
             Section {
                 NavigationLink("Restore a backup instead") { BackupView(model: model) }
@@ -105,7 +104,7 @@ struct OnboardingView: View {
             ToolbarItem(placement: .cancellationAction) { Button("Back") { step = .currency } }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Next") {
-                    do { try model.finishOnboarding(cardName: cardName, keepSample: keepSample); step = .trial }
+                    do { try model.finishOnboarding(cardName: cardName); step = .trial }
                     catch { self.error = error.localizedDescription }
                 }
                 .accessibilityIdentifier("onboardingCardNext")

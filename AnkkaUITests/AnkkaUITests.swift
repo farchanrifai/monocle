@@ -683,6 +683,23 @@ final class AnkkaUITests: XCTestCase {
 
 
     @MainActor
+    func testTryTheDemoFromSettingsAndExit() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["ANKKA_TEST_RUN"] = UUID().uuidString
+        app.launchArguments = ["-AppleLocale", "id_ID", "-AppleLanguages", "(en)"]
+        app.launch()
+        openSettings(app)
+        let tryDemo = scrolledTo(app.buttons["tryDemo"], in: app)
+        XCTAssertTrue(tryDemo.waitForExistence(timeout: 5))
+        tryDemo.tap()
+
+        let exit = app.buttons["exitDemo"]
+        XCTAssertTrue(exit.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Demo · nothing is saved"].exists)
+        exit.tap()
+        XCTAssertTrue(exit.waitForNonExistence(timeout: 5))
+    }
+
     func testSettingsAppearanceModeAndAutoSwitch() throws {
         let app = XCUIApplication()
         app.launchEnvironment["ANKKA_TEST_RUN"] = UUID().uuidString

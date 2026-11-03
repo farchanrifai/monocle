@@ -128,8 +128,8 @@ struct CategoryManager: View {
                     CategoryRuleManager(model: model)
                 }
                 .accessibilityIdentifier("categoryRules")
-            } footer: {
-                Text("A keyword fills the category automatically during text entry and Siri Shortcuts.")
+            } header: {
+                InfoHeader(title: "Keywords", info: "A keyword fills the category automatically during text entry and Siri Shortcuts.")
             }
         }
     }

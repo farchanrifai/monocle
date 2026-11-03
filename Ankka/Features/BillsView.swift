@@ -362,9 +362,9 @@ struct BillEditor: View {
                             ForEach(1...31, id: \.self) { Text("\($0)").tag($0) }
                         }
                     }
-                } footer: {
+                } header: {
                     if recurrenceKind != 1 && (recurrenceKind == 0 ? monthlyDay : yearlyDay) > 28 {
-                        Text("In a shorter month, it's due on the last day.")
+                        InfoHeader(title: "Schedule", info: "In a shorter month, it's due on the last day.")
                     }
                 }
 

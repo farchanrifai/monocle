@@ -36,23 +36,39 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(model.settings.budget, 281_25)
     }
 
-    func testFinishingMakesTheRealCardAndCanHideTheSample() throws {
+    func testFinishingMakesTheRealCardAndDeletesTheSample() throws {
         XCTAssertTrue(model.needsOnboarding)
-        try model.finishOnboarding(cardName: "  Daily  ", keepSample: false)
+        try model.finishOnboarding(cardName: "  Daily  ")
         let card = try XCTUnwrap(model.cards.first { $0.kind == .real })
         XCTAssertEqual(card.name, "Daily")
         XCTAssertEqual(model.activeCardID, card.id)
-        XCTAssertFalse(model.homeDeckCards.contains { $0.id == Card.demo.id }, "an unkept Sample card leaves Home")
-        XCTAssertFalse(model.unhiddenCards.contains { $0.id == Card.demo.id })
+        XCTAssertEqual(model.cards.map(\.id), [card.id], "Try the demo replaces the Sample card")
         XCTAssertFalse(model.needsOnboarding)
         XCTAssertThrowsError(try model.setUpCurrency("EUR"), "the no-rates shortcut is only for a workspace without real data")
+    }
+
+    func testTheDemoIsDatedFromTodayAndLeavesTheRealCardsAlone() throws {
+        let before = model.cards.map(\.id)
+        model.startDemo()
+        let demo = try XCTUnwrap(model.demo)
+        let folder = try XCTUnwrap(demo.demoDirectory)
+        XCTAssertTrue(demo.isDemo)
+        XCTAssertTrue(demo.isPro, "every feature to look at")
+        XCTAssertEqual(demo.cards.count, 4)
+        let yesterday = Day.string(Calendar.current.date(byAdding: .day, value: -1, to: .now)!)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(demo.allExpenses().map(\.day).max()), yesterday, "made from today, whenever it is opened")
+        XCTAssertEqual(model.cards.map(\.id), before)
+
+        model.endDemo()
+        XCTAssertNil(model.demo)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path), "Exit throws the copy away")
     }
 
     func testFinishingAgainOnFreeReusesTheCardInsteadOfHittingTheLimit() throws {
         model.pro = ProStore(defaults: try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString)), listen: false)
         XCTAssertFalse(model.isPro)
-        try model.finishOnboarding(cardName: "Daily", keepSample: true)
-        try model.finishOnboarding(cardName: "Everyday", keepSample: true)
+        try model.finishOnboarding(cardName: "Daily")
+        try model.finishOnboarding(cardName: "Everyday")
         let real = model.cards.filter { $0.kind == .real }
         XCTAssertEqual(real.map(\.name), ["Everyday"])
     }

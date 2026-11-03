@@ -117,6 +117,27 @@ final class AppEnvironment {
         }
     }
 
+    /// Try the demo: DemoData, dated back from today, in a throwaway folder with every feature on. It shares nothing with
+    /// the real workspace: no iCloud, subscription, reminders, widgets or Live Activity; Shortcuts keep using the real one.
+    /// ponytail: a card photo picked in the demo still goes to the shared artwork folder (and iCloud) as an unused file.
+    static func makeDemo() throws -> AppModel {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ankka-try-demo-" + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let repository = try ExpenseRepository(url: directory.appendingPathComponent("Ankka.sqlite"))
+        try repository.prepareSampleCard()
+        let state = FileLocalStateStore(directory: directory)
+        let expenses = try ExpenseService(store: repository, notifications: DemoData.notifications)
+        let model = AppModel(expenses: expenses, state: state,
+                             backups: BackupService(directory: directory, repository: repository, state: state, expenses: expenses))
+        model.isDemo = true
+        model.demoDirectory = directory
+        model.chat = ChatSession(fileURL: directory.appendingPathComponent("chat.json"))
+        try model.restoreWorkspaceBackup(DemoData.make())
+        if let everyday = model.orderedCards.last { model.selectCard(everyday.id) } // Everyday, the open card
+        model.selectedCardID = nil // Home opens on the card deck
+        return model
+    }
+
     /// Only the real app's own folder syncs: never the Demo build, demo data or UI-test folders.
     private static func syncs(_ directory: URL) -> Bool {
         #if os(iOS) && !ANKKA_DEMO_BUILD

@@ -145,9 +145,28 @@ private struct NativeTabSwitcher: UIViewRepresentable {
 
 extension View {
     /// For a screen pushed over Home: hides the floating bottom bar while it is on screen.
-    func hidesBottomNavigation(_ model: AppModel) -> some View {
-        onAppear { model.pushedDepth += 1 }
-            .onDisappear { model.pushedDepth = max(0, model.pushedDepth - 1) }
+    func hidesBottomNavigation(_ model: AppModel) -> some View { modifier(HidesBottomNavigation(model: model)) }
+}
+
+/// The bar comes back as soon as the screen starts going (isPresented turns false when the pop begins),
+/// not after the back animation ends, when onDisappear fires; onDisappear stays for pops that skip that.
+private struct HidesBottomNavigation: ViewModifier {
+    let model: AppModel
+    @Environment(\.isPresented) private var isPresented
+    @State private var counted = false
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { count(true) }
+            .onChange(of: isPresented) { _, presented in if !presented { count(false) } }
+            .onDisappear { count(false) }
+    }
+
+    private func count(_ on: Bool) {
+        guard counted != on else { return }
+        counted = on
+        // Fades back in alongside the back animation; hides at once when a screen is pushed.
+        withAnimation(on ? nil : .easeOut(duration: 0.25)) { model.pushedDepth = max(0, model.pushedDepth + (on ? 1 : -1)) }
     }
 }
 

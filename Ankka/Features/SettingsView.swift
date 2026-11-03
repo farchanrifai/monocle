@@ -154,6 +154,12 @@ struct SettingsView: View {
                     NavigationLink { RoadmapView() } label: {
                         Label { Text("Roadmap") } icon: { SettingsIcon(symbol: "map.fill", color: .green) }
                     }
+                    if !model.isDemo {
+                        Button { model.startDemo() } label: {
+                            Label { Text("Try the demo").foregroundStyle(Color.primary) } icon: { SettingsIcon(symbol: "play.rectangle.fill", color: .indigo) }
+                        }
+                        .accessibilityIdentifier("tryDemo")
+                    }
                     Button { requestReview() } label: {
                         Label { Text("Rate Ankka").foregroundStyle(Color.primary) } icon: { SettingsIcon(symbol: "heart.fill", color: .pink) }
                     }

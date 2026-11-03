@@ -164,17 +164,19 @@ struct EntryView: View {
         }
     }
     private var draftCard: Card? { model.cards.first { $0.id == (model.draft.cardID ?? model.activeCardID) } }
+    /// Cards an expense can move to: the ones not hidden, plus the draft's own if it is.
+    private var cardChoices: [Card] { model.unhiddenCards.contains { $0.id == draftCard?.id } ? model.unhiddenCards : model.unhiddenCards + [draftCard].compactMap { $0 } }
     /// The card the expense goes to. Tap to move what's typed to another card; a saved expense keeps its card.
     @ViewBuilder private var cardPill: some View {
-        let label = DetailPill(text: draftCard?.name ?? "Card", chevron: !model.draft.editing && model.cards.count > 1) {
+        let label = DetailPill(text: draftCard?.name ?? "Card", chevron: !model.draft.editing && cardChoices.count > 1) {
             Circle().fill(draftCard.map(model.cardColor) ?? .secondary).frame(width: 10, height: 10)
         }
-        if model.draft.editing || model.cards.count < 2 {
+        if model.draft.editing || cardChoices.count < 2 {
             label.accessibilityLabel("Card \(draftCard?.name ?? "")").accessibilityIdentifier("entryCard")
         } else {
             Menu {
                 Picker("Card", selection: Binding(get: { model.draft.cardID ?? model.activeCardID }, set: { model.moveDraft(to: $0) })) {
-                    ForEach(model.orderedCards) { Text($0.name).tag($0.id) }
+                    ForEach(cardChoices) { Text($0.name).tag($0.id) }
                 }
             } label: { label }
             .tint(.primary)

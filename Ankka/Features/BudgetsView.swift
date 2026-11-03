@@ -644,9 +644,8 @@ struct BudgetEditor: View {
                             .accessibilityLabel("\(category.name) limit")
                         }
                     }
-                } header: { Text("Category limits · optional")
-                } footer: {
-                    Text("Category limits are independent from the overall budget. Leave a category blank for no limit.")
+                } header: {
+                    InfoHeader(title: "Category limits · optional", info: "Category limits are independent from the overall budget. Leave a category blank for no limit.")
                 }
                 if let error { Section { Text(error).foregroundStyle(MC.red) } }
                 if !history.isEmpty {

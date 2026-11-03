@@ -6,7 +6,7 @@ import Foundation
 /// Deterministic: the same seed always produces the same ledger, relative to `now`.
 enum DemoWorkspace {
     static func make(now: Date = .now) -> WorkspaceBackup {
-        var random = Generator(seed: 42)
+        var random = DemoData.Generator(seed: 42)
         let cal = Day.calendar
         let today = cal.startOfDay(for: now)
         func day(_ offset: Int) -> String { Day.string(cal.date(byAdding: .day, value: -offset, to: today)!) }
@@ -137,21 +137,6 @@ enum DemoWorkspace {
         settings.card = daily
         settings.budget = 9_000_000_00
         return WorkspaceBackup(cards: cards, preferences: preferences, settings: settings)
-    }
-
-    /// SplitMix64: small, seedable, and the same on every run.
-    struct Generator {
-        var state: UInt64
-        init(seed: UInt64) { state = seed }
-        mutating func next() -> UInt64 {
-            state &+= 0x9E37_79B9_7F4A_7C15
-            var z = state
-            z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-            z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-            return z ^ (z >> 31)
-        }
-        mutating func unit() -> Double { Double(next() >> 11) / Double(1 << 53) }
-        mutating func int(in range: ClosedRange<Int>) -> Int { range.lowerBound + Int(next() % UInt64(range.count)) }
     }
 }
 #endif
