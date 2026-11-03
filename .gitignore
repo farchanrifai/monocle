@@ -20,3 +20,6 @@ xcuserdata/
 
 # Golden format fixture: GoldenFormatTests reads it from the source tree
 !AnkkaTests/Fixtures/*.ankkabackup
+
+# Market validation report: private, the repo is public
+.planning/VALIDATION.md
